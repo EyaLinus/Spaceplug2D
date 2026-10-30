@@ -122,6 +122,44 @@ func _run() -> void:
 	_assert(not m.phone.visible and not gs.paused, "Esc from home closes the phone without pausing")
 	step("com-phone contacts")
 
+	# Market & Orders: order from the phone, goods arrive after the delivery time, cancel refunds
+	var credits_start: int = g.credits
+	g.credits = maxi(g.credits, 500)
+	await key(KEY_TAB)
+	var otile: Button = m.phone.find_child("App_orders", true, false)
+	_assert(otile != null, "orders app tile")
+	otile.pressed.emit()
+	await frames(2)
+	_assert(m.phone.current_title() == "Orders", "orders app opens")
+	var plus: Button = m.phone.find_child("OrderPlus_cannabis", true, false)
+	plus.pressed.emit()
+	await frames(2)
+	var stash_before: int = int(g.stash.get("cannabis", 0))
+	var credits_before: int = g.credits
+	var obtn: Button = m.phone.find_child("Order_cannabis", true, false)
+	_assert(obtn != null and not obtn.disabled, "order button enabled")
+	obtn.pressed.emit()
+	await frames(2)
+	_assert(g.orders.size() == 1 and g.credits < credits_before, "order placed and paid")
+	_assert(m.phone.find_child("Transit_%d" % int(g.orders[0].id), true, false) != null, "order listed in transit")
+	g.tick(100.0)
+	await frames(2)
+	_assert(g.orders.is_empty() and int(g.stash.get("cannabis", 0)) == stash_before + 6, "delivery lands in the stash")
+	obtn = m.phone.find_child("Order_nanoflux", true, false)
+	obtn.pressed.emit()
+	await frames(2)
+	_assert(g.orders.size() == 1, "second order placed")
+	var cbtn: Button = m.phone.find_child("OrderCancel_%d" % int(g.orders[0].id), true, false)
+	cbtn.pressed.emit()
+	await frames(2)
+	_assert(g.orders.is_empty(), "order cancelled")
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	_assert(not m.phone.visible, "phone closes")
+	g.credits = credits_start
+	g.stash.erase("cannabis")
+	step("com-phone orders")
+
 	# police on foot: an officer looking at you while you carry product frisks and busts you
 	_assert(sf.officers.size() == g.police_on_foot(1.0) and sf.officers.size() > 0, "officers on Mireth")
 	var cop = sf.officers[0]

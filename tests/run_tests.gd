@@ -7,6 +7,7 @@ const Data = preload("res://scripts/core/data.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const Orders = preload("res://scripts/core/orders.gd")
 const ArtReg = preload("res://scripts/core/art.gd")
 
 var data: Dictionary
@@ -22,6 +23,8 @@ func _init() -> void:
 		"test_art_registry",
 		"test_police_on_foot",
 		"test_estates",
+		"test_orders",
+		"test_orders_save",
 		"test_mixing_rules",
 		"test_buy_and_cargo_limit",
 		"test_lab_batch",
@@ -267,6 +270,100 @@ func test_estates() -> void:
 	check(g.collect_stash().ok and g.has_contraband(), "collect output in the estate")
 	g.inside_estate = ""
 	check(not g.lab_here(), "outside the estate no lab")
+
+
+func test_orders() -> void:
+	var rules: Dictionary = data.orders
+	for k in ["markup", "fee_pct", "fee_min", "express_fee_mult", "seconds", "far_seconds", "max_qty", "max_open", "cancel_refund"]:
+		check(rules.has(k), "orders rule %s exists" % k)
+	check(float(rules.seconds.express) < float(rules.seconds.standard), "express is faster")
+	var g := new_game()
+	g.credits = 5000
+	var cat: Array = Orders.catalog(g)
+	check(cat.size() == data.raws.size() + data.additives.size(), "catalog lists every raw and additive")
+	for e in cat:
+		var walk_in := 999999
+		for loc in data.locations:
+			var p: int = g.buy_price(e.item, loc)
+			if p >= 0:
+				walk_in = mini(walk_in, p)
+		check(Orders.unit_price(g, e.item) > walk_in, "%s is dearer by phone than walking in" % e.item)
+	check(Orders.unit_price(g, "nope") < 0, "unknown item has no price")
+	var q: Dictionary = Orders.quote(g, "cannabis", 10, "stash", false)
+	check(q.ok and q.total == q.cost + q.fee and q.fee >= int(rules.fee_min), "quote adds a fee: %s" % [q])
+	var qx: Dictionary = Orders.quote(g, "cannabis", 10, "stash", true)
+	check(qx.fee > q.fee and qx.seconds < q.seconds, "express costs more and arrives sooner")
+	check(not Orders.quote(g, "cannabis", 0, "stash", false).ok, "zero quantity refused")
+	check(not Orders.quote(g, "cannabis", int(rules.max_qty) + 1, "stash", false).ok, "over max quantity refused")
+	check(not Orders.quote(g, "cannabis", 5, "cannery_annex", false).ok, "can't deliver to an estate you don't own")
+	check(not Orders.quote(g, "nope", 5, "stash", false).ok, "unknown item refused")
+	# order from anywhere (even in flight); the goods come later
+	g.location = ""
+	var before: int = g.credits
+	var r: Dictionary = Orders.place(g, "cannabis", 10, "stash", false)
+	check(r.ok and g.credits == before - q.total, "ordering charges cost + fee")
+	check(g.orders.size() == 1 and g.stash.get("cannabis", 0) == 0, "goods are not there yet")
+	g.tick(float(rules.seconds.standard) - 1.0)
+	check(g.orders.size() == 1, "still in transit")
+	g.tick(2.0)
+	check(g.orders.is_empty() and g.stash.get("cannabis", 0) == 10, "delivered to the stash")
+	check(g.orders_unseen == 1, "delivery counted as unseen")
+	# estate delivery lands in the estate, collected when you stand inside
+	g.credits = 20000
+	g.location = "mireth"
+	g.buy_estate("cannery_annex")
+	g.location = ""
+	check(Orders.destinations(g).size() == 2, "stash plus the owned estate")
+	var far: Dictionary = Orders.quote(g, "nanoflux", 5, "cannery_annex", false)
+	check(far.ok, "estate destination accepted")
+	check(Orders.place(g, "nanoflux", 5, "cannery_annex", true).ok, "order to the estate")
+	g.tick(float(rules.seconds.express) + 1.0)
+	check(int(g.estate_stock.get("cannery_annex", {}).get("nanoflux", 0)) == 5, "arrived in the estate stock")
+	g.stash = {}
+	g.inside_estate = "cannery_annex"
+	check(g.collect_stash().ok and g.cargo.get("nanoflux", 0) == 5 and g.estate_stock.get("cannery_annex", {}).is_empty(), "collect unloads the estate stock into the hold")
+	g.inside_estate = ""
+	# limits, funds, cancel
+	g.credits = 5
+	check(not Orders.place(g, "cannabis", 10, "stash", false).ok, "not enough credits")
+	g.credits = 5000
+	for i in int(rules.max_open):
+		check(Orders.place(g, "nanoflux", 1, "stash", false).ok, "order %d" % i)
+	check(not Orders.place(g, "nanoflux", 1, "stash", false).ok, "too many open orders")
+	var first: Dictionary = g.orders[0]
+	before = g.credits
+	check(Orders.cancel(g, int(first.id)).ok and g.orders.size() == int(rules.max_open) - 1, "cancel removes the order")
+	check(g.credits == before + int(round(int(first.cost) * float(rules.cancel_refund))), "cancel refunds the goods minus the fee")
+	check(not Orders.cancel(g, 9999).ok, "unknown order can't be cancelled")
+
+
+func test_orders_save() -> void:
+	var g := new_game()
+	g.credits = 5000
+	Orders.place(g, "cannabis", 6, "stash", false)
+	g.estates["cannery_annex"] = {"buildings": []}
+	g.estate_stock = {"cannery_annex": {"nanoflux": 3}}
+	var json := JSON.stringify(g.to_dict())
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(json))
+	check(h.orders.size() == 1 and int(h.orders[0].qty) == 6 and h.orders[0].dest == "stash", "open orders survive save/load")
+	check(int(h.estate_stock.cannery_annex.nanoflux) == 3, "estate stock survives save/load")
+	check(JSON.stringify(h.to_dict()) == json, "save with orders is stable")
+	h.tick(500.0)
+	check(h.stash.get("cannabis", 0) == 6, "restored order still delivers")
+	var d := new_game().to_dict()
+	d.erase("orders")
+	d.erase("estate_stock")
+	var old := Game.new()
+	old.from_dict(data, d)
+	check(old.orders.is_empty() and old.estate_stock.is_empty(), "old saves load without orders")
+	# a saved order for an estate that no longer exists is dropped, goods go to the stash
+	var d2 := new_game().to_dict()
+	d2.orders = [{"id": 1, "item": "cannabis", "qty": 2, "dest": "ghost_estate", "due": 5.0, "cost": 20, "fee": 12, "express": false}]
+	var h2 := Game.new()
+	h2.from_dict(data, d2)
+	h2.tick(10.0)
+	check(h2.stash.get("cannabis", 0) == 2, "unknown destination falls back to the stash")
 
 
 func test_mixing_rules() -> void:
