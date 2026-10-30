@@ -32,6 +32,8 @@ var people: Dictionary = {}  ## contact id -> addiction, affinity, spent today, 
 var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0}
 var state: String = "playing"  ## playing | won | lost
 var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
+const SHIP_BAY := "ship_bay"  ## id of the ship's own estate (content.json "estates", flagged "ship"): always owned
+
 var estates: Dictionary = {}  ## owned estate id -> {"buildings": [{"id": station id, "x": int, "y": int}]}
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 
@@ -57,7 +59,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0}
 	state = "playing"
 	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
-	estates = {}
+	estates = {SHIP_BAY: {"buildings": []}}
 	demand = {}
 	for loc in data.locations:
 		demand[loc] = {}
@@ -562,6 +564,8 @@ func buy_estate(id: String) -> Dictionary:
 	if not data.estates.has(id):
 		return _fail("Unknown property.")
 	var e: Dictionary = data.estates[id]
+	if e.get("ship", false):
+		return _fail("The cargo bay comes with the ship.")
 	if estates.has(id):
 		return _fail("You already own %s." % e.name)
 	if location != e.location:
@@ -572,6 +576,20 @@ func buy_estate(id: String) -> Dictionary:
 	estates[id] = {"buildings": []}
 	_emit("estate_bought", {"estate": id})
 	return _ok("You own %s now. Go inside and set up production." % e.name)
+
+
+## The ship's estate can only be entered or changed while the ship is docked.
+func estate_reachable(id: String) -> bool:
+	if not estates.has(id):
+		return false
+	return location != "" or not data.estates[id].get("ship", false)
+
+
+func enter_ship_bay() -> Dictionary:
+	if location == "":
+		return _fail("The cargo bay is only reachable while docked.")
+	inside_estate = SHIP_BAY
+	return _ok("You climb into the cargo bay.")
 
 
 ## The door cell (bottom middle) stays free so you can always get in and out.
@@ -586,7 +604,7 @@ func building_rect(b: Dictionary) -> Rect2i:
 
 
 func can_place(estate_id: String, station: String, x: int, y: int) -> bool:
-	if not estates.has(estate_id) or not data.buildables.has(station):
+	if not estate_reachable(estate_id) or not data.buildables.has(station):
 		return false
 	var size: Array = data.estates[estate_id].size
 	var r := building_rect({"id": station, "x": x, "y": y})
@@ -601,6 +619,8 @@ func can_place(estate_id: String, station: String, x: int, y: int) -> bool:
 func place_building(estate_id: String, station: String, x: int, y: int) -> Dictionary:
 	if not estates.has(estate_id):
 		return _fail("You don't own that.")
+	if not estate_reachable(estate_id):
+		return _fail("You can only fit out the cargo bay while docked.")
 	if not data.buildables.has(station):
 		return _fail("Can't build that.")
 	if not can_place(estate_id, station, x, y):
@@ -615,7 +635,7 @@ func place_building(estate_id: String, station: String, x: int, y: int) -> Dicti
 
 
 func remove_building(estate_id: String, index: int) -> Dictionary:
-	if not estates.has(estate_id) or index < 0 or index >= estates[estate_id].buildings.size():
+	if not estate_reachable(estate_id) or index < 0 or index >= estates[estate_id].buildings.size():
 		return _fail("Nothing to remove.")
 	var b: Dictionary = estates[estate_id].buildings[index]
 	var refund := int(round(int(data.buildables[b.id].cost) * float(data.estate_refund)))
@@ -675,6 +695,8 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 			for b in d.estates[e].get("buildings", []):
 				list.append({"id": str(b.id), "x": int(b.x), "y": int(b.y)})
 			estates[e] = {"buildings": list}
+	if not estates.has(SHIP_BAY):
+		estates[SHIP_BAY] = {"buildings": []}
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 
