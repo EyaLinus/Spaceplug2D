@@ -6,7 +6,7 @@ extends RefCounted
 const Game = preload("res://scripts/core/game.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 
-const RECIPE := ["nanoflux"]  ## driftglow + nanoflux = Radiant/Overclock, a solid early-game product
+const RECIPE := ["nanoflux"]  ## weed + nanoflux = Radiant/Overclock, a solid early-game product
 const BUST_CHANCE_PER_PATROL := 0.04
 
 
@@ -51,13 +51,13 @@ static func play(data: Dictionary, seed_value: int, speed: float = 1.0, max_days
 	while g.state == "playing" and g.day <= max_days and guard < 2000:
 		guard += 1
 		# --- at the hub: cook, sell locally, upgrade, pay down debt
-		var unit_cost := g.buy_price("sporegel") + g.buy_price("nanoflux")
+		var unit_cost := g.buy_price("cannabis") + g.buy_price("nanoflux")
 		var qty := mini(g.lab_capacity(), g.cargo_free())
 		qty = mini(qty, g.credits / unit_cost)
 		if qty > 0:
-			g.buy("sporegel", qty)
+			g.buy("cannabis", qty)
 			g.buy("nanoflux", qty)
-			g.start_batch("driftglow", RECIPE, qty)
+			g.start_batch("weed", RECIPE, qty)
 			g.tick(g.lab_queue[0].remaining + 0.1)
 		g.collect_stash()
 		sell_here(g)

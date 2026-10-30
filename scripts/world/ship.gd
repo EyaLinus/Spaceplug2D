@@ -23,17 +23,20 @@ func _physics_process(delta: float) -> void:
 	var turn := Input.get_axis("ship_left", "ship_right")
 	rotation += turn * float(cfg.turn_speed) * delta
 	thrusting = Input.is_action_pressed("ship_thrust")
-	steer(delta, thrusting, Input.is_action_pressed("ship_brake"))
-	AudioManager.set_thrust(1.0 if thrusting else 0.0)
+	var reversing := Input.is_action_pressed("ship_reverse")
+	steer(delta, thrusting, Input.is_action_pressed("ship_brake"), reversing)
+	AudioManager.set_thrust(1.0 if thrusting else (0.5 if reversing else 0.0))
 	_flame = lerpf(_flame, 1.0 if thrusting else 0.0, 12.0 * delta)
 	queue_redraw()
 
 
 ## Integrates one step; split out so the UI smoke test can fly without key input.
-func steer(delta: float, thrust: bool, brake: bool) -> void:
+func steer(delta: float, thrust: bool, brake: bool, reverse := false) -> void:
 	var forward := Vector2.UP.rotated(rotation)
 	if thrust:
 		velocity += forward * float(cfg.thrust) * engine_mult * delta
+	if reverse:
+		velocity -= forward * float(cfg.thrust) * float(cfg.get("reverse_ratio", 0.5)) * engine_mult * delta
 	if brake:
 		velocity = velocity.lerp(Vector2.ZERO, clampf(float(cfg.brake) * delta, 0.0, 1.0))
 	velocity *= 1.0 - float(cfg.drag) * 0.1 * delta

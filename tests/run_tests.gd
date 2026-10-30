@@ -26,6 +26,8 @@ func _init() -> void:
 		"test_bribe",
 		"test_debt_win_and_loss",
 		"test_save_roundtrip",
+		"test_drug_ladder",
+		"test_old_save_names_migrate",
 		"test_core_loop_is_profitable",
 	]:
 		var before := failures
@@ -68,49 +70,49 @@ func test_data_references() -> void:
 
 
 func test_mixing_rules() -> void:
-	check(Mixing.traits_for(data, "driftglow", []) == ["glow"], "plain driftglow has glow")
+	check(Mixing.traits_for(data, "weed", []) == ["glow"], "plain weed has glow")
 	# nanoflux turns glow into radiant and adds overclock
-	var t := Mixing.traits_for(data, "driftglow", ["nanoflux"])
+	var t := Mixing.traits_for(data, "weed", ["nanoflux"])
 	check(t.has("radiant") and t.has("overclock") and not t.has("glow"), "nanoflux transform: %s" % [t])
 	# ion syrup then turns overclock into jittery; void salt turns jittery into focused
-	t = Mixing.traits_for(data, "driftglow", ["nanoflux", "ion_syrup", "void_salt"])
+	t = Mixing.traits_for(data, "weed", ["nanoflux", "ion_syrup", "void_salt"])
 	check(t.has("focused") and not t.has("jittery"), "chain to focused: %s" % [t])
-	var k := Mixing.key("driftglow", ["radiant", "overclock"])
-	check(k == "driftglow:overclock+radiant", "key sorted: %s" % k)
+	var k := Mixing.key("weed", ["radiant", "overclock"])
+	check(k == "weed:overclock+radiant", "key sorted: %s" % k)
 	check(Mixing.parse_key(k).traits.size() == 2, "parse key")
-	check(Mixing.value(data, k) > Mixing.value(data, "driftglow:glow"), "mixed is worth more")
-	var many := Mixing.traits_for(data, "driftglow", ["nanoflux", "ion_syrup", "static_pollen", "void_salt", "nanoflux"])
+	check(Mixing.value(data, k) > Mixing.value(data, "weed:glow"), "mixed is worth more")
+	var many := Mixing.traits_for(data, "weed", ["nanoflux", "ion_syrup", "static_pollen", "void_salt", "nanoflux"])
 	check(many.size() <= int(data.max_traits), "trait cap respected")
 
 
 func test_buy_and_cargo_limit() -> void:
 	var g := new_game()
-	check(g.buy("sporegel", 5).ok, "buy sporegel at hub")
-	check(g.cargo.sporegel == 5 and g.credits == 400 - 50, "credits and cargo after buy")
-	check(not g.buy("cryoshard", 1).ok, "cryoshard not sold at hub")
-	check(not g.buy("sporegel", 100).ok, "cargo limit enforced")
+	check(g.buy("cannabis", 5).ok, "buy cannabis at hub")
+	check(g.cargo.cannabis == 5 and g.credits == 400 - 50, "credits and cargo after buy")
+	check(not g.buy("coca_leaf", 1).ok, "coca_leaf not sold at hub")
+	check(not g.buy("cannabis", 100).ok, "cargo limit enforced")
 	g.undock()
-	check(not g.buy("sporegel", 1).ok, "cannot buy while flying")
+	check(not g.buy("cannabis", 1).ok, "cannot buy while flying")
 
 
 func test_lab_batch() -> void:
 	var g := new_game()
-	g.buy("sporegel", 5)
+	g.buy("cannabis", 5)
 	g.buy("nanoflux", 5)
-	var r := g.start_batch("driftglow", ["nanoflux"], 5)
+	var r := g.start_batch("weed", ["nanoflux"], 5)
 	check(r.ok, "batch starts: %s" % r.msg)
-	check(not g.cargo.has("sporegel") and not g.cargo.has("nanoflux"), "ingredients consumed")
+	check(not g.cargo.has("cannabis") and not g.cargo.has("nanoflux"), "ingredients consumed")
 	check(g.heat > 0.0, "lab adds heat")
-	check(not g.start_batch("driftglow", [], 6).ok, "batch over rig capacity refused")
+	check(not g.start_batch("weed", [], 6).ok, "batch over rig capacity refused")
 	for i in 30:
 		g.tick(1.0)
-	check(g.stash.get("driftglow:overclock+radiant", 0) == 5, "batch lands in stash")
-	check(g.collect_stash().ok and g.cargo.get("driftglow:overclock+radiant", 0) == 5, "collect stash")
+	check(g.stash.get("weed:overclock+radiant", 0) == 5, "batch lands in stash")
+	check(g.collect_stash().ok and g.cargo.get("weed:overclock+radiant", 0) == 5, "collect stash")
 
 
 func test_sell_contact_and_fence() -> void:
 	var g := new_game()
-	var p := "driftglow:overclock+radiant"
+	var p := "weed:overclock+radiant"
 	g.cargo[p] = 10
 	var fence_price := g.sell_price(p, "", "bazaar")
 	var lira_price := g.sell_price(p, "lira", "bazaar")
@@ -129,13 +131,13 @@ func test_sell_contact_and_fence() -> void:
 
 func test_market_saturation_recovers() -> void:
 	var g := new_game()
-	var p := "driftglow:glow"
+	var p := "weed:glow"
 	g.cargo[p] = 4
-	var d0: float = g.demand.mireth.driftglow
+	var d0: float = g.demand.mireth.weed
 	g.sell(p, 4, "okka")
-	check(g.demand.mireth.driftglow < d0, "selling saturates demand")
+	check(g.demand.mireth.weed < d0, "selling saturates demand")
 	g.tick(600.0)
-	check(is_equal_approx(g.demand.mireth.driftglow, d0), "demand recovers")
+	check(is_equal_approx(g.demand.mireth.weed, d0), "demand recovers")
 
 
 func test_heat_and_patrols() -> void:
@@ -152,12 +154,12 @@ func test_heat_and_patrols() -> void:
 
 func test_bust() -> void:
 	var g := new_game()
-	g.cargo["driftglow:glow"] = 5
-	g.cargo["sporegel"] = 3
+	g.cargo["weed:glow"] = 5
+	g.cargo["cannabis"] = 3
 	g.add_heat(80)
 	check(g.has_contraband(), "products are contraband")
 	g.bust()
-	check(not g.has_contraband() and g.cargo.sporegel == 3, "products confiscated, raws kept")
+	check(not g.has_contraband() and g.cargo.cannabis == 3, "products confiscated, raws kept")
 	check(g.credits == 400 - 60, "fine paid (15%%, min 50): %d" % g.credits)
 	check(g.heat == 40.0, "heat dropped")
 
@@ -199,9 +201,9 @@ func test_debt_win_and_loss() -> void:
 
 func test_save_roundtrip() -> void:
 	var g := new_game()
-	g.buy("sporegel", 5)
+	g.buy("cannabis", 5)
 	g.buy("static_pollen", 5)
-	g.start_batch("driftglow", ["static_pollen"], 5)
+	g.start_batch("weed", ["static_pollen"], 5)
 	g.upgrades.engine = 2
 	g.tick(2.0)
 	var d := g.to_dict()
@@ -210,6 +212,42 @@ func test_save_roundtrip() -> void:
 	h.from_dict(data, JSON.parse_string(json))
 	check(JSON.stringify(h.to_dict()) == json, "save round-trip is stable")
 	check(h.lab_queue.size() == 1 and h.upgrades.engine == 2, "lab queue and upgrades restored")
+
+
+func test_drug_ladder() -> void:
+	var order := ["weed", "cocaine", "meth", "fentanyl"]
+	for i in order.size():
+		check(int(data.bases[order[i]].tier) == i + 1, "%s is tier %d" % [order[i], i + 1])
+		if i > 0:
+			var lo: Dictionary = data.bases[order[i - 1]]
+			var hi: Dictionary = data.bases[order[i]]
+			check(float(hi.base_value) > float(lo.base_value) and float(hi.heat_mult) > float(lo.heat_mult), "%s stronger than %s" % [order[i], order[i - 1]])
+		var sold := false
+		for loc in data.locations:
+			if data.locations[loc].sells_raw.has(data.bases[order[i]].raw):
+				sold = true
+		check(sold, "%s precursor is sold somewhere" % order[i])
+	var g := new_game()
+	g.cargo["weed:glow"] = 1
+	g.cargo["fentanyl:deep"] = 1
+	g.sell("weed:glow", 1, "okka")
+	var h1 := g.heat
+	g.sell("fentanyl:deep", 1, "sen")
+	check(g.heat - h1 > h1 * 2.0, "fentanyl draws far more heat than weed")
+
+
+func test_old_save_names_migrate() -> void:
+	var g := new_game()
+	var d := g.to_dict()
+	d.cargo = {"sporegel": 4, "driftglow:overclock+radiant": 3}
+	d.stash = {"shardlight:crisp": 2}
+	d.demand.mireth.erase("weed")
+	d.demand.mireth["driftglow"] = 0.5
+	var h := Game.new()
+	h.from_dict(data, d)
+	check(h.cargo.get("cannabis", 0) == 4 and h.cargo.get("weed:overclock+radiant", 0) == 3, "cargo renamed: %s" % [h.cargo])
+	check(h.stash.get("cocaine:crisp", 0) == 2, "stash renamed")
+	check(is_equal_approx(h.demand.mireth.weed, 0.5), "demand renamed")
 
 
 ## A scripted run of the core loop must clear the debt before the due day (no flight, travel approximated).

@@ -36,8 +36,10 @@
     "contact_cooldown": 60
   },
   "raws": {
-    "sporegel": {"name": "Sporegel", "desc": "Bioluminescent fungal paste. Grey-market.", "contraband": false},
-    "cryoshard": {"name": "Cryoshard", "desc": "Frozen crystal dust mined in the Cinder Belt.", "contraband": false}
+    "cannabis": {"name": "Cannabis Buds", "desc": "Untrimmed hydro buds. Tier 1 starter.", "contraband": false},
+    "coca_leaf": {"name": "Coca Leaf", "desc": "Dried leaf from the Cinder Belt greenhouses. Tier 2.", "contraband": false},
+    "pseudo": {"name": "Pseudoephedrine", "desc": "Diverted cold-medicine precursor. Tier 3.", "contraband": false},
+    "fent_precursor": {"name": "Fentanyl Precursor", "desc": "Lab-grade precursor from pirate chemists. Tier 4, very hot.", "contraband": false}
   },
   "additives": {
     "nanoflux": {"name": "Nanoflux", "price": 4, "adds": "overclock", "transforms": {"glow": "radiant", "sweet": "jittery"}},
@@ -62,27 +64,29 @@
   },
   "max_traits": 4,
   "bases": {
-    "driftglow": {"name": "Driftglow", "raw": "sporegel", "innate": "glow", "base_value": 40},
-    "shardlight": {"name": "Shardlight", "raw": "cryoshard", "innate": "crisp", "base_value": 62}
+    "weed": {"name": "Weed", "tier": 1, "raw": "cannabis", "innate": "glow", "base_value": 40, "heat_mult": 1.0},
+    "cocaine": {"name": "Cocaine", "tier": 2, "raw": "coca_leaf", "innate": "crisp", "base_value": 62, "heat_mult": 1.3},
+    "meth": {"name": "Meth", "tier": 3, "raw": "pseudo", "innate": "crisp", "base_value": 95, "heat_mult": 1.7},
+    "fentanyl": {"name": "Fentanyl", "tier": 4, "raw": "fent_precursor", "innate": "deep", "base_value": 150, "heat_mult": 2.4}
   },
   "locations": {
     "mireth": {
       "name": "Mireth", "kind": "planet", "pos": [0, 0], "radius": 170, "color": "#3d7a6a",
       "desc": "Hub world. Your rented hydro rig hides in the old cannery district.",
-      "sells_raw": {"sporegel": 10}, "sells_additives": true, "lab": true, "shipyard": true, "office": true,
-      "fence": false, "heat_per_unit": 2.5, "demand": {"driftglow": 1.0, "shardlight": 0.9}
+      "sells_raw": {"cannabis": 10}, "sells_additives": true, "lab": true, "shipyard": true, "office": true,
+      "fence": false, "heat_per_unit": 2.5, "demand": {"weed": 1.0, "cocaine": 0.9, "meth": 1.0, "fentanyl": 0.8}
     },
     "cinder": {
       "name": "Cinder Belt Outpost", "kind": "asteroid", "pos": [2600, -1400], "radius": 90, "color": "#8a5a3c",
       "desc": "Mining camp. Cheap raws, thirsty miners.",
-      "sells_raw": {"sporegel": 7, "cryoshard": 18}, "sells_additives": false, "lab": false, "shipyard": false, "office": false,
-      "fence": false, "heat_per_unit": 1.5, "demand": {"driftglow": 1.15, "shardlight": 0.8}
+      "sells_raw": {"cannabis": 7, "coca_leaf": 18, "pseudo": 45}, "sells_additives": false, "lab": false, "shipyard": false, "office": false,
+      "fence": false, "heat_per_unit": 1.5, "demand": {"weed": 1.15, "cocaine": 0.8, "meth": 1.2, "fentanyl": 0.9}
     },
     "bazaar": {
       "name": "Drift Bazaar", "kind": "station", "pos": [-2200, 1800], "radius": 70, "color": "#7a4f9a",
       "desc": "Pirate market welded from old hulls. Nobody asks questions.",
-      "sells_raw": {}, "sells_additives": true, "lab": false, "shipyard": false, "office": false,
-      "fence": true, "heat_per_unit": 0.8, "demand": {"driftglow": 0.9, "shardlight": 1.2}
+      "sells_raw": {"fent_precursor": 110}, "sells_additives": true, "lab": false, "shipyard": false, "office": false,
+      "fence": true, "heat_per_unit": 0.8, "demand": {"weed": 0.9, "cocaine": 1.2, "meth": 1.1, "fentanyl": 1.25}
     },
     "beacon": {
       "name": "Customs Beacon K-7", "kind": "beacon", "pos": [1300, 2300], "radius": 50, "color": "#3a6fd0",
@@ -115,6 +119,7 @@
     "turn_speed": 3.4,
     "drag": 0.6,
     "brake": 2.5,
+    "reverse_ratio": 0.5,
     "dock_range": 90
   },
   "patrol": {

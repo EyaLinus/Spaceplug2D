@@ -13,10 +13,10 @@ ships and labs across several star systems. Production/dealing sim at its core, 
 ## Setting
 The Halvane Reach, a frontier sector policed by the Reach Authority. Mireth (hub world, your rig),
 Cinder Belt Outpost (mining camp, raws), Drift Bazaar (pirate market, fence), Customs Beacon K-7 (patrol base).
-Lender: the Ouroboros Consortium. All goods are fictional sci-fi substances.
+Lender: the Ouroboros Consortium. Products use real drug names (since v0.1.1, playtest feedback) so the strength ladder is obvious; traits and additives stay sci-fi.
 
 ## Systems in v0.1
-- Products: Driftglow (Sporegel, innate *Glow*), Shardlight (Cryoshard, innate *Crisp*).
+- Drug ladder: T1 Weed (Cannabis Buds, base 40, heat ×1.0), T2 Cocaine (Coca Leaf, 62, ×1.3), T3 Meth (Pseudoephedrine, 95, ×1.7), T4 Fentanyl (Fentanyl Precursor, 150, ×2.4).
 - Additives: Nanoflux, Ion Syrup, Static Pollen, Void Salt (transform table in `data/content.json`). Max 4 traits.
 - Value = base × (1 + Σ trait values) × local demand × contact factor (liked trait +25 %, fence 70 %).
 - Demand drops 3 % per unit sold, recovers 0.2 %/s; one random demand rumour per day.

@@ -31,14 +31,14 @@ func _run() -> void:
 	await _save(out, "menu")
 	m.start_new_game(3)
 	var g = gs.game
-	g.buy("sporegel", 5)
+	g.buy("cannabis", 5)
 	g.buy("nanoflux", 5)
 	g.buy("ion_syrup", 5)
 	m.station._lab_adds = ["nanoflux", "ion_syrup", ""]
 	m.station.refresh()
 	m.station.tabs.current_tab = 1
 	await _save(out, "lab")
-	g.start_batch("driftglow", ["nanoflux"], 5)
+	g.start_batch("weed", ["nanoflux"], 5)
 	g.tick(30)
 	g.collect_stash()
 	m.station.tabs.current_tab = 2

@@ -8,7 +8,7 @@ const Mixing = preload("res://scripts/core/mixing.gd")
 var tabs: TabContainer
 var _title: Label
 var _desc: Label
-var _lab_base := "driftglow"
+var _lab_base := "weed"
 var _lab_adds: Array = ["", "", ""]
 var _lab_qty := 5
 var _dirty := false
@@ -158,7 +158,7 @@ func _build_lab(g) -> Control:
 	var base_opt := OptionButton.new()
 	var bases: Array = g.data.bases.keys()
 	for b in bases:
-		base_opt.add_item("%s (from %s)" % [g.data.bases[b].name, g.data.raws[g.data.bases[b].raw].name])
+		base_opt.add_item("T%d %s (from %s)" % [int(g.data.bases[b].get("tier", 1)), g.data.bases[b].name, g.data.raws[g.data.bases[b].raw].name])
 	base_opt.selected = bases.find(_lab_base)
 	base_opt.item_selected.connect(func(i: int):
 		_lab_base = bases[i]
@@ -239,7 +239,7 @@ func _build_deals(g) -> Control:
 	for k in g.cargo:
 		if Mixing.is_product(k):
 			products.append(k)
-	v.add_child(UI.label("Selling here adds %.1f heat per unit." % float(g.loc_data().heat_per_unit), 15, UI.MUTED))
+	v.add_child(UI.label("Selling here adds %.1f heat per unit, times the drug's strength (Weed ×1 … Fentanyl ×%.1f)." % [float(g.loc_data().heat_per_unit), g.heat_mult("fentanyl")], 15, UI.MUTED))
 	if products.is_empty():
 		v.add_child(UI.label("You carry no product. Cook some at the Mireth lab.", 16, UI.MUTED))
 	var buyers: Array = []

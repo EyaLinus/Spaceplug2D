@@ -1,11 +1,12 @@
 # Spaceplug 2D
 
 Top-down 2D space smuggling and production sim. You start on the hub world **Mireth** owing the
-Ouroboros Consortium 6,000 credits. Buy raw Sporegel and Cryoshard, cook and mix them in your hydro rig,
+Ouroboros Consortium 6,000 credits. Climb the drug ladder from Weed to Cocaine, Meth and Fentanyl: buy precursors, cook and mix them in your hydro rig,
 sell the product to contacts across the sector and keep the Reach Authority patrols off your back.
 
-> Genre-inspired by production/dealing sims such as *Schedule I*, but its own game: own setting,
-> fictional sci-fi goods, own mixing rules, flight-based logistics and patrol scans.
+> Genre-inspired by production/dealing sims such as *Schedule I*, but its own game: own sci-fi setting,
+> own mixing rules, flight-based logistics and patrol scans. Drug names are real so their strength reads at a glance;
+> the game is fiction for adults and does not teach real-world production.
 
 **Download:** Windows builds are attached to [GitHub Releases](../../releases) (unsigned: Windows SmartScreen
 shows "Windows protected your PC" → *More info* → *Run anyway*).
@@ -15,12 +16,15 @@ shows "Windows protected your PC" → *More info* → *Run anyway*).
 |---|---|
 | W / ↑ | Thrust |
 | A D / ← → | Turn |
-| S / ↓ | Brake |
-| E / Space | Dock / undock (when in range) |
+| S / ↓ | Reverse thrust |
+| Space | Brake |
+| E | Dock / undock (when in range) |
 | Esc / P | Pause menu (save, sound, main menu) |
 
 ## Core loop (prototype v0.1)
-1. **Buy** Sporegel (Mireth, cheaper at Cinder Belt) or Cryoshard (Cinder Belt) plus additives.
+1. **Buy** precursors plus additives. Drug ladder (tier: raw → where):
+   T1 Weed (Cannabis Buds, Mireth/Cinder) · T2 Cocaine (Coca Leaf, Cinder) · T3 Meth (Pseudoephedrine, Cinder) ·
+   T4 Fentanyl (Fentanyl Precursor, Drift Bazaar). Higher tier = higher base value and more heat per unit (×1 … ×2.4).
 2. **Cook** in the Mireth lab: base + up to 3 additives. Each additive transforms existing traits and adds its own
    (e.g. Nanoflux turns *Glow* into *Radiant*). More valuable traits → higher price.
 3. **Sell** to contacts (each loves one trait, pays a premium, has a cooldown) or to the Drift Bazaar fence.
