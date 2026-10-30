@@ -74,6 +74,9 @@ func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # pixel art; children inherit it
 	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED  # tinted roof/wall pieces are tiled
 	_rng.seed = hash(loc_id)
+	EventBus.game_event.connect(func(kind: String, _p: Dictionary):
+		if kind == "upgraded":
+			queue_redraw())  # the parked ship shows its new module
 	_build_collision()
 	nav = Nav.build(cfg)
 	_build_interactables()
@@ -409,11 +412,11 @@ func _draw_pad() -> void:
 	for i in 8:
 		var d := Vector2.RIGHT.rotated(i * TAU / 8.0)
 		draw_circle(c + d * (r - 8), 3.0, Color("#4fe3c1"))
-	# the parked ship, same sprite as in flight but bigger
-	var ship_tex := Art.tex("ships/ship.png")
-	if ship_tex != null:
-		var sz := ship_tex.get_size() * 2.5
-		draw_texture_rect(ship_tex, Rect2(c - sz / 2.0, sz), false)
+	# the parked ship, same sprite and upgrade modules as in flight but bigger
+	draw_set_transform(c, 0.0, Vector2(2.5, 2.5))
+	var drawn := Art.draw_ship(self, GameState.game.upgrades if GameState.game != null else {})
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if drawn:
 		return
 	var s := 2.6
 	var hull := PackedVector2Array([Vector2(0, -20) * s + c, Vector2(13, 14) * s + c, Vector2(0, 8) * s + c, Vector2(-13, 14) * s + c])

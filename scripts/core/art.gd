@@ -20,6 +20,18 @@ const NPC_LOOKS := {
 	"npc_sky": Color("#5fb6c9"), "npc_pink": Color("#ff9ad5"),
 }
 
+## Ship upgrade modules (ships/mod_<key>_<level>.png, 48 px, level 1..3; level 0 = none) in draw order around the
+## 32 px hull: UNDER modules are drawn before it, OVER modules after. New upgrade keys (weapons, shields) go here.
+const SHIP_UNDER := ["engine", "cargo"]
+const SHIP_OVER := ["stealth", "lab"]
+## Exhaust nozzles per engine level: [position of the nozzle's bottom edge, flame width], relative to the ship centre.
+const SHIP_NOZZLES := [
+	[[Vector2(0, 12), 1.0]],
+	[[Vector2(0, 12), 1.0], [Vector2(-10, 16), 0.6], [Vector2(10, 16), 0.6]],
+	[[Vector2(0, 12), 1.0], [Vector2(-11, 18), 0.8], [Vector2(11, 18), 0.8]],
+	[[Vector2(0, 18), 0.9], [Vector2(-11, 20), 0.9], [Vector2(11, 20), 0.9]],
+]
+
 static var _cache := {}
 
 
@@ -100,6 +112,33 @@ static func fill_tiles(ci: CanvasItem, strip_rel: String, r: Rect2, seed_val: in
 			x += TILE
 		y += TILE
 	return true
+
+
+static func ship_module(key: String, level: int) -> Texture2D:
+	return tex("ships/mod_%s_%d.png" % [key, level]) if level > 0 else null
+
+
+## Draws the player ship centred on `p` with its upgrade modules (`levels`: upgrade key -> level, like Game.upgrades).
+## Returns false (and draws nothing) without the hull sprite, so the caller can fall back to procedural drawing.
+static func draw_ship(ci: CanvasItem, levels: Dictionary, p := Vector2.ZERO) -> bool:
+	var hull := tex("ships/ship.png")
+	if hull == null:
+		return false
+	for k in SHIP_UNDER:
+		_draw_centred(ci, ship_module(k, int(levels.get(k, 0))), p)
+	_draw_centred(ci, hull, p)
+	for k in SHIP_OVER:
+		_draw_centred(ci, ship_module(k, int(levels.get(k, 0))), p)
+	return true
+
+
+static func ship_nozzles(engine_level: int) -> Array:
+	return SHIP_NOZZLES[clampi(engine_level, 0, SHIP_NOZZLES.size() - 1)]
+
+
+static func _draw_centred(ci: CanvasItem, t: Texture2D, p: Vector2) -> void:
+	if t != null:
+		ci.draw_texture(t, p - t.get_size() / 2.0)
 
 
 ## Icon for an item key: raw, additive or product ("weed:overclock@premium" -> icons/weed.png), or upgrade/hud name.

@@ -96,6 +96,7 @@ func _physics_process(delta: float) -> void:
 		return
 	ship.frozen = not active or GameState.paused or input_blocked
 	ship.engine_mult = g.engine_mult()
+	ship.modules = g.upgrades
 	if GameState.paused:
 		return
 	_clamp_to_sector()
