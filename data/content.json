@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "start": {
+    "credits": 400,
+    "debt": 6000,
+    "debt_due_day": 12,
+    "location": "mireth",
+    "cargo": {}
+  },
+  "time": {
+    "day_seconds": 180
+  },
+  "heat": {
+    "max": 100,
+    "decay_per_second": 0.25,
+    "decay_docked_factor": 0.5,
+    "per_lab_unit": 0.6,
+    "patrol_base": 1,
+    "patrol_per_heat": 25,
+    "patrol_max": 5,
+    "scan_radius": 380,
+    "scan_seconds": 2.5,
+    "chase_heat": 30,
+    "bust_fine_ratio": 0.15,
+    "bust_fine_min": 50,
+    "bust_heat_drop": 40,
+    "bribe_credits_per_heat": 12
+  },
+  "market": {
+    "saturation_per_unit": 0.03,
+    "recovery_per_second": 0.002,
+    "min_demand": 0.4,
+    "max_demand": 1.3,
+    "fence_ratio": 0.7,
+    "liked_trait_bonus": 0.25,
+    "contact_cooldown": 60
+  },
+  "raws": {
+    "sporegel": {"name": "Sporegel", "desc": "Bioluminescent fungal paste. Grey-market.", "contraband": false},
+    "cryoshard": {"name": "Cryoshard", "desc": "Frozen crystal dust mined in the Cinder Belt.", "contraband": false}
+  },
+  "additives": {
+    "nanoflux": {"name": "Nanoflux", "price": 4, "adds": "overclock", "transforms": {"glow": "radiant", "sweet": "jittery"}},
+    "ion_syrup": {"name": "Ion Syrup", "price": 3, "adds": "sweet", "transforms": {"crisp": "smooth", "overclock": "jittery"}},
+    "static_pollen": {"name": "Static Pollen", "price": 6, "adds": "static", "transforms": {"sweet": "euphoric", "glow": "flicker"}},
+    "void_salt": {"name": "Void Salt", "price": 8, "adds": "deep", "transforms": {"jittery": "focused", "static": "hush"}}
+  },
+  "traits": {
+    "glow": {"name": "Glow", "value": 0.10, "color": "#7fffd4"},
+    "crisp": {"name": "Crisp", "value": 0.15, "color": "#a0d8ff"},
+    "radiant": {"name": "Radiant", "value": 0.55, "color": "#fff27f"},
+    "overclock": {"name": "Overclock", "value": 0.35, "color": "#ff9a4d"},
+    "sweet": {"name": "Sweet", "value": 0.15, "color": "#ff9ad5"},
+    "smooth": {"name": "Smooth", "value": 0.40, "color": "#c9b8ff"},
+    "jittery": {"name": "Jittery", "value": -0.10, "color": "#9a9a9a"},
+    "static": {"name": "Static", "value": 0.30, "color": "#7fb2ff"},
+    "euphoric": {"name": "Euphoric", "value": 0.70, "color": "#ff5fd2"},
+    "flicker": {"name": "Flicker", "value": 0.05, "color": "#b0b0b0"},
+    "deep": {"name": "Deep", "value": 0.45, "color": "#5f6bff"},
+    "focused": {"name": "Focused", "value": 0.65, "color": "#5fffa0"},
+    "hush": {"name": "Hush", "value": 0.60, "color": "#4fd0d0"}
+  },
+  "max_traits": 4,
+  "bases": {
+    "driftglow": {"name": "Driftglow", "raw": "sporegel", "innate": "glow", "base_value": 40},
+    "shardlight": {"name": "Shardlight", "raw": "cryoshard", "innate": "crisp", "base_value": 62}
+  },
+  "locations": {
+    "mireth": {
+      "name": "Mireth", "kind": "planet", "pos": [0, 0], "radius": 170, "color": "#3d7a6a",
+      "desc": "Hub world. Your rented hydro rig hides in the old cannery district.",
+      "sells_raw": {"sporegel": 10}, "sells_additives": true, "lab": true, "shipyard": true, "office": true,
+      "fence": false, "heat_per_unit": 2.5, "demand": {"driftglow": 1.0, "shardlight": 0.9}
+    },
+    "cinder": {
+      "name": "Cinder Belt Outpost", "kind": "asteroid", "pos": [2600, -1400], "radius": 90, "color": "#8a5a3c",
+      "desc": "Mining camp. Cheap raws, thirsty miners.",
+      "sells_raw": {"sporegel": 7, "cryoshard": 18}, "sells_additives": false, "lab": false, "shipyard": false, "office": false,
+      "fence": false, "heat_per_unit": 1.5, "demand": {"driftglow": 1.15, "shardlight": 0.8}
+    },
+    "bazaar": {
+      "name": "Drift Bazaar", "kind": "station", "pos": [-2200, 1800], "radius": 70, "color": "#7a4f9a",
+      "desc": "Pirate market welded from old hulls. Nobody asks questions.",
+      "sells_raw": {}, "sells_additives": true, "lab": false, "shipyard": false, "office": false,
+      "fence": true, "heat_per_unit": 0.8, "demand": {"driftglow": 0.9, "shardlight": 1.2}
+    },
+    "beacon": {
+      "name": "Customs Beacon K-7", "kind": "beacon", "pos": [1300, 2300], "radius": 50, "color": "#3a6fd0",
+      "desc": "Reach Authority patrol base. Stay clear.",
+      "sells_raw": {}, "sells_additives": false, "lab": false, "shipyard": false, "office": false,
+      "fence": false, "heat_per_unit": 0, "demand": {}, "dockable": false
+    }
+  },
+  "contacts": [
+    {"id": "okka", "name": "Okka the Welder", "location": "mireth", "likes": "radiant", "max_units": 4, "budget_mult": 1.0},
+    {"id": "sen", "name": "Sen Varo", "location": "mireth", "likes": "euphoric", "max_units": 3, "budget_mult": 1.1},
+    {"id": "dax", "name": "Foreman Dax", "location": "cinder", "likes": "focused", "max_units": 6, "budget_mult": 1.05},
+    {"id": "lira", "name": "Lira Nine", "location": "bazaar", "likes": "smooth", "max_units": 5, "budget_mult": 1.15},
+    {"id": "grub", "name": "Old Grub", "location": "bazaar", "likes": "hush", "max_units": 8, "budget_mult": 0.95}
+  ],
+  "upgrades": {
+    "cargo": {"name": "Cargo Hold", "levels": [20, 35, 55, 80], "costs": [600, 1500, 3500]},
+    "engine": {"name": "Ion Engine", "levels": [1.0, 1.25, 1.5, 1.8], "costs": [500, 1400, 3000]},
+    "stealth": {"name": "Stealth Plating", "levels": [0.0, 0.15, 0.3, 0.45], "costs": [700, 1800, 4000]},
+    "lab": {"name": "Hydro Rig", "levels": [5, 10, 20, 35], "costs": [800, 2000, 4500]}
+  },
+  "lab": {
+    "base_seconds": 3.0,
+    "seconds_per_unit": 1.5,
+    "speed_per_level": 0.25
+  },
+  "ship": {
+    "thrust": 520,
+    "max_speed": 620,
+    "turn_speed": 3.4,
+    "drag": 0.6,
+    "brake": 2.5,
+    "dock_range": 90
+  },
+  "patrol": {
+    "speed": 300,
+    "chase_speed": 470,
+    "wander_radius": 2200
+  }
+}
