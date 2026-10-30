@@ -45,8 +45,9 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [ ] Planet heat zones: dealing in the plaza is hotter than in the back alleys
 
 ## P4 – Estates & production buildings
-- [ ] Core: properties per planet (price, size in grid cells, upkeep), buy/sell, ownership in the save
-- [ ] Estate instance: enter your property, grid placement mode (place/rotate/remove) with a build menu
+- [x] Core: properties per planet (price, size in grid cells), buy, ownership in the save (upkeep/selling later)
+- [x] Estate instance: enter your property, grid placement mode (place/remove, no rotation yet) with a build menu [B]
+- [x] Cook in your estate with the stations you placed (station minigames from the lab run on your own stations)
 - [ ] Production buildings as core entities: grow tray (raws with growth time/quality), mixing station (the current lab,
       one per station), drying/packaging table, storage crate; each has its own input/output inventory
 - [ ] The global "hydro rig" becomes the first rented estate; lab upgrades turn into building tiers

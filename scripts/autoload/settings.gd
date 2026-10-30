@@ -24,6 +24,7 @@ const BINDABLE := [
 	{"action": "move_left", "label": "Walk left", "group": "On foot"},
 	{"action": "move_right", "label": "Walk right", "group": "On foot"},
 	{"action": "interact", "label": "Use / talk", "group": "On foot"},
+	{"action": "build_menu", "label": "Build menu (estate)", "group": "On foot"},
 	{"action": "ui_menu", "label": "Pause menu", "group": "General"},
 ]
 

@@ -1,5 +1,26 @@
 # Progress log
 
+## P4 step 2: cook in your estate (2026-10-30)
+- Inside an owned estate every placed station opens the Lab (plus its own Station tab). A batch needs the stations its
+  recipe runs through (`Production.stations_for`); missing ones are named in the lab and block the batch.
+  Output, queue and stash are still shared with the hub lab (one production queue), so you can cook on Cinder or the
+  Bazaar and load the stash there. Core: `Game.lab_here`, `missing_stations`, runtime `inside_estate`.
+- Verified: 504 unit checks (cook in the Shaft 9 Shack once Trim Table + Cook Stove + Packaging Table stand; additives
+  need a Mixing Station; no lab outside), UI smoke checks the estate counts as a lab; screenshot of the estate lab checked.
+- Gaps: estates share one queue/stash with the hub; per-estate storage and workers come with P5.
+
+## P4 step 1: estates (2026-10-30)
+- Four estates for sale (`content.json` → `estates`): Cannery Annex (1,500 cr) and Ridge Glasshouse (4,500 cr) on Mireth,
+  Shaft 9 Shack (1,200 cr) on Cinder, Hull Locker 13 (2,200 cr) on the Bazaar. Each is a building on its surface.
+- Buying opens the estate: its own instanced room (`scripts/planet/estate_layout.gd` → surface config, 2× zoom),
+  [B] build menu lists the station types from the minigame station registry (`content.json` → `buildables`: cost + size),
+  placement ghost on the cells in front of you (green/red), E places, Esc cancels. Using a placed station lets you take
+  it down for 50 % back. The door cell always stays free. Core: `Game.buy_estate/can_place/place_building/remove_building`, saved.
+- Verified: 495 unit checks (estate buy rules, placement bounds/overlap/door, save round-trip, refund, every estate has
+  a surface building), UI smoke buys the annex, places a stove through the ghost, opens it, leaves; screenshots checked.
+- Gaps: you cannot cook with your own stations yet (next step); no rotation, no upkeep, no selling estates;
+  machines are procedural drawings, labels overflow on 1-cell stations.
+
 ## Art pass 3: UI icons (2026-10-30)
 - 19 pixel icons: 4 raws, 4 products (baggies), 4 additives (vials), 4 upgrades, HUD credits/day/heat (+cargo).
   Shown in market rows, hold, deals, shipyard and the top bar via `Art.with_icon()`.
