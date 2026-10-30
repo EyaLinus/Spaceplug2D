@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.3 – 2026-10-30
+- **Police on foot:** Reach Authority officers walk the streets of Mireth (and the Cinder camp once you are hot). Carry product in their line of sight and they frisk you; at high heat they chase you. The Drift Bazaar has no police.
+- **Walk the whole sector:** Cinder Belt (mining camp with the Ore Depot and Foreman Dax) and the Drift Bazaar (hull deck with the Hull Market, the fence in the Back Room, Lira and Old Grub) are now walkable like Mireth.
+
 ## v0.1.2 – 2026-10-30
 - **Land on planets:** docking at Mireth now lands you on its surface. Walk around the Cannery District on foot (WASD/arrows), use doors and talk to people with E, take off again from the launch pad next to your ship.
 - **Economy in the world:** the market, your cannery lab, the mechanic at the spaceport, the Consortium office and your contacts Okka and Sen are now places and people on Mireth instead of menu tabs.
