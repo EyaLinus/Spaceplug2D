@@ -10,6 +10,7 @@ const NpcScript = preload("res://scripts/planet/npc.gd")
 const OfficerScript = preload("res://scripts/planet/officer.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Nav = preload("res://scripts/planet/nav.gd")
+const Deals = preload("res://scripts/core/deals.gd")
 
 const INPUT := {
 	"move_up": [KEY_W, KEY_UP],
@@ -76,7 +77,9 @@ func _ready() -> void:
 	_rng.seed = hash(loc_id)
 	EventBus.game_event.connect(func(kind: String, _p: Dictionary):
 		if kind == "upgraded":
-			queue_redraw())  # the parked ship shows its new module
+			queue_redraw()  # the parked ship shows its new module
+		elif kind == "deal_changed":
+			_refresh_deal_spots())
 	_build_collision()
 	nav = Nav.build(cfg)
 	_build_interactables()
@@ -182,6 +185,13 @@ func _build_interactables() -> void:
 		interactables.append({"pos": _px(cfg.pad.pos), "stand": _px(cfg.pad.pos) + Vector2(0, tile * 1.4 + 18),
 			"range": float(cfg.pad.radius) * tile * 0.75, "label": cfg.pad.label,
 			"action": "takeoff", "payload": {"id": "pad", "title": cfg.pad.label}})
+	_refresh_deal_spots()
+
+
+## Deal-O-Matic meeting spots (accepted requests on this planet) are interactables tagged "deal".
+func _refresh_deal_spots() -> void:
+	interactables = interactables.filter(func(it): return not it.get("deal", false))
+	interactables.append_array(Deals.spots_here(GameState.game, loc_id, tile))
 
 
 ## Ambient walkers stay on the first two roads (main street + cross street) and turn at their crossing.
@@ -607,6 +617,10 @@ func _draw_overlay() -> void:
 		var col := Color(0.31, 0.89, 0.76) if ok else Color(1.0, 0.42, 0.37)
 		_overlay.draw_rect(gr, Color(col, 0.25))
 		_overlay.draw_rect(gr, col, false, 2.0)
+	for it in interactables:
+		if it.get("deal", false):
+			_overlay.draw_arc(it.pos, 16.0, 0, TAU, 24, Color(1.0, 0.82, 0.4, 0.8), 2.0)
+			_overlay.draw_circle(it.pos, 4.0, Color(1.0, 0.82, 0.4, 0.8))
 	if focus.is_empty():
 		return
 	var p: Vector2 = focus.pos

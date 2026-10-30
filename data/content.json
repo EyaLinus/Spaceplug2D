@@ -161,6 +161,39 @@
     "preferred_bonus": 0.1,
     "history_len": 8
   },
+  "deals": {
+    "request_chance_per_hour": 0.035,
+    "addiction_floor": 0.4,
+    "addiction_weight": 1.6,
+    "affinity_weight": 0.5,
+    "other_drug_chance": 0.1,
+    "max_open": 6,
+    "lead_hours": [1, 3],
+    "window_hours": [8, 14],
+    "price_spread": [0.92, 1.12],
+    "decline_quiet_hours": 12,
+    "miss_affinity": -0.08,
+    "walk_affinity": -0.03,
+    "counter_fail_affinity": -0.02,
+    "done_affinity": 0.02,
+    "heat_mult": 1.0,
+    "keep_finished": 12,
+    "haggle": {"steps": [0.1, 0.2, 0.35], "base_chance": 0.9, "step_penalty": 2.0, "affinity_weight": 0.35, "addiction_weight": 0.25, "min": 0.05, "max": 0.95, "walk_margin": 0.4},
+    "texts": [
+      "It's {name}. I need {qty} {drug}, {price} cr each. Meet me at {spot}.",
+      "{drug} again. {qty} units, {price} each. {spot}, don't be late.",
+      "You around? Looking for {qty} {drug} at {price} cr a piece. {spot}.",
+      "Running low. {qty} {drug} for {price} each, I'll be at {spot}.",
+      "Got cash for {qty} {drug}. {price} a unit. {spot} works for me."
+    ],
+    "spots": {
+      "mireth": [{"id": "kerb", "name": "Main Street kerb", "pos": [30.5, 16.5]}, {"id": "alley", "name": "Back alley", "pos": [23.5, 25.5]}],
+      "cinder": [{"id": "road", "name": "Camp road", "pos": [10.5, 13.5]}, {"id": "chute", "name": "Ore chute", "pos": [17.5, 7.5]}],
+      "bazaar": [{"id": "corridor", "name": "Hull corridor", "pos": [11.5, 12.5]}, {"id": "vent", "name": "Vent junction", "pos": [18.5, 19.5]}],
+      "varrow": [{"id": "flats", "name": "Salt flats road", "pos": [12.5, 15.5]}, {"id": "tower", "name": "Water tower", "pos": [22.5, 25.5]}],
+      "glacis": [{"id": "walkway", "name": "Dome walkway", "pos": [14.5, 16.5]}, {"id": "lock", "name": "South lock", "pos": [23.5, 27.5]}]
+    }
+  },
   "upgrades": {
     "cargo": {"name": "Cargo Hold", "levels": [20, 35, 55, 80], "costs": [600, 1500, 3500]},
     "engine": {"name": "Ion Engine", "levels": [1.0, 1.25, 1.5, 1.8], "costs": [500, 1400, 3000]},

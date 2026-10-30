@@ -94,7 +94,7 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
 - → **Release v0.1.5** when wave 1 is merged.
 
 ### Wave 2 – the phone takes over trade (needs A1)
-- **A2 Deal-O-Matic.** Customers text you requests (product, amount, price, place, time window) driven by addiction,
+- [x] **A2 Deal-O-Matic.** Customers text you requests (product, amount, price, place, time window) driven by addiction,
   budget and schedule; you accept, counter (haggling success depends on affinity) or decline; the deal is closed on
   foot at the agreed spot. Replaces the Deals panel for named customers (fence stays). Not parallel with B1 (surface.gd).
 - **A3 Market & Orders app.** Order raws, additives and equipment from the phone with delivery time and fee; goods

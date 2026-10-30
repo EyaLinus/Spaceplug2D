@@ -9,6 +9,7 @@ signal event(kind: String, payload: Dictionary)
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const Deals = preload("res://scripts/core/deals.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -29,6 +30,7 @@ var lab_queue: Array = []  ## [{product, qty, remaining, total}]
 var demand: Dictionary = {}  ## location -> base -> multiplier
 var contact_ready_at: Dictionary = {}  ## contact id -> total_time when they buy again
 var people: Dictionary = {}  ## contact id -> addiction, affinity, spent today, known, history (see people.gd)
+var deals: Dictionary = {}  ## Deal-O-Matic requests from named customers (see deals.gd)
 var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0}
 var state: String = "playing"  ## playing | won | lost
 var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
@@ -54,6 +56,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	lab_queue = []
 	contact_ready_at = {}
 	people = People.init_all(data)
+	deals = Deals.initial_state()
 	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0}
 	state = "playing"
 	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
@@ -228,6 +231,7 @@ func tick(dt: float) -> void:
 	_set_heat(heat - decay)
 	_tick_lab(dt)
 	_tick_demand(dt)
+	Deals.tick(self)
 	while day_time >= day_seconds():
 		day_time -= day_seconds()
 		_new_day()
@@ -633,7 +637,7 @@ func to_dict() -> Dictionary:
 		"day": day, "day_time": snappedf(day_time, 0.01), "total_time": snappedf(total_time, 0.01),
 		"heat": snappedf(heat, 0.01), "location": location, "system": system, "cargo": cargo.duplicate(), "stash": stash.duplicate(),
 		"lab_queue": lab_queue.duplicate(true), "demand": demand.duplicate(true),
-		"contact_ready_at": contact_ready_at.duplicate(), "people": people.duplicate(true), "upgrades": upgrades.duplicate(),
+		"contact_ready_at": contact_ready_at.duplicate(), "people": people.duplicate(true), "deals": deals.duplicate(true), "upgrades": upgrades.duplicate(),
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 	}
 
@@ -664,6 +668,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 					demand[loc][nb] = float(d.demand[loc][b])
 	contact_ready_at = d.get("contact_ready_at", {}).duplicate()
 	people = People.from_save(data, d.get("people", {}))
+	deals = Deals.from_save(d.get("deals", {}))
 	for k in upgrades:
 		upgrades[k] = int(d.get("upgrades", {}).get(k, 0))
 	state = str(d.get("state", "playing"))

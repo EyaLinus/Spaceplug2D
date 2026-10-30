@@ -1,5 +1,23 @@
 # Progress log
 
+## A2: Deal-O-Matic (2026-10-30)
+- **Core** `scripts/core/deals.gd`, state `Game.deals` (saved; old saves start empty): once per game hour every met
+  customer without an active request may text (chance grows with addiction and affinity, seeded by id + hour so it is
+  deterministic and does not touch the game rng). A request = drug (usually preferred), amount within deal size and
+  daily budget, price around the contact's price, a meeting spot on their planet and a window (opens in 1-3 h, lasts
+  8-14 h). Statuses: open, accepted, done, declined, expired, missed, walked. Numbers/texts/spots: `content.json` -> `deals`.
+- **Answers:** accept; counter once (+10/20/35 %, chance = 0.9 - 2 x ask + 0.35 x affinity + 0.25 x addiction, clamped;
+  a failed greedy ask makes them walk); decline (they stay quiet 12 h). Missed accepted deals cost affinity.
+- **Hand-over:** on foot at the spot (gold marker via `Deals.spots_here`, interactable tagged `deal`); takes the lowest
+  grades first, flat agreed price, then the normal people/heat/saturation/cooldown effects.
+- **UI:** phone app `deals_app.gd` (requests, to deliver, recent; badge = open requests), toast on a new request.
+  Named customers' station panel is now a short chat (what they owe / check the phone); only the fence sells over the counter.
+  `surface.gd` change is small (refresh of deal interactables + marker draw), `main.gd` handles `deal_handover`.
+- Verified: 2908 unit checks (new: deal data/spots clear of buildings, requests deterministic and capped, haggling odds,
+  hand-over, expiry, prune, save/old save), UI smoke (request -> phone accept -> walk to spot -> deal), menu smoke, sim 5/5 won (avg win day 6.2, unchanged: the bot still uses `Game.sell`).
+- Gaps: grade does not change the agreed price (only affinity); requests are not tied to schedules or to the contact being
+  on the planet; windows are in game hours (a day is 180 s); no SMS-style sound; sim bot ignores the app.
+
 ## Release v0.1.5 (2026-10-30)
 - Phase 2 wave 1 complete: A1 Com-Phone + Contacts, D1 Kovar system (Varrow, Glacis), C1 Extractor/Refiner, E3 visible
   ship upgrades. Changelog folded, version 0.1.5 in project.godot and export_presets.cfg. Next: wave 2 (A2, A3, B2, B1).
