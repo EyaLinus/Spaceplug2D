@@ -98,6 +98,13 @@ func patrol_count() -> int:
 	return mini(int(h.patrol_base) + int(heat / float(h.patrol_per_heat)), int(h.patrol_max))
 
 
+## Reach Authority officers walking a planet surface. security: the surface's police factor (0 = lawless).
+func police_on_foot(security: float) -> int:
+	var p: Dictionary = data.police
+	var n := int(floor((float(p.base) + heat / float(p.per_heat)) * security))
+	return clampi(n, 0, int(p.max))
+
+
 func has_contraband() -> bool:
 	for k in cargo:
 		if Mixing.is_product(k) and int(cargo[k]) > 0:

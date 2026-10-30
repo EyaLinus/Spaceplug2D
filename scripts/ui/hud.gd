@@ -19,6 +19,7 @@ var _lab: Label
 var _prompt: Label
 var _scan_box: VBoxContainer
 var _scan_bar: ProgressBar
+var _scan_label: Label
 var _toasts: VBoxContainer
 var _minimap: Control
 var _nav: Control  ## edge arrows pointing at off-screen locations
@@ -63,7 +64,8 @@ func _ready() -> void:
 	_scan_box.offset_top = 80
 	_scan_box.offset_left = -170
 	_scan_box.offset_right = 170
-	_scan_box.add_child(UI.label("! AUTHORITY SCAN – GET OUT OF RANGE !", 18, UI.WARN))
+	_scan_label = UI.label("! AUTHORITY SCAN – GET OUT OF RANGE !", 18, UI.WARN)
+	_scan_box.add_child(_scan_label)
 	_scan_bar = UI.bar(UI.WARN)
 	_scan_bar.max_value = 1.0
 	_scan_bar.custom_minimum_size = Vector2(340, 18)
@@ -135,6 +137,7 @@ func _process(_delta: float) -> void:
 	else:
 		var job: Dictionary = g.lab_queue[0]
 		_lab.text = "Lab %d%% (%d queued)" % [int((1.0 - job.remaining / job.total) * 100.0), g.lab_queue.size()]
+	_scan_label.text = "! OFFICER FRISKING YOU – GET OUT OF SIGHT !" if surface != null else "! AUTHORITY SCAN – GET OUT OF RANGE !"
 	_flight_help.visible = surface == null
 	_foot_help.visible = surface != null
 	if surface != null:
@@ -236,5 +239,7 @@ func _draw_surface_map() -> void:
 		_minimap.draw_rect(Rect2(off + Vector2(r[0], r[1]) * t, Vector2(r[2], r[3]) * t), Color(b.get("roof", "#444444")).lightened(0.1))
 	for it in surface.interactables:
 		_minimap.draw_circle(off + it.pos * scale, 2.5, UI.ACCENT)
+	for o in surface.officers:
+		_minimap.draw_circle(off + o.position * scale, 2.5, Color(0.4, 0.6, 1.0))
 	_minimap.draw_circle(off + surface.player.position * scale, 3.5, UI.GOLD)
 	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(0.3, 0.8, 0.6, 0.6), false, 1.5)

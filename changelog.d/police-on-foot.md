@@ -1,0 +1,1 @@
+- **Police on foot:** Reach Authority officers walk the streets of Mireth (and the Cinder camp once you are hot). Carry product in their line of sight and they frisk you; at high heat they chase you. The Drift Bazaar has no police.

@@ -7,6 +7,7 @@ signal interacted(action: String, payload: Dictionary)
 
 const WalkerScript = preload("res://scripts/planet/walker.gd")
 const NpcScript = preload("res://scripts/planet/npc.gd")
+const OfficerScript = preload("res://scripts/planet/officer.gd")
 
 const INPUT := {
 	"move_up": [KEY_W, KEY_UP],
@@ -26,6 +27,9 @@ var interactables: Array = []  ## [{pos, stand, range, label, action, payload}];
 var focus: Dictionary = {}  ## interactable in reach, {} if none
 var npcs: Dictionary = {}  ## npc id -> node
 var walkers: Array = []
+var officers: Array = []
+var suspicion := 0.0  ## 0..1 while an officer watches you carry product; 1 = busted
+var _blockers: Array = []  ## building rects, block movement and sight
 var _overlay: Node2D  ## redrawn every frame (focus ring); the ground below is drawn once
 var _rng := RandomNumberGenerator.new()
 
@@ -104,6 +108,7 @@ func _build_collision() -> void:
 	var solid: Array = []
 	for b in cfg.buildings:
 		solid.append(_rect(b.rect))
+		_blockers.append(_rect(b.rect))
 	var t := tile
 	solid.append(Rect2(-t, -t, map_size.x + 2 * t, t))
 	solid.append(Rect2(-t, map_size.y, map_size.x + 2 * t, t))
@@ -163,8 +168,9 @@ func _walker_path(from: Vector2) -> Array:
 
 # ---------------------------------------------------------------- per frame
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	focus = {}
+	_update_police(delta)
 	if player.frozen:
 		_overlay.queue_redraw()
 		return
@@ -175,6 +181,65 @@ func _physics_process(_delta: float) -> void:
 			best = d
 			focus = it
 	_overlay.queue_redraw()
+
+
+## Keeps the number of officers in line with heat, lets them watch the player and busts on a full frisk.
+## Only runs while the player can move: panels (shops, deals) are indoors and safe.
+func _update_police(delta: float) -> void:
+	var g = GameState.game
+	if g == null or GameState.paused:
+		return
+	var pc: Dictionary = GameState.data.police
+	var want: int = g.police_on_foot(float(cfg.get("security", 1.0)))
+	while officers.size() < want:
+		var o := OfficerScript.new()
+		o.vision = float(pc.vision)
+		o.cone = deg_to_rad(float(pc.cone_degrees))
+		o.speed = float(pc.speed)
+		o.position = _random_road_point()
+		o.pick_next = _walker_path
+		add_child(o)
+		officers.append(o)
+	while officers.size() > want:
+		officers.pop_back().queue_free()
+	if player.frozen:
+		return
+	var watched := false
+	var carrying: bool = g.has_contraband()
+	for o in officers:
+		var seen: bool = OfficerScript.sees(o.position, o.facing, player.position, o.vision, o.cone, _blockers)
+		if seen and carrying:
+			watched = true
+		if o.chasing:
+			if not carrying or o.position.distance_to(player.position) > float(pc.give_up_range):
+				o.chasing = false
+				o.speed = float(pc.speed)
+				o.path = []
+			else:
+				o.path = [player.position]
+				o.facing = (player.position - o.position).normalized()
+		elif seen and carrying and g.heat >= float(pc.chase_heat):
+			o.chasing = true
+			o.speed = float(pc.chase_speed)
+			EventBus.toast.emit("An officer spotted you. Lose them!", false)
+	var old := suspicion
+	if watched:
+		suspicion += delta / float(pc.frisk_seconds)
+		if int(old * 4.0) != int(suspicion * 4.0):
+			AudioManager.play("alarm")
+	else:
+		suspicion = maxf(0.0, suspicion - delta * 0.5)
+	if suspicion >= 1.0:
+		suspicion = 0.0
+		GameState.act(g.bust())
+		for o in officers:
+			o.chasing = false
+			o.speed = float(pc.speed)
+			o.path = []
+	for o in officers:
+		o.alert = suspicion
+	if old != suspicion:
+		EventBus.scan_progress.emit(suspicion)
 
 
 ## Text for the HUD prompt, "" when nothing is in reach.

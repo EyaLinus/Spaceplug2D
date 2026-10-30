@@ -1,5 +1,14 @@
 # Progress log
 
+## P3 first step: police on foot (2026-10-30)
+- Officers (`scripts/planet/officer.gd`) walk the roads with a drawn vision cone. Count = (1 + heat/20) × planet
+  security, max 4 (Mireth 1.0, Cinder 0.5, Drift Bazaar 0 = lawless). Numbers in `content.json` → `police`.
+- Carrying product inside a cone (buildings block sight) fills a frisk bar (1.6 s) → the normal bust (product + fine).
+  At heat ≥ 40 an officer who sees you chases you until you are 320 px away or clean. Inside shop/deal panels you are safe.
+- Verified: 241 unit checks (police count per heat/security, cone/range/wall sight rules); UI smoke places an officer in
+  front of a carrying player and checks the bust; screenshot of a chase checked.
+- Gaps: chasing officers walk through buildings (no pathfinding); no curfew, hiding spots or bribable officers yet.
+
 ## World: Cinder Belt and Drift Bazaar on foot (2026-10-30)
 Every dockable location is now walkable; the docked menu is no longer used by any location (kept as fallback).
 - Cinder Belt · Mining Camp 3: landing pad, Ore Depot (raws), Foreman Dax, canteen, bunkhouse, drill tower, rocks/barrels.
