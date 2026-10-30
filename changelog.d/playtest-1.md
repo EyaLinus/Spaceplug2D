@@ -1,3 +1,0 @@
-- **Controls:** Space brakes, S/↓ now fires reverse thrust (half power); docking is E only.
-- **Drug ladder:** products renamed by strength – T1 Weed, T2 Cocaine, and new T3 Meth (Pseudoephedrine, Cinder Belt) and T4 Fentanyl (precursor at the Drift Bazaar). Higher tiers sell for more but cost more and bring up to 2.4× heat.
-- **Saves:** v0.1.0 saves load with the new names.
