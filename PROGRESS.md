@@ -4,6 +4,32 @@
 - Phase 2 wave 1 complete: A1 Com-Phone + Contacts, D1 Kovar system (Varrow, Glacis), C1 Extractor/Refiner, E3 visible
   ship upgrades. Changelog folded, version 0.1.5 in project.godot and export_presets.cfg. Next: wave 2 (A2, A3, B2, B1).
 
+## F1: Heat II + corruption (2026-10-30)
+- **Core:** new `scripts/core/corruption.gd` (rules in `content.json` -> `corruption`, six `officials`), official profiles and
+  state helpers in `people.gd`. `Game.corruption` holds wanted level, parked heat of the other systems, official state,
+  the announced/active sweep and a private roll counter (does not touch `g.rng`, so runs without corruption are unchanged).
+  Game hooks are one-liners: `tick`, `_new_day`, `dock`, `jump`, `bust`, save, `patrol_count`/`police_on_foot`.
+- **Heat per system:** `g.heat` stays "heat of the current system" (all old rules keep working); `jump` parks it and swaps
+  in the destination's heat, parked heat cools down while you are away.
+- **Wanted:** +14 per bust, -4 per day, adds `0.25 * wanted` to the heat patrols/officers react to in every system.
+- **Sweeps:** a system at heat >= 60 may get a sweep the next day (50% per day, deterministic roll): +22 effective heat for
+  that day. Captains tip you off the day before and can divert it (220 cr).
+- **Officials:** known after docking where they work; `Corruption.recruit` (in person, pays the bribe), daily retainer,
+  loyalty rises with retainer/favours, unpaid retainer drops loyalty and finally lapses them. Inspector: `bribe` and
+  `clear_wanted`; customs: `bust()` may be waved through (pass chance = base * loyalty factor, halved at wanted >= 50);
+  captain: tip-off and divert. `Game.bribe` now needs a hired inspector in the system (old office fixer removed).
+- **UI:** Fixers phone app (`apps/officials_app.gd`: wanted stars, heat per system, officials, recruit/favour buttons),
+  the Consortium office panel lists the same actions, `notice` game events become toasts in `main.gd`.
+- **Bot:** recruits Inspector Vell the first time it wants to bribe.
+- Verified: 1051 unit checks (new tests for data, per-system heat, wanted, recruiting/retainer, customs pass, sweep +
+  tip-off + divert, save round trip incl. old saves), UI smoke (Fixers app recruit + favour), menu smoke, sim 12 runs x
+  seeds 100 and 300: 12/12 won, avg win day 6.0 / 6.0 (main: 6.1 / 6.0); CI-size sim (5 runs) 5/5, 5.8 vs 6.2.
+- Balance note: the bot is sensitive to bribe prices (a 25% inspector discount made it a day slower because it bribes
+  more often), so `fix_discount` is 0; the inspector sells access, not a discount.
+- Gaps: officials are only reachable in the phone/office (no walkable official NPCs, surface.gd untouched); estate
+  raids do not exist yet, so tip-offs warn about sweeps only; the sweep is only an effective-heat bump (no extra story);
+  wanted level not on the HUD; no dismiss action; Fixers app has no icon art (coloured tile).
+
 ## E3: visible ship upgrades (2026-10-30)
 - **Modules:** every bought upgrade level adds a pixel-art module to the player ship: engine nacelles (Mk2 small,
   Mk3 with fins, Mk4 with a centre booster), cargo pods on struts (one, bigger, two per side), stealth plating (wing

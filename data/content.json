@@ -246,5 +246,25 @@
     "refiner": {"cost": 550, "size": [2, 2]},
     "pack_table": {"cost": 250, "size": [2, 1]}
   },
-  "estate_refund": 0.5
+  "estate_refund": 0.5,
+  "corruption": {
+    "wanted_max": 100, "wanted_per_bust": 14, "wanted_decay_per_day": 4, "wanted_heat_factor": 0.25,
+    "crackdown_heat": 60, "crackdown_chance": 0.5, "crackdown_heat_bonus": 22,
+    "fix_discount": 0.0, "loyalty_start": 0.5, "loyalty_per_day": 0.02, "loyalty_per_favour": 0.04, "loyalty_unpaid": -0.3,
+    "wanted_clear_credits": 30, "divert_cost": 220,
+    "pass_cap": 0.85, "pass_wanted_penalty": 0.5,
+    "roles": {
+      "inspector": {"name": "Inspector", "perk": "Cooks the file: buys down heat and the wanted level."},
+      "customs": {"name": "Customs officer", "perk": "Cargo waves through patrol scans and frisks."},
+      "captain": {"name": "Patrol captain", "perk": "Tips you off a day before an Authority sweep and can divert it."}
+    }
+  },
+  "officials": [
+    {"id": "vell", "name": "Inspector Mara Vell", "location": "mireth", "role": "inspector", "look": "npc_slate", "job": "Reach Authority records inspector", "bio": "Keeps the Mireth arrest ledger and has a very flexible filing system for the right gratuity.", "recruit_cost": 180, "retainer": 8},
+    {"id": "roe", "name": "Tamsin Roe", "location": "bazaar", "role": "customs", "look": "npc_teal", "job": "Customs officer, Bazaar docks", "bio": "Runs the cargo scanner on the Drift Bazaar docks. The scanner has been 'under maintenance' for years.", "recruit_cost": 420, "retainer": 18, "pass_chance": 0.6},
+    {"id": "dreyer", "name": "Captain Hale Dreyer", "location": "cinder", "role": "captain", "look": "npc_red", "job": "Patrol captain, Customs Beacon K-7", "bio": "Commands the Halvane patrol wing and likes to know who pays more than the Authority does.", "recruit_cost": 520, "retainer": 24},
+    {"id": "ferro", "name": "Captain Jex Ferro", "location": "varrow", "role": "captain", "look": "npc_rust", "job": "Patrol captain, Kovar frontier wing", "bio": "Underpaid, overextended and tired of sweeping dust towns for a Consortium that never pays.", "recruit_cost": 380, "retainer": 16},
+    {"id": "okoro", "name": "Ines Okoro", "location": "glacis", "role": "customs", "look": "npc_sky", "job": "Customs officer, Cryo Vault dock", "bio": "Polite, precise and expensive. Her scanner sees exactly what she is paid to see.", "recruit_cost": 600, "retainer": 26, "pass_chance": 0.7},
+    {"id": "brandt", "name": "Inspector Pavo Brandt", "location": "glacis", "role": "inspector", "look": "npc_purple", "job": "Corporate compliance inspector", "bio": "Cryo Vault compliance. Heat on the Kovar books disappears when he signs the audit.", "recruit_cost": 340, "retainer": 16}
+  ]
 }
