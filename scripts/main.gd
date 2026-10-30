@@ -261,7 +261,7 @@ func _flash() -> void:
 func _land(loc: String, announce := true) -> void:
 	_leave_surface()
 	surface = SurfaceScript.new()
-	surface.setup(loc, GameState.data.surfaces[loc])
+	surface.setup(loc, _with_ship_ramp(GameState.data.surfaces[loc]))
 	surface.interacted.connect(_on_surface_action)
 	add_child(surface)
 	move_child(surface, world.get_index() + 1)
@@ -270,6 +270,23 @@ func _land(loc: String, announce := true) -> void:
 	surface.place_player_at("pad")
 	if announce:
 		EventBus.toast.emit("Landed on %s. Walk to a building or person and press E." % GameState.data.locations[loc].name, true)
+
+
+## The planet layout plus a ramp beside the landing pad that leads into the ship's cargo bay.
+func _with_ship_ramp(cfg: Dictionary) -> Dictionary:
+	var c: Dictionary = cfg.duplicate()
+	if c.has("pad"):
+		var pp: Array = c.pad.pos
+		var exits: Array = c.get("exits", []).duplicate()
+		exits.append({"id": "ship_bay", "pos": [float(pp[0]) + 2.4, float(pp[1])], "label": "Cargo bay (your ship)", "action": "enter_ship_bay"})
+		c.exits = exits
+	return c
+
+
+func enter_ship_bay() -> void:
+	var g = GameState.game
+	if GameState.act(g.enter_ship_bay()).ok:
+		enter_estate(g.SHIP_BAY)
 
 
 func _leave_surface() -> void:
@@ -301,6 +318,9 @@ func _on_surface_action(action: String, p: Dictionary) -> void:
 			return
 		"exit_estate":
 			leave_estate()
+			return
+		"enter_ship_bay":
+			enter_ship_bay()
 			return
 		"station":
 			var bd: Dictionary = surface.cfg.buildings.filter(func(b): return b.id == p.id)[0]
@@ -343,6 +363,10 @@ func enter_estate(eid: String, at = null) -> void:
 func leave_estate() -> void:
 	var eid: String = surface.cfg.estate
 	var loc: String = GameState.game.location
+	if eid == GameState.game.SHIP_BAY and not GameState.data.get("surfaces", {}).has(loc):
+		_leave_surface()  # stations without a surface: back to the docked menu
+		station.open()
+		return
 	_land(loc, false)
 	for b in GameState.data.surfaces[loc].buildings:
 		if b.get("estate", "") == eid:

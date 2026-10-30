@@ -99,7 +99,7 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
   foot at the agreed spot. Replaces the Deals panel for named customers (fence stays). Not parallel with B1 (surface.gd).
 - **A3 Market & Orders app.** Order raws, additives and equipment from the phone with delivery time and fee; goods
   arrive in the stash or an estate. Market buildings stay as a cheaper walk-in option. Needs #14 (estates).
-- **B2 Ship cargo bay estate.** The ship gets its own estate grid (machines, tables, crates, generator) that you can
+- [x] **B2 Ship cargo bay estate.** The ship gets its own estate grid (machines, tables, crates, generator) that you can
   enter while docked; reuses estate_layout/build mode from #14. Parallel with A2/A3.
 - **B1 NPCs on foot with schedules** [P2]. Revive draft PR #5 on top of A1: named people walk home ↔ work ↔ plaza by
   time of day, day/night tint, chatter; customers in the Contacts app can be found where their schedule says.

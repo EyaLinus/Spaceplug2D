@@ -113,6 +113,9 @@ func refresh(reset_tab := false) -> void:
 		_add_tab("Shipyard", _build_shipyard(g))
 	if ld.get("office", false) and _wants("Office"):
 		_add_tab("Office", _build_office(g))
+	# stations without a surface: the ship's cargo bay is entered from here
+	if _filter.is_empty():
+		_add_tab("Cargo Bay", _build_estate(g))
 	# estate panels only exist as filtered panels (a door, the build menu, a placed station)
 	if _filter.has("estate"):
 		if _wants("Estate"):
@@ -352,7 +355,7 @@ func _build_deals(g) -> Control:
 # ---------------------------------------------------------------- estates
 
 func _build_estate(g) -> Control:
-	var id: String = _filter.estate
+	var id: String = _filter.get("estate", g.SHIP_BAY)
 	var e: Dictionary = g.data.estates[id]
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)

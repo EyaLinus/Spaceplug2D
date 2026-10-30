@@ -212,6 +212,32 @@ func _run() -> void:
 	_assert(sf.loc_id == "mireth" and sf.player.position.distance_to(sf.interactable("annex").stand) < 1.0, "back on Mireth at the annex door")
 	step("estate buy, build, leave")
 
+	# ship cargo bay: ramp next to the pad, build a station, cook flag, leave back onto the pad
+	sf.place_player_at("ship_bay")
+	await physics_frame
+	await physics_frame
+	_assert(sf.interact(), "use the cargo bay ramp")
+	await frames(2)
+	es = m.surface
+	_assert(es != null and es.cfg.get("estate", "") == "ship_bay" and g.inside_estate == "ship_bay", "inside the cargo bay")
+	m.station.place_requested.emit("trim_table")
+	await frames(1)
+	es.player.position = Vector2(2 * 32 + 16, 2 * 32 + 10)
+	es.player.facing = Vector2.DOWN
+	await physics_frame
+	es.interact()
+	await frames(2)
+	_assert(g.estates.ship_bay.buildings.size() == 1, "station placed in the bay")
+	es = m.surface
+	es.place_player_at("exit")
+	await physics_frame
+	await physics_frame
+	_assert(es.interact(), "leave the cargo bay")
+	await frames(2)
+	sf = m.surface
+	_assert(g.inside_estate == "" and sf.loc_id == "mireth", "back on Mireth from the bay")
+	step("cargo bay enter, build, leave")
+
 	gs.act(g.buy("cannabis", 5))
 	gs.act(g.buy("nanoflux", 5))
 	m.station._lab_adds = ["nanoflux", "", ""]
@@ -327,7 +353,7 @@ func _run() -> void:
 		_assert(ls != null and ls.loc_id == loc, "landed on %s" % loc)
 		var opened: Array = []
 		for it in ls.interactables:
-			if it.action == "takeoff":
+			if it.action == "takeoff" or it.action == "enter_ship_bay":
 				continue
 			ls.place_player_at(it.payload.id)
 			await physics_frame

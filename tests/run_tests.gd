@@ -22,6 +22,7 @@ func _init() -> void:
 		"test_art_registry",
 		"test_police_on_foot",
 		"test_estates",
+		"test_ship_bay",
 		"test_mixing_rules",
 		"test_buy_and_cargo_limit",
 		"test_lab_batch",
@@ -172,7 +173,7 @@ func test_surface_layouts() -> void:
 		check(s.has("pad"), "%s has a launch pad" % loc)
 		check(s.has("security"), "%s sets its police security" % loc)
 		for e in data.estates:
-			if data.estates[e].location == loc:
+			if data.estates[e].get("location", "") == loc:
 				check(s.buildings.any(func(b): return b.get("estate", "") == e), "%s estate %s has a building" % [loc, e])
 		for c in data.contacts:
 			if c.location == loc:
@@ -222,7 +223,8 @@ func test_police_on_foot() -> void:
 
 func test_estates() -> void:
 	for e in data.estates:
-		check(data.locations.has(data.estates[e].location), "estate %s location exists" % e)
+		if not data.estates[e].get("ship", false):
+			check(data.locations.has(data.estates[e].location), "estate %s location exists" % e)
 	for b in data.buildables:
 		check(data.stations.has(b), "buildable %s is a station" % b)
 	var g := new_game()
@@ -267,6 +269,46 @@ func test_estates() -> void:
 	check(g.collect_stash().ok and g.has_contraband(), "collect output in the estate")
 	g.inside_estate = ""
 	check(not g.lab_here(), "outside the estate no lab")
+
+
+func test_ship_bay() -> void:
+	var sb: String = Game.SHIP_BAY
+	check(data.estates.has(sb) and data.estates[sb].get("ship", false), "ship estate is defined")
+	var g := new_game()
+	g.credits = 10000
+	check(g.estate_owned(sb) and not g.buy_estate(sb).ok, "bay is owned from the start, not for sale")
+	check(g.location != "", "new game starts docked")
+	check(g.can_place(sb, "trim_table", 0, 0), "can place while docked")
+	check(g.enter_ship_bay().ok and g.inside_estate == sb and g.lab_here(), "enter the bay: it is a lab")
+	var r: Dictionary = g.check_batch("weed", [], 1)
+	check(not r.ok, "bay needs stations before cooking")
+	for st in [["trim_table", 0], ["cook_stove", 2], ["pack_table", 4]]:
+		check(g.place_building(sb, st[0], st[1], 0).ok, "place %s in the bay" % st[0])
+	var door: Vector2i = g.estate_door(sb)
+	check(not g.can_place(sb, "precursor_scale", door.x, door.y), "bay door stays free")
+	check(not g.can_place(sb, "cook_stove", 6, 3), "must fit inside the bay")
+	var g2 := Game.new()
+	g2.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(g2.estates[sb].buildings.size() == 3, "bay layout survives save/load")
+	# an old save without the bay gets an empty one
+	var d: Dictionary = g.to_dict()
+	d.estates.erase(sb)
+	var g3 := Game.new()
+	g3.from_dict(data, d)
+	check(g3.estate_owned(sb) and g3.estates[sb].buildings.is_empty(), "old saves get an empty bay")
+	# in flight the bay is closed
+	g.location = ""
+	g.inside_estate = ""
+	check(not g.enter_ship_bay().ok, "can't enter in flight")
+	check(not g.can_place(sb, "trim_table", 0, 1) and not g.place_building(sb, "trim_table", 0, 1).ok, "no building in flight")
+	check(not g.remove_building(sb, 0).ok, "no removing in flight")
+	g.location = "mireth"
+	check(g.remove_building(sb, 0).ok, "remove docked")
+	# a two-station recipe cooks on the ship at a station without a lab
+	g.location = "cinder"
+	g.cargo = {"cannabis": 5}
+	g.inside_estate = sb
+	check(g.lab_here() and g.missing_stations("weed", []).size() > 0, "ship bay is a lab at Cinder")
 
 
 func test_mixing_rules() -> void:
