@@ -3,7 +3,7 @@
   "start": {
     "credits": 400,
     "debt": 6000,
-    "debt_due_day": 10,
+    "debt_due_day": 12,
     "location": "mireth",
     "cargo": {}
   },

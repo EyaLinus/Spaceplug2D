@@ -155,7 +155,7 @@ func upgrade_cost(key: String) -> int:
 
 func batch_seconds(qty: int) -> float:
 	var l: Dictionary = data.lab
-	var speed := 1.0 + float(l.speed_per_level) * upgrades.lab
+	var speed: float = 1.0 + float(l.speed_per_level) * upgrades.lab
 	return (float(l.base_seconds) + float(l.seconds_per_unit) * qty) / speed
 
 

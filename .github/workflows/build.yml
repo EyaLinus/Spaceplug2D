@@ -1,0 +1,98 @@
+name: Test, build and release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Create a GitHub release with this tag (e.g. v0.1.0); empty = build only"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}-${{ github.event.inputs.release_tag || 'push' }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.3"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import project
+        run: godot --headless --path . --import || true
+      - name: Unit tests
+        run: |
+          godot --headless --path . -s res://tests/run_tests.gd 2>&1 | tee tests.txt
+          ! grep -q "SCRIPT ERROR" tests.txt
+          grep -q " 0 failures" tests.txt
+      - name: UI smoke test (whole loop through the real main scene)
+        run: |
+          timeout 300 godot --headless --path . -s res://tools/ui_smoke.gd 2>&1 | tee smoke.txt
+          grep -q "SMOKE DONE" smoke.txt
+          ! grep -q "SCRIPT ERROR" smoke.txt
+      - name: Balance sim (5 seeds)
+        run: godot --headless --path . -s res://tools/sim.gd -- --runs 5 --seed 100 | tee sim.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sim-summary
+          path: sim.txt
+
+  export:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Move export templates into $HOME
+        run: |
+          mkdir -v -p ~/.local/share/godot/export_templates/ ~/.config/
+          mv /root/.config/godot ~/.config/godot || true
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable || true
+      - name: Import project
+        run: godot --headless --path . --import || true
+      - name: Export Windows
+        run: |
+          mkdir -p build/windows
+          godot --headless --path . --export-release "Windows Desktop" build/windows/Spaceplug2D.exe
+          ls -la build/windows
+          test -s build/windows/Spaceplug2D.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Spaceplug2D-windows
+          path: build/windows/Spaceplug2D.exe
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release_tag != ''
+    needs: export
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Release notes from CHANGELOG (latest section)
+        run: awk '/^## /{n++} n==1' CHANGELOG.md > dist/RELEASE_NOTES.md && cat dist/RELEASE_NOTES.md
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_tag || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          name: Spaceplug 2D ${{ github.event.inputs.release_tag || github.ref_name }}
+          body_path: dist/RELEASE_NOTES.md
+          files: dist/Spaceplug2D.exe
+          generate_release_notes: false
