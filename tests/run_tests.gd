@@ -7,6 +7,7 @@ const Data = preload("res://scripts/core/data.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const Workers = preload("res://scripts/core/workers.gd")
 const ArtReg = preload("res://scripts/core/art.gd")
 
 var data: Dictionary
@@ -22,6 +23,7 @@ func _init() -> void:
 		"test_art_registry",
 		"test_police_on_foot",
 		"test_estates",
+		"test_workers",
 		"test_mixing_rules",
 		"test_buy_and_cargo_limit",
 		"test_lab_batch",
@@ -267,6 +269,128 @@ func test_estates() -> void:
 	check(g.collect_stash().ok and g.has_contraband(), "collect output in the estate")
 	g.inside_estate = ""
 	check(not g.lab_here(), "outside the estate no lab")
+
+
+## A shack on Cinder with a complete weed line, credits and the player standing inside.
+func worker_game() -> Game:
+	var g := new_game()
+	g.credits = 20000
+	g.location = "cinder"
+	g.buy_estate("shaft_shack")
+	g.inside_estate = "shaft_shack"
+	g.place_building("shaft_shack", "trim_table", 0, 0)
+	g.place_building("shaft_shack", "cook_stove", 2, 0)
+	g.place_building("shaft_shack", "pack_table", 4, 0)
+	g.place_building("shaft_shack", "extractor", 6, 0)
+	return g
+
+
+## Cooks `batches` auto batches with the given crew; returns {qty, grade_sum, products}.
+func run_crew(lab_hand: String, stocker: String, batches: int) -> Dictionary:
+	var g := worker_game()
+	Workers.hire(g, lab_hand)
+	Workers.assign(g, lab_hand, "shaft_shack")
+	if stocker != "":
+		Workers.hire(g, stocker)
+		Workers.assign(g, stocker, "shaft_shack")
+	Workers.set_recipe(g, "shaft_shack", "weed", [], 5)
+	g.cargo = {"cannabis": 5 * batches}
+	check(Workers.deposit(g, "shaft_shack", "cannabis", 5 * batches).ok, "stock the shelf")
+	var t := 0.0
+	while t < 900.0 and int(g.stats.worker_batches) < batches:
+		g.tick(0.5)
+		t += 0.5
+	var qty := 0
+	var grades := 0
+	var e: Dictionary = g.estates.shaft_shack
+	for src in [e.out, e.storage]:
+		for k in src:
+			if Mixing.is_product(k):
+				qty += int(src[k])
+				grades += Mixing.parse_key(k).grade * int(src[k])
+	return {"qty": qty, "grades": grades, "t": t, "g": g, "batches": int(g.stats.worker_batches)}
+
+
+func test_workers() -> void:
+	for c in data.workers.candidates:
+		check(data.workers.roles.has(c.role) and float(c.skill) > 0.0 and float(c.skill) <= 1.0 and int(c.wage) > 0, "candidate %s valid" % c.id)
+	var g := worker_game()
+	check(Workers.available(g).size() == data.workers.candidates.size(), "everybody is for hire at the start")
+	g.credits = 10
+	check(not Workers.hire(g, "hollis").ok, "can't afford the signing fee")
+	g.credits = 5000
+	var before: int = g.credits
+	check(Workers.hire(g, "hollis").ok and g.credits == before - 2 * int(Workers.candidate(g, "hollis").wage), "hire pays the signing fee")
+	check(not Workers.hire(g, "hollis").ok, "can't hire twice")
+	check(not Workers.assign(g, "hollis", "cannery_annex").ok, "assign needs an owned estate")
+	check(Workers.assign(g, "hollis", "shaft_shack").ok, "assign lab hand")
+	Workers.hire(g, "pia")
+	check(not Workers.assign(g, "pia", "shaft_shack").ok, "one lab hand per estate")
+	check(Workers.fire(g, "pia").ok and Workers.hired(g, "hollis") and not Workers.hired(g, "pia"), "fire")
+	# nothing happens without a recipe, then the lab hand cooks from the shelf (no stocker: slower)
+	g.tick(30.0)
+	check(g.estates.shaft_shack.job.is_empty() and Workers.blocker(g, "shaft_shack") == "No recipe set.", "idle without recipe")
+	Workers.set_recipe(g, "shaft_shack", "weed", [], 5)
+	check(not Workers.deposit(g, "shaft_shack", "cannabis", 5).ok, "no cargo to store")
+	g.cargo = {"cannabis": 5}
+	g.inside_estate = ""
+	check(not Workers.deposit(g, "shaft_shack", "cannabis", 5).ok, "must be inside to store")
+	g.inside_estate = "shaft_shack"
+	check(Workers.deposit(g, "shaft_shack", "cannabis", 5).ok and g.cargo.is_empty(), "store raws")
+	g.tick(1.0)
+	check(not g.estates.shaft_shack.job.is_empty(), "lab hand starts the batch")
+	var heat_before := g.heat
+	check(heat_before > 0.0, "auto batches add heat")
+	g.tick(60.0)
+	check(g.estates.shaft_shack.job.is_empty() and g.stats.worker_batches == 1, "batch done")
+	check(Workers.take_products(g, "shaft_shack").ok and g.has_contraband(), "take products")
+	# an unbuilt recipe names the missing station
+	Workers.set_recipe(g, "shaft_shack", "meth", [], 5)
+	check("Refiner" in Workers.blocker(g, "shaft_shack") or "Precursor" in Workers.blocker(g, "shaft_shack"), "missing station named: %s" % Workers.blocker(g, "shaft_shack"))
+	# skill matters: a pro beats a rookie on yield and grade, a stocker makes the line faster
+	var rookie := run_crew("dax", "moss", 6)
+	var pro := run_crew("hollis", "reva", 6)
+	check(rookie.batches == 6 and pro.batches == 6, "both crews finish 6 batches (%d/%d)" % [rookie.batches, pro.batches])
+	check(pro.grades > rookie.grades, "skilled hand cooks better grades (%d vs %d)" % [pro.grades, rookie.grades])
+	check(pro.qty >= rookie.qty and pro.t < rookie.t, "skilled hand is faster (%.0fs vs %.0fs) with >= yield (%d vs %d)" % [pro.t, rookie.t, pro.qty, rookie.qty])
+	var alone := run_crew("hollis", "", 6)
+	check(alone.batches == 6 and alone.t > pro.t, "no stocker is slower (%.0fs vs %.0fs)" % [alone.t, pro.t])
+	# the stocker moves finished goods from the tray into storage and tops up the bench
+	var ps: Dictionary = pro.g.estates.shaft_shack
+	check(ps.out.is_empty() or pro.g.estates.shaft_shack.storage.size() > 0, "stocker delivered output to storage")
+	# wages
+	var w := worker_game()
+	Workers.hire(w, "hollis")
+	Workers.hire(w, "moss")
+	var wages := Workers.wage_total(w)
+	check(wages == int(Workers.candidate(w, "hollis").wage) + int(Workers.candidate(w, "moss").wage), "wage total")
+	var c0: int = w.credits
+	w.tick(w.day_seconds())
+	check(w.credits == c0 - wages and w.stats.wages == wages, "daily wages charged (%d)" % (c0 - w.credits))
+	var loyal: float = w.workers[0].loyalty
+	w.credits = 0
+	w.tick(w.day_seconds())
+	check(w.workers[0].loyalty < loyal, "unpaid wages cost loyalty")
+	for i in 3:
+		w.tick(w.day_seconds())
+	check(w.workers.is_empty(), "unpaid workers quit")
+	# save round trip incl. mid-job state, and old saves without any worker data
+	var s: Game = run_crew("pia", "jun", 1).g
+	s.estates.shaft_shack.job = {"product": "weed", "qty": 5, "remaining": 3.0, "total": 9.0}
+	var json := JSON.stringify(s.to_dict())
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(json))
+	check(JSON.stringify(h.to_dict()) == json, "worker save round-trip is stable")
+	check(h.workers.size() == 2 and h.estates.shaft_shack.job.remaining == 3.0, "workers and job restored")
+	var old: Dictionary = JSON.parse_string(json)
+	old.erase("workers")
+	for k in ["storage", "bench", "out", "recipe", "job", "haul_t"]:
+		old.estates.shaft_shack.erase(k)
+	var o := Game.new()
+	o.from_dict(data, old)
+	check(o.workers.is_empty() and o.estates.shaft_shack.storage.is_empty() and o.estates.shaft_shack.job.is_empty(), "old saves load without workers")
+	o.tick(30.0)
+	check(o.estates.shaft_shack.buildings.size() == 4, "old save estate still ticks")
 
 
 func test_mixing_rules() -> void:

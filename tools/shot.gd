@@ -128,6 +128,25 @@ func _run() -> void:
 	await _save(out, "phone_contacts")
 	m.phone.push(g.contact("okka").name, func(gg): return m.phone.app_by_id("contacts").detail(gg, "okka"))
 	await _save(out, "phone_profile")
+	# HR app: crew list, a worker profile and an estate that is cooking
+	const WorkersCore = preload("res://scripts/core/workers.gd")
+	for wid in ["pia", "reva"]:
+		WorkersCore.hire(g, wid)
+		WorkersCore.assign(g, wid, "cannery_annex")
+	WorkersCore.hire(g, "dax")
+	WorkersCore.set_recipe(g, "cannery_annex", "weed", [], 5)
+	g.inside_estate = "cannery_annex"
+	g.cargo["cannabis"] = 10
+	WorkersCore.deposit(g, "cannery_annex", "cannabis", 10)
+	g.inside_estate = ""
+	g.tick(14.0)
+	m.phone.open_app("hr")
+	await _save(out, "phone_hr")
+	m.phone.push("Pia Vance", func(gg): return m.phone.app_by_id("hr").detail(gg, "pia"))
+	await _save(out, "phone_hr_worker")
+	m.phone.open_app("hr")
+	m.phone.push("Cannery Annex", func(gg): return m.phone.app_by_id("hr").estate(gg, m.phone, "cannery_annex"))
+	await _save(out, "phone_hr_estate")
 	m.phone.close()
 	g.add_heat(55)
 	m.undock()

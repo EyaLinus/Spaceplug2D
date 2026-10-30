@@ -9,6 +9,7 @@ signal event(kind: String, payload: Dictionary)
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const Workers = preload("res://scripts/core/workers.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -31,8 +32,9 @@ var contact_ready_at: Dictionary = {}  ## contact id -> total_time when they buy
 var people: Dictionary = {}  ## contact id -> addiction, affinity, spent today, known, history (see people.gd)
 var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0}
 var state: String = "playing"  ## playing | won | lost
-var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
+var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "worker_batches": 0, "wages": 0}
 var estates: Dictionary = {}  ## owned estate id -> {"buildings": [{"id": station id, "x": int, "y": int}]}
+var workers: Array = []  ## hired staff [{id, loyalty, estate, hired_day}] (see workers.gd)
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 
 
@@ -56,8 +58,9 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	people = People.init_all(data)
 	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0}
 	state = "playing"
-	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
+	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "worker_batches": 0, "wages": 0}
 	estates = {}
+	workers = []
 	demand = {}
 	for loc in data.locations:
 		demand[loc] = {}
@@ -227,6 +230,7 @@ func tick(dt: float) -> void:
 		decay *= float(data.heat.decay_docked_factor)
 	_set_heat(heat - decay)
 	_tick_lab(dt)
+	Workers.tick(self, dt)
 	_tick_demand(dt)
 	while day_time >= day_seconds():
 		day_time -= day_seconds()
@@ -269,6 +273,7 @@ func _new_day() -> void:
 		demand[loc][b] = clampf(demand[loc][b] + rng.randf_range(-0.15, 0.25), float(data.market.min_demand), m)
 		_emit("rumour", {"location": loc, "base": b, "demand": demand[loc][b]})
 	People.new_day(self)
+	Workers.new_day(self)
 	_emit("new_day", {"day": day})
 	if debt > 0 and day > debt_due_day:
 		state = "lost"
@@ -570,6 +575,7 @@ func buy_estate(id: String) -> Dictionary:
 		return _fail("%s costs %d cr." % [e.name, int(e.price)])
 	credits -= int(e.price)
 	estates[id] = {"buildings": []}
+	Workers.ensure(estates[id])
 	_emit("estate_bought", {"estate": id})
 	return _ok("You own %s now. Go inside and set up production." % e.name)
 
@@ -634,7 +640,7 @@ func to_dict() -> Dictionary:
 		"heat": snappedf(heat, 0.01), "location": location, "system": system, "cargo": cargo.duplicate(), "stash": stash.duplicate(),
 		"lab_queue": lab_queue.duplicate(true), "demand": demand.duplicate(true),
 		"contact_ready_at": contact_ready_at.duplicate(), "people": people.duplicate(true), "upgrades": upgrades.duplicate(),
-		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
+		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true), "workers": Workers.to_save(workers),
 	}
 
 
@@ -675,6 +681,8 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 			for b in d.estates[e].get("buildings", []):
 				list.append({"id": str(b.id), "x": int(b.x), "y": int(b.y)})
 			estates[e] = {"buildings": list}
+		Workers.load_estate(d.estates[e], estates[e])
+	workers = Workers.from_save(self, d.get("workers", []))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

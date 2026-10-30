@@ -1,5 +1,26 @@
 # Progress log
 
+## B3: Workers & HR app (2026-10-30)
+- **Core** `scripts/core/workers.gd` (state: `Game.workers` [{id, loyalty, estate, hired_day}] + per-estate `storage`,
+  `bench`, `out`, `recipe`, `job`, all saved; old saves get empty defaults). Candidates and tuning are data in
+  `content.json` -> `workers` (6 candidates: 3 lab hands, 3 stockers; max crew 6; signing fee = 2 days of wages).
+- **Lab hand** cooks the estate's auto recipe when the stations for it stand: station scores = skill +/- noise through
+  `Production.outcome` (same yield/grade/heat rules as the player), time = batch time x (1.3 - 0.5 skill), adds heat like a
+  hand batch. **Stocker** trips every 8 s / (0.5 + skill) move up to 4 + 8 skill units: output tray -> shelf, shelf -> bench.
+  Without a stocker the lab hand fetches from the shelf himself, 1.6x slower. One lab hand + one stocker per estate.
+- **Wages** charged in `_new_day` (stats `wages`); can't pay = -0.3 loyalty and a missed-wage event, quits at 0; paid = +0.02.
+- **HR app** (`scripts/ui/phone/apps/hr_app.gd`): crew, estates, candidates; worker profile (skill, loyalty, hire/fire,
+  assign); estate screen (crew, recipe picker, batch size, job bar, shelf/bench/tray, stock raws / take products, only
+  while standing inside). Badge = workers close to quitting.
+- Verified: 1022 unit checks (new `test_workers`: hire/fire/assign rules, skill beats rookie on grade and speed, stocker
+  speeds the line, wages, quitting, save round trip incl. mid-job, old save without worker data), UI smoke (hire, assign,
+  recipe, stock, cook, take, wages through the real phone), menu smoke, sim 5/5 won avg day 6.2 (unchanged);
+  screenshots `phone_hr*` in `tools/shot.gd` reviewed.
+- Gaps: workers are invisible (no sprites walking the estate); auto recipe is plain (no additives picker, core supports
+  them); loyalty has no gameplay beyond quitting (no theft/strikes, no raises); no skill growth or training; auto cooking
+  ignores the shared lab queue and lab-level capacity of the hub; worker-cooked batches are not wired into the sim bot;
+  estates cannot be sold, so assignment cleanup on removal is not needed yet; wage balance (15-110 cr/day) is eyeballed.
+
 ## Release v0.1.5 (2026-10-30)
 - Phase 2 wave 1 complete: A1 Com-Phone + Contacts, D1 Kovar system (Varrow, Glacis), C1 Extractor/Refiner, E3 visible
   ship upgrades. Changelog folded, version 0.1.5 in project.godot and export_presets.cfg. Next: wave 2 (A2, A3, B2, B1).
