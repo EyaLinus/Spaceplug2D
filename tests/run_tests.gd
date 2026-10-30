@@ -96,6 +96,11 @@ func test_art_registry() -> void:
 		check(Art.tex("buildings/%s.png" % part) != null, "building part %s" % part)
 	check(Art.tex("ships/ship.png") != null, "ship sprite")
 	check(Art.tex("ships/patrol.png") != null, "patrol sprite")
+	for k in data.raws.keys() + data.additives.keys() + data.bases.keys():
+		check(Art.icon_for(k) != null, "item %s has an icon" % k)
+	for k in data.upgrades:
+		check(Art.icon_for("up_" + k) != null, "upgrade %s has an icon" % k)
+	check(Art.icon_for("weed:overclock+radiant@premium") == Art.icon_for("weed"), "product keys use their base icon")
 	for loc in data.locations:
 		check(Art.tex("space/%s.png" % loc) != null, "location %s has a space sprite" % loc)
 	check(Art.tex("missing/nothing.png") == null, "missing art returns null (procedural fallback)")

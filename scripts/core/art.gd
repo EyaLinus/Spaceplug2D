@@ -98,3 +98,27 @@ static func fill_tiles(ci: CanvasItem, strip_rel: String, r: Rect2, seed_val: in
 			x += TILE
 		y += TILE
 	return true
+
+
+## Icon for an item key: raw, additive or product ("weed:overclock@premium" -> icons/weed.png), or upgrade/hud name.
+static func icon_for(key: String) -> Texture2D:
+	return tex("icons/%s.png" % key.split("@")[0].split(":")[0])
+
+
+## Puts the icon for `key` in front of `ctrl` (32 px = the icon's native 2x size). Returns `ctrl` alone without art.
+static func with_icon(key: String, ctrl: Control) -> Control:
+	var t := icon_for(key)
+	if t == null:
+		return ctrl
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 6)
+	var r := TextureRect.new()
+	r.texture = t
+	r.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	r.custom_minimum_size = Vector2(32, 32)
+	r.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	r.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(r)
+	ctrl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(ctrl)
+	return h
