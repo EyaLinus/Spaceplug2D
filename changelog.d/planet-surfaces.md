@@ -1,0 +1,2 @@
+- **Land on planets:** docking at Mireth now lands you on its surface. Walk around the Cannery District on foot (WASD/arrows), use doors and talk to people with E, take off again from the launch pad next to your ship.
+- **Economy in the world:** the market, your cannery lab, the mechanic at the spaceport, the Consortium office and your contacts Okka and Sen are now places and people on Mireth instead of menu tabs.

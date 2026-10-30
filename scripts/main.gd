@@ -1,10 +1,16 @@
 extends Node
-## Root of the game: builds the world, HUD and menus, and switches between flight, docked, paused and menu states.
+## Root of the game: builds the world, HUD and menus, and switches between flight, docked, on-foot (planet surface),
+## paused and menu states. Docking at a location with an entry in data/surfaces.json lands on its surface instead of
+## opening the docked menu; each surface is its own instance, created on landing and freed on take-off.
 
 const UI = preload("res://scripts/ui/ui_theme.gd")
 const WorldScript = preload("res://scripts/world/world.gd")
 const HudScript = preload("res://scripts/ui/hud.gd")
 const StationScript = preload("res://scripts/ui/station_ui.gd")
+const SurfaceScript = preload("res://scripts/planet/surface.gd")
+
+## Which station tab a surface interaction opens.
+const SURFACE_TABS := {"market": "Market", "lab": "Lab", "shipyard": "Shipyard", "office": "Office", "deal": "Deals"}
 
 const ACTIONS := {
 	"ship_thrust": [KEY_W, KEY_UP],
@@ -17,6 +23,7 @@ const ACTIONS := {
 }
 
 var world: Node2D
+var surface: Node2D  ## current planet surface instance, null in space
 var hud: Control
 var station: Control
 var menu: Control
@@ -28,6 +35,7 @@ var _end_label: Label
 
 func _ready() -> void:
 	_register_input()
+	SurfaceScript.register_input()
 	world = WorldScript.new()
 	add_child(world)
 	_ui_layer = CanvasLayer.new()
@@ -42,6 +50,7 @@ func _ready() -> void:
 	root.add_child(hud)
 	station = StationScript.new()
 	root.add_child(station)
+	station.close_requested.connect(station.close)
 	menu = _build_main_menu()
 	root.add_child(menu)
 	pause_menu = _build_pause_menu()
@@ -67,7 +76,16 @@ func _unhandled_input(event: InputEvent) -> void:
 	if GameState.game == null or menu.visible or end_screen.visible:
 		return
 	if event.is_action_pressed("ui_menu"):
-		toggle_pause()
+		if surface != null and station.visible and not GameState.paused:
+			station.close()
+		else:
+			toggle_pause()
+	elif surface != null:
+		if event.is_action_pressed("interact") and not GameState.paused:
+			if station.visible:
+				station.close()
+			else:
+				surface.interact()
 	elif event.is_action_pressed("ship_dock") and not GameState.paused:
 		if station.visible:
 			undock()
@@ -88,7 +106,13 @@ func continue_game() -> void:
 		_enter_game()
 
 
+func _process(_delta: float) -> void:
+	if surface != null:
+		surface.player.frozen = GameState.paused or station.visible or end_screen.visible
+
+
 func _enter_game() -> void:
+	_leave_surface()
 	menu.visible = false
 	end_screen.visible = false
 	pause_menu.visible = false
@@ -116,7 +140,45 @@ func dock(loc: String) -> void:
 	world.ship.stop()
 	EventBus.scan_progress.emit(0.0)
 	world.scan = 0.0
-	station.open()
+	if GameState.data.get("surfaces", {}).has(loc):
+		_land(loc)
+	else:
+		station.open()
+
+
+## Loads the planet surface instance for `loc` and hands the camera to the player on foot.
+func _land(loc: String) -> void:
+	_leave_surface()
+	surface = SurfaceScript.new()
+	surface.setup(loc, GameState.data.surfaces[loc])
+	surface.interacted.connect(_on_surface_action)
+	add_child(surface)
+	move_child(surface, world.get_index() + 1)
+	world.visible = false
+	hud.surface = surface
+	surface.place_player_at("pad")
+	EventBus.toast.emit("Landed on %s. Walk to a building or person and press E." % GameState.data.locations[loc].name, true)
+
+
+func _leave_surface() -> void:
+	if surface == null:
+		return
+	station.close()
+	surface.queue_free()
+	remove_child(surface)
+	surface = null
+	hud.surface = null
+	world.visible = true
+	world.camera.make_current()
+
+
+func _on_surface_action(action: String, p: Dictionary) -> void:
+	if action == "takeoff":
+		undock()
+		return
+	if not SURFACE_TABS.has(action):
+		return
+	station.open({"tabs": [SURFACE_TABS[action]], "title": p.title, "contact": p.get("contact", "")})
 
 
 func undock() -> void:
@@ -125,6 +187,7 @@ func undock() -> void:
 		return
 	var loc: String = g.location
 	g.undock()
+	_leave_surface()
 	station.close()
 	world.place_ship_at(loc)
 	world.active = true
@@ -139,6 +202,7 @@ func toggle_pause() -> void:
 func show_main_menu() -> void:
 	GameState.paused = true
 	world.active = false
+	_leave_surface()
 	station.close()
 	hud.visible = false
 	pause_menu.visible = false

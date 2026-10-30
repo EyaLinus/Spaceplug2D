@@ -1,5 +1,5 @@
 extends SceneTree
-## Screenshot tool (needs a display, e.g. xvfb-run): boots the game and saves PNGs of flight and docked menus.
+## Screenshot tool (needs a display, e.g. xvfb-run): boots the game and saves PNGs of the planet surface, panels and flight.
 ## xvfb-run -s "-screen 0 1280x720x24" godot --path . -s res://tools/shot.gd -- --out /tmp/shots
 
 func _init() -> void:
@@ -31,19 +31,35 @@ func _run() -> void:
 	await _save(out, "menu")
 	m.start_new_game(3)
 	var g = gs.game
+	var sf = m.surface
+	for i in 20:
+		await physics_frame
+	await _save(out, "surface_pad")
+	sf.place_player_at("okka")
+	for i in 40:
+		await physics_frame
+	await _save(out, "surface_plaza")
 	g.buy("cannabis", 5)
 	g.buy("nanoflux", 5)
 	g.buy("ion_syrup", 5)
+	sf.place_player_at("cannery")
+	for i in 30:
+		await physics_frame
+	await _save(out, "surface_cannery")
+	sf.interact()
 	m.station._lab_adds = ["nanoflux", "ion_syrup", ""]
 	m.station.refresh()
-	m.station.tabs.current_tab = 1
 	await _save(out, "lab")
 	g.start_batch("weed", ["nanoflux"], 5)
 	g.tick(30)
 	g.collect_stash()
-	m.station.tabs.current_tab = 2
-	m.station.refresh()
+	m.station.close()
+	sf.place_player_at("okka")
+	for i in 5:
+		await physics_frame
+	sf.interact()
 	await _save(out, "deals")
+	m.station.close()
 	g.add_heat(55)
 	m.undock()
 	for i in 90:

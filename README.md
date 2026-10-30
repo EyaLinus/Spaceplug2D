@@ -21,6 +21,13 @@ shows "Windows protected your PC" → *More info* → *Run anyway*).
 | E | Dock / undock (when in range) |
 | Esc / P | Pause menu (save, sound, main menu) |
 
+**On a planet (on foot)**
+| Key | Action |
+|---|---|
+| W A S D / arrows | Walk |
+| E / Enter | Use door, talk to a person, take off at the launch pad |
+| Esc | Close the open panel / pause menu |
+
 ## Core loop (prototype v0.1)
 1. **Buy** precursors plus additives. Drug ladder (tier: raw → where):
    T1 Weed (Cannabis Buds, Mireth/Cinder) · T2 Cocaine (Coca Leaf, Cinder) · T3 Meth (Pseudoephedrine, Cinder) ·
@@ -50,6 +57,7 @@ scripts/core/       headless simulation, no Node dependencies (testable)
   data.gd           loads data/content.json
 scripts/autoload/   EventBus (signals), GameState (owns Game, relays events, save files), AudioManager (synth SFX)
 scripts/world/      sector, ship physics, locations, patrols (spatial rules → core actions)
+scripts/planet/     planet surfaces (one instance per landing, layout in data/surfaces.json), on-foot player, NPCs
 scripts/ui/         theme, HUD + minimap + nav arrows, station menu (Market/Lab/Deals/Shipyard/Office)
 scripts/main.gd     state switching (menu, flight, docked, paused, end screen)
 data/content.json   all content and balance numbers

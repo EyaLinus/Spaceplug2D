@@ -1,5 +1,7 @@
 extends Control
 ## Docked menu. Tabs depend on what the location offers: Market, Lab, Deals, Shipyard, Office.
+## On a planet surface it opens filtered to one building or person (see open()), and its button closes the panel
+## instead of undocking.
 ## Rebuilds its content from the core Game state after every game event, so it never caches stale numbers.
 
 const UI = preload("res://scripts/ui/ui_theme.gd")
@@ -12,6 +14,10 @@ var _lab_base := "weed"
 var _lab_adds: Array = ["", "", ""]
 var _lab_qty := 5
 var _dirty := false
+var _filter: Dictionary = {}  ## {} = full docked menu; else {tabs: [names], title, contact}
+var _leave_btn: Button
+
+signal close_requested  ## "Leave" pressed while filtered (on a planet surface)
 
 
 func _ready() -> void:
@@ -36,7 +42,12 @@ func _ready() -> void:
 	_title = UI.label("", 26, UI.ACCENT)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_title)
-	head.add_child(UI.button("Undock [E]", func(): EventBus.undock_requested.emit(), 140))
+	_leave_btn = UI.button("Undock [E]", func():
+		if _filter.is_empty():
+			EventBus.undock_requested.emit()
+		else:
+			close_requested.emit(), 140)
+	head.add_child(_leave_btn)
 	_desc = UI.label("", 15, UI.MUTED)
 	v.add_child(_desc)
 	tabs = TabContainer.new()
@@ -46,7 +57,10 @@ func _ready() -> void:
 	visible = false
 
 
-func open() -> void:
+## filter: {} for the full docked menu, or {"tabs": ["Market"], "title": "Night Market", "contact": "okka"}.
+func open(filter: Dictionary = {}) -> void:
+	_filter = filter
+	_leave_btn.text = "Undock [E]" if filter.is_empty() else "Leave [E]"
 	visible = true
 	_lab_qty = mini(_lab_qty, GameState.game.lab_capacity())
 	refresh(true)
@@ -68,27 +82,33 @@ func refresh(reset_tab := false) -> void:
 	if g == null or g.location == "":
 		return
 	var ld: Dictionary = g.loc_data()
-	_title.text = ld.name
-	_desc.text = ld.get("desc", "")
+	_title.text = _filter.get("title", ld.name)
+	_desc.text = ld.get("desc", "") if _filter.is_empty() else "%s – %s" % [ld.name, ld.get("desc", "")]
 	var current := 0 if reset_tab else tabs.current_tab
 	for c in tabs.get_children():
 		tabs.remove_child(c)
 		c.queue_free()
-	_add_tab("Market", _build_market(g))
-	if ld.get("lab", false):
+	if _wants("Market"):
+		_add_tab("Market", _build_market(g))
+	if ld.get("lab", false) and _wants("Lab"):
 		_add_tab("Lab", _build_lab(g))
-	_add_tab("Deals", _build_deals(g))
-	if ld.get("shipyard", false):
+	if _wants("Deals"):
+		_add_tab("Deals", _build_deals(g))
+	if ld.get("shipyard", false) and _wants("Shipyard"):
 		_add_tab("Shipyard", _build_shipyard(g))
-	if ld.get("office", false):
+	if ld.get("office", false) and _wants("Office"):
 		_add_tab("Office", _build_office(g))
 	tabs.current_tab = clampi(current, 0, tabs.get_tab_count() - 1)
+
+
+func _wants(tab: String) -> bool:
+	return _filter.is_empty() or tab in _filter.get("tabs", [])
 
 
 func tab_names() -> Array:
 	var r: Array = []
 	for c in tabs.get_children():
-		r.append(c.name)
+		r.append(String(c.name))
 	return r
 
 
@@ -243,9 +263,11 @@ func _build_deals(g) -> Control:
 	if products.is_empty():
 		v.add_child(UI.label("You carry no product. Cook some at the Mireth lab.", 16, UI.MUTED))
 	var buyers: Array = []
+	var only: String = _filter.get("contact", "")
 	for c in g.contacts_at():
-		buyers.append(c)
-	if g.loc_data().get("fence", false):
+		if only == "" or c.id == only:
+			buyers.append(c)
+	if g.loc_data().get("fence", false) and only == "":
 		buyers.append({"id": "", "name": "The Fence", "likes": "", "max_units": 999})
 	if buyers.is_empty():
 		v.add_child(UI.label("Nobody here deals.", 16, UI.MUTED))
