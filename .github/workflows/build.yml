@@ -42,6 +42,11 @@ jobs:
           timeout 300 godot --headless --path . -s res://tools/ui_smoke.gd 2>&1 | tee smoke.txt
           grep -q "SMOKE DONE" smoke.txt
           ! grep -q "SCRIPT ERROR" smoke.txt
+      - name: Menu smoke test (main/pause menu, save slots, settings, rebinding)
+        run: |
+          timeout 120 godot --headless --path . -s res://tools/menu_smoke.gd 2>&1 | tee menu.txt
+          grep -q "MENU DONE" menu.txt
+          ! grep -q "SCRIPT ERROR" menu.txt
       - name: Balance sim (5 seeds)
         run: godot --headless --path . -s res://tools/sim.gd -- --runs 5 --seed 100 | tee sim.txt
       - uses: actions/upload-artifact@v4

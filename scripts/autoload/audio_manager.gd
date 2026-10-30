@@ -2,6 +2,7 @@ extends Node
 ## Audio manager: synthesizes all sound effects at startup (no audio assets needed yet),
 ## plays one-shots through a small player pool and keeps two loops (engine thrust, ambient drone).
 ## Reacts to EventBus game events so gameplay code never calls audio directly.
+## Effects play on the SFX bus, the drone on the Music bus; Settings owns the bus volumes.
 
 const RATE := 22050
 const POOL := 8
@@ -29,15 +30,18 @@ func _ready() -> void:
 	}
 	for i in POOL:
 		var p := AudioStreamPlayer.new()
+		p.bus = "SFX"
 		add_child(p)
 		_pool.append(p)
 	_thrust = AudioStreamPlayer.new()
 	_thrust.stream = _noise_loop(0.5, 0.25)
 	_thrust.volume_db = -80.0
+	_thrust.bus = "SFX"
 	add_child(_thrust)
 	_ambient = AudioStreamPlayer.new()
 	_ambient.stream = _drone_loop(4.0)
 	_ambient.volume_db = -18.0
+	_ambient.bus = "Music"
 	add_child(_ambient)
 	EventBus.game_event.connect(_on_game_event)
 	EventBus.toast.connect(func(_t: String, good: bool): if not good: play("error"))

@@ -8,6 +8,10 @@ const WorldScript = preload("res://scripts/world/world.gd")
 const HudScript = preload("res://scripts/ui/hud.gd")
 const StationScript = preload("res://scripts/ui/station_ui.gd")
 const SurfaceScript = preload("res://scripts/planet/surface.gd")
+const MainMenuScript = preload("res://scripts/ui/menu/main_menu.gd")
+const PauseMenuScript = preload("res://scripts/ui/menu/pause_menu.gd")
+const SlotPanelScript = preload("res://scripts/ui/menu/slot_panel.gd")
+const SettingsPanelScript = preload("res://scripts/ui/menu/settings_panel.gd")
 
 ## Which station tab a surface interaction opens.
 const SURFACE_TABS := {"market": "Market", "lab": "Lab", "shipyard": "Shipyard", "office": "Office", "deal": "Deals", "fence": "Deals"}
@@ -28,6 +32,8 @@ var hud: Control
 var station: Control
 var menu: Control
 var pause_menu: Control
+var slot_panel: Control  ## save slot list (new / load / save), opened from the main or pause menu
+var settings_panel: Control
 var end_screen: Control
 var _ui_layer: CanvasLayer
 var _end_label: Label
@@ -36,6 +42,7 @@ var _end_label: Label
 func _ready() -> void:
 	_register_input()
 	SurfaceScript.register_input()
+	Settings.apply_input()
 	world = WorldScript.new()
 	add_child(world)
 	_ui_layer = CanvasLayer.new()
@@ -57,6 +64,13 @@ func _ready() -> void:
 	root.add_child(pause_menu)
 	end_screen = _build_end_screen()
 	root.add_child(end_screen)
+	slot_panel = SlotPanelScript.new()
+	slot_panel.chosen.connect(_on_slot_chosen)
+	slot_panel.back.connect(_close_submenu.bind(slot_panel))
+	root.add_child(slot_panel)
+	settings_panel = SettingsPanelScript.new()
+	settings_panel.back.connect(_close_submenu.bind(settings_panel))
+	root.add_child(settings_panel)
 	EventBus.undock_requested.connect(undock)
 	EventBus.game_event.connect(_on_game_event)
 	show_main_menu()
@@ -73,7 +87,7 @@ func _register_input() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if GameState.game == null or menu.visible or end_screen.visible:
+	if GameState.game == null or menu.visible or end_screen.visible or slot_panel.visible or settings_panel.visible:
 		return
 	if event.is_action_pressed("ui_menu"):
 		if surface != null and station.visible and not GameState.paused:
@@ -95,15 +109,25 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # ---------------------------------------------------------------- state changes
 
-func start_new_game(seed_value: int = 0) -> void:
+## Starts a run in `slot` (0 = keep the current slot) and writes it there right away, so the slot shows as used.
+func start_new_game(seed_value: int = 0, slot: int = 0) -> void:
+	if slot != 0:
+		GameState.slot = slot
 	GameState.new_game(seed_value)
+	GameState.save_game()
 	_enter_game()
 	EventBus.toast.emit("You owe the Ouroboros Consortium %d cr. Cook, sell, pay up." % GameState.game.debt, true)
 
 
 func continue_game() -> void:
-	if GameState.load_game():
+	load_slot(GameState.latest_slot())
+
+
+func load_slot(i: int) -> void:
+	if i != 0 and GameState.load_game(i):
 		_enter_game()
+	else:
+		EventBus.toast.emit("Could not load slot %d." % i, false)
 
 
 func _process(_delta: float) -> void:
@@ -113,9 +137,11 @@ func _process(_delta: float) -> void:
 
 func _enter_game() -> void:
 	_leave_surface()
-	menu.visible = false
+	menu.close()
 	end_screen.visible = false
-	pause_menu.visible = false
+	pause_menu.close()
+	slot_panel.close()
+	settings_panel.close()
 	hud.visible = true
 	world.clear_patrols()
 	var g = GameState.game
@@ -196,7 +222,12 @@ func undock() -> void:
 
 func toggle_pause() -> void:
 	GameState.paused = not GameState.paused
-	pause_menu.visible = GameState.paused
+	if GameState.paused:
+		pause_menu.open()
+	else:
+		pause_menu.close()
+		slot_panel.close()
+		settings_panel.close()
 
 
 func show_main_menu() -> void:
@@ -205,10 +236,11 @@ func show_main_menu() -> void:
 	_leave_surface()
 	station.close()
 	hud.visible = false
-	pause_menu.visible = false
+	pause_menu.close()
+	slot_panel.close()
+	settings_panel.close()
 	end_screen.visible = false
-	menu.visible = true
-	_continue_btn.disabled = not GameState.has_save()
+	menu.open()
 	AudioManager.set_ambient(false)
 
 
@@ -230,7 +262,61 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 
 # ---------------------------------------------------------------- menus
 
-var _continue_btn: Button
+func _notification(what: int) -> void:
+	# closing the window mid-run keeps the progress (main menu and end screen states are already saved)
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and GameState.game != null and hud.visible and not end_screen.visible:
+		GameState.save_game()
+
+
+func _build_main_menu() -> Control:
+	var m := MainMenuScript.new()
+	m.continue_pressed.connect(continue_game)
+	m.new_game_pressed.connect(_open_submenu.bind("new"))
+	m.load_pressed.connect(_open_submenu.bind("load"))
+	m.settings_pressed.connect(_open_submenu.bind("settings"))
+	m.quit_pressed.connect(func(): get_tree().quit())
+	return m
+
+
+func _build_pause_menu() -> Control:
+	var p := PauseMenuScript.new()
+	p.resume_pressed.connect(toggle_pause)
+	p.save_pressed.connect(_open_submenu.bind("save"))
+	p.load_pressed.connect(_open_submenu.bind("load"))
+	p.settings_pressed.connect(_open_submenu.bind("settings"))
+	p.main_menu_pressed.connect(func():
+		GameState.save_game()
+		show_main_menu())
+	p.quit_pressed.connect(func():
+		GameState.save_game()
+		get_tree().quit())
+	return p
+
+
+## Opens the slot list ("new", "load", "save") or the settings over the main or pause menu.
+func _open_submenu(which: String) -> void:
+	if which == "settings":
+		settings_panel.open()
+	else:
+		slot_panel.open_mode(which)
+
+
+func _close_submenu(panel: Control) -> void:
+	panel.close()
+	(pause_menu if pause_menu.visible else menu).focus_first()
+
+
+func _on_slot_chosen(mode: String, i: int) -> void:
+	match mode:
+		"new":
+			start_new_game(0, i)
+		"load":
+			load_slot(i)
+		"save":
+			GameState.slot = i
+			var ok := GameState.save_game()
+			EventBus.toast.emit("Saved to slot %d." % i if ok else "Save failed.", ok)
+			_close_submenu(slot_panel)
 
 
 func _centered_panel(width: int) -> Array:
@@ -250,45 +336,6 @@ func _centered_panel(width: int) -> Array:
 	v.add_theme_constant_override("separation", 12)
 	panel.add_child(v)
 	return [c, v]
-
-
-func _build_main_menu() -> Control:
-	var pv := _centered_panel(520)
-	var v: VBoxContainer = pv[1]
-	var t := UI.label("SPACEPLUG", 54, UI.ACCENT)
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(t)
-	var s := UI.label("Cook. Mix. Smuggle. Pay the Consortium.", 18, UI.MUTED)
-	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(s)
-	v.add_child(UI.button("New run", func(): start_new_game()))
-	_continue_btn = UI.button("Continue", continue_game)
-	v.add_child(_continue_btn)
-	v.add_child(UI.button("Sound: on/off", func(): AudioManager.set_enabled(not AudioManager.enabled)))
-	v.add_child(UI.button("Quit", func(): get_tree().quit()))
-	var help := UI.label("You start on Mireth with a debt to the Ouroboros Consortium.\nBuy Cannabis Buds and additives, cook product in your lab, sell to contacts across the sector.\nEvery deal raises heat. Heat brings patrols – stay out of their scan circles while carrying product.", 14, UI.MUTED)
-	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(help)
-	var ver := UI.label("v%s" % ProjectSettings.get_setting("application/config/version", "dev"), 12, UI.MUTED)
-	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	v.add_child(ver)
-	return pv[0]
-
-
-func _build_pause_menu() -> Control:
-	var pv := _centered_panel(360)
-	var v: VBoxContainer = pv[1]
-	var t := UI.label("Paused", 30, UI.ACCENT)
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(t)
-	v.add_child(UI.button("Resume", toggle_pause))
-	v.add_child(UI.button("Save", func(): EventBus.toast.emit("Game saved." if GameState.save_game() else "Save failed.", true)))
-	v.add_child(UI.button("Sound: on/off", func(): AudioManager.set_enabled(not AudioManager.enabled)))
-	v.add_child(UI.button("Save & main menu", func():
-		GameState.save_game()
-		show_main_menu()))
-	pv[0].visible = false
-	return pv[0]
 
 
 func _build_end_screen() -> Control:

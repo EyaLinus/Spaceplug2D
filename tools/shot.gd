@@ -22,7 +22,7 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(out)
 	await process_frame
 	var gs = root.get_node("GameState")
-	gs.save_path = "user://shot_save.json"
+	gs.save_prefix = "user://shot_save_"
 	root.get_node("AudioManager").set_enabled(false)
 	var m = load("res://scenes/main.tscn").instantiate()
 	root.add_child(m)

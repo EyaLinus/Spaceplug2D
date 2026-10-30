@@ -179,7 +179,7 @@ func _physics_process(_delta: float) -> void:
 
 ## Text for the HUD prompt, "" when nothing is in reach.
 func prompt() -> String:
-	return "" if focus.is_empty() else "[E] %s" % focus.label
+	return "" if focus.is_empty() else "[%s] %s" % [Settings.key_label("interact"), focus.label]
 
 
 ## Uses whatever the player stands next to. Returns false if nothing is in reach.

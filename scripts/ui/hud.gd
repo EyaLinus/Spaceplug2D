@@ -96,18 +96,20 @@ func _ready() -> void:
 	_minimap.draw.connect(_draw_minimap)
 	add_child(_minimap)
 
-	var help := UI.label("W/↑ thrust   S/↓ reverse   A/D turn   Space brake   E dock   Esc menu", 14, UI.MUTED)
+	var help := UI.label("", 14, UI.MUTED)
 	help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	help.offset_left = 12
 	help.offset_top = -30
 	add_child(help)
 	_flight_help = help
-	_foot_help = UI.label("WASD/arrows walk   E use / talk   Esc close / menu   launch pad = take off", 14, UI.MUTED)
+	_foot_help = UI.label("", 14, UI.MUTED)
 	_foot_help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	_foot_help.offset_left = 12
 	_foot_help.offset_top = -30
 	_foot_help.visible = false
 	add_child(_foot_help)
+	_refresh_help()
+	Settings.changed.connect(_refresh_help)
 
 	EventBus.toast.connect(show_toast)
 	EventBus.scan_progress.connect(func(r: float):
@@ -140,7 +142,7 @@ func _process(_delta: float) -> void:
 	if surface != null:
 		_prompt.text = surface.prompt()
 	elif world != null and world.active and world.nearby != "":
-		_prompt.text = "[E] Dock at %s" % g.data.locations[world.nearby].name
+		_prompt.text = "[%s] Dock at %s" % [Settings.key_label("ship_dock"), g.data.locations[world.nearby].name]
 	else:
 		_prompt.text = ""
 	_minimap.queue_redraw()
@@ -238,3 +240,12 @@ func _draw_surface_map() -> void:
 		_minimap.draw_circle(off + it.pos * scale, 2.5, UI.ACCENT)
 	_minimap.draw_circle(off + surface.player.position * scale, 3.5, UI.GOLD)
 	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(0.3, 0.8, 0.6, 0.6), false, 1.5)
+
+
+## Control hints follow the player's key bindings (Settings).
+func _refresh_help() -> void:
+	var k := func(a: String) -> String: return Settings.key_label(a)
+	_flight_help.text = "%s thrust   %s reverse   %s/%s turn   %s brake   %s dock   %s menu" % [k.call("ship_thrust"),
+		k.call("ship_reverse"), k.call("ship_left"), k.call("ship_right"), k.call("ship_brake"), k.call("ship_dock"), k.call("ui_menu")]
+	_foot_help.text = "%s%s%s%s/arrows walk   %s use / talk   %s close / menu   launch pad = take off" % [k.call("move_up"),
+		k.call("move_left"), k.call("move_down"), k.call("move_right"), k.call("interact"), k.call("ui_menu")]

@@ -14,6 +14,7 @@ config/icon="res://icon.svg"
 
 EventBus="*res://scripts/autoload/event_bus.gd"
 GameState="*res://scripts/autoload/game_state.gd"
+Settings="*res://scripts/autoload/settings.gd"
 AudioManager="*res://scripts/autoload/audio_manager.gd"
 
 [display]
