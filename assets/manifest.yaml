@@ -577,6 +577,81 @@ assets:
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
+  station_cook_stove:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    note: 'Cook Stove 2x2: four burners (two lit), a pot on one, knobs on the front.'
+    outputs:
+    - assets/gfx/stations/cook_stove.png
+    source: assets/src/stations/cook_stove.txt
+    status: done
+    updated: '2026-10-30'
+  station_extractor:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    note: 'Extractor 2x1: solvent column, condenser line, coil and a flask of gold
+      extract.'
+    outputs:
+    - assets/gfx/stations/extractor.png
+    source: assets/src/stations/extractor.txt
+    status: done
+    updated: '2026-10-30'
+  station_mixing_station:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    note: 'Mixing Station 2x1: three additive tubs and a stirring bowl.'
+    outputs:
+    - assets/gfx/stations/mixing_station.png
+    source: assets/src/stations/mixing_station.txt
+    status: done
+    updated: '2026-10-30'
+  station_pack_table:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    note: 'Packaging Table 2x1: wooden bench with sealed bags, a heat sealer bar and
+      a roll of labels.'
+    outputs:
+    - assets/gfx/stations/pack_table.png
+    source: assets/src/stations/pack_table.txt
+    status: done
+    updated: '2026-10-30'
+  station_precursor_scale:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    note: 'Precursor Scale 1x1: bench with a weighing plate, a white pile and a gold
+      display.'
+    outputs:
+    - assets/gfx/stations/precursor_scale.png
+    source: assets/src/stations/precursor_scale.txt
+    status: done
+    updated: '2026-10-30'
+  station_refiner:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    note: 'Refiner 2x2: acid and base reagent bottles feeding a reaction vessel, pH
+      meter strip on the bench.'
+    outputs:
+    - assets/gfx/stations/refiner.png
+    source: assets/src/stations/refiner.txt
+    status: done
+    updated: '2026-10-30'
+  station_trim_table:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    note: 'Trim Table 2x1: wooden bench with buds, leaves and shears. Top-down, front
+      face at the bottom.'
+    outputs:
+    - assets/gfx/stations/trim_table.png
+    source: assets/src/stations/trim_table.txt
+    status: done
+    updated: '2026-10-30'
   tile_bazaar_ground:
     created: '2026-10-30'
     kind: tile

@@ -237,7 +237,7 @@ func _run() -> void:
 	runner.autoplay = true
 	Engine.time_scale = 6.0
 	_assert(runner.start("weed", ["nanoflux"], 5).ok, "hand batch starts")
-	_assert(runner.plan == ["trim_table", "mixing_station", "cook_stove", "pack_table"], "weed stations %s" % [runner.plan])
+	_assert(runner.plan == ["trim_table", "extractor", "mixing_station", "cook_stove", "pack_table"], "weed stations %s" % [runner.plan])
 	var seen: Array = []
 	for i in 3000:
 		await process_frame
@@ -247,7 +247,7 @@ func _run() -> void:
 			break
 	Engine.time_scale = 1.0
 	_assert(seen == runner.plan, "every station minigame ran: %s" % [seen])
-	_assert(runner.scores.size() == 4 and not runner.visible, "hand batch finished: %s" % [runner.scores])
+	_assert(runner.scores.size() == 5 and not runner.visible, "hand batch finished: %s" % [runner.scores])
 	_assert(g.lab_queue.size() == 1 and g.lab_queue[0].product.begins_with("weed:overclock+radiant"), "hand batch queued: %s" % [g.lab_queue])
 	_assert(m.station.visible, "lab panel still open after the minigames")
 	step("hand batch %s -> %s" % [runner.scores, g.lab_queue[0]])

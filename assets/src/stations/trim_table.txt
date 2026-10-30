@@ -1,0 +1,28 @@
+# Trim Table 2x1: wooden bench with buds, leaves and shears. Top-down, front face at the bottom.
+legend:
+k = ink
+d = slate_dark
+x = white
+g = grass
+G = grass_light
+e = grass_dark
+w = wood
+W = wood_dark
+a = sand
+---
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+kaaaaaaaaaaaaaaaaaaaaaaaaaaaaaak
+kwwwegwwwwwwwkkkkwwwwwwwwwwewwwk
+kwweGGewwwewwkxxkwwwwwwGGGwGewwk
+kwwgGGgwwGgwwkkkkkkwwwGgggGwwwwk
+kwwwegwweGgwwwwkxxkwwwweeewwwwwk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWk
+kWdWWWWWWWWWWWWWWWWWWWWWWWWWWdWk
+kWdWWWWWWWWWWWWWWWWWWWWWWWWWWdWk
+kWdWWWWWWWWWWWWWWWWWWWWWWWWWWdWk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk

@@ -251,7 +251,7 @@ func _build_lab(g) -> Control:
 	var st_names: Array = []
 	for id in Production.stations_for(g.data, _lab_base, additives):
 		st_names.append(g.data.stations[id].name)
-	var st_label := UI.label("Stations: " + " → ".join(PackedStringArray(st_names)) + ". By hand you set yield, quality grade and heat; a quick batch is always Standard.", 15, UI.MUTED)
+	var st_label := UI.label("Stations: " + " → ".join(PackedStringArray(st_names)) + ". By hand you set yield, purity, quality grade and heat; a quick batch is always Standard.", 15, UI.MUTED)
 	st_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	st_label.custom_minimum_size.x = 400
 	v.add_child(st_label)

@@ -1,0 +1,48 @@
+# Refiner 2x2: acid and base reagent bottles feeding a reaction vessel, pH meter strip on the bench.
+legend:
+k = ink
+S = slate_light
+s = slate
+d = slate_dark
+x = white
+y = gold
+t = teal
+T = teal_dark
+b = blue
+B = blue_light
+n = blue_dark
+r = red
+R = red_dark
+---
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+kxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSkkkkSSSSSSSSSSSSSSSSSSkkkkSSk
+kSkkrrkkSSSSSSSSSSSSSSSSkkbbkkSk
+kSkrrrRkSSSSSSSSSSSSSSSSkbbbnkSk
+kSkrrrRkkkkkSSSSSSSSkkkkkbbbnkSk
+kSkrrrRkSSSSSSSSSSSSSSSSkbbbnkSk
+kSkrrrRkSSSSSkkkkkkSSSSSkbbbnkSk
+kSkkkkkkSSSkkttttttkkSSSkkkkkkSk
+kSSSSSSSSSkttTTttttttkSSSSSSSSSk
+kSSSSSSSSSkttttttTTttkSSSSSSSSSk
+kSSSSSSSSSkttttttttttkSSSSSSSSSk
+kSSSSSSSSSSkkttttttkkSSSSSSSSSSk
+kSSSSSSSSSSSSkkkkkkSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSSSSkkkkkkkkkkkkkkkkkkkkSSSSSk
+kSSSSSknnnnnnntttnnnrrrrrkSSSSSk
+kSSSSSkkkkkkkkkykkkkkkkkkkSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+ksdssssssssssBtysssssssssssssdsk
+ksdssssssssssssssssssssssssssdsk
+ksdssssssssssssssssssssssssssdsk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk

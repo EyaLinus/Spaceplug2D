@@ -121,6 +121,7 @@ static func effect_text(id: String, score: float) -> String:
 	match d.stations[id].affects:
 		"yield": return "yield ×%.2f" % o.yield_mult
 		"heat": return "heat ×%.2f" % o.heat_mult
+		"purity": return "purity %d%%" % int(o.purity * 100.0)
 	return "quality %s" % d.quality.grades[o.grade].name
 
 
@@ -131,8 +132,8 @@ func _complete() -> void:
 	_title.text = "Batch done" if result.ok else "Batch failed"
 	_hint.text = result.msg
 	var grade: Dictionary = g.data.quality.grades[o.grade]
-	_info.text = "Grade %s (value ×%.2f) · yield ×%.2f → %d units · heat ×%.2f" % [grade.name, float(grade.value_mult),
-		o.yield_mult, Production.output_qty(_batch.qty, o.yield_mult), o.heat_mult]
+	_info.text = "Grade %s (value ×%.2f) · purity %d%% · yield ×%.2f → %d units · heat ×%.2f" % [grade.name,
+		float(grade.value_mult), int(o.purity * 100.0), o.yield_mult, Production.output_qty(_batch.qty, o.yield_mult), o.heat_mult]
 	_status.text = "Skipped stations count as Standard." if scores.size() < plan.size() else ""
 	_btn.text = "Back to the lab [Esc]"
 

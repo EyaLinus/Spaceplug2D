@@ -1,5 +1,24 @@
 # Progress log
 
+## C1: Lab stations II – Extractor + Refiner (2026-10-30)
+- **Purity:** new station stat `affects: "purity"`. `Production.outcome()` returns `purity` (average of the purity
+  stations, missing = `quick_score`) and the grade now uses `lerp(quality stations, purity, quality.purity_weight = 0.5)`.
+  Quick batches stay Standard; a perfect cook with a skipped purity step tops out at Premium.
+- **Stations** (`content.json` stations/station_order/buildables): Extractor (weed, cocaine; 450 cr, 2x1) and Refiner
+  (cocaine, meth, fentanyl; 550 cr, 2x2). Order: prep → extractor → mixing → cook → refiner → pack. Every drug has one
+  purity station at least (test). Old estates must build the new ones before they can cook those drugs.
+- **Minigames** (`scripts/ui/minigames/`): `extract.gd` = hold-to-heat with inertia along a moving profile (warm-up,
+  two fractions, cool-down) on a chart recorder, boiling over costs double; `equilibrium.gd` = runaway reaction with
+  a flipping pull, acid/base doses that act after 0.5 s, 14 doses each. Bots: extract looks 0.4 s ahead, equilibrium
+  simulates its own dynamics forward (`predict()`); skilled ≥ 0.85, idle ≤ 0.35 over 4 seeds per drug (test).
+- **Art** (game-assets-2d): pixel sprites for all 7 stations, `assets/src/stations/<id>.txt` sized to the footprint,
+  `build_stations()` in `build_art.py`, drawn by `surface.gd` with smaller name tags (procedural fallback stays).
+  `tools/shot.gd` now also shoots an estate with every station and the Refiner minigame.
+- Verified: 961 unit checks, UI smoke (weed hand batch runs 5 stations incl. extractor), menu smoke, sim 5/5 won;
+  screenshots of both minigames and the furnished estate reviewed.
+- Gaps: purity is not stored on the product (only in the grade); equilibrium tuning is bot-tested, not human-tested;
+  the 1x1 Precursor Scale label is still a bit wider than the machine.
+
 ## D1: galaxy model + two new planets (2026-10-30)
 - **Galaxy model:** `content.json` → `systems` (name, galaxy_pos for the later map app, security, `patrol_mult`, star and
   nebula colours) and `jump` (fee 80 cr, 20 s travel time). Every location has a `system`; gates are locations of kind

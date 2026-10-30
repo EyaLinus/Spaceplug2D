@@ -1,0 +1,46 @@
+# Cook Stove 2x2: four burners (two lit), a pot on one, knobs on the front.
+legend:
+k = ink
+S = slate_light
+s = slate
+d = slate_dark
+h = shadow
+o = stone
+y = gold
+r = red
+R = red_dark
+q = rust_light
+Q = rust
+---
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kddddhddddddhddddddhddddddhddddk
+kdddhkkkkddhddddddhddkkkkhdddddk
+kddhkhhhhkhddddddhddkhhhhkdddddk
+kdhkhkkkkhkdddddhddkhkkkkhkdddhk
+khdkhkrqkhkddddhdddkhkkkkhkddhdk
+kddkhkqrkhkdddhddddkhkkkkhkdhddk
+kddkhkkkkhkddhdddddkhkkkkhkhdddk
+kdddkhhhhkddhddddddhkhhhhkhddddk
+kdddhkkkkddhddddddhddkkkkhdddddk
+kddhddddddhddddddhddddddhddddddk
+kdhddddddhddddddhddddddhddddddhk
+khddddddhddddddhddddkkkkkkdddhdk
+kddddddhddddddhddddkooooookdhddk
+kddddkkkkddddhdddddkQqqqQokhdddk
+kdddkhhhhkddhddddddkooooookddddk
+kddkhkkkkhkhddddddhkkkkkkkkddddk
+kddkhkkkkhkddddddhdkhkrqkhkddddk
+kdhkhkkkkhkdddddhddkhkqrkhkdddhk
+khdkhkkkkhkddddhdddkhkkkkhkddhdk
+kdddkhhhhkddddhdddddkhhhhkddhddk
+kddddkkkkddddhddddddhkkkkddhdddk
+kddddhddddddhddddddhddddddhddddk
+kdddhddddddhddddddhddddddhdddddk
+kddhddddddhddddddhddddddhddddddk
+kdhddddddhddddddhddddddhddddddhk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+ksdssssssssssrRysssssssssssssdsk
+ksdssssssssssssssssssssssssssdsk
+ksdssssssssssssssssssssssssssdsk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk

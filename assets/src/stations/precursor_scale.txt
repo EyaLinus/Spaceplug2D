@@ -1,0 +1,29 @@
+# Precursor Scale 1x1: bench with a weighing plate, a white pile and a gold display.
+legend:
+k = ink
+S = slate_light
+s = slate
+d = slate_dark
+x = white
+o = stone
+y = gold
+B = blue_light
+n = blue_dark
+a = sand
+---
+kkkkkkkkkkkkkkkk
+kxxxxxxxxxxxxxxk
+kSSSSSSSSSSSSSSk
+kSSkkkkkkkkkkSSk
+kSSkooaooookoSSk
+kSSkoaaaxxokoSSk
+kSSkoooooookoSSk
+kSSkkkkkkkkkkSSk
+kSSSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSk
+kkkkkkkkkkkkkkkk
+ksdsnBsssssyydsk
+ksdssssssssssdsk
+ksdssssssssssdsk
+kkkkkkkkkkkkkkkk
