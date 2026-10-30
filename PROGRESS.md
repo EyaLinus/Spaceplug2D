@@ -1,5 +1,19 @@
 # Progress log
 
+## A3: Market & Orders app (2026-10-30)
+- **Core** `scripts/core/orders.gd`, state on `Game`: `orders` (open, saved), `order_seq`, `estate_stock` (estate id -> items, saved),
+  `orders_unseen` (runtime, app badge). Phone price = cheapest walk-in price anywhere + 35% markup, plus a delivery fee
+  (6%, min 12 cr; express x2 fee, 30 s instead of 90 s; +60 s to estates outside the start system). Max 40 per order, 6 open
+  orders. Goods arrive via `Game.tick` in the hub stash or an owned estate's stock; `collect_stash()` inside the estate
+  unloads that stock into the stash first, then loads the hold. Cancel refunds 80% of the goods, fee is lost. Rules in
+  `content.json` -> `orders`. Old saves load with no orders; orders for unknown estates fall back to the stash.
+- **Phone app** `apps/orders_app.gd` (one line in `registry.gd`): destination picker, standard/express, per-item qty
+  stepper (Shift = 5) with live total, in-transit list with countdown and cancel, badge for new deliveries. HUD toast and
+  sound on delivery.
+- Verified: unit tests (new `test_orders`, `test_orders_save`), UI smoke (order from the phone, delivery, cancel), menu smoke, sim.
+- Gaps: no equipment/station-kit orders yet (buildables are still bought in build mode), no price history or
+  per-planet stock, delivery time is flat per speed, estate stock is not shown inside the estate UI except via [collect].
+
 ## Release v0.1.5 (2026-10-30)
 - Phase 2 wave 1 complete: A1 Com-Phone + Contacts, D1 Kovar system (Varrow, Glacis), C1 Extractor/Refiner, E3 visible
   ship upgrades. Changelog folded, version 0.1.5 in project.godot and export_presets.cfg. Next: wave 2 (A2, A3, B2, B1).

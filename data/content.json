@@ -246,5 +246,10 @@
     "refiner": {"cost": 550, "size": [2, 2]},
     "pack_table": {"cost": 250, "size": [2, 1]}
   },
+  "orders": {
+    "markup": 0.35, "fee_pct": 0.06, "fee_min": 12, "express_fee_mult": 2.0,
+    "seconds": {"standard": 90, "express": 30}, "far_seconds": 60,
+    "max_qty": 40, "max_open": 6, "cancel_refund": 0.8
+  },
   "estate_refund": 0.5
 }

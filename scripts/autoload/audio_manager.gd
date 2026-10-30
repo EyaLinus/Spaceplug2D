@@ -91,7 +91,7 @@ func _on_game_event(kind: String, _payload: Dictionary) -> void:
 		"docked": play("dock")
 		"undocked": play("undock")
 		"busted": play("bust")
-		"lab_done": play("lab_done")
+		"lab_done", "order_delivered": play("lab_done")
 		"upgraded": play("upgrade")
 
 
