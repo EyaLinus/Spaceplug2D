@@ -40,6 +40,7 @@
       {"id": "sen", "name": "Sen Varo", "pos": [26.5, 19.5], "action": "deal", "contact": "sen", "color": "#ff5fd2"}
     ],
     "walkers": 6,
+    "security": 1.0,
     "props": [
       ["tree", 1, 13], ["tree", 3, 12.5], ["tree", 13, 2], ["tree", 20.5, 2], ["tree", 47, 12], ["tree", 45, 11],
       ["tree", 2, 31], ["tree", 18, 21], ["tree", 48, 31], ["tree", 33, 21], ["tree", 21, 31], ["tree", 42, 32],
@@ -70,6 +71,7 @@
       {"id": "dax", "name": "Foreman Dax", "pos": [20.5, 16.2], "action": "deal", "contact": "dax", "color": "#ffb347"}
     ],
     "walkers": 4,
+    "security": 0.5,
     "props": [["rock", 2, 2], ["rock", 13, 3], ["rock", 14.5, 8], ["rock", 34, 2], ["rock", 1, 24], ["rock", 14, 24], ["rock", 34, 25], ["barrel", 21, 10.5], ["barrel", 21.7, 11], ["barrel", 33.5, 11], ["crate", 13, 16], ["crate", 13.8, 16.5], ["crate", 19.6, 22], ["lamp", 15.5, 11.5], ["lamp", 19.5, 11.5], ["lamp", 15.5, 15.5], ["lamp", 19.5, 15.5]]
   },
   "bazaar": {
@@ -95,6 +97,7 @@
       {"id": "grub", "name": "Old Grub", "pos": [16, 15.5], "action": "deal", "contact": "grub", "color": "#8fd18f"}
     ],
     "walkers": 7,
+    "security": 0.0,
     "props": [["vent", 2, 2], ["vent", 14, 2], ["vent", 34, 12], ["vent", 2, 22], ["crate", 20.6, 3], ["crate", 21.3, 3.6], ["crate", 34, 22], ["barrel", 33, 15], ["barrel", 33.6, 15.5], ["lamp", 16.5, 10.5], ["lamp", 20.5, 10.5], ["lamp", 16.5, 14.5], ["lamp", 20.5, 14.5], ["stall", 25, 10.4], ["stall", 31, 10.4]]
   }
 }
