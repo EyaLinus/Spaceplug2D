@@ -1,5 +1,26 @@
 # Progress log
 
+## Station minigames in the lab (2026-10-30)
+Every batch can now be cooked **by hand**: the Old Cannery lab runs it through its stations one after another
+(`scripts/ui/minigames/`, rules in `scripts/core/production.gd`, numbers in `content.json` → `stations`, `quality`).
+- **Trim Table** (Weed): click the fan leaves off the bud, nicking the bud costs → yield ×0.8–1.2.
+- **Precursor Scale** (Cocaine/Meth/Fentanyl): scoops of 4–9 g, 1 g pinches, wobbling needle, hit the target → yield.
+- **Mixing Station** (only with additives): hold to pour each additive, release in the green band → quality.
+- **Cook Stove**: hold to fire the burner, temperature has inertia and drafts, stay in the band → quality.
+- **Packaging Table**: press when the sweeping sealer is over the seal strip, one press per bag → heat ×1.3–0.7.
+- Quality → grade Shoddy ×0.75 / Standard / Premium ×1.2 / Pristine ×1.4 on the sell value. Graded products are
+  separate cargo stacks (key suffix `@grade`; old keys are Standard, saves stay compatible).
+- "Quick batch" keeps the old one-click Standard result (and the balance bot uses it, so the sim is unchanged).
+  Esc during the minigames skips the rest as Standard; ingredients are only taken at the end, but a skip never refunds.
+- Higher drug tiers make the bands narrower and the sealer faster.
+- Modular: a minigame subclasses `station_minigame.gd` (setup/step/press/key/bot_input, emits `finished(score)`),
+  is listed in `registry.gd` and gets a `stations` entry; `MinigameRunner.start()` can be reused by estate buildings.
+- Verified: 359 unit checks (new: station lists per drug, outcome math, graded keys + save, every minigame: skilled
+  bot ≥ 0.8, idle ≤ 0.35, always ends); UI smoke plays a full hand batch through the real lab panel and checks that
+  Esc skips without closing the panel; screenshots of every station checked.
+- Gaps: not played by a human yet, so timings and band widths are guesses; art is procedural placeholder;
+  the lab panel now needs a little scrolling for the stash button; contacts don't prefer grades yet (only value).
+
 ## P3 first step: police on foot (2026-10-30)
 - Officers (`scripts/planet/officer.gd`) walk the roads with a drawn vision cone. Count = (1 + heat/20) × planet
   security, max 4 (Mireth 1.0, Cinder 0.5, Drift Bazaar 0 = lawless). Numbers in `content.json` → `police`.
