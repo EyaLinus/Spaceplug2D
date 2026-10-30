@@ -1,0 +1,28 @@
+# Packaging Table 2x1: wooden bench with sealed bags, a heat sealer bar and a roll of labels.
+legend:
+k = ink
+S = slate_light
+d = slate_dark
+x = white
+o = stone
+w = wood
+W = wood_dark
+a = sand
+q = rust_light
+---
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+kaaaaaaaaaaaaaaaaaaaaaaaaaaaaaak
+kwwwwwwwwwwwwwwwwkkkkkkkkkkwwwwk
+kwwkkkkkwkkkkkwwwkooooooookkkkwk
+kwwkaaakwkaaakwwwkSSSSSSSSkkxkwk
+kwwkaqakwkaaakwwwkkkkkkkkkkkkkwk
+kwwkkkkkwkkkkkwwwwwwwwwwwwwwwwwk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWk
+kWdWWWWWWWWWWWWWWWWWWWWWWWWWWdWk
+kWdWWWWWWWWWWWWWWWWWWWWWWWWWWdWk
+kWdWWWWWWWWWWWWWWWWWWWWWWWWWWdWk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk

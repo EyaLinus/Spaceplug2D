@@ -6,6 +6,7 @@
 
 Sources:
   assets/src/sprites/*.txt   hand-written pixel grids (game-assets-2d pixelart format)
+  assets/src/stations/*.txt  lab station machines (estate interiors), sized to the buildable footprint
   assets/src/icons/*.txt     UI icons (items, upgrades, HUD), same grid format
   assets/src/characters.yaml role-letter -> palette swaps for the char_* grids
   this file                  procedural tiles and building pieces (seeded, palette-locked)
@@ -115,6 +116,15 @@ def build_sprites() -> list[Path]:
                          ("patrol", "ships"), ("beacon", "space")]:
         legend, frames = parse_grid(SRC / "sprites" / f"{name}.txt")
         out.append(save(grid_image(frames[0], legend), f"{folder}/{name}.png"))
+    return out
+
+
+def build_stations() -> list[Path]:
+    """Lab station machines for estate interiors: one grid per station id, sized to its buildable footprint."""
+    out = []
+    for src in sorted((SRC / "stations").glob("*.txt")):
+        legend, frames = parse_grid(src)
+        out.append(save(grid_image(frames[0], legend), f"stations/{src.stem}.png"))
     return out
 
 
@@ -530,7 +540,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--preview", help="also write a contact sheet of every output to this PNG")
     args = ap.parse_args()
-    paths = build_characters() + build_sprites() + build_tiles() + build_building_parts() + build_space() + build_icons()
+    paths = build_characters() + build_sprites() + build_stations() + build_tiles() + build_building_parts() + build_space() + build_icons()
     for p in paths:
         print(p.relative_to(ROOT))
     if args.preview:

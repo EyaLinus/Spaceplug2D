@@ -78,6 +78,13 @@ func _run() -> void:
 	for i in 40:
 		await process_frame
 	await _save(out, "station_precursor_scale")
+	runner.autoplay = true
+	for i in 4000:
+		await process_frame
+		if runner.current != null and runner.plan[runner.index] == "refiner" and runner.current.elapsed > 3.0:
+			await _save(out, "station_refiner")
+			break
+	runner.autoplay = false
 	runner.abort()
 	g.cargo.erase("pseudo")
 	g.start_batch("weed", ["nanoflux"], 5)
@@ -92,6 +99,19 @@ func _run() -> void:
 	m.station.close()
 	var k: String = g.cargo.keys().filter(func(x): return x.contains(":"))[0]
 	g.sell(k, 2, "okka")
+	# estate interior with every lab station placed
+	g.credits = 99999
+	g.buy_estate("cannery_annex")
+	for st in [["cook_stove", 0, 0], ["refiner", 2, 0], ["extractor", 4, 0], ["mixing_station", 6, 0], ["precursor_scale", 8, 0],
+			["trim_table", 4, 2], ["pack_table", 6, 2]]:
+		g.place_building("cannery_annex", st[0], st[1], st[2])
+	m.enter_estate("cannery_annex")
+	for i in 10:
+		await physics_frame
+	await _save(out, "estate")
+	m.leave_estate()
+	for i in 5:
+		await physics_frame
 	m.toggle_phone()
 	await _save(out, "phone_home")
 	m.phone.open_app("contacts")

@@ -183,18 +183,23 @@
     "yield_max": 1.2,
     "heat_min": 0.7,
     "heat_max": 1.3,
-    "quick_score": 0.5
+    "quick_score": 0.5,
+    "purity_weight": 0.5
   },
-  "station_order": ["trim_table", "precursor_scale", "mixing_station", "cook_stove", "pack_table"],
+  "station_order": ["trim_table", "precursor_scale", "extractor", "mixing_station", "cook_stove", "refiner", "pack_table"],
   "stations": {
     "trim_table": {"name": "Trim Table", "minigame": "trim", "affects": "yield", "bases": ["weed"],
       "hint": "Click the fan leaves to snip them off. Don't nick the bud."},
     "precursor_scale": {"name": "Precursor Scale", "minigame": "measure", "affects": "yield", "bases": ["cocaine", "meth", "fentanyl"],
       "hint": "Space/click adds a scoop, right-click/Backspace takes a pinch off. Hit the target weight, then press Enter."},
+    "extractor": {"name": "Extractor", "minigame": "extract", "affects": "purity", "bases": ["weed", "cocaine"],
+      "hint": "Hold Space/mouse to heat the solvent column. The green band follows the extraction profile, so ride it. Boiling over (top of the gauge) spoils the extract."},
     "mixing_station": {"name": "Mixing Station", "minigame": "pour", "affects": "quality", "needs_additives": true,
       "hint": "Hold Space/mouse to pour each additive. Release inside the green band."},
     "cook_stove": {"name": "Cook Stove", "minigame": "heat", "affects": "quality",
       "hint": "Hold Space/mouse to fire the burner. Keep the temperature inside the green band."},
+    "refiner": {"name": "Refiner", "minigame": "equilibrium", "affects": "purity", "bases": ["cocaine", "meth", "fentanyl"],
+      "hint": "Space/left click doses acid (needle up), Backspace/right click doses base (needle down). Doses act with a delay: keep the reaction in the green band and don't overdose."},
     "pack_table": {"name": "Packaging Table", "minigame": "pack", "affects": "heat",
       "hint": "Press Space/click when the sealer is over the bag. Tight seals smell less (less heat)."}
   },
@@ -235,8 +240,10 @@
   "buildables": {
     "trim_table": {"cost": 150, "size": [2, 1]},
     "precursor_scale": {"cost": 200, "size": [1, 1]},
+    "extractor": {"cost": 450, "size": [2, 1]},
     "mixing_station": {"cost": 350, "size": [2, 1]},
     "cook_stove": {"cost": 400, "size": [2, 2]},
+    "refiner": {"cost": 550, "size": [2, 2]},
     "pack_table": {"cost": 250, "size": [2, 1]}
   },
   "estate_refund": 0.5

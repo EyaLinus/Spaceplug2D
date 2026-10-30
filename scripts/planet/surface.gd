@@ -492,6 +492,12 @@ func _draw_building(b: Dictionary) -> void:
 ## Production station inside an estate: a work surface with a few parts that hint at what it does.
 func _draw_machine(b: Dictionary, r: Rect2) -> void:
 	var inner := r.grow(-4)
+	var t := Art.tex("stations/%s.png" % b.get("station", ""))
+	if t != null:
+		draw_rect(Rect2(r.position + Vector2(4, 6), r.size), Color(0, 0, 0, 0.3))
+		draw_texture_rect(t, r, false)
+		_machine_label(b.name, r)
+		return
 	draw_rect(Rect2(inner.position + Vector2(4, 6), inner.size), Color(0, 0, 0, 0.3))
 	draw_rect(inner, Color("#6b6f7a"))
 	draw_rect(Rect2(inner.position, Vector2(inner.size.x, 6)), Color("#9aa0ad"))
@@ -511,12 +517,34 @@ func _draw_machine(b: Dictionary, r: Rect2) -> void:
 			draw_circle(c + Vector2(-12, -10), 9.0, Color("#2a2a30"))
 			draw_circle(c + Vector2(12, 10), 9.0, Color("#2a2a30"))
 			draw_circle(c + Vector2(-12, -10), 5.0, Color("#ff6b3a"))
+		"extractor":
+			draw_rect(Rect2(c + Vector2(-22, -12), Vector2(10, 22)), Color("#7fb8d0"))
+			draw_rect(Rect2(c + Vector2(-20, -2), Vector2(6, 10)), Color("#e8c547"))
+			draw_line(c + Vector2(-12, -10), c + Vector2(8, -6), Color("#c9d1d9"), 2.0)
+			draw_circle(c + Vector2(14, 2), 7.0, Color("#e8c547"))
+		"refiner":
+			draw_rect(Rect2(c + Vector2(-24, -14), Vector2(12, 18)), Color("#ff6b5f"))
+			draw_rect(Rect2(c + Vector2(12, -14), Vector2(12, 18)), Color("#5a7dff"))
+			draw_circle(c + Vector2(0, 6), 11.0, Color("#4fe3c1"))
+			draw_rect(Rect2(c + Vector2(-14, -24), Vector2(28, 6)), Color("#2a2d36"))
 		"pack_table":
 			draw_rect(Rect2(c - Vector2(16, 6), Vector2(12, 12)), Color("#c9b88a"))
 			draw_rect(Rect2(c + Vector2(4, -6), Vector2(12, 12)), Color("#c9b88a"))
+	_machine_label(b.name, r)
+
+
+## Small name tag on the front face; long names drop words until they fit the machine.
+func _machine_label(text: String, r: Rect2) -> void:
 	var font := ThemeDB.fallback_font
-	var w := font.get_string_size(b.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-	draw_string(font, Vector2(c.x - w / 2.0, inner.end.y - 3), b.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#e6e9ff"))
+	var words := text.split(" ")
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+	while w > r.size.x - 6 and words.size() > 1:
+		words.remove_at(words.size() - 1)
+		text = " ".join(words)
+		w = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+	var p := Vector2(r.get_center().x - w / 2.0, r.end.y - 4)
+	draw_rect(Rect2(p + Vector2(-2, -7), Vector2(w + 4, 9)), Color(0, 0, 0, 0.6))
+	draw_string(font, p, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("#e6e9ff"))
 
 
 func _draw_prop(kind: String, p: Vector2) -> void:

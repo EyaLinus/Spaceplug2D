@@ -109,6 +109,10 @@ func test_art_registry() -> void:
 	check(Art.icon_for("weed:overclock+radiant@premium") == Art.icon_for("weed"), "product keys use their base icon")
 	for loc in data.locations:
 		check(Art.tex("space/%s.png" % loc) != null, "location %s has a space sprite" % loc)
+	for id in data.stations:
+		var st_tex: Texture2D = Art.tex("stations/%s.png" % id)
+		var fp: Array = data.buildables[id].size
+		check(st_tex != null and st_tex.get_size() == Vector2(fp[0], fp[1]) * Art.TILE, "station %s has art matching its footprint" % id)
 	check(Art.tex("missing/nothing.png") == null, "missing art returns null (procedural fallback)")
 	check(Art.look_for_color(Color("#ff6b5f")) == "npc_red", "npc look follows data colour")
 
@@ -247,6 +251,8 @@ func test_estates() -> void:
 	g.place_building("shaft_shack", "trim_table", 0, 0)
 	g.place_building("shaft_shack", "cook_stove", 2, 0)
 	g.place_building("shaft_shack", "pack_table", 4, 0)
+	check(g.missing_stations("weed", []) == ["extractor"], "weed needs an extractor too: %s" % [g.missing_stations("weed", [])])
+	check(g.place_building("shaft_shack", "extractor", 6, 0).ok, "place extractor")
 	check(g.missing_stations("weed", []).is_empty(), "weed line complete")
 	check(not g.missing_stations("weed", ["nanoflux"]).is_empty(), "additives need a mixing station")
 	check(g.start_batch("weed", [], 5).ok, "cook in the estate")
@@ -298,13 +304,14 @@ func test_lab_batch() -> void:
 
 
 func test_production_stations() -> void:
-	check(Production.stations_for(data, "weed", []) == ["trim_table", "cook_stove", "pack_table"], "plain weed stations: %s" % [Production.stations_for(data, "weed", [])])
-	check(Production.stations_for(data, "meth", ["nanoflux"]) == ["precursor_scale", "mixing_station", "cook_stove", "pack_table"], "mixed meth stations")
+	check(Production.stations_for(data, "weed", []) == ["trim_table", "extractor", "cook_stove", "pack_table"], "plain weed stations: %s" % [Production.stations_for(data, "weed", [])])
+	check(Production.stations_for(data, "meth", ["nanoflux"]) == ["precursor_scale", "mixing_station", "cook_stove", "refiner", "pack_table"], "mixed meth stations")
+	check(Production.stations_for(data, "cocaine", []) == ["precursor_scale", "extractor", "cook_stove", "refiner", "pack_table"], "cocaine gets both purity stations")
 	var Runner = load("res://scripts/ui/minigames/registry.gd")
 	for id in data.stations:
 		var st: Dictionary = data.stations[id]
 		check(Runner.MINIGAMES.has(st.minigame), "station %s minigame %s is registered" % [id, st.minigame])
-		check(st.affects in ["yield", "quality", "heat"], "station %s affects a known stat" % id)
+		check(st.affects in ["yield", "quality", "purity", "heat"], "station %s affects a known stat" % id)
 		check(id in data.station_order, "station %s is in station_order" % id)
 	for b in data.bases:
 		var n := 0
@@ -312,20 +319,33 @@ func test_production_stations() -> void:
 			if data.stations[id].affects == "yield":
 				n += 1
 		check(n == 1, "%s has exactly one prep (yield) station" % b)
+		var p := 0
+		for id in Production.stations_for(data, b, []):
+			if data.stations[id].affects == "purity":
+				p += 1
+		check(p >= 1, "%s has a purity station" % b)
+	for id in data.stations:
+		check(data.buildables.has(id), "station %s is buildable in estates" % id)
 
 
 func test_production_outcome() -> void:
 	var quick := Production.outcome(data, {})
 	check(quick.grade == Mixing.STANDARD and is_equal_approx(quick.yield_mult, 1.0) and is_equal_approx(quick.heat_mult, 1.0), "quick batch is neutral: %s" % [quick])
-	var best := Production.outcome(data, {"trim_table": 1.0, "mixing_station": 1.0, "cook_stove": 1.0, "pack_table": 1.0})
+	var best := Production.outcome(data, {"trim_table": 1.0, "extractor": 1.0, "mixing_station": 1.0, "cook_stove": 1.0, "pack_table": 1.0})
 	check(best.grade == 3 and best.yield_mult > 1.1 and best.heat_mult < 0.8, "perfect hands: %s" % [best])
-	var worst := Production.outcome(data, {"trim_table": 0.0, "cook_stove": 0.0, "pack_table": 0.0})
+	var worst := Production.outcome(data, {"trim_table": 0.0, "extractor": 0.0, "cook_stove": 0.0, "pack_table": 0.0})
 	check(worst.grade == 0 and worst.yield_mult < 0.9 and worst.heat_mult > 1.2, "botched: %s" % [worst])
+	# purity joins the grade: a perfect cook with a botched extraction is no longer Pristine, a skipped one counts as Standard
+	var dirty := Production.outcome(data, {"cook_stove": 1.0, "extractor": 0.0})
+	check(is_zero_approx(dirty.purity) and dirty.grade < 3, "impure cook: %s" % [dirty])
+	var skipped := Production.outcome(data, {"cook_stove": 1.0})
+	check(is_equal_approx(skipped.purity, 0.5) and skipped.grade == 2, "skipped purity counts as Standard: %s" % [skipped])
+	check(is_equal_approx(quick.purity, 0.5), "quick batch purity is neutral")
 	# perfect batch vs. quick batch in the core
 	var a := new_game()
 	a.buy("cannabis", 5)
 	a.buy("nanoflux", 5)
-	var r := a.start_batch("weed", ["nanoflux"], 5, {"trim_table": 1.0, "mixing_station": 1.0, "cook_stove": 1.0, "pack_table": 1.0})
+	var r := a.start_batch("weed", ["nanoflux"], 5, {"trim_table": 1.0, "extractor": 1.0, "mixing_station": 1.0, "cook_stove": 1.0, "pack_table": 1.0})
 	check(r.ok, "hand batch starts: %s" % r.msg)
 	var q := new_game()
 	q.buy("cannabis", 5)

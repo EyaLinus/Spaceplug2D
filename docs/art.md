@@ -27,4 +27,6 @@ All art is pixel art built from text sources with the game-assets-2d skill workf
 - **Icons:** 16 px grids in `assets/src/icons` (items by data key, `up_<upgrade>`, `hud_*`); `Art.with_icon(key, control)`
   puts one in front of a label at 32 px; product keys use their base icon.
 
-Not covered yet: building interiors, menu art, lab dropdown icons.
+- **Lab stations:** `assets/src/stations/<station id>.txt`, one grid per station sized to its buildable footprint (16 px per cell); `surface.gd` draws them inside estates, procedural fallback otherwise.
+
+Not covered yet: building interiors (walls/floors), menu art, lab dropdown icons.

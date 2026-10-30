@@ -1,0 +1,31 @@
+# Mixing Station 2x1: three additive tubs and a stirring bowl.
+legend:
+k = ink
+S = slate_light
+s = slate
+d = slate_dark
+x = white
+o = stone
+y = gold
+u = gold_dark
+t = teal
+T = teal_dark
+p = purple
+i = pink
+---
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+kxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxk
+kSSkkkkkSSkkkkkSSkkkkkSSSkkkSSSk
+kSSktttkSSkiiikSSkyyykSSkSoSkSSk
+kSSkttTkSSkiipkSSkyyukSSkooSkSSk
+kSSktTTkSSkippkSSkyuukSSSkkkSSSk
+kSSkkkkkSSkkkkkSSkkkkkSSSdSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+ksdssssssssssssssssssssssssssdsk
+ksdssssssssssssssssssssssssssdsk
+ksdssssssssssssssssssssssssssdsk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk

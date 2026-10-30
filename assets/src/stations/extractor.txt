@@ -1,0 +1,31 @@
+# Extractor 2x1: solvent column, condenser line, coil and a flask of gold extract.
+legend:
+k = ink
+S = slate_light
+s = slate
+d = slate_dark
+x = white
+y = gold
+Y = gold_light
+u = gold_dark
+t = teal
+B = blue_light
+r = red
+q = rust_light
+---
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+kxkkkkxxxxxxxxxxxxxxxxxxxxxxxxxk
+kSkBBkSSSSSSSSSSSSkSkSkSkSkkkSSk
+kSkBtkkkkkkkkkkkkkBkBkBkBkyyykSk
+kSkBtkkBBBBBBBBBBkkSkSkSkkYyukSk
+kSkytkkkkkkkkkkkkkSSSSSSSkyyukSk
+kSkyykSSSSSSSSSSSSSSSSSSSSkkkSSk
+kSkkkkSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+ksdsssssqrqssssssssssssssssssdsk
+ksdssssssssssssssssssssssssssdsk
+ksdssssssssssssssssssssssssssdsk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk

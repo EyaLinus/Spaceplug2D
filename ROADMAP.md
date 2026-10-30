@@ -87,7 +87,7 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
 - [x] **D1 Galaxy model + 2 new planets.** Systems in `content.json` (Halvane Reach + a second system), two new planets
   with own biome, security level and economy (demand, prices, police), walkable surfaces + space art. Travel between
   systems is a plain jump for now. Touches: content.json locations, surfaces.json, art.
-- **C1 Lab stations II.** Extractor and Refiner as new stations with two new minigames (temperature balancing,
+- [x] **C1 Lab stations II.** Extractor and Refiner as new stations with two new minigames (temperature balancing,
   reaction equilibrium) that set purity; purity joins the quality grade. Touches: minigames/, production.gd, stations.
 - **E3 Visible ship upgrades.** Engine, hull, cargo, stealth (later weapons/shields) levels change the ship sprite
   (modular parts in the art pipeline). Touches: ship.gd, art only.
