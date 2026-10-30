@@ -6,6 +6,7 @@ extends RefCounted
 const Game = preload("res://scripts/core/game.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const People = preload("res://scripts/core/people.gd")
+const Corruption = preload("res://scripts/core/corruption.gd")
 
 const RECIPE := ["nanoflux"]  ## weed + nanoflux = Radiant/Overclock, a solid early-game product
 const BUST_CHANCE_PER_PATROL := 0.04
@@ -64,6 +65,8 @@ static func play(data: Dictionary, seed_value: int, speed: float = 1.0, max_days
 			g.tick(g.lab_queue[0].remaining + 0.1)
 		g.collect_stash()
 		sell_here(g)
+		if g.heat > 55.0 and Corruption.hired(g, "inspector").is_empty() and g.credits > 180 + g.bribe_cost(g.heat - 20.0) + 200:
+			Corruption.recruit(g, "vell")  # the fixer is a hired inspector now
 		if g.heat > 55.0 and g.credits > g.bribe_cost(g.heat - 20.0) + 200:
 			g.bribe(g.heat - 20.0)
 		for u in ["lab", "cargo", "stealth", "engine"]:

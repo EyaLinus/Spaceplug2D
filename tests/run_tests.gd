@@ -7,6 +7,7 @@ const Data = preload("res://scripts/core/data.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const Corruption = preload("res://scripts/core/corruption.gd")
 const ArtReg = preload("res://scripts/core/art.gd")
 
 var data: Dictionary
@@ -39,6 +40,13 @@ func _init() -> void:
 		"test_bust",
 		"test_upgrades",
 		"test_bribe",
+		"test_corruption_data",
+		"test_heat_per_system",
+		"test_wanted_level",
+		"test_officials",
+		"test_customs_scan_pass",
+		"test_sweep_and_tip_off",
+		"test_corruption_save",
 		"test_debt_win_and_loss",
 		"test_save_roundtrip",
 		"test_drug_ladder",
@@ -609,11 +617,30 @@ func test_upgrades() -> void:
 func test_bribe() -> void:
 	var g := new_game()
 	g.add_heat(20)
+	check(not g.bribe(20).ok and g.heat == 20.0, "no bribe without a hired inspector")
+	g.credits = 1000
+	check(Corruption.recruit(g, "vell").ok, "recruit the Mireth inspector")
 	var cost := g.bribe_cost(20)
-	check(g.bribe(20).ok and g.heat == 0.0 and g.credits == 400 - cost, "bribe clears heat")
+	var before := g.credits
+	check(g.bribe(20).ok and g.heat == 0.0 and g.credits == before - cost, "bribe clears heat")
+	check(cost == int(ceil(20 * float(data.heat.bribe_credits_per_heat) * (1.0 - float(data.corruption.fix_discount)))), "bribe price follows the fix discount")
 	g.undock()
 	g.add_heat(10)
-	check(not g.bribe(10).ok, "bribe only at hub office")
+	check(g.bribe(10).ok, "inspector works from anywhere in his system")
+
+
+func test_corruption_data() -> void:
+	var roles: Dictionary = data.corruption.roles
+	var ids := {}
+	for o in data.officials:
+		check(not ids.has(o.id) and not data.contacts.any(func(c): return c.id == o.id), "official id %s is unique" % o.id)
+		ids[o.id] = true
+		check(data.locations.has(o.location) and roles.has(o.role), "official %s has a place and a role" % o.id)
+		check(int(o.recruit_cost) > 0 and int(o.retainer) > 0, "official %s has a price" % o.id)
+		check(ArtReg.NPC_LOOKS.has(o.look), "official %s look exists" % o.id)
+	for sys in data.systems:
+		check(data.officials.any(func(o): return o.role == "inspector" and data.locations[o.location].system == sys), "system %s has an inspector" % sys)
+		check(data.officials.any(func(o): return o.role == "captain" and data.locations[o.location].system == sys), "system %s has a captain" % sys)
 
 
 func test_debt_win_and_loss() -> void:
@@ -683,3 +710,161 @@ func test_core_loop_is_profitable() -> void:
 	var res: Dictionary = Bot.play(data, 11, 1.0)
 	check(res.state == "won", "bot clears debt: %s" % [res])
 	check(res.day <= int(data.start.debt_due_day), "won before due day")
+
+
+func test_heat_per_system() -> void:
+	var g := new_game()
+	g.add_heat(50)
+	g.undock()
+	g.system = "halvane"
+	var gate := ""
+	for l in data.locations:
+		if data.locations[l].has("jump_to") and data.locations[l].system == "halvane":
+			gate = l
+	g.credits = 500
+	check(g.jump(gate).ok and g.system == "kovar", "jumped to Kovar")
+	check(g.heat == 0.0 and is_equal_approx(g.corruption.heat.halvane, 50.0 - float(data.heat.decay_per_second) * float(data.jump.seconds)) or g.heat == 0.0, "Kovar starts cold, Halvane heat is parked")
+	g.add_heat(30)
+	var kovar_gate := ""
+	for l in data.locations:
+		if data.locations[l].has("jump_to") and data.locations[l].system == "kovar":
+			kovar_gate = l
+	g.credits = 500
+	check(g.jump(kovar_gate).ok and g.system == "halvane", "jumped back")
+	check(g.heat > 30.0 and g.corruption.heat.has("kovar") and g.corruption.heat.kovar > 20.0, "heat is kept per system")
+	check(g.patrol_count() >= 2, "Halvane patrols follow Halvane heat")
+	var parked: float = g.corruption.heat.kovar
+	g.tick(10.0)
+	check(g.corruption.heat.kovar < parked, "parked heat cools down")
+
+
+func test_wanted_level() -> void:
+	var g := new_game()
+	var base_foot := g.police_on_foot(1.0)
+	g.corruption.wanted = 100.0
+	check(g.patrol_count() > 1 and g.police_on_foot(1.0) > base_foot, "wanted raises patrols and officers")
+	g.corruption.wanted = 0.0
+	g.cargo["weed:x"] = 1
+	g.bust()
+	check(is_equal_approx(g.corruption.wanted, float(data.corruption.wanted_per_bust)), "a bust raises wanted")
+	for i in 20:
+		g.bust()
+	check(g.corruption.wanted <= float(data.corruption.wanted_max), "wanted is capped")
+	var w: float = g.corruption.wanted
+	g.tick(g.day_seconds() + 1.0)
+	check(g.corruption.wanted < w, "wanted decays per day")
+	check(not Corruption.clear_wanted(g, 10).ok, "clearing wanted needs an inspector")
+	g.credits = 5000
+	Corruption.recruit(g, "vell")
+	var c := g.credits
+	check(Corruption.clear_wanted(g, 20).ok and g.credits < c, "inspector clears wanted for credits")
+
+
+func test_officials() -> void:
+	var g := new_game()
+	check(People.official_state(g, "vell").known and not People.official_state(g, "roe").known, "docking introduces the local official only")
+	check(not Corruption.recruit(g, "roe").ok, "must be at the official's location")
+	g.credits = 100
+	check(not Corruption.recruit(g, "vell").ok and g.credits == 100, "too poor to recruit")
+	g.credits = 2000
+	check(Corruption.recruit(g, "vell").ok and g.credits == 2000 - int(People.official(g, "vell").recruit_cost), "recruit pays the bribe")
+	check(not Corruption.recruit(g, "vell").ok, "cannot hire twice")
+	check(Corruption.hired(g, "inspector").id == "vell" and Corruption.hired(g, "customs").is_empty(), "hired lookup by role and system")
+	var c := g.credits
+	g.tick(g.day_seconds() + 1.0)
+	check(g.credits == c - int(People.official(g, "vell").retainer), "retainer is paid every day")
+	var l0: float = People.official_state(g, "vell").loyalty
+	g.credits = 0
+	g.tick(g.day_seconds() + 1.0)
+	check(People.official_state(g, "vell").loyalty < l0 and People.official_state(g, "vell").hired, "missed retainer costs loyalty")
+	g.tick(g.day_seconds() * 2.0 + 1.0)
+	check(not People.official_state(g, "vell").hired, "unpaid official walks away")
+
+
+func test_customs_scan_pass() -> void:
+	var g := new_game()
+	g.credits = 5000
+	g.undock()
+	g.dock("bazaar")
+	check(Corruption.recruit(g, "roe").ok, "recruit the Bazaar customs officer")
+	check(Corruption.pass_chance(g) > 0.3, "customs gives a pass chance")
+	var passed := 0
+	var busted := 0
+	for i in 200:
+		g.cargo["weed:x"] = 3
+		g.corruption.wanted = 0.0
+		var before: int = g.stats.busts
+		g.bust()
+		if g.stats.busts == before:
+			passed += 1
+		else:
+			busted += 1
+	check(passed > 60 and busted > 20, "about 60%% of scans wave through (%d/%d)" % [passed, busted])
+	check(People.official_state(g, "roe").passes == passed, "passes are counted")
+	g.corruption.wanted = 80.0
+	check(Corruption.pass_chance(g) < 0.5 * float(data.officials[1].pass_chance), "a high wanted level shrinks the pass chance")
+	var other := new_game()
+	other.cargo["weed:x"] = 1
+	other.bust()
+	check(other.stats.busts == 1, "no customs officer, no pass")
+
+
+func test_sweep_and_tip_off() -> void:
+	var g := new_game()
+	var events: Array = []
+	g.event.connect(func(kind, p): events.append(kind))
+	g.heat = 100.0
+	g.corruption.roll = 1
+	var seen := false
+	for i in 12:
+		g.heat = 100.0
+		g.tick(g.day_seconds() + 1.0)
+		if not g.corruption.pending.is_empty() or not g.corruption.sweep.is_empty():
+			seen = true
+			break
+	check(seen, "a hot system eventually gets a sweep planned")
+	check(not events.has("tip_off"), "no tip-off without a captain")
+	# captain tip-off and diversion
+	var h := new_game()
+	h.credits = 5000
+	h.undock()
+	h.dock("cinder")
+	check(Corruption.recruit(h, "dreyer").ok, "recruit the patrol captain")
+	var tips: Array = []
+	h.event.connect(func(kind, p): if kind == "tip_off": tips.append(p))
+	for i in 12:
+		h.heat = 100.0
+		h.credits = 5000
+		h.tick(h.day_seconds() + 1.0)
+		if not tips.is_empty():
+			break
+	check(not tips.is_empty() and h.corruption.pending.system == "halvane", "captain tips you off before the sweep")
+	var pc0 := h.patrol_count()
+	check(Corruption.divert_sweep(h).ok and h.corruption.pending.is_empty(), "captain diverts the sweep")
+	# an undiverted sweep adds patrols on its day
+	h.corruption.pending = {"system": "halvane", "day": h.day + 1}
+	h.heat = 0.0
+	h.tick(h.day_seconds() + 1.0)
+	check(not h.corruption.sweep.is_empty() and Corruption.heat_bonus(h) >= float(data.corruption.crackdown_heat_bonus), "sweep adds patrol pressure that day")
+	h.tick(h.day_seconds() + 1.0)
+	check(h.corruption.sweep.is_empty(), "sweep ends the next day")
+	check(pc0 >= 1, "patrols stay valid")
+
+
+func test_corruption_save() -> void:
+	var g := new_game()
+	g.credits = 3000
+	Corruption.recruit(g, "vell")
+	g.corruption.wanted = 33.0
+	g.corruption.heat["kovar"] = 12.5
+	g.corruption.pending = {"system": "kovar", "day": 4}
+	var j: String = JSON.stringify(g.to_dict())
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(j))
+	check(People.official_state(h, "vell").hired and is_equal_approx(h.corruption.wanted, 33.0), "officials and wanted survive a save")
+	check(is_equal_approx(h.corruption.heat.kovar, 12.5) and h.corruption.pending.day == 4, "parked heat and pending sweep survive")
+	var old := g.to_dict()
+	old.erase("corruption")
+	var o := Game.new()
+	o.from_dict(data, JSON.parse_string(JSON.stringify(old)))
+	check(o.corruption.wanted == 0.0 and not People.official_state(o, "vell").hired, "old saves load with a clean record")

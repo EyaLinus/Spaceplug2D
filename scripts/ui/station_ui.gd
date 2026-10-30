@@ -11,6 +11,7 @@ const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const RunnerScript = preload("res://scripts/ui/minigames/minigame_runner.gd")
 const ShipPreview = preload("res://scripts/ui/ship_preview.gd")
+const OfficialsApp = preload("res://scripts/ui/phone/apps/officials_app.gd")
 
 var tabs: TabContainer
 var _title: Label
@@ -456,13 +457,19 @@ func _build_office(g) -> Control:
 	h.add_child(UI.button("Pay all I can", func(): GameState.act(g.pay_debt(g.credits)), 140))
 	v.add_child(h)
 	v.add_child(HSeparator.new())
-	v.add_child(UI.label("The Fixer – makes your file disappear", 19, UI.ACCENT))
-	v.add_child(UI.label("Heat %d. %d cr per heat point." % [int(g.heat), int(g.data.heat.bribe_credits_per_heat)], 16))
-	var h2 := HBoxContainer.new()
-	h2.add_theme_constant_override("separation", 10)
-	h2.add_child(UI.button("-10 heat (%d cr)" % g.bribe_cost(10), func(): GameState.act(g.bribe(10)), 170))
-	h2.add_child(UI.button("Clear all (%d cr)" % g.bribe_cost(g.heat), func(): GameState.act(g.bribe(g.heat)), 170))
-	v.add_child(h2)
+	_add_fixers(v, g)
 	v.add_child(HSeparator.new())
 	v.add_child(UI.label("Run stats: earned %d cr · sold %d units · %d batches · busted %d×" % [g.stats.earned, g.stats.units_sold, g.stats.batches, g.stats.busts], 15, UI.MUTED))
 	return v
+
+
+## Office replacement for the old fixer: heat and wanted status plus the officials of this system (recruit / favours).
+## The same list lives in the Fixers app on the phone.
+func _add_fixers(v: VBoxContainer, g) -> void:
+	v.add_child(UI.label("Officials – everyone has a price", 19, UI.ACCENT))
+	v.add_child(OfficialsApp.status_block(g))
+	for o in People.officials_in(g, g.system):
+		if not People.official_state(g, o.id).known:
+			continue
+		v.add_child(UI.label("%s · %s" % [o.name, g.data.corruption.roles[o.role].name], 15))
+		v.add_child(OfficialsApp.actions(g, o.id))

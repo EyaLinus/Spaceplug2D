@@ -122,6 +122,38 @@ func _run() -> void:
 	_assert(not m.phone.visible and not gs.paused, "Esc from home closes the phone without pausing")
 	step("com-phone contacts")
 
+	# Fixers app: heat per system, wanted level, recruit the local inspector
+	await key(KEY_TAB)
+	var ftile: Button = m.phone.find_child("App_fixers", true, false)
+	_assert(ftile != null, "fixers app tile")
+	ftile.pressed.emit()
+	await frames(2)
+	_assert(m.phone.current_title() == "Fixers" and m.phone.find_child("Wanted", true, false) != null, "fixers app shows the wanted level")
+	var orow: Button = m.phone.find_child("Official_vell", true, false)
+	_assert(orow != null and m.phone.find_child("Official_roe", true, false) == null, "only met officials listed")
+	orow.pressed.emit()
+	await frames(2)
+	g.credits = 5000
+	g.add_heat(30)
+	var rbtn: Button = m.phone.find_child("Recruit_vell", true, false)
+	_assert(rbtn != null and not rbtn.disabled, "recruit button on the inspector profile")
+	rbtn.pressed.emit()
+	await frames(2)
+	_assert(g.corruption.officials.vell.hired, "inspector recruited from the phone")
+	var fix: Button = m.phone.find_child("Fix10_vell", true, false)
+	_assert(fix != null, "favour buttons after recruiting")
+	var heat_before: float = g.heat
+	fix.pressed.emit()
+	await frames(2)
+	_assert(g.heat < heat_before, "inspector clears heat from the phone")
+	g.tick(0.1)
+	await frames(2)
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	_assert(not m.phone.visible, "phone closes again")
+	step("com-phone fixers")
+
 	# police on foot: an officer looking at you while you carry product frisks and busts you
 	_assert(sf.officers.size() == g.police_on_foot(1.0) and sf.officers.size() > 0, "officers on Mireth")
 	var cop = sf.officers[0]

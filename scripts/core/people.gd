@@ -164,3 +164,30 @@ static func new_day(g) -> void:
 		var s: Dictionary = g.people[id]
 		s.spent = 0
 		s.addiction = maxf(float(s.addiction) - decay, 0.0)
+
+
+# ---------------------------------------------------------------- officials (corrupt Authority staff, see corruption.gd)
+## Officials are named people too: static profile in content.json "officials" (role, location, recruit cost, retainer),
+## per-run state in g.corruption.officials (known, hired, loyalty, favours, passes). Rules live in corruption.gd.
+
+static func official(g, id: String) -> Dictionary:
+	for o in g.data.get("officials", []):
+		if o.id == id:
+			return o
+	return {}
+
+
+static func official_state(g, id: String) -> Dictionary:
+	var all: Dictionary = g.corruption.officials
+	if not all.has(id):
+		all[id] = {"known": false, "hired": false, "loyalty": 0.0, "favours": 0, "passes": 0}
+	return all[id]
+
+
+## Official profiles standing in the given star system.
+static func officials_in(g, sys: String) -> Array:
+	var r: Array = []
+	for o in g.data.get("officials", []):
+		if g.loc_system(o.location) == sys:
+			r.append(o)
+	return r

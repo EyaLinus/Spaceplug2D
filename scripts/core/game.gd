@@ -9,6 +9,7 @@ signal event(kind: String, payload: Dictionary)
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const Corruption = preload("res://scripts/core/corruption.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -20,7 +21,8 @@ var debt_due_day: int = 10
 var day: int = 1
 var day_time: float = 0.0
 var total_time: float = 0.0
-var heat: float = 0.0
+var heat: float = 0.0  ## heat of the system the ship is in (other systems: corruption.heat)
+var corruption: Dictionary = {}  ## wanted level, parked heat of other systems, officials (see corruption.gd)
 var location: String = ""  ## location id while docked, "" while flying
 var system: String = ""  ## star system the ship is in (content.json "systems"); travel between systems = jump()
 var cargo: Dictionary = {}  ## item key -> qty (raw ids, additive ids, product keys)
@@ -47,7 +49,9 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	day_time = 0.0
 	total_time = 0.0
 	heat = 0.0
+	corruption = Corruption.init_state(data)
 	location = s.location
+	Corruption.on_dock(self, location)
 	system = loc_system(location)
 	cargo = s.get("cargo", {}).duplicate()
 	stash = {}
@@ -133,7 +137,7 @@ func scan_radius() -> float:
 
 func patrol_count() -> int:
 	var h: Dictionary = data.heat
-	var n := int(h.patrol_base) + int(heat / float(h.patrol_per_heat))
+	var n := int(h.patrol_base) + int((heat + Corruption.heat_bonus(self)) / float(h.patrol_per_heat))
 	n = int(n * float(system_data().get("patrol_mult", 1.0)))  # frontier systems are patrolled thinner
 	return mini(n, int(h.patrol_max))
 
@@ -141,7 +145,7 @@ func patrol_count() -> int:
 ## Reach Authority officers walking a planet surface. security: the surface's police factor (0 = lawless).
 func police_on_foot(security: float) -> int:
 	var p: Dictionary = data.police
-	var n := int(floor((float(p.base) + heat / float(p.per_heat)) * security))
+	var n := int(floor((float(p.base) + (heat + Corruption.heat_bonus(self)) / float(p.per_heat)) * security))
 	return clampi(n, 0, int(p.max))
 
 
@@ -226,6 +230,7 @@ func tick(dt: float) -> void:
 	if location != "":
 		decay *= float(data.heat.decay_docked_factor)
 	_set_heat(heat - decay)
+	Corruption.tick(self, dt)
 	_tick_lab(dt)
 	_tick_demand(dt)
 	while day_time >= day_seconds():
@@ -269,6 +274,7 @@ func _new_day() -> void:
 		demand[loc][b] = clampf(demand[loc][b] + rng.randf_range(-0.15, 0.25), float(data.market.min_demand), m)
 		_emit("rumour", {"location": loc, "base": b, "demand": demand[loc][b]})
 	People.new_day(self)
+	Corruption.new_day(self)
 	_emit("new_day", {"day": day})
 	if debt > 0 and day > debt_due_day:
 		state = "lost"
@@ -294,6 +300,7 @@ func dock(loc: String) -> Dictionary:
 		return _fail("Cannot dock there.")
 	location = loc
 	system = loc_system(loc)
+	Corruption.on_dock(self, loc)
 	_emit("docked", {"location": loc})
 	return _ok("Docked at %s." % ld.name)
 
@@ -322,6 +329,7 @@ func jump(gate: String) -> Dictionary:
 	credits -= fee
 	var from := system
 	system = str(gd.jump_to)
+	Corruption.on_jump(self, from, system)
 	tick(float(j.get("seconds", 0.0)))
 	_emit("jumped", {"from": from, "to": system, "gate": gate, "arrive": str(gd.get("arrive", ""))})
 	return _ok("Jumped to %s (%d cr toll)." % [system_data().get("name", system), fee])
@@ -519,25 +527,18 @@ func pay_debt(amount: int) -> Dictionary:
 
 
 func bribe_cost(heat_amount: float) -> int:
-	return int(ceil(minf(heat_amount, heat) * float(data.heat.bribe_credits_per_heat)))
+	return Corruption.bribe_cost(self, heat_amount)
 
 
+## Buys heat down through a hired inspector (corruption.gd); replaces the old office fixer.
 func bribe(heat_amount: float) -> Dictionary:
-	if not loc_data().get("office", false):
-		return _fail("Only the Mireth fixer takes bribes.")
-	var cost := bribe_cost(heat_amount)
-	if cost <= 0:
-		return _fail("No heat to clear.")
-	if cost > credits:
-		return _fail("Not enough credits.")
-	credits -= cost
-	_set_heat(heat - minf(heat_amount, heat))
-	_emit("bribed", {"cost": cost})
-	return _ok("Paid %d cr. Heat cooled down." % cost)
+	return Corruption.bribe(self, heat_amount)
 
 
 ## Caught by a patrol scan: products are confiscated, a fine is paid and heat drops.
 func bust() -> Dictionary:
+	if Corruption.scan_pass(self):
+		return _ok("A customs officer waved your cargo through.")
 	var lost := 0
 	for k in cargo.keys():
 		if Mixing.is_product(k):
@@ -548,6 +549,7 @@ func bust() -> Dictionary:
 	credits -= fine
 	stats.busts += 1
 	_set_heat(heat - float(h.bust_heat_drop))
+	Corruption.on_bust(self)
 	_emit("busted", {"lost": lost, "fine": fine})
 	return _ok("Busted! Lost %d units and paid %d cr." % [lost, fine])
 
@@ -631,7 +633,7 @@ func to_dict() -> Dictionary:
 	return {
 		"version": SAVE_VERSION, "credits": credits, "debt": debt, "debt_due_day": debt_due_day,
 		"day": day, "day_time": snappedf(day_time, 0.01), "total_time": snappedf(total_time, 0.01),
-		"heat": snappedf(heat, 0.01), "location": location, "system": system, "cargo": cargo.duplicate(), "stash": stash.duplicate(),
+		"heat": snappedf(heat, 0.01), "corruption": Corruption.to_save(self), "location": location, "system": system, "cargo": cargo.duplicate(), "stash": stash.duplicate(),
 		"lab_queue": lab_queue.duplicate(true), "demand": demand.duplicate(true),
 		"contact_ready_at": contact_ready_at.duplicate(), "people": people.duplicate(true), "upgrades": upgrades.duplicate(),
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
@@ -647,7 +649,9 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	day_time = float(d.get("day_time", 0.0))
 	total_time = float(d.get("total_time", 0.0))
 	heat = float(d.get("heat", 0.0))
+	corruption = Corruption.from_save(data, d.get("corruption", {}))
 	location = str(d.get("location", ""))
+	Corruption.on_dock(self, location)
 	system = str(d.get("system", "")) if location == "" else loc_system(location)
 	if not data.get("systems", {}).has(system):
 		system = loc_system(location if location != "" else str(data.start.location))

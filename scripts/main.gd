@@ -406,6 +406,8 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		GameState.save_game()
 	elif kind == "met":
 		EventBus.toast.emit("New contact: %s. Open the Com-Phone [%s]." % [GameState.game.contact(p.contact).name, Settings.key_label("phone")], true)
+	elif kind == "notice":
+		EventBus.toast.emit(p.text, p.good)
 	elif kind == "busted":
 		EventBus.toast.emit("BUSTED: lost %d units, fined %d cr." % [p.lost, p.fine], false)
 
