@@ -1,0 +1,3 @@
+- **NPC schedules:** Rusk, Okka and Sen now live a daily routine (home, work, plaza) and walk between those places around buildings; day starts at 06:00. Deals still work wherever they stand.
+- **Day/night tint:** the Mireth surface darkens towards dusk and night and warms at dawn; the HUD shows the clock while on foot.
+- **Idle chatter:** people near you sometimes say a short line in a speech bubble, depending on where they are.

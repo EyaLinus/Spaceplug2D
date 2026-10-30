@@ -8,7 +8,8 @@
     "cargo": {}
   },
   "time": {
-    "day_seconds": 180
+    "day_seconds": 180,
+    "day_start_hour": 6
   },
   "heat": {
     "max": 100,

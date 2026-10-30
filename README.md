@@ -28,6 +28,8 @@ shows "Windows protected your PC" → *More info* → *Run anyway*).
 | E / Enter | Use door, talk to a person, take off at the launch pad |
 | Esc | Close the open panel / pause menu |
 
+People on Mireth follow a daily routine (home, work, plaza) and the surface darkens at night; find your contact where their schedule puts them.
+
 ## Core loop (prototype v0.1)
 1. **Buy** precursors plus additives. Drug ladder (tier: raw → where):
    T1 Weed (Cannabis Buds, Mireth/Cinder) · T2 Cocaine (Coca Leaf, Cinder) · T3 Meth (Pseudoephedrine, Cinder) ·

@@ -7,12 +7,28 @@ var color := Color("#8fb3ff")
 var speed := 55.0
 var path: Array = []  ## Vector2 waypoints still to walk
 var pick_next: Callable  ## returns a new path when this one is done (walkers only)
+var chatter_in := 8.0  ## seconds until the surface lets this person say something again
+var last_line := -1
+var bubble := ""  ## idle chatter currently shown above the head
+var _bubble_t := 0.0
 var _step := 0.0
 var _t := 0.0
 
 
+## Shows a speech bubble for a few seconds.
+func say(text: String, seconds: float = 3.6) -> void:
+	bubble = text
+	_bubble_t = seconds
+	z_index = 2  # above the other people while talking
+
+
 func _process(delta: float) -> void:
 	_t += delta
+	if _bubble_t > 0.0:
+		_bubble_t -= delta
+		if _bubble_t <= 0.0:
+			bubble = ""
+			z_index = 0
 	if path.is_empty() and pick_next.is_valid():
 		path = pick_next.call(position)
 	if not path.is_empty():
@@ -42,3 +58,11 @@ func _draw() -> void:
 		var w := font.get_string_size(display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 		draw_string(font, Vector2(-w / 2.0 + 1, -21), display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0, 0, 0, 0.6))
 		draw_string(font, Vector2(-w / 2.0, -22), display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, color.lightened(0.4))
+	if bubble != "":
+		var font := ThemeDB.fallback_font
+		var tw := font.get_string_size(bubble, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+		var box := Rect2(-tw / 2.0 - 7, -58, tw + 14, 20)
+		draw_rect(box, Color(1, 1, 1, 0.92))
+		draw_rect(box, Color(0.1, 0.1, 0.15, 0.8), false, 1.5)
+		draw_colored_polygon(PackedVector2Array([Vector2(-4, -38), Vector2(4, -38), Vector2(0, -32)]), Color(1, 1, 1, 0.92))
+		draw_string(font, Vector2(-tw / 2.0, -43), bubble, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#1a1a22"))

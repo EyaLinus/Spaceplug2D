@@ -5,6 +5,7 @@ extends SceneTree
 const Game = preload("res://scripts/core/game.gd")
 const Data = preload("res://scripts/core/data.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
+const Schedule = preload("res://scripts/core/schedule.gd")
 
 var data: Dictionary
 var failures := 0
@@ -16,6 +17,8 @@ func _init() -> void:
 	for t in [
 		"test_data_references",
 		"test_surface_layouts",
+		"test_schedule_rules",
+		"test_surface_schedules",
 		"test_mixing_rules",
 		"test_buy_and_cargo_limit",
 		"test_lab_batch",
@@ -113,6 +116,89 @@ func test_surface_layouts() -> void:
 		for c in data.contacts:
 			if c.location == loc:
 				check(s.npcs.any(func(n): return n.get("contact", "") == c.id), "%s contact %s stands on the surface" % [loc, c.id])
+
+
+func test_schedule_rules() -> void:
+	check(is_equal_approx(Schedule.hour_of(0.0, 180.0), 6.0), "day starts at 06:00")
+	check(is_equal_approx(Schedule.hour_of(90.0, 180.0), 18.0), "half a day later is 18:00")
+	check(Schedule.hour_of(179.9, 180.0) < 6.0 and Schedule.hour_of(179.9, 180.0) > 5.9, "end of the day wraps to just before 06:00")
+	check(Schedule.hour_of(135.0, 180.0) < 1.0, "three quarters of the day is around midnight (wrapped)")
+	check(Schedule.clock_text(7.5) == "07:30" and Schedule.clock_text(0.0) == "00:00", "clock text")
+	var sched := [{"from": 6, "at": "home"}, {"from": 8, "at": "work"}, {"from": 17, "at": "plaza"}, {"from": 21, "at": "home"}]
+	check(Schedule.place_at(sched, 6.0) == "home" and Schedule.place_at(sched, 7.99) == "home", "morning at home")
+	check(Schedule.place_at(sched, 8.0) == "work" and Schedule.place_at(sched, 16.9) == "work", "daytime at work")
+	check(Schedule.place_at(sched, 17.0) == "plaza", "evening at the plaza")
+	check(Schedule.place_at(sched, 23.0) == "home" and Schedule.place_at(sched, 2.0) == "home", "night at home, wrapping past midnight")
+	check(Schedule.place_at([], 5.0) == "", "empty schedule has no place")
+	var places := {"home": 1, "work": 1, "plaza": 1}
+	check(Schedule.validate_schedule(sched, places) == "", "good schedule validates")
+	check(Schedule.validate_schedule([{"from": 8, "at": "home"}, {"from": 6, "at": "work"}], places) != "", "unsorted schedule rejected")
+	check(Schedule.validate_schedule([{"from": 8, "at": "moon"}], places) != "", "unknown place rejected")
+	check(Schedule.validate_schedule([{"from": 25, "at": "home"}], places) != "", "hour out of range rejected")
+	var keys := [[0, "#000000"], [12, "#ffffff"]]
+	check(Schedule.tint_at(keys, 12.0).is_equal_approx(Color.WHITE), "tint hits its key")
+	check(is_equal_approx(Schedule.brightness(Schedule.tint_at(keys, 6.0)), 0.5), "tint interpolates between keys")
+	check(is_equal_approx(Schedule.brightness(Schedule.tint_at(keys, 18.0)), 0.5), "tint wraps back to the first key after the last")
+	check(Schedule.tint_at([], 3.0) == Color.WHITE, "no keys = no tint")
+	# chatter
+	check(Schedule.pick_line(0, 5, -1) == -1 and Schedule.pick_line(1, 5, 0) == 0, "pick_line edge cases")
+	var repeats := false
+	for roll in 200:
+		for last in 3:
+			var i := Schedule.pick_line(3, roll, last)
+			if i == last or i < 0 or i > 2:
+				repeats = true
+	check(not repeats, "pick_line never repeats the last line and stays in range")
+	var pool := Schedule.chatter_pool({"home": ["a"], "any": ["b"]}, "home")
+	check(pool == ["a", "b"] and Schedule.chatter_pool({"any": ["b"]}, "work") == ["b"], "chatter pool = place lines + any lines")
+	# path finding on a tiny map: a wall with one gap
+	var cfg := {"size": [8, 5], "buildings": [{"rect": [3, 0, 1, 4]}]}
+	var nav := Schedule.make_nav(cfg)
+	var path := Schedule.find_path(nav, Vector2(1.5, 1.5), Vector2(6.5, 1.5))
+	check(not path.is_empty() and path[path.size() - 1] == Vector2(6.5, 1.5), "path ends exactly on the target")
+	var through_wall := path.any(func(p): return Rect2(3, 0, 1, 4).has_point(p))
+	check(not through_wall, "path goes around the wall through the gap")
+	check(path.any(func(p): return p.y > 4.0), "path actually uses the gap in row 4")
+	check(Schedule.find_path(nav, Vector2(1.5, 1.5), Vector2(3.5, 1.5)).is_empty(), "blocked target gives no path")
+	check(Schedule.find_path(nav, Vector2(1.5, 1.5), Vector2(1.5, 1.5)).size() == 1, "already there = just the target")
+
+
+func test_surface_schedules() -> void:
+	check(float(data.time.get("day_start_hour", -1)) >= 0.0, "content defines the day start hour")
+	for loc in data.surfaces:
+		var s: Dictionary = data.surfaces[loc]
+		var nav := Schedule.make_nav(s)
+		check(s.has("tint") and not s.tint.is_empty(), "%s has day/night tint keys" % loc)
+		var last_h := -1.0
+		for k in s.get("tint", []):
+			check(float(k[0]) > last_h and float(k[0]) < 24.0 and Color(k[1]) != Color(), "%s tint key %s valid" % [loc, k])
+			last_h = float(k[0])
+		var dark := 1.0
+		var bright := 0.0
+		for h in 48:
+			var b := Schedule.brightness(Schedule.tint_at(s.tint, h / 2.0))
+			dark = minf(dark, b)
+			bright = maxf(bright, b)
+		check(bright > 0.95 and dark < 0.6 and dark > 0.2, "%s: day is bright (%.2f), night is dark but readable (%.2f)" % [loc, bright, dark])
+		check(s.get("walker_chatter", []).size() > 0 or int(s.get("walkers", 0)) == 0, "%s walkers have chatter" % loc)
+		for n in s.npcs:
+			if not n.has("schedule"):
+				continue
+			check(Schedule.validate_schedule(n.schedule, n.places) == "", "%s/%s schedule valid: %s" % [loc, n.id, Schedule.validate_schedule(n.schedule, n.places)])
+			var seen: Dictionary = {}
+			for h in 96:
+				seen[Schedule.place_at(n.schedule, h / 4.0)] = true
+			check(seen.size() >= 3 and seen.has("home") and seen.has("work"), "%s/%s visits home, work and one more place over a day" % [loc, n.id])
+			for place in n.places:
+				var p := Vector2(n.places[place][0], n.places[place][1])
+				check(not nav.is_point_solid(Vector2i(int(floor(p.x)), int(floor(p.y)))), "%s/%s %s spot is free ground" % [loc, n.id, place])
+				for other in n.places:
+					var path := Schedule.find_path(nav, p, Vector2(n.places[other][0], n.places[other][1]))
+					check(not path.is_empty(), "%s/%s can walk %s -> %s" % [loc, n.id, place, other])
+			for place in seen:
+				check(Schedule.chatter_pool(n.get("chatter", {}), place).size() >= 2, "%s/%s has chatter at %s" % [loc, n.id, place])
+				for line in Schedule.chatter_pool(n.get("chatter", {}), place):
+					check(String(line).length() <= 34, "%s/%s chatter line fits a bubble: %s" % [loc, n.id, line])
 
 
 func test_mixing_rules() -> void:

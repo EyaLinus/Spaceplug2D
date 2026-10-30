@@ -7,6 +7,9 @@ signal interacted(action: String, payload: Dictionary)
 
 const WalkerScript = preload("res://scripts/planet/walker.gd")
 const NpcScript = preload("res://scripts/planet/npc.gd")
+const Schedule = preload("res://scripts/core/schedule.gd")
+
+const CHATTER_RANGE := 280.0  ## people only talk when the player is this close (px)
 
 const INPUT := {
 	"move_up": [KEY_W, KEY_UP],
@@ -28,6 +31,11 @@ var npcs: Dictionary = {}  ## npc id -> node
 var walkers: Array = []
 var _overlay: Node2D  ## redrawn every frame (focus ring); the ground below is drawn once
 var _rng := RandomNumberGenerator.new()
+var hour := 6.0  ## time of day 0..24, pushed in by main via set_clock()
+var start_hour := 6.0
+var nav: AStarGrid2D
+var _tint: CanvasModulate
+var _npc_place: Dictionary = {}  ## npc id -> place it is heading to / standing at
 
 
 static func register_input() -> void:
@@ -54,11 +62,17 @@ func _ready() -> void:
 	_rng.seed = hash(loc_id)
 	_build_collision()
 	_build_interactables()
+	nav = Schedule.make_nav(cfg)
 	for n in cfg.get("npcs", []):
 		var npc := NpcScript.new()
 		npc.display_name = n.name
 		npc.color = Color(n.get("color", "#8fb3ff"))
 		npc.position = _px(n.pos)
+		npc.chatter_in = _rng.randf_range(2.0, 9.0)
+		if n.has("schedule"):
+			var place := Schedule.place_at(n.schedule, hour)
+			_npc_place[n.id] = place
+			npc.position = _px(n.places[place])
 		add_child(npc)
 		npcs[n.id] = npc
 	for i in int(cfg.get("walkers", 0)):
@@ -67,6 +81,7 @@ func _ready() -> void:
 		w.speed = _rng.randf_range(40.0, 70.0)
 		w.position = _random_road_point()
 		w.pick_next = _walker_path
+		w.chatter_in = _rng.randf_range(3.0, 12.0)
 		add_child(w)
 		walkers.append(w)
 	player = WalkerScript.new()
@@ -82,6 +97,9 @@ func _ready() -> void:
 	camera.zoom = Vector2(1.5, 1.5)  # closer, RPG-like framing; the map is bigger than one screen on purpose
 	player.add_child(camera)
 	camera.make_current()
+	_tint = CanvasModulate.new()
+	add_child(_tint)
+	_apply_tint()
 	_overlay = Node2D.new()
 	_overlay.z_index = 1
 	_overlay.draw.connect(_draw_overlay)
@@ -135,7 +153,7 @@ func _build_interactables() -> void:
 			"action": b.action, "payload": {"id": b.id, "title": b.name}})
 	for n in cfg.get("npcs", []):
 		var label: String = n.get("label", "Talk to %s" % n.name)
-		interactables.append({"pos": _px(n.pos), "stand": _px(n.pos) + Vector2(0, 26), "range": 44.0, "label": label, "action": n.action,
+		interactables.append({"pos": _px(n.pos), "stand": _px(n.pos) + Vector2(0, 26), "range": 44.0, "label": label, "action": n.action, "npc": n.id,
 			"payload": {"id": n.id, "title": n.name, "contact": n.get("contact", "")}})
 	if cfg.has("pad"):
 		interactables.append({"pos": _px(cfg.pad.pos), "stand": _px(cfg.pad.pos) + Vector2(0, tile * 1.4 + 18),
@@ -163,8 +181,82 @@ func _walker_path(from: Vector2) -> Array:
 
 # ---------------------------------------------------------------- per frame
 
-func _physics_process(_delta: float) -> void:
+## Feeds the day clock in (called by main every frame). Sends people to the place their schedule says and updates the tint.
+func set_clock(day_time: float, day_seconds: float) -> void:
+	hour = Schedule.hour_of(day_time, day_seconds, start_hour)
+	_apply_tint()
+	for n in cfg.get("npcs", []):
+		if not n.has("schedule") or not npcs.has(n.id):
+			continue
+		var place := Schedule.place_at(n.schedule, hour)
+		if place == _npc_place.get(n.id, ""):
+			continue
+		_npc_place[n.id] = place
+		var npc: Node2D = npcs[n.id]
+		var route := Schedule.find_path(nav, npc.position / tile, Vector2(n.places[place][0], n.places[place][1]))
+		var pts: Array = []
+		for p in route:
+			pts.append((p as Vector2) * tile)
+		npc.path = pts
+
+
+func _apply_tint() -> void:
+	if _tint != null:
+		_tint.color = Schedule.tint_at(cfg.get("tint", []), hour)
+
+
+## Where an NPC is meant to be right now ("" without a schedule).
+func npc_place(id: String) -> String:
+	return _npc_place.get(id, "")
+
+
+## Puts every scheduled NPC on the spot of their current place (tests, screenshots, loading a save).
+func snap_npcs() -> void:
+	for n in cfg.get("npcs", []):
+		if n.has("schedule") and npcs.has(n.id):
+			npcs[n.id].path = []
+			npcs[n.id].position = _px(n.places[Schedule.place_at(n.schedule, hour)])
+
+
+func _update_chatter(delta: float) -> void:
+	var people: Array = []
+	for n in cfg.get("npcs", []):
+		if npcs.has(n.id):
+			people.append([npcs[n.id], n])
+	for w in walkers:
+		people.append([w, {}])
+	for e in people:
+		var npc: Node2D = e[0]
+		npc.chatter_in -= delta
+		if npc.chatter_in > 0.0:
+			continue
+		npc.chatter_in = _rng.randf_range(7.0, 16.0)
+		if player.position.distance_to(npc.position) <= CHATTER_RANGE:
+			talk(npc, e[1])
+
+
+## Gives a person one idle line from their pool (place-specific for scheduled NPCs); returns the text, "" if none.
+func talk(npc: Node2D, n: Dictionary) -> String:
+	var pool: Array = cfg.get("walker_chatter", []) if n.is_empty() else Schedule.chatter_pool(n.get("chatter", {}), _npc_place.get(n.id, ""))
+	var i := Schedule.pick_line(pool.size(), _rng.randi(), npc.last_line)
+	if i < 0:
+		return ""
+	npc.last_line = i
+	npc.say(String(pool[i]))
+	return String(pool[i])
+
+
+func _refresh_npc_interactables() -> void:
+	for it in interactables:
+		if it.has("npc") and npcs.has(it.npc):
+			it.pos = npcs[it.npc].position
+			it.stand = it.pos + Vector2(0, 26)
+
+
+func _physics_process(delta: float) -> void:
 	focus = {}
+	_refresh_npc_interactables()
+	_update_chatter(delta)
 	if player.frozen:
 		_overlay.queue_redraw()
 		return
@@ -192,6 +284,7 @@ func interact() -> bool:
 
 ## Moves the player next to an interactable (by payload id); used on landing and by tests.
 func place_player_at(id: String) -> void:
+	_refresh_npc_interactables()
 	for it in interactables:
 		if it.payload.id == id:
 			player.position = it.stand
