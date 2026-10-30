@@ -57,7 +57,8 @@ func _ready() -> void:
 	visible = false
 
 
-## filter: {} for the full docked menu, or {"tabs": ["Market"], "title": "Night Market", "contact": "okka"}.
+## filter: {} for the full docked menu, or {"tabs": ["Market"], "title": "Night Market", "contact": "okka"};
+## "fence_only": true limits Deals to the fence.
 func open(filter: Dictionary = {}) -> void:
 	_filter = filter
 	_leave_btn.text = "Undock [E]" if filter.is_empty() else "Leave [E]"
@@ -264,8 +265,9 @@ func _build_deals(g) -> Control:
 		v.add_child(UI.label("You carry no product. Cook some at the Mireth lab.", 16, UI.MUTED))
 	var buyers: Array = []
 	var only: String = _filter.get("contact", "")
+	var fence_only: bool = _filter.get("fence_only", false)
 	for c in g.contacts_at():
-		if only == "" or c.id == only:
+		if not fence_only and (only == "" or c.id == only):
 			buyers.append(c)
 	if g.loc_data().get("fence", false) and only == "":
 		buyers.append({"id": "", "name": "The Fence", "likes": "", "max_units": 999})

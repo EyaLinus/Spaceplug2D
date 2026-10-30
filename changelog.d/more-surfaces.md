@@ -1,0 +1,1 @@
+- **Walk the whole sector:** Cinder Belt (mining camp with the Ore Depot and Foreman Dax) and the Drift Bazaar (hull deck with the Hull Market, the fence in the Back Room, Lira and Old Grub) are now walkable like Mireth.

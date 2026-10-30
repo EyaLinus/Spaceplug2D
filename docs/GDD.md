@@ -30,7 +30,8 @@ Two layers: space flight between locations, and planet surfaces you walk on. Eac
 Mireth – Cannery District: spaceport hangar + launch pad + mechanic Rusk (ship upgrades), Night Market (buy raws and
 additives), Old Cannery (your rented rig: cook + stash), Consortium office (debt, fixer), housing blocks, a plaza where
 contacts Okka and Sen wait, ambient walkers. The economy is unchanged underneath: buildings and people only open the
-matching part of the same core actions. Later: police on foot, estates with placeable production buildings, workers
+matching part of the same core actions. Cinder Belt (mining camp: Ore Depot, Foreman Dax) and the Drift
+Bazaar (hull deck: Hull Market, the fence in the Back Room, Lira and Old Grub) are walkable too. Later: police on foot, estates with placeable production buildings, workers
 (ROADMAP P2–P5).
 
 ## Planned systems (see ROADMAP)

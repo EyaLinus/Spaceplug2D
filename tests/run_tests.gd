@@ -72,7 +72,9 @@ func test_data_references() -> void:
 
 func test_surface_layouts() -> void:
 	check(data.surfaces.has(data.start.location), "start location has a walkable surface")
-	var actions := ["market", "lab", "shipyard", "office", "deal", "takeoff"]
+	var actions := ["market", "lab", "shipyard", "office", "deal", "fence", "takeoff"]
+	for loc in data.locations:
+		check(data.surfaces.has(loc) or not data.locations[loc].get("dockable", true), "dockable %s has a surface" % loc)
 	for loc in data.surfaces:
 		var s: Dictionary = data.surfaces[loc]
 		check(data.locations.has(loc), "surface %s is a location" % loc)
@@ -109,6 +111,8 @@ func test_surface_layouts() -> void:
 		check(not ld.get("lab", false) or "lab" in reachable, "%s lab reachable" % loc)
 		check(not ld.get("shipyard", false) or "shipyard" in reachable, "%s shipyard reachable" % loc)
 		check(not ld.get("office", false) or "office" in reachable, "%s office reachable" % loc)
+		check(not ld.get("fence", false) or "fence" in reachable, "%s fence reachable" % loc)
+		check(ld.get("fence", false) or not "fence" in reachable, "%s has no fence door without a fence" % loc)
 		check(s.has("pad"), "%s has a launch pad" % loc)
 		for c in data.contacts:
 			if c.location == loc:

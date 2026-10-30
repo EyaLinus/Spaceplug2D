@@ -330,6 +330,21 @@ func _draw_prop(kind: String, p: Vector2) -> void:
 			draw_rect(Rect2(p - Vector2(9, 9), Vector2(18, 18)), Color("#8a6a3e"))
 			draw_rect(Rect2(p - Vector2(9, 9), Vector2(18, 18)), Color("#4e3a1e"), false, 2.0)
 			draw_line(p - Vector2(9, 9), p + Vector2(9, 9), Color("#4e3a1e"), 1.5)
+		"rock":
+			draw_circle(p + Vector2(3, 6), 13.0, Color(0, 0, 0, 0.25))
+			draw_colored_polygon(PackedVector2Array([p + Vector2(-13, 6), p + Vector2(-8, -8), p + Vector2(4, -11),
+				p + Vector2(13, -2), p + Vector2(10, 8)]), Color("#6b5446"))
+			draw_line(p + Vector2(-8, -8), p + Vector2(0, 0), Color("#4e3c32"), 2.0)
+		"barrel":
+			draw_rect(Rect2(p - Vector2(7, 10), Vector2(14, 20)), Color("#8a3a2e"))
+			draw_rect(Rect2(p - Vector2(7, 4), Vector2(14, 2)), Color("#3a2a24"))
+			draw_rect(Rect2(p + Vector2(-7, 3), Vector2(14, 2)), Color("#3a2a24"))
+			draw_circle(p - Vector2(0, 10), 7.0, Color("#a04a3a"))
+		"vent":
+			draw_rect(Rect2(p - Vector2(14, 14), Vector2(28, 28)), Color("#1e1b26"))
+			for i in 5:
+				draw_line(p + Vector2(-12, -10 + i * 5), p + Vector2(12, -10 + i * 5), Color("#4a4458"), 2.0)
+			draw_rect(Rect2(p - Vector2(14, 14), Vector2(28, 28)), Color("#5a5468"), false, 1.5)
 		"stall":
 			draw_rect(Rect2(p - Vector2(22, 8), Vector2(44, 18)), Color("#6b4a2e"))
 			for i in 4:

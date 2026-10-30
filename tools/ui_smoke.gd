@@ -134,11 +134,28 @@ func _run() -> void:
 		_assert(m.world.nearby == loc, "in dock range of %s" % loc)
 		m.dock(loc)
 		await frames(2)
-		for i in m.station.tabs.get_tab_count():
-			m.station.tabs.current_tab = i
+		var ls = m.surface
+		_assert(ls != null and ls.loc_id == loc, "landed on %s" % loc)
+		var opened: Array = []
+		for it in ls.interactables:
+			if it.action == "takeoff":
+				continue
+			ls.place_player_at(it.payload.id)
+			await physics_frame
+			await physics_frame
+			_assert(ls.interact(), "interact with %s/%s" % [loc, it.payload.id])
+			await frames(2)
+			_assert(m.station.visible and m.station.tab_names().size() == 1, "%s/%s opens one panel" % [loc, it.payload.id])
+			if it.action == "fence":
+				_assert(m.station._filter.get("fence_only", false), "fence door opens fence-only deals")
+			opened.append("%s:%s" % [it.payload.id, m.station.tab_names()[0]])
+			m.station.close_requested.emit()
 			await frames(1)
-		step("docked %s tabs %s" % [loc, m.station.tab_names()])
-		m.undock()
+		step("walked %s %s" % [loc, opened])
+		ls.place_player_at("pad")
+		await physics_frame
+		await physics_frame
+		_assert(ls.interact() and m.surface == null and m.world.active, "took off from %s" % loc)
 		await frames(1)
 
 	# patrol bust: park a patrol on top of the ship while carrying product
