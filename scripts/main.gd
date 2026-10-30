@@ -109,6 +109,8 @@ func continue_game() -> void:
 func _process(_delta: float) -> void:
 	if surface != null:
 		surface.player.frozen = GameState.paused or station.visible or end_screen.visible
+		if GameState.game != null:
+			surface.set_clock(GameState.game.day_time, GameState.game.day_seconds())
 
 
 func _enter_game() -> void:
@@ -151,6 +153,8 @@ func _land(loc: String) -> void:
 	_leave_surface()
 	surface = SurfaceScript.new()
 	surface.setup(loc, GameState.data.surfaces[loc])
+	surface.start_hour = float(GameState.data.time.get("day_start_hour", 6))
+	surface.set_clock(GameState.game.day_time, GameState.game.day_seconds())  # people start where their schedule says
 	surface.interacted.connect(_on_surface_action)
 	add_child(surface)
 	move_child(surface, world.get_index() + 1)

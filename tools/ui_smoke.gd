@@ -58,6 +58,47 @@ func _run() -> void:
 	_assert(sf.player.position.y >= hangar.end.y - 2.0, "building walls block the player (y=%.0f, wall=%.0f)" % [sf.player.position.y, hangar.end.y])
 	step("walk and collide")
 
+	# living planet: schedules, day/night tint, chatter bubbles
+	var okka_cfg: Dictionary = sf.cfg.npcs.filter(func(n): return n.id == "okka")[0]
+	var spot := func(place: String) -> Vector2: return Vector2(okka_cfg.places[place][0], okka_cfg.places[place][1]) * sf.tile
+	var ds: float = g.day_seconds()
+	_assert(sf.npc_place("okka") == "home" and sf.npcs.okka.position.distance_to(spot.call("home")) < 2.0, "06:00: Okka starts at home")
+	_assert(m.hud._day.text.contains("06:"), "HUD shows the clock on foot (%s)" % m.hud._day.text)
+	var dawn_tint: Color = sf._tint.color
+	g.day_time = ds * (13.0 - 6.0) / 24.0  # 13:00
+	await frames(2)
+	_assert(sf.npc_place("okka") == "work" and not sf.npcs.okka.path.is_empty(), "13:00: Okka heads to work")
+	for i in 600:
+		sf.npcs.okka._process(0.1)
+	_assert(sf.npcs.okka.position.distance_to(spot.call("work")) < 4.0, "Okka walks to his work spot (%.0f px off)" % sf.npcs.okka.position.distance_to(spot.call("work")))
+	var noon_tint: Color = sf._tint.color
+	g.day_time = ds * (18.0 - 6.0) / 24.0  # 18:00
+	await frames(2)
+	_assert(sf.npc_place("okka") == "plaza", "18:00: Okka is at the plaza")
+	g.day_time = ds * (24.0 - 6.0 + 1.0) / 24.0  # 01:00
+	await frames(2)
+	var night_tint: Color = sf._tint.color
+	_assert(sf.npc_place("okka") == "home" and sf.npc_place("sen") == "home", "01:00: everyone is at home")
+	_assert(noon_tint.get_luminance() > night_tint.get_luminance() + 0.3 and noon_tint.get_luminance() > dawn_tint.get_luminance(), "tint: noon %.2f brighter than dawn %.2f and night %.2f" % [noon_tint.get_luminance(), dawn_tint.get_luminance(), night_tint.get_luminance()])
+	step("npc schedules and tint")
+	sf.snap_npcs()
+	sf.player.position = sf.npcs.okka.position + Vector2(60, 0)
+	var line: String = sf.talk(sf.npcs.okka, okka_cfg)
+	_assert(line != "" and sf.npcs.okka.bubble == line, "idle chatter bubble appears (%s)" % line)
+	var line2: String = sf.talk(sf.npcs.okka, okka_cfg)
+	_assert(line2 != line, "chatter does not repeat the same line twice")
+	var timed := false
+	sf.npcs.okka.chatter_in = 0.0
+	sf.npcs.okka.bubble = ""
+	await physics_frame
+	await physics_frame
+	timed = sf.npcs.okka.bubble != ""
+	_assert(timed, "nearby people start chatting on their own")
+	step("chatter")
+	g.day_time = 0.0
+	await frames(2)
+	sf.snap_npcs()
+
 	# every door and person opens exactly its own panel
 	var expect := {"spaceport": "Shipyard", "market": "Market", "cannery": "Lab", "office": "Office",
 		"rusk": "Shipyard", "okka": "Deals", "sen": "Deals"}

@@ -1,5 +1,27 @@
 # Progress log
 
+## Unreleased – P2: NPC schedules, day/night tint, idle chatter (Mireth)
+- New headless core `scripts/core/schedule.gd`: hour of day (day starts 06:00, `time.day_start_hour`), schedule lookup
+  (`from`-hour entries, wraps past midnight), tint keyframe interpolation, chatter line picking (no immediate repeats),
+  and A* path finding on the tile grid around buildings, ship, fountain, trees, stalls and crates.
+- Rusk, Okka and Sen have `places` (home/work/plaza), a `schedule` and `chatter` in `data/surfaces.json`; they walk
+  between places as the clock moves. Their interaction point follows them, so deals work wherever they stand.
+- The surface darkens at night via `CanvasModulate` (keys in `tint`); HUD shows "Day N · HH:MM" on foot. Bubbles appear
+  only within ~280 px of the player; ambient walkers use `walker_chatter`.
+
+**Verified:** 282 unit checks pass (was 166; new: schedule rules, path finding, data validation of every schedule,
+place, route between places, tint range and chatter length), UI smoke passes with new steps (schedule switches at
+13:00/18:00/01:00, NPC walks to work, tint brightness noon > dawn > night, chatter bubble shows and does not repeat),
+no script errors. Screenshots under Xvfb at dawn/noon/dusk/night look right (night is dark but readable, HUD not tinted).
+
+**Not verified / known gaps**
+- Not played by a human: day length (180 s, so one in-game hour is 7.5 s) means NPCs walk quite often; timing and
+  tint strength are eyeballed.
+- Buildings are not closed at night; doors still work and nobody enters buildings (interiors are a separate P2 item).
+- Ambient walkers have no schedule and do not avoid people or each other; NPCs ignore the player while walking.
+- Lamps do not glow brighter at night (CanvasModulate dims everything on the surface canvas).
+- Godot was fetched manually for this run; CI itself has not run on this branch yet when this was written.
+
 ## v0.1.2 (2026-10-30) – planet vision P1: landing & walking
 Plan for the whole vision (planets as instanced on-foot levels, police, estates, production buildings, workers) is in
 ROADMAP.md as milestones P1–P6. P1 is done in this step:

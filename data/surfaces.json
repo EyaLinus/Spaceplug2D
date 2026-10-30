@@ -35,11 +35,22 @@
       {"id": "house_d", "name": "Housing block", "rect": [27, 29, 8, 4], "wall": "#6a6f7a", "roof": "#6b5a2e"}
     ],
     "npcs": [
-      {"id": "rusk", "name": "Rusk (mechanic)", "pos": [12.5, 11.5], "action": "shipyard", "color": "#ff9a4d", "label": "Rusk – ship upgrades"},
-      {"id": "okka", "name": "Okka the Welder", "pos": [20.5, 13.5], "action": "deal", "contact": "okka", "color": "#ffd166"},
-      {"id": "sen", "name": "Sen Varo", "pos": [26.5, 19.5], "action": "deal", "contact": "sen", "color": "#ff5fd2"}
+      {"id": "rusk", "name": "Rusk (mechanic)", "pos": [12.5, 11.5], "action": "shipyard", "color": "#ff9a4d", "label": "Rusk – ship upgrades",
+       "places": {"home": [18.5, 23.5], "work": [12.5, 11.5], "plaza": [20.5, 19.5]},
+       "schedule": [{"from": 6, "at": "home"}, {"from": 7, "at": "work"}, {"from": 16, "at": "plaza"}, {"from": 20, "at": "home"}],
+       "chatter": {"home": ["Zzz... one more hour.", "Coffee first."], "work": ["Hull plating won't weld itself.", "Check your thrusters, pilot!", "Bring parts, get speed."], "plaza": ["Off the clock. Finally.", "Anyone seen my wrench?"], "any": ["Keep her flying."]}},
+      {"id": "okka", "name": "Okka the Welder", "pos": [20.5, 13.5], "action": "deal", "contact": "okka", "color": "#ffd166",
+       "places": {"home": [29.5, 22.5], "work": [31.5, 13.5], "plaza": [20.5, 13.5]},
+       "schedule": [{"from": 6, "at": "home"}, {"from": 8, "at": "work"}, {"from": 17, "at": "plaza"}, {"from": 21, "at": "home"}],
+       "chatter": {"home": ["Five more minutes...", "Is it morning already?"], "work": ["Sparks fly, credits follow.", "Need something glowing?"], "plaza": ["Evening crowd's thin tonight.", "Shh. Walls have ears."], "any": ["Business is business."]}},
+      {"id": "sen", "name": "Sen Varo", "pos": [26.5, 19.5], "action": "deal", "contact": "sen", "color": "#ff5fd2",
+       "places": {"home": [36.5, 30.5], "work": [38.5, 19.5], "plaza": [26.5, 19.5]},
+       "schedule": [{"from": 7, "at": "home"}, {"from": 10, "at": "work"}, {"from": 18, "at": "plaza"}, {"from": 23, "at": "home"}],
+       "chatter": {"home": ["Night shift's over.", "Leave a message."], "work": ["The Consortium sees everything.", "Quiet. Always quiet."], "plaza": ["Looking for something special?", "Night is when I do business."], "any": ["Don't stare."]}}
     ],
     "walkers": 6,
+    "walker_chatter": ["Long shift...", "Rain by midnight.", "Mind the patrols.", "Got any spare creds?", "Market's busy today.", "Hm, nice night."],
+    "tint": [[0, "#3b4a85"], [5, "#3b4a85"], [6.5, "#e0a98a"], [8, "#ffffff"], [17, "#ffffff"], [19, "#e59a72"], [21, "#3b4a85"]],
     "props": [
       ["tree", 1, 13], ["tree", 3, 12.5], ["tree", 13, 2], ["tree", 20.5, 2], ["tree", 47, 12], ["tree", 45, 11],
       ["tree", 2, 31], ["tree", 18, 21], ["tree", 48, 31], ["tree", 33, 21], ["tree", 21, 31], ["tree", 42, 32],

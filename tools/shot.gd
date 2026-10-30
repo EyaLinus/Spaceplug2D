@@ -35,6 +35,19 @@ func _run() -> void:
 	for i in 20:
 		await physics_frame
 	await _save(out, "surface_pad")
+	var ds: float = g.day_seconds()
+	for hh in [[7.0, "surface_dawn"], [13.0, "surface_noon"], [19.0, "surface_dusk"], [23.5, "surface_night"]]:
+		g.day_time = ds * (float(hh[0]) - 6.0) / 24.0
+		await physics_frame
+		await physics_frame
+		sf.snap_npcs()
+		sf.place_player_at("okka")
+		sf.talk(sf.npcs.okka, sf.cfg.npcs[1])
+		await _save(out, hh[1])
+	g.day_time = 0.0
+	await physics_frame
+	await physics_frame
+	sf.snap_npcs()
 	sf.place_player_at("okka")
 	for i in 40:
 		await physics_frame

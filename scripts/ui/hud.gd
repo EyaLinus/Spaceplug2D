@@ -3,6 +3,7 @@ extends Control
 ## On a planet surface the prompt, minimap and controls help switch to the on-foot versions.
 
 const UI = preload("res://scripts/ui/ui_theme.gd")
+const Schedule = preload("res://scripts/core/schedule.gd")
 
 var world: Node2D
 var surface: Node2D  ## set by main while on foot, null in space
@@ -122,7 +123,7 @@ func _process(_delta: float) -> void:
 		return
 	_credits.text = "%d cr" % g.credits
 	_debt.text = "Debt %d cr · due day %d" % [g.debt, g.debt_due_day] if g.debt > 0 else "Debt cleared"
-	_day.text = "Day %d" % g.day
+	_day.text = "Day %d" % g.day if surface == null else "Day %d · %s" % [g.day, Schedule.clock_text(surface.hour)]
 	_day_bar.value = g.day_time / g.day_seconds() * 100.0
 	_heat.value = g.heat
 	_heat_label.text = "Heat %d · %d patrol%s" % [int(g.heat), g.patrol_count(), "" if g.patrol_count() == 1 else "s"]
