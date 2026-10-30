@@ -178,6 +178,8 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 	match kind:
 		"lab_done":
 			show_toast("Lab: %d × %s ready in your stash." % [p.qty, g.item_name(p.product)])
+		"order_delivered":
+			show_toast("Delivery: %d × %s arrived (%s)." % [p.qty, g.item_name(p.item), "stash" if p.dest == "stash" else g.data.estates[p.dest].name])
 		"new_day":
 			show_toast("Day %d begins. %d days until the Consortium collects." % [p.day, maxi(0, g.debt_due_day - p.day + 1)] if g.debt > 0 else "Day %d begins." % p.day)
 		"rumour":
