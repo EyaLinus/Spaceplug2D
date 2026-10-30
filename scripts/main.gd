@@ -201,6 +201,8 @@ func _land(loc: String, announce := true) -> void:
 
 
 func _leave_surface() -> void:
+	if GameState.game != null:
+		GameState.game.inside_estate = ""
 	if surface == null:
 		return
 	station.close()
@@ -230,7 +232,7 @@ func _on_surface_action(action: String, p: Dictionary) -> void:
 			return
 		"station":
 			var bd: Dictionary = surface.cfg.buildings.filter(func(b): return b.id == p.id)[0]
-			station.open({"tabs": ["Station"], "title": bd.name, "estate": surface.cfg.estate, "index": bd.index})
+			station.open({"tabs": ["Lab", "Station"], "title": bd.name, "estate": surface.cfg.estate, "index": bd.index})
 			return
 		"place":
 			if GameState.act(g.place_building(surface.cfg.estate, p.station, p.x, p.y)).ok:
@@ -249,6 +251,7 @@ func enter_estate(eid: String, at = null) -> void:
 	_leave_surface()
 	surface = SurfaceScript.new()
 	surface.setup("estate:" + eid, EstateLayout.build_cfg(GameState.data, eid, g.estates[eid].buildings))
+	g.inside_estate = eid
 	surface.can_place = func(st: String, x: int, y: int) -> bool: return g.can_place(eid, st, x, y)
 	surface.interacted.connect(_on_surface_action)
 	add_child(surface)

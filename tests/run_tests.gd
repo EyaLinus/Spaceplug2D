@@ -220,6 +220,26 @@ func test_estates() -> void:
 	before = g.credits
 	check(g.remove_building("cannery_annex", 0).ok and g.estates.cannery_annex.buildings.size() == 1, "remove building")
 	check(g.credits == before + int(round(int(data.buildables.cook_stove.cost) * float(data.estate_refund))), "partial refund")
+	# cooking inside an estate needs the stations the recipe runs through
+	g.location = "cinder"
+	g.credits = 10000
+	g.cargo = {"cannabis": 5}
+	check(not g.lab_here(), "no lab on Cinder")
+	check(g.buy_estate("shaft_shack").ok, "buy the shack")
+	g.inside_estate = "shaft_shack"
+	check(g.lab_here(), "estate is a lab")
+	var r: Dictionary = g.check_batch("weed", [], 5)
+	check(not r.ok and "Trim Table" in r.msg, "missing stations named: %s" % r.msg)
+	g.place_building("shaft_shack", "trim_table", 0, 0)
+	g.place_building("shaft_shack", "cook_stove", 2, 0)
+	g.place_building("shaft_shack", "pack_table", 4, 0)
+	check(g.missing_stations("weed", []).is_empty(), "weed line complete")
+	check(not g.missing_stations("weed", ["nanoflux"]).is_empty(), "additives need a mixing station")
+	check(g.start_batch("weed", [], 5).ok, "cook in the estate")
+	g.tick(60.0)
+	check(g.collect_stash().ok and g.has_contraband(), "collect output in the estate")
+	g.inside_estate = ""
+	check(not g.lab_here(), "outside the estate no lab")
 
 
 func test_mixing_rules() -> void:

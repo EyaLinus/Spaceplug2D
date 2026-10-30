@@ -154,7 +154,8 @@ func _run() -> void:
 	await physics_frame
 	_assert(es.interact(), "use the placed stove")
 	await frames(2)
-	_assert(m.station.tab_names() == ["Station"], "station panel")
+	_assert(m.station.tab_names() == ["Lab", "Station"], "placed station opens lab + station (got %s)" % [m.station.tab_names()])
+	_assert(g.inside_estate == "cannery_annex" and g.lab_here(), "the estate counts as a lab")
 	m.station.close()
 	es.place_player_at("exit")
 	await physics_frame
@@ -162,6 +163,7 @@ func _run() -> void:
 	_assert(es.interact(), "leave the annex")
 	await frames(2)
 	sf = m.surface
+	_assert(g.inside_estate == "", "left the estate")
 	_assert(sf.loc_id == "mireth" and sf.player.position.distance_to(sf.interactable("annex").stand) < 1.0, "back on Mireth at the annex door")
 	step("estate buy, build, leave")
 

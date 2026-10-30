@@ -101,7 +101,7 @@ func refresh(reset_tab := false) -> void:
 		c.queue_free()
 	if _wants("Market"):
 		_add_tab("Market", _build_market(g))
-	if ld.get("lab", false) and _wants("Lab"):
+	if g.lab_here() and _wants("Lab"):
 		_add_tab("Lab", _build_lab(g))
 	if _wants("Deals"):
 		_add_tab("Deals", _build_deals(g))
@@ -191,6 +191,12 @@ func _build_lab(g) -> Control:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	v.add_child(UI.label("Hydro Rig Mk %d · %d units per batch · each unit needs 1 raw + 1 of every additive" % [g.upgrades.lab + 1, g.lab_capacity()], 15, UI.MUTED))
+	var missing: Array = g.missing_stations(_lab_base, _chosen_additives())
+	if not missing.is_empty():
+		var names: Array = []
+		for st in missing:
+			names.append(g.data.stations[st].name)
+		v.add_child(UI.label("This estate still needs: %s (build menu)." % ", ".join(PackedStringArray(names)), 15, UI.WARN))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	v.add_child(row)

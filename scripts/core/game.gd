@@ -30,6 +30,7 @@ var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0}
 var state: String = "playing"  ## playing | won | lost
 var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
 var estates: Dictionary = {}  ## owned estate id -> {"buildings": [{"id": station id, "x": int, "y": int}]}
+var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 
 
 func new_game(content: Dictionary, seed_value: int = 1) -> void:
@@ -298,12 +299,37 @@ func buy_price(item: String, loc: String = location) -> int:
 	return -1
 
 
+## True where you can cook: the hub lab, or inside an estate you own.
+func lab_here() -> bool:
+	return loc_data().get("lab", false) or estates.has(inside_estate)
+
+
+## Station ids a batch needs that the estate you stand in does not have yet ([] at the hub lab).
+func missing_stations(base: String, additives: Array) -> Array:
+	if loc_data().get("lab", false) or not estates.has(inside_estate):
+		return []
+	var have: Array = []
+	for b in estates[inside_estate].buildings:
+		have.append(b.id)
+	var r: Array = []
+	for st in Production.stations_for(data, base, additives):
+		if not st in have:
+			r.append(st)
+	return r
+
+
 ## Validates a batch without changing anything (the lab UI runs this before the station minigames start).
 func check_batch(base: String, additives: Array, qty: int) -> Dictionary:
-	if not loc_data().get("lab", false):
+	if not lab_here():
 		return _fail("No lab here.")
 	if not data.bases.has(base):
 		return _fail("Unknown product.")
+	var missing := missing_stations(base, additives)
+	if not missing.is_empty():
+		var names: Array = []
+		for st in missing:
+			names.append(data.stations[st].name)
+		return _fail("Set up first: %s." % ", ".join(PackedStringArray(names)))
 	if qty <= 0 or qty > lab_capacity():
 		return _fail("Rig holds %d units per batch." % lab_capacity())
 	if lab_queue.size() >= 3:
@@ -344,7 +370,7 @@ func start_batch(base: String, additives: Array, qty: int, scores: Dictionary = 
 
 
 func collect_stash() -> Dictionary:
-	if not loc_data().get("lab", false):
+	if not lab_here():
 		return _fail("Your stash is at the hub.")
 	if stash.is_empty():
 		return _fail("Stash is empty.")

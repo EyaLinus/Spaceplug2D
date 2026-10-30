@@ -1,5 +1,14 @@
 # Progress log
 
+## P4 step 2: cook in your estate (2026-10-30)
+- Inside an owned estate every placed station opens the Lab (plus its own Station tab). A batch needs the stations its
+  recipe runs through (`Production.stations_for`); missing ones are named in the lab and block the batch.
+  Output, queue and stash are still shared with the hub lab (one production queue), so you can cook on Cinder or the
+  Bazaar and load the stash there. Core: `Game.lab_here`, `missing_stations`, runtime `inside_estate`.
+- Verified: 504 unit checks (cook in the Shaft 9 Shack once Trim Table + Cook Stove + Packaging Table stand; additives
+  need a Mixing Station; no lab outside), UI smoke checks the estate counts as a lab; screenshot of the estate lab checked.
+- Gaps: estates share one queue/stash with the hub; per-estate storage and workers come with P5.
+
 ## P4 step 1: estates (2026-10-30)
 - Four estates for sale (`content.json` → `estates`): Cannery Annex (1,500 cr) and Ridge Glasshouse (4,500 cr) on Mireth,
   Shaft 9 Shack (1,200 cr) on Cinder, Hull Locker 13 (2,200 cr) on the Bazaar. Each is a building on its surface.
