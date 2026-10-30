@@ -1,9 +1,13 @@
 extends Control
 ## In-flight HUD: money, debt, day clock, heat, cargo, lab status, dock prompt, scan warning, toasts, minimap.
+## On a planet surface the prompt, minimap and controls help switch to the on-foot versions.
 
 const UI = preload("res://scripts/ui/ui_theme.gd")
 
 var world: Node2D
+var surface: Node2D  ## set by main while on foot, null in space
+var _flight_help: Label
+var _foot_help: Label
 var _credits: Label
 var _debt: Label
 var _day: Label
@@ -97,6 +101,13 @@ func _ready() -> void:
 	help.offset_left = 12
 	help.offset_top = -30
 	add_child(help)
+	_flight_help = help
+	_foot_help = UI.label("WASD/arrows walk   E use / talk   Esc close / menu   launch pad = take off", 14, UI.MUTED)
+	_foot_help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_foot_help.offset_left = 12
+	_foot_help.offset_top = -30
+	_foot_help.visible = false
+	add_child(_foot_help)
 
 	EventBus.toast.connect(show_toast)
 	EventBus.scan_progress.connect(func(r: float):
@@ -124,7 +135,11 @@ func _process(_delta: float) -> void:
 	else:
 		var job: Dictionary = g.lab_queue[0]
 		_lab.text = "Lab %d%% (%d queued)" % [int((1.0 - job.remaining / job.total) * 100.0), g.lab_queue.size()]
-	if world != null and world.active and world.nearby != "":
+	_flight_help.visible = surface == null
+	_foot_help.visible = surface != null
+	if surface != null:
+		_prompt.text = surface.prompt()
+	elif world != null and world.active and world.nearby != "":
 		_prompt.text = "[E] Dock at %s" % g.data.locations[world.nearby].name
 	else:
 		_prompt.text = ""
@@ -165,6 +180,9 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 func _draw_minimap() -> void:
 	if world == null or GameState.game == null:
 		return
+	if surface != null:
+		_draw_surface_map()
+		return
 	var size := _minimap.size
 	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.07, 0.15, 0.85))
 	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(0.3, 0.4, 0.8, 0.6), false, 1.5)
@@ -200,3 +218,23 @@ func _draw_nav() -> void:
 		var text := "%s %dk" % [n.info.name, int(rel.length() / 1000.0 + 0.5)]
 		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 		_nav.draw_string(font, p - dir * 22.0 - Vector2(w / 2.0, -5.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, c)
+
+
+func _draw_surface_map() -> void:
+	var size := _minimap.size
+	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.08, 0.07, 0.85))
+	var scale: float = minf(size.x / surface.map_size.x, size.y / surface.map_size.y)
+	var map_px: Vector2 = surface.map_size
+	var off: Vector2 = (size - map_px * scale) / 2.0
+	var cfg: Dictionary = surface.cfg
+	var t: float = surface.tile * scale
+	_minimap.draw_rect(Rect2(off, surface.map_size * scale), Color(cfg.get("ground", "#2b4538")))
+	for r in cfg.roads:
+		_minimap.draw_rect(Rect2(off + Vector2(r[0], r[1]) * t, Vector2(r[2], r[3]) * t), Color(cfg.get("road", "#45464f")).lightened(0.2))
+	for b in cfg.buildings:
+		var r: Array = b.rect
+		_minimap.draw_rect(Rect2(off + Vector2(r[0], r[1]) * t, Vector2(r[2], r[3]) * t), Color(b.get("roof", "#444444")).lightened(0.1))
+	for it in surface.interactables:
+		_minimap.draw_circle(off + it.pos * scale, 2.5, UI.ACCENT)
+	_minimap.draw_circle(off + surface.player.position * scale, 3.5, UI.GOLD)
+	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(0.3, 0.8, 0.6, 0.6), false, 1.5)

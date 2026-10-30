@@ -15,6 +15,7 @@ func _init() -> void:
 	data = Data.load_all()
 	for t in [
 		"test_data_references",
+		"test_surface_layouts",
 		"test_mixing_rules",
 		"test_buy_and_cargo_limit",
 		"test_lab_batch",
@@ -67,6 +68,51 @@ func test_data_references() -> void:
 	for loc in data.locations:
 		for item in data.locations[loc].sells_raw:
 			check(data.raws.has(item), "%s sells known raw %s" % [loc, item])
+
+
+func test_surface_layouts() -> void:
+	check(data.surfaces.has(data.start.location), "start location has a walkable surface")
+	var actions := ["market", "lab", "shipyard", "office", "deal", "takeoff"]
+	for loc in data.surfaces:
+		var s: Dictionary = data.surfaces[loc]
+		check(data.locations.has(loc), "surface %s is a location" % loc)
+		var map := Rect2(0, 0, s.size[0], s.size[1])
+		var rects: Array = []
+		for b in s.buildings:
+			var r := Rect2(b.rect[0], b.rect[1], b.rect[2], b.rect[3])
+			check(map.encloses(r), "%s/%s inside the map" % [loc, b.id])
+			for o in rects:
+				check(not o.intersects(r), "%s/%s does not overlap another building" % [loc, b.id])
+			rects.append(r)
+			if b.has("action"):
+				check(b.action in actions, "%s/%s action %s known" % [loc, b.id, b.action])
+				var door := Vector2(b.door[0], b.door[1])
+				var edge_y: float = r.end.y if b.get("side", "bottom") == "bottom" else r.position.y
+				check(is_equal_approx(door.y, edge_y) and door.x > r.position.x and door.x < r.end.x, "%s/%s door on its edge" % [loc, b.id])
+		var free_points: Array = [["spawn", s.spawn]]
+		for n in s.npcs:
+			free_points.append([n.id, n.pos])
+			check(n.action in actions, "%s npc %s action known" % [loc, n.id])
+			if n.action == "deal":
+				check(data.contacts.any(func(c): return c.id == n.contact and c.location == loc), "%s npc %s is a contact here" % [loc, n.id])
+		for fp in free_points:
+			var p := Vector2(fp[1][0], fp[1][1])
+			check(map.has_point(p) and not rects.any(func(r): return r.has_point(p)), "%s %s stands on free ground" % [loc, fp[0]])
+		# every economy feature of the location must be reachable on foot
+		var reachable: Array = []
+		for b in s.buildings:
+			reachable.append(b.get("action", ""))
+		for n in s.npcs:
+			reachable.append(n.action)
+		var ld: Dictionary = data.locations[loc]
+		check("market" in reachable, "%s market reachable" % loc)
+		check(not ld.get("lab", false) or "lab" in reachable, "%s lab reachable" % loc)
+		check(not ld.get("shipyard", false) or "shipyard" in reachable, "%s shipyard reachable" % loc)
+		check(not ld.get("office", false) or "office" in reachable, "%s office reachable" % loc)
+		check(s.has("pad"), "%s has a launch pad" % loc)
+		for c in data.contacts:
+			if c.location == loc:
+				check(s.npcs.any(func(n): return n.get("contact", "") == c.id), "%s contact %s stands on the surface" % [loc, c.id])
 
 
 func test_mixing_rules() -> void:

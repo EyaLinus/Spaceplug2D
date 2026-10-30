@@ -1,0 +1,51 @@
+{
+  "mireth": {
+    "name": "Mireth · Cannery District",
+    "size": [50, 34],
+    "tile": 32,
+    "ground": "#2b4538",
+    "ground_alt": "#2f4b3d",
+    "road": "#45464f",
+    "road_line": "#6b6c78",
+    "spawn": [17.5, 12.5],
+    "roads": [
+      [0, 15, 50, 3],
+      [22, 0, 3, 34],
+      [6, 11, 3, 4],
+      [33, 12, 3, 3],
+      [8, 18, 3, 3],
+      [39, 18, 3, 3]
+    ],
+    "plazas": [
+      [19, 12, 9, 9]
+    ],
+    "pad": {"pos": [16.5, 6.5], "radius": 3.2, "label": "Your ship – take off"},
+    "buildings": [
+      {"id": "spaceport", "name": "Spaceport Hangar", "rect": [2, 2, 10, 8], "door": [7.5, 10], "side": "bottom",
+       "wall": "#4b5d7a", "roof": "#2a3d5e", "sign": "SPACEPORT", "action": "shipyard", "label": "Hangar – Rusk's repairs"},
+      {"id": "market", "name": "Night Market", "rect": [28, 4, 13, 8], "door": [34.5, 12], "side": "bottom",
+       "wall": "#7a5a3a", "roof": "#a0472f", "sign": "NIGHT MARKET", "action": "market", "label": "Night Market"},
+      {"id": "cannery", "name": "Old Cannery", "rect": [3, 21, 13, 9], "door": [9.5, 21], "side": "top",
+       "wall": "#5d5a52", "roof": "#3b3a36", "sign": "CANNERY", "action": "lab", "label": "Old Cannery – your hydro rig"},
+      {"id": "office", "name": "Ouroboros Consortium", "rect": [36, 21, 11, 8], "door": [40.5, 21], "side": "top",
+       "wall": "#2e2440", "roof": "#5a2d6e", "sign": "OUROBOROS", "action": "office", "label": "Consortium office"},
+      {"id": "house_a", "name": "Housing block", "rect": [43, 3, 5, 6], "wall": "#6a6f7a", "roof": "#3f6b5c"},
+      {"id": "house_b", "name": "Housing block", "rect": [27, 23, 6, 5], "wall": "#6f6458", "roof": "#7a3f3a"},
+      {"id": "house_c", "name": "Housing block", "rect": [17, 24, 4, 5], "wall": "#5f6a63", "roof": "#2f5d7a"},
+      {"id": "house_d", "name": "Housing block", "rect": [27, 29, 8, 4], "wall": "#6a6f7a", "roof": "#6b5a2e"}
+    ],
+    "npcs": [
+      {"id": "rusk", "name": "Rusk (mechanic)", "pos": [12.5, 11.5], "action": "shipyard", "color": "#ff9a4d", "label": "Rusk – ship upgrades"},
+      {"id": "okka", "name": "Okka the Welder", "pos": [20.5, 13.5], "action": "deal", "contact": "okka", "color": "#ffd166"},
+      {"id": "sen", "name": "Sen Varo", "pos": [26.5, 19.5], "action": "deal", "contact": "sen", "color": "#ff5fd2"}
+    ],
+    "walkers": 6,
+    "props": [
+      ["tree", 1, 13], ["tree", 3, 12.5], ["tree", 13, 2], ["tree", 20.5, 2], ["tree", 47, 12], ["tree", 45, 11],
+      ["tree", 2, 31], ["tree", 18, 21], ["tree", 48, 31], ["tree", 33, 21], ["tree", 21, 31], ["tree", 42, 32],
+      ["lamp", 21, 14.5], ["lamp", 26, 14.5], ["lamp", 21, 18.5], ["lamp", 26, 18.5], ["lamp", 10, 14.5], ["lamp", 37, 14.5],
+      ["crate", 4, 11], ["crate", 4.8, 11.3], ["crate", 16, 21], ["crate", 16.7, 21.6], ["crate", 41.5, 11.5],
+      ["stall", 29, 13], ["stall", 38.5, 13]
+    ]
+  }
+}

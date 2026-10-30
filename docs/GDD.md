@@ -24,6 +24,15 @@ Lender: the Ouroboros Consortium. Products use real drug names (since v0.1.1, pl
   Scan radius 380 × (1 − stealth); 2.5 s in range with product = bust (product lost, 15 % fine, −40 heat).
 - Day = 180 s. Debt 6,000 cr due end of day 12.
 
+## Planets on foot (P1, 2026-10-30)
+Two layers: space flight between locations, and planet surfaces you walk on. Each planet surface is its own instance
+(built from `data/surfaces.json` when you land, freed on take-off), RPG-Maker style top-down with 32 px tiles.
+Mireth – Cannery District: spaceport hangar + launch pad + mechanic Rusk (ship upgrades), Night Market (buy raws and
+additives), Old Cannery (your rented rig: cook + stash), Consortium office (debt, fixer), housing blocks, a plaza where
+contacts Okka and Sen wait, ambient walkers. The economy is unchanged underneath: buildings and people only open the
+matching part of the same core actions. Later: police on foot, estates with placeable production buildings, workers
+(ROADMAP P2–P5).
+
 ## Planned systems (see ROADMAP)
 Growing your own raws (planting/harvest cycles), packaging tiers, hired runners and automated drones,
 multiple star systems with jump lanes, raids on bases at high heat, customer network with loyalty and referrals,

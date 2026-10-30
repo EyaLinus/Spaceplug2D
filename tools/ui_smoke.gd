@@ -1,6 +1,7 @@
 extends SceneTree
-## UI smoke test: boots the real main scene headless, plays the core loop through the UI layer
-## (dock, every tab, buy, cook, sell, upgrade, bribe, pay), flies between locations, triggers a patrol bust,
+## UI smoke test: boots the real main scene headless, lands on Mireth and walks the planet surface (collision,
+## every door and person, take-off), plays the core loop through the UI layer
+## (buy, cook, sell, upgrade, bribe, pay), flies between locations, triggers a patrol bust,
 ## pauses, saves/loads and reaches both end screens. Any GDScript error shows up as "SCRIPT ERROR" (CI greps for it).
 ## godot --headless --path . -s res://tools/ui_smoke.gd
 
@@ -38,11 +39,42 @@ func _run() -> void:
 	m.start_new_game(99)
 	await frames(3)
 	var g = gs.game
-	_assert(m.station.visible, "starts docked at Mireth")
-	for i in m.station.tabs.get_tab_count():
-		m.station.tabs.current_tab = i
+	var sf = m.surface
+	_assert(sf != null and not m.station.visible and not m.world.visible, "starts on foot on the Mireth surface")
+	_assert(m.get_viewport().get_camera_2d() == sf.camera, "surface camera is current")
+	step("landed on surface")
+
+	# walking: free movement works, buildings block
+	var start: Vector2 = sf.player.position
+	for i in 30:
+		sf.player.walk(1.0 / 60.0, Vector2.DOWN)
+		await physics_frame
+	_assert(sf.player.position.y > start.y + 40.0, "player walks")
+	var hangar: Rect2 = sf._rect(sf.cfg.buildings[0].rect)
+	sf.player.position = Vector2(hangar.get_center().x, hangar.end.y + 30.0)
+	for i in 60:
+		sf.player.walk(1.0 / 60.0, Vector2.UP)
+		await physics_frame
+	_assert(sf.player.position.y >= hangar.end.y - 2.0, "building walls block the player (y=%.0f, wall=%.0f)" % [sf.player.position.y, hangar.end.y])
+	step("walk and collide")
+
+	# every door and person opens exactly its own panel
+	var expect := {"spaceport": "Shipyard", "market": "Market", "cannery": "Lab", "office": "Office",
+		"rusk": "Shipyard", "okka": "Deals", "sen": "Deals"}
+	for id in expect:
+		sf.place_player_at(id)
+		await physics_frame
+		await physics_frame
+		_assert(not sf.focus.is_empty() and sf.focus.payload.id == id, "focus on %s (got %s)" % [id, sf.focus.get("payload", {})])
+		_assert(m.hud._prompt.text.begins_with("[E]"), "HUD prompt for %s" % id)
+		_assert(sf.interact(), "interact with %s" % id)
+		await frames(2)
+		_assert(m.station.visible and m.station.tab_names() == [expect[id]], "%s opens %s (got %s)" % [id, expect[id], m.station.tab_names()])
+		_assert(sf.player.frozen, "player frozen while a panel is open")
+		m.station.close_requested.emit()
 		await frames(1)
-	step("hub tabs %s" % [m.station.tab_names()])
+		_assert(not m.station.visible, "panel closes")
+	step("doors and people")
 
 	gs.act(g.buy("cannabis", 5))
 	gs.act(g.buy("nanoflux", 5))
@@ -55,8 +87,15 @@ func _run() -> void:
 	gs.act(g.collect_stash())
 	await frames(2)
 	_assert(g.has_contraband(), "cooked product")
+	sf.place_player_at("okka")
+	await physics_frame
+	await physics_frame
+	sf.interact()
+	await frames(2)
+	_assert(m.station.visible and m.station._filter.get("contact", "") == "okka", "deals panel limited to Okka")
 	gs.act(g.sell("weed:overclock+radiant", 3, "okka"))
 	await frames(2)
+	m.station.close()
 	step("cook and sell")
 
 	g.credits = 20000
@@ -68,9 +107,14 @@ func _run() -> void:
 	await frames(2)
 	step("shipyard and office")
 
-	m.undock()
+	sf.place_player_at("pad")
+	await physics_frame
+	await physics_frame
+	_assert(sf.interact(), "use the launch pad")
 	await frames(2)
-	_assert(m.world.active and not m.station.visible, "undocked and flying")
+	_assert(m.surface == null and m.world.visible and m.world.active and not m.station.visible, "took off and flying")
+	_assert(m.get_viewport().get_camera_2d() == m.world.camera, "ship camera is current again")
+	_assert(not is_instance_valid(sf) or sf.is_queued_for_deletion(), "surface instance freed")
 	for i in 120:
 		m.world.ship.steer(1.0 / 60.0, true, false)
 		await physics_frame

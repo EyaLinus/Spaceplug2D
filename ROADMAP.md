@@ -1,35 +1,67 @@
 # Roadmap
 
-Versions are small and frequent. Each milestone ends with a Windows build on GitHub Releases.
+Versions are small and frequent: patch steps only (0.1.1, 0.1.2, …); a minor bump is Linus's call.
+Each finished step ends with a Windows build on GitHub Releases. Price balance is eyeballed until Linus asks for a balance pass.
+
+## Vision (Linus, 2026-10-30)
+Two layers of play:
+- **Space** – the existing ship flight between locations, patrol scans, smuggling routes.
+- **Planets** – every planet is its own instanced level (like a dungeon instance): land at the spaceport and walk
+  around top-down in RPG-Maker style. NPCs, houses, markets, police, a spaceport with a mechanic for ship upgrades and
+  **estates** you can buy. In an estate you place production buildings (grow trays, mixing stations, packaging,
+  storage) and hire workers who automate them. Taking off at the spaceport switches back to ship flight.
+
+The core simulation (`scripts/core`) stays headless; planets are a new presentation layer on top of it, and every
+new rule (estates, workers, police on foot) lands in the core with tests first.
 
 ## M0 – Foundation ✅ (v0.1)
 - [x] Godot 4.3 project, headless core, EventBus/GameState/AudioManager
 - [x] CI: unit tests, UI smoke, balance sim, Windows export, release on dispatch
 - [x] Vertical slice: flight, 3 dockable locations, buy → cook/mix → sell, heat + patrols + bust, upgrades, debt goal, save
 
-## M1 – Feel & clarity (v0.2–v0.3)
-- [ ] Real art pass (ship, patrols, planets, UI icons) via the asset pipeline; art profile + palette
-- [ ] Tutorial contract chain ("first batch", "first sale", "first bribe") instead of the menu text
-- [ ] Mixing journal: discovered recipes with value, one-click re-cook
-- [ ] Patrol behaviour: line-of-sight cones, evasion via asteroid fields, warning when entering scan range
-- [ ] Ship screen shake, particles, dock animation, music loop
+## P1 – Landing & walking (v0.1.2) ← current
+- [x] Scene switch ship ↔ planet: docking at a planet loads its surface instance, take-off at the launch pad returns to flight
+- [x] On-foot top-down movement (WASD/arrows, 8 directions, collision with buildings and map edge, camera limits)
+- [x] One planet (Mireth, Cannery District) built from `data/surfaces.json`: spaceport + launch pad, mechanic,
+      night market, old cannery (your rented rig), Consortium office, houses, roads, props
+- [x] Existing economy migrated into buildings/NPCs: each door or person opens only its own panel
+      (market → buy, cannery → lab, mechanic → ship upgrades, office → debt + fixer, Okka/Sen → deals with that person)
+- [x] Ambient walkers on the roads, surface minimap, on-foot controls help
+- [x] Stations without a surface (Cinder Belt, Drift Bazaar) keep the docked menu
 
-## M2 – Production depth (v0.4–v0.5)
-- [ ] Grow your own raws: hydro trays with growth time, quality and yield
-- [ ] Packaging tiers (loose / sealed / shielded) – shielded product survives a scan with a chance
-- [ ] Multiple labs/stashes, base upgrades, storage limits
-- [ ] Raids on the hub when heat stays high
+## P2 – Living planets
+- [ ] Art pass for the surface via the asset pipeline (tileset, character sprites with 4-direction walk cycles, building sprites)
+- [ ] Building interiors as their own small instances (enter door → interior scene) instead of opening a panel at the door
+- [ ] NPC schedules (home ↔ work ↔ plaza by time of day), day/night tint, idle chatter bubbles
+- [ ] Customers on foot: NPCs who want product walk up to you; you deal with them directly (replaces part of the contacts menu)
+- [ ] Second surface: Drift Bazaar as a walkable station deck; Cinder Belt as a mining camp
 
-## M3 – Distribution network (v0.6–v0.7)
-- [ ] Customer network: loyalty, referrals unlock new contacts, preferences shift
-- [ ] Hired runners / drones that automate routes (with their own bust risk)
-- [ ] Price board with per-location history
+## P3 – Police on the ground
+- [ ] Reach Authority officers patrol the streets with vision cones; heat controls their number (shared with space heat)
+- [ ] Carrying product near an officer → frisk check; running away raises heat; bust on foot = confiscation + fine
+- [ ] Curfew at night, hiding spots, bribable officers
+- [ ] Planet heat zones: dealing in the plaza is hotter than in the back alleys
 
-## M4 – Expansion (v0.8–v0.9)
-- [ ] Second and third star system with jump lanes, own goods, laws and security levels
-- [ ] Rival syndicate with territory and price wars
-- [ ] Ship classes (hauler, runner, interceptor-proof blockade runner)
+## P4 – Estates & production buildings
+- [ ] Core: properties per planet (price, size in grid cells, upkeep), buy/sell, ownership in the save
+- [ ] Estate instance: enter your property, grid placement mode (place/rotate/remove) with a build menu
+- [ ] Production buildings as core entities: grow tray (raws with growth time/quality), mixing station (the current lab,
+      one per station), drying/packaging table, storage crate; each has its own input/output inventory
+- [ ] The global "hydro rig" becomes the first rented estate; lab upgrades turn into building tiers
+- [ ] Raids on estates when heat stays high
 
-## M5 – Polish & 1.0
-- [ ] Balance pass with long sims, difficulty settings, achievements/goals beyond the debt
-- [ ] Settings (volume sliders, key rebinding, window mode), localisation DE/EN
+## P5 – Workers & automation
+- [ ] Hire workers at the job board (botanist, cook, handler) with daily wages
+- [ ] Assign workers to buildings; simple job system moves items storage → station → storage
+- [ ] Dealers: workers who sell product to customers on their own (with bust risk)
+- [ ] Courier drones between estates and the spaceport
+
+## P6 – Expansion & 1.0
+- [ ] More planets with own laws, demand and security levels; jump lanes to a second system
+- [ ] Rival syndicate with territory and price wars; ship classes
+- [ ] Tutorial contract chain, mixing journal, balance pass with long sims, settings, localisation DE/EN
+
+## Carried over from the v0.1 roadmap (fold into the milestones above when they are picked up)
+- Patrol feel in space: warning before scan range, asteroid fields to break pursuit, screen shake on bust
+- Packaging tiers (shielded product survives a scan with a chance) → P4 packaging table
+- Price board with per-location history → P2/P6
