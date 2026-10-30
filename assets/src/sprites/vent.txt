@@ -1,0 +1,24 @@
+# Deck vent grate (Drift Bazaar).
+legend:
+. = transparent
+k = ink
+n = night
+s = slate
+S = slate_light
+---
+................
+.kkkkkkkkkkkkkk.
+.kSnnnnnnnnnnsk.
+.kSssssssssssSk.
+.kSnnnnnnnnnnsk.
+.kSssssssssssSk.
+.kSnnnnnnnnnnsk.
+.kSssssssssssSk.
+.kSnnnnnnnnnnsk.
+.kSssssssssssSk.
+.kSnnnnnnnnnnsk.
+.kSssssssssssSk.
+.kSnnnnnnnnnnsk.
+.kSssssssssssSk.
+.kkkkkkkkkkkkkk.
+................

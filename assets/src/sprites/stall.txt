@@ -1,0 +1,37 @@
+# Market stall: striped awning, counter with goods. 32x20 art px.
+legend:
+. = transparent
+k = ink
+R = red
+r = red_dark
+W = white
+w = wood
+d = wood_dark
+l = sand
+t = teal
+T = teal_dark
+p = pink
+P = purple
+y = gold
+Y = gold_dark
+---
+................................
+.kkkkkkkkkkkkkkkkkkkkkkkkkkkkkk.
+.kRRRRWWWWRRRRWWWWRRRRWWWWRRRRk.
+.kRRRRWWWWRRRRWWWWRRRRWWWWRRRRk.
+.krrrrwwwwrrrrwwwwrrrrwwwwrrrrk.
+.kkkkkkkkkkkkkkkkkkkkkkkkkkkkkk.
+..kW........................Wk..
+..kW........................Wk..
+..kW........................Wk..
+.kllllllllllllllllllllllllllllk.
+.klttllppllyyllttllppllyylllddk.
+.klTTllPPllYYllTTllPPllYYlllddk.
+.kllllllllllllllllllllllllllldk.
+.kwwwwwwwwwwwwwwwwwwwwwwwwwwwdk.
+.kwwwwwwwwwwwwwwwwwwwwwwwwwwwdk.
+.kwwwwwwwwwwwwwwwwwwwwwwwwwwwdk.
+.kwwwwwwwwwwwwwwwwwwwwwwwwwwwdk.
+.kddddddddddddddddddddddddddddk.
+.kkkkkkkkkkkkkkkkkkkkkkkkkkkkkk.
+................................

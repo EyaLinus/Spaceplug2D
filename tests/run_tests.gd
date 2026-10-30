@@ -17,6 +17,7 @@ func _init() -> void:
 	for t in [
 		"test_data_references",
 		"test_surface_layouts",
+		"test_art_registry",
 		"test_police_on_foot",
 		"test_mixing_rules",
 		"test_buy_and_cargo_limit",
@@ -74,6 +75,27 @@ func test_data_references() -> void:
 	for loc in data.locations:
 		for item in data.locations[loc].sells_raw:
 			check(data.raws.has(item), "%s sells known raw %s" % [loc, item])
+
+
+## Every surface, character look and prop has art in assets/gfx (see scripts/core/art.gd).
+func test_art_registry() -> void:
+	var Art = load("res://scripts/core/art.gd")
+	for loc in data.surfaces:
+		var set_name: String = Art.TILESETS.get(loc, "")
+		check(set_name != "", "surface %s has a tile set" % loc)
+		for kind in ["ground", "road", "plaza"]:
+			var t: Texture2D = Art.tex("tiles/%s_%s.png" % [set_name, kind])
+			check(t != null and t.get_height() == Art.TILE and t.get_width() % Art.TILE == 0, "tiles %s_%s load" % [set_name, kind])
+		for p in data.surfaces[loc].get("props", []):
+			check(Art.tex("props/%s.png" % p[0]) != null, "%s prop %s has art" % [loc, p[0]])
+	for look in ["player", "officer"] + Art.NPC_LOOKS.keys():
+		var c: Texture2D = Art.character(look)
+		check(c != null and c.get_size() == Vector2(Art.CHAR * 3, Art.CHAR * 3), "character sheet %s is 3x3 frames" % look)
+	for part in ["roof", "wall", "window", "door", "hatch"]:
+		check(Art.tex("buildings/%s.png" % part) != null, "building part %s" % part)
+	check(Art.tex("ships/ship.png") != null, "ship sprite")
+	check(Art.tex("missing/nothing.png") == null, "missing art returns null (procedural fallback)")
+	check(Art.look_for_color(Color("#ff6b5f")) == "npc_red", "npc look follows data colour")
 
 
 func test_surface_layouts() -> void:

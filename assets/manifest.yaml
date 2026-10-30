@@ -1,0 +1,314 @@
+assets:
+  building_door:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    note: roof/wall neutral, tinted at runtime
+    outputs:
+    - assets/gfx/buildings/door.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  building_hatch:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    note: roof/wall neutral, tinted at runtime
+    outputs:
+    - assets/gfx/buildings/hatch.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  building_roof:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    note: roof/wall neutral, tinted at runtime
+    outputs:
+    - assets/gfx/buildings/roof.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  building_wall:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    note: roof/wall neutral, tinted at runtime
+    outputs:
+    - assets/gfx/buildings/wall.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  building_window:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    note: roof/wall neutral, tinted at runtime
+    outputs:
+    - assets/gfx/buildings/window.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  char_npc_green:
+    created: '2026-10-30'
+    kind: character
+    method: pixel
+    note: 3x3 sheet (down/up/right x idle/stepA/stepB), look from assets/src/characters.yaml
+    outputs:
+    - assets/gfx/chars/npc_green.png
+    source: assets/src/sprites/char_down.txt
+    status: done
+    updated: '2026-10-30'
+  char_npc_pink:
+    created: '2026-10-30'
+    kind: character
+    method: pixel
+    note: 3x3 sheet (down/up/right x idle/stepA/stepB), look from assets/src/characters.yaml
+    outputs:
+    - assets/gfx/chars/npc_pink.png
+    source: assets/src/sprites/char_down.txt
+    status: done
+    updated: '2026-10-30'
+  char_npc_purple:
+    created: '2026-10-30'
+    kind: character
+    method: pixel
+    note: 3x3 sheet (down/up/right x idle/stepA/stepB), look from assets/src/characters.yaml
+    outputs:
+    - assets/gfx/chars/npc_purple.png
+    source: assets/src/sprites/char_down.txt
+    status: done
+    updated: '2026-10-30'
+  char_npc_red:
+    created: '2026-10-30'
+    kind: character
+    method: pixel
+    note: 3x3 sheet (down/up/right x idle/stepA/stepB), look from assets/src/characters.yaml
+    outputs:
+    - assets/gfx/chars/npc_red.png
+    source: assets/src/sprites/char_down.txt
+    status: done
+    updated: '2026-10-30'
+  char_npc_rust:
+    created: '2026-10-30'
+    kind: character
+    method: pixel
+    note: 3x3 sheet (down/up/right x idle/stepA/stepB), look from assets/src/characters.yaml
+    outputs:
+    - assets/gfx/chars/npc_rust.png
+    source: assets/src/sprites/char_down.txt
+    status: done
+    updated: '2026-10-30'
+  char_npc_sky:
+    created: '2026-10-30'
+    kind: character
+    method: pixel
+    note: 3x3 sheet (down/up/right x idle/stepA/stepB), look from assets/src/characters.yaml
+    outputs:
+    - assets/gfx/chars/npc_sky.png
+    source: assets/src/sprites/char_down.txt
+    status: done
+    updated: '2026-10-30'
+  char_npc_slate:
+    created: '2026-10-30'
+    kind: character
+    method: pixel
+    note: 3x3 sheet (down/up/right x idle/stepA/stepB), look from assets/src/characters.yaml
+    outputs:
+    - assets/gfx/chars/npc_slate.png
+    source: assets/src/sprites/char_down.txt
+    status: done
+    updated: '2026-10-30'
+  char_npc_teal:
+    created: '2026-10-30'
+    kind: character
+    method: pixel
+    note: 3x3 sheet (down/up/right x idle/stepA/stepB), look from assets/src/characters.yaml
+    outputs:
+    - assets/gfx/chars/npc_teal.png
+    source: assets/src/sprites/char_down.txt
+    status: done
+    updated: '2026-10-30'
+  char_officer:
+    created: '2026-10-30'
+    kind: character
+    method: pixel
+    note: 3x3 sheet (down/up/right x idle/stepA/stepB), look from assets/src/characters.yaml
+    outputs:
+    - assets/gfx/chars/officer.png
+    source: assets/src/sprites/char_down.txt
+    status: done
+    updated: '2026-10-30'
+  char_player:
+    created: '2026-10-30'
+    kind: character
+    method: pixel
+    note: 3x3 sheet (down/up/right x idle/stepA/stepB), look from assets/src/characters.yaml
+    outputs:
+    - assets/gfx/chars/player.png
+    source: assets/src/sprites/char_down.txt
+    status: done
+    updated: '2026-10-30'
+  prop_barrel:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    outputs:
+    - assets/gfx/props/barrel.png
+    source: assets/src/sprites/barrel.txt
+    status: done
+    updated: '2026-10-30'
+  prop_crate:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    outputs:
+    - assets/gfx/props/crate.png
+    source: assets/src/sprites/crate.txt
+    status: done
+    updated: '2026-10-30'
+  prop_lamp:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    outputs:
+    - assets/gfx/props/lamp.png
+    source: assets/src/sprites/lamp.txt
+    status: done
+    updated: '2026-10-30'
+  prop_rock:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    outputs:
+    - assets/gfx/props/rock.png
+    source: assets/src/sprites/rock.txt
+    status: done
+    updated: '2026-10-30'
+  prop_stall:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    outputs:
+    - assets/gfx/props/stall.png
+    source: assets/src/sprites/stall.txt
+    status: done
+    updated: '2026-10-30'
+  prop_tree:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    outputs:
+    - assets/gfx/props/tree.png
+    source: assets/src/sprites/tree.txt
+    status: done
+    updated: '2026-10-30'
+  prop_vent:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    outputs:
+    - assets/gfx/props/vent.png
+    source: assets/src/sprites/vent.txt
+    status: done
+    updated: '2026-10-30'
+  ship_player:
+    created: '2026-10-30'
+    kind: sprite
+    method: pixel
+    note: flight + parked on pad (2.5x)
+    outputs:
+    - assets/gfx/ships/ship.png
+    source: assets/src/sprites/ship.txt
+    status: done
+    updated: '2026-10-30'
+  tile_bazaar_ground:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    note: strip of 4 variants, 32px
+    outputs:
+    - assets/gfx/tiles/bazaar_ground.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  tile_bazaar_plaza:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    note: strip of 4 variants, 32px
+    outputs:
+    - assets/gfx/tiles/bazaar_plaza.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  tile_bazaar_road:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    note: strip of 4 variants, 32px
+    outputs:
+    - assets/gfx/tiles/bazaar_road.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  tile_cinder_ground:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    note: strip of 4 variants, 32px
+    outputs:
+    - assets/gfx/tiles/cinder_ground.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  tile_cinder_plaza:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    note: strip of 4 variants, 32px
+    outputs:
+    - assets/gfx/tiles/cinder_plaza.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  tile_cinder_road:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    note: strip of 4 variants, 32px
+    outputs:
+    - assets/gfx/tiles/cinder_road.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  tile_mireth_ground:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    note: strip of 4 variants, 32px
+    outputs:
+    - assets/gfx/tiles/mireth_ground.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  tile_mireth_plaza:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    note: strip of 4 variants, 32px
+    outputs:
+    - assets/gfx/tiles/mireth_plaza.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  tile_mireth_road:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    note: strip of 4 variants, 32px
+    outputs:
+    - assets/gfx/tiles/mireth_road.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'

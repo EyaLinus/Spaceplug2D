@@ -1,0 +1,1 @@
+- **Pixel art:** the player, NPCs, officers, the ship, ground/road/plaza tiles for all three surfaces, buildings and props are now real 16-px pixel art instead of shapes. Each NPC keeps its colour; walkers come in eight looks.

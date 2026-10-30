@@ -1,0 +1,24 @@
+# Wooden crate, top face + front face with X brace.
+legend:
+. = transparent
+k = ink
+l = sand
+w = wood
+d = wood_dark
+---
+................
+..kkkkkkkkkkkk..
+..kllllllllllk..
+..klwwwwwwwwlk..
+..klwwwwwwwwlk..
+..kllllllllllk..
+..kkkkkkkkkkkk..
+..kwddwwwwddwk..
+..kwwddwwddwwk..
+..kwwwddddwwwk..
+..kwwwddddwwwk..
+..kwwddwwddwwk..
+..kwddwwwwddwk..
+..kddddddddddk..
+..kkkkkkkkkkkk..
+................
