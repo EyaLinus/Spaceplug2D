@@ -14,6 +14,7 @@ const PauseMenuScript = preload("res://scripts/ui/menu/pause_menu.gd")
 const SlotPanelScript = preload("res://scripts/ui/menu/slot_panel.gd")
 const SettingsPanelScript = preload("res://scripts/ui/menu/settings_panel.gd")
 const PhoneScript = preload("res://scripts/ui/phone/phone.gd")
+const Deals = preload("res://scripts/core/deals.gd")
 
 ## Which station tab a surface interaction opens.
 const SURFACE_TABS := {"market": "Market", "lab": "Lab", "shipyard": "Shipyard", "office": "Office", "deal": "Deals", "fence": "Deals"}
@@ -302,6 +303,9 @@ func _on_surface_action(action: String, p: Dictionary) -> void:
 		"exit_estate":
 			leave_estate()
 			return
+		"deal_handover":
+			GameState.act(Deals.hand_over(g, int(p.offer)))
+			return
 		"station":
 			var bd: Dictionary = surface.cfg.buildings.filter(func(b): return b.id == p.id)[0]
 			station.open({"tabs": ["Lab", "Station"], "title": bd.name, "estate": surface.cfg.estate, "index": bd.index})
@@ -406,6 +410,9 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		GameState.save_game()
 	elif kind == "met":
 		EventBus.toast.emit("New contact: %s. Open the Com-Phone [%s]." % [GameState.game.contact(p.contact).name, Settings.key_label("phone")], true)
+	elif kind == "deal_request":
+		var o: Dictionary = Deals.find(GameState.game, int(p.offer))
+		EventBus.toast.emit("Deal-O-Matic: %s wants %d %s. Open the Com-Phone [%s]." % [GameState.game.contact(p.contact).name, o.qty, GameState.data.bases[o.base].name, Settings.key_label("phone")], true)
 	elif kind == "busted":
 		EventBus.toast.emit("BUSTED: lost %d units, fined %d cr." % [p.lost, p.fine], false)
 

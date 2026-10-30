@@ -9,6 +9,7 @@ const Mixing = preload("res://scripts/core/mixing.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const Deals = preload("res://scripts/core/deals.gd")
 const RunnerScript = preload("res://scripts/ui/minigames/minigame_runner.gd")
 const ShipPreview = preload("res://scripts/ui/ship_preview.gd")
 
@@ -298,6 +299,10 @@ func _chosen_additives() -> Array:
 func _build_deals(g) -> Control:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
+	# named customers deal through the Deal-O-Matic on the Com-Phone; only the fence buys over the counter
+	if _filter.get("contact", "") != "":
+		v.add_child(_chat_with(g, _filter.contact))
+		return v
 	var products: Array = []
 	for k in g.cargo:
 		if Mixing.is_product(k):
@@ -306,12 +311,7 @@ func _build_deals(g) -> Control:
 	if products.is_empty():
 		v.add_child(UI.label("You carry no product. Cook some at the Mireth lab.", 16, UI.MUTED))
 	var buyers: Array = []
-	var only: String = _filter.get("contact", "")
-	var fence_only: bool = _filter.get("fence_only", false)
-	for c in g.contacts_at():
-		if not fence_only and (only == "" or c.id == only):
-			buyers.append(c)
-	if g.loc_data().get("fence", false) and only == "":
+	if g.loc_data().get("fence", false):
 		buyers.append({"id": "", "name": "The Fence", "likes": "", "max_units": 999})
 	if buyers.is_empty():
 		v.add_child(UI.label("Nobody here deals.", 16, UI.MUTED))
@@ -346,6 +346,25 @@ func _build_deals(g) -> Control:
 	for b in g.demand.get(g.location, {}):
 		dem.append("%s %d%%" % [g.data.bases[b].name, int(g.demand[g.location][b] * 100.0)])
 	v.add_child(UI.label("Local demand: " + ", ".join(PackedStringArray(dem)), 15, UI.MUTED))
+	return v
+
+
+## A named customer on foot: no price list, they text their requests (Deal-O-Matic) and meet you at the spot.
+func _chat_with(g, cid: String) -> Control:
+	var c: Dictionary = g.contact(cid)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	var o := Deals.active(g, cid)
+	var line := "\"%s\"" % c.get("bio", "")
+	v.add_child(UI.label(line, 15, UI.MUTED))
+	var txt := "%s deals by phone now. Open the Com-Phone [%s] and watch the Deal-O-Matic for requests." % [c.name, Settings.key_label("phone")]
+	if not o.is_empty() and o.status == "accepted":
+		txt = "You owe %s %d × %s at %s (%s - %s)." % [c.name, o.qty, g.data.bases[o.base].name, Deals.spot_name(g, o), Deals.clock_text(g, o.opens_at), Deals.clock_text(g, o.expires_at)]
+	elif not o.is_empty():
+		txt = "%s has a request waiting on your phone." % c.name
+	var l := UI.label(txt, 16, UI.ACCENT)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(l)
 	return v
 
 

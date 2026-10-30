@@ -284,6 +284,51 @@ func _run() -> void:
 	m.station.close()
 	step("cook and sell")
 
+	# Deal-O-Matic: a request arrives, is accepted on the phone, and closed on foot at the marked spot
+	var DealsCore = load("res://scripts/core/deals.gd")
+	var drng := RandomNumberGenerator.new()
+	drng.seed = 3
+	var off: Dictionary = DealsCore.roll_request(g, "okka", drng)
+	_assert(not off.is_empty(), "okka has a request")
+	off.qty = 2
+	g.deals.offers.append(off)
+	g.event.emit("deal_request", {"offer": off.id, "contact": "okka"})
+	await frames(2)
+	await key(KEY_TAB)
+	var dtile: Button = m.phone.find_child("App_deals", true, false)
+	_assert(dtile != null, "Deal-O-Matic app tile")
+	dtile.pressed.emit()
+	await frames(2)
+	_assert(m.phone.current_title() == "Deal-O-Matic", "app opens")
+	var drow: Button = m.phone.find_child("Deal_%d" % off.id, true, false)
+	_assert(drow != null, "request listed")
+	drow.pressed.emit()
+	await frames(2)
+	_assert(m.phone.find_child("Counter_0", true, false) != null and m.phone.find_child("Decline", true, false) != null, "counter and decline offered")
+	var acc: Button = m.phone.find_child("Accept", true, false)
+	acc.pressed.emit()
+	await frames(2)
+	_assert(DealsCore.find(g, off.id).status == "accepted", "accepting on the phone")
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	_assert(not m.phone.visible, "phone closed")
+	var dkey: String = DealsCore.base_key(g, off.base)
+	g.cargo[dkey] = int(g.cargo.get(dkey, 0)) + 2
+	g.total_time = off.opens_at + 1.0
+	var spot_id := "deal_%d" % off.id
+	_assert(not sf.interactable(spot_id).is_empty(), "meeting spot appears on the map")
+	sf.place_player_at(spot_id)
+	await physics_frame
+	await physics_frame
+	_assert(not sf.focus.is_empty() and sf.focus.payload.id == spot_id, "focus on the meeting spot")
+	var dcr: int = g.credits
+	_assert(sf.interact(), "hand over at the spot")
+	await frames(2)
+	_assert(DealsCore.find(g, off.id).status == "done" and g.credits == dcr + off.price * off.qty, "deal closed on foot")
+	_assert(sf.interactable(spot_id).is_empty(), "spot disappears afterwards")
+	step("deal-o-matic")
+
 	g.credits = 20000
 	for u in ["cargo", "engine", "stealth", "lab"]:
 		gs.act(g.buy_upgrade(u))

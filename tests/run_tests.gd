@@ -7,6 +7,7 @@ const Data = preload("res://scripts/core/data.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const Deals = preload("res://scripts/core/deals.gd")
 const ArtReg = preload("res://scripts/core/art.gd")
 
 var data: Dictionary
@@ -33,6 +34,11 @@ func _init() -> void:
 		"test_people_profiles",
 		"test_people_deals",
 		"test_people_save",
+		"test_deal_data",
+		"test_deal_requests",
+		"test_deal_haggling",
+		"test_deal_handover",
+		"test_deal_expiry_and_save",
 		"test_market_saturation_recovers",
 		"test_heat_and_patrols",
 		"test_galaxy_and_jump",
@@ -683,3 +689,246 @@ func test_core_loop_is_profitable() -> void:
 	var res: Dictionary = Bot.play(data, 11, 1.0)
 	check(res.state == "won", "bot clears debt: %s" % [res])
 	check(res.day <= int(data.start.debt_due_day), "won before due day")
+
+
+# ---------------------------------------------------------------- Deal-O-Matic
+
+func deal_game() -> Game:
+	var g := new_game()
+	g.meet("teo")
+	g.location = "mireth"
+	return g
+
+
+func first_offer(g: Game, cid: String) -> Dictionary:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var o := Deals.roll_request(g, cid, rng)
+	check(not o.is_empty(), "%s can roll a request" % cid)
+	return o
+
+
+func test_deal_data() -> void:
+	var d: Dictionary = data.deals
+	check(d.texts.size() >= 3, "several request texts")
+	for t in d.texts:
+		check(t.contains("{qty}") and t.contains("{spot}") and t.contains("{price}"), "text names amount, price and spot")
+	for c in data.contacts:
+		check(d.spots.has(c.location), "%s has deal spots on %s" % [c.id, c.location])
+	for loc in d.spots:
+		check(data.surfaces.has(loc), "spots for surface %s" % loc)
+		var s: Dictionary = data.surfaces[loc]
+		var map := Rect2(0, 0, s.size[0], s.size[1])
+		var ids := {}
+		for sp in d.spots[loc]:
+			check(not ids.has(sp.id), "%s spot ids unique" % loc)
+			ids[sp.id] = true
+			var pt := Vector2(sp.pos[0], sp.pos[1])
+			check(map.has_point(pt), "%s/%s inside the map" % [loc, sp.id])
+			for b in s.buildings:
+				check(not Rect2(b.rect[0], b.rect[1], b.rect[2], b.rect[3]).grow(0.5).has_point(pt), "%s/%s clear of building %s" % [loc, sp.id, b.id])
+
+
+func test_deal_requests() -> void:
+	var g := deal_game()
+	var o := first_offer(g, "okka")
+	check(o.contact == "okka" and o.status == "open" and o.loc == "mireth", "offer is open and on the contact's planet")
+	check(g.demand["mireth"].has(o.base), "only drugs the planet buys")
+	check(o.qty >= 1 and o.qty <= People.max_units(g, "okka"), "qty within deal size")
+	check(o.price * o.qty <= People.budget_left(g, "okka"), "request fits the daily budget")
+	check(o.expires_at > o.opens_at and o.opens_at > g.total_time, "window opens later and closes after")
+	check(not Deals.message(g, o).contains("{") and Deals.message(g, o).length() > 10, "message renders without placeholders")
+	# time makes requests come in, at most one active per person and bounded overall
+	var seen := {}
+	for i in 600:
+		g.tick(7.5)
+		var active := {}
+		for of in g.deals.offers:
+			if of.status == "open" or of.status == "accepted":
+				check(not active.has(of.contact), "one active offer per contact")
+				active[of.contact] = true
+			seen[of.contact] = true
+		check(active.size() <= int(data.deals.max_open), "open offers capped")
+	check(not seen.has("marta") and not seen.has("ozzy"), "unmet people do not text")
+	check(seen.size() >= 2, "several people sent requests over 25 days (%d)" % seen.size())
+	# deterministic for the same seed and play
+	var g2 := deal_game()
+	var g3 := deal_game()
+	for i in 200:
+		g2.tick(7.5)
+		g3.tick(7.5)
+	check(JSON.stringify(g2.deals) == JSON.stringify(g3.deals), "requests are deterministic")
+	# addicts text more than casual users
+	var hooked := 0
+	var casual := 0
+	for n in 20:
+		var a := deal_game()
+		var b := deal_game()
+		a.day = n + 1  # different streams
+		b.day = n + 1
+		a.people.okka.addiction = 0.9
+		b.people.okka.addiction = 0.0
+		for i in 120:
+			a.people.okka.addiction = 0.9
+			b.people.okka.addiction = 0.0
+			a.tick(7.5)
+			b.tick(7.5)
+		hooked += a.deals.offers.filter(func(x): return x.contact == "okka").size()
+		casual += b.deals.offers.filter(func(x): return x.contact == "okka").size()
+	check(hooked > casual, "hooked customers ask more often (%d vs %d)" % [hooked, casual])
+
+
+func test_deal_haggling() -> void:
+	var g := deal_game()
+	var o := first_offer(g, "okka")
+	g.deals.offers.append(o)
+	var id: int = o.id
+	var steps: Array = data.deals.haggle.steps
+	var c0 := Deals.counter_chance(g, o, 0)
+	var c1 := Deals.counter_chance(g, o, 1)
+	var c2 := Deals.counter_chance(g, o, 2)
+	check(c0 > c1 and c1 > c2, "bigger asks are less likely to work")
+	g.people.okka.affinity = 0.8
+	check(Deals.counter_chance(g, o, 1) > c1, "friends haggle better")
+	g.people.okka.affinity = -0.8
+	check(Deals.counter_chance(g, o, 1) < c1, "enemies haggle worse")
+	g.people.okka.affinity = 0.0
+	check(Deals.counter_chance(g, o, 0) <= float(data.deals.haggle.max) and Deals.counter_chance(g, o, 2) >= float(data.deals.haggle.min), "chance stays in bounds")
+	# success
+	var price0: int = o.price
+	var r := Deals.counter(g, id, 0, 0.0)
+	check(r.ok, "counter works: %s" % r.msg)
+	var o2 := Deals.find(g, id)
+	check(o2.status == "accepted" and o2.price == int(round(price0 * (1.0 + steps[0]))) and o2.countered, "success raises the price and accepts")
+	check(not Deals.counter(g, id, 0, 0.0).ok, "no second haggle")
+	# failure: price stays, offer stays open and cannot be countered again
+	var h := deal_game()
+	var f := first_offer(h, "okka")
+	h.deals.offers.append(f)
+	var aff0: float = h.people.okka.affinity
+	var fr := Deals.counter(h, f.id, 0, 0.99)
+	check(fr.ok == false and Deals.find(h, f.id).status == "open" and Deals.find(h, f.id).price == f.price, "failed haggle keeps the original offer")
+	check(h.people.okka.affinity < aff0, "failed haggle annoys")
+	check(not Deals.counter(h, f.id, 0, 0.0).ok, "only one counter per offer")
+	check(Deals.accept(h, f.id).ok, "can still accept at the original price")
+	# walk away on a greedy ask
+	var w := deal_game()
+	var wo := first_offer(w, "okka")
+	w.deals.offers.append(wo)
+	Deals.counter(w, wo.id, 2, 0.99)
+	check(Deals.find(w, wo.id).status == "walked", "greedy failed ask makes them walk")
+	check(Deals.active(w, "okka").is_empty(), "walked offer is no longer active")
+	# budget limits the ask
+	var b := deal_game()
+	var bo := first_offer(b, "okka")
+	b.deals.offers.append(bo)
+	b.people.okka.spent = People.daily_budget(b, "okka") - bo.price * bo.qty
+	check(not Deals.counter(b, bo.id, 2, 0.0).ok, "can't ask more than their budget allows")
+	# decline
+	var d := deal_game()
+	var dof := first_offer(d, "okka")
+	d.deals.offers.append(dof)
+	check(Deals.decline(d, dof.id).ok and Deals.find(d, dof.id).status == "declined", "decline")
+	for i in 12:
+		d.tick(7.5)
+	check(Deals.active(d, "okka").is_empty(), "declined customers stay quiet for a while")
+
+
+func test_deal_handover() -> void:
+	var g := deal_game()
+	var o := first_offer(g, "okka")
+	g.deals.offers.append(o)
+	Deals.accept(g, o.id)
+	var key: String = Mixing.key(o.base, Mixing.traits_for(data, o.base, []))
+	g.total_time = o.opens_at + 1.0
+	check(not Deals.hand_over(g, o.id).ok, "no goods, no deal")
+	g.cargo[key] = o.qty + 2
+	g.total_time = o.opens_at - 5.0
+	check(not Deals.hand_over(g, o.id).ok, "too early")
+	g.total_time = o.opens_at + 1.0
+	g.location = "cinder"
+	check(not Deals.hand_over(g, o.id).ok, "wrong planet")
+	g.location = "mireth"
+	var cr0 := g.credits
+	var aff0: float = g.people.okka.affinity
+	var spent0: int = g.people.okka.spent
+	var units0: int = g.stats.units_sold
+	var heat0 := g.heat
+	var r := Deals.hand_over(g, o.id)
+	check(r.ok, "hand over: %s" % r.msg)
+	check(g.credits == cr0 + o.price * o.qty, "paid the agreed price")
+	check(int(g.cargo.get(key, 0)) == 2, "goods leave the cargo")
+	check(Deals.find(g, o.id).status == "done", "offer done")
+	check(g.people.okka.spent == spent0 + o.price * o.qty and g.people.okka.history.size() == 1, "recorded in people")
+	check(g.people.okka.affinity > aff0, "deal raises affinity")
+	check(g.stats.units_sold == units0 + o.qty and g.heat > heat0, "stats and heat")
+	check(not g.contact_ready("okka"), "contact cooldown starts")
+	check(not Deals.hand_over(g, o.id).ok, "can't hand over twice")
+	# mixed grades: lowest grade goes first
+	var h := deal_game()
+	var ho := first_offer(h, "okka")
+	ho.qty = 3
+	h.deals.offers.append(ho)
+	Deals.accept(h, ho.id)
+	var std: String = Mixing.key(ho.base, Mixing.traits_for(data, ho.base, []))
+	h.cargo[std + "@2"] = 2
+	h.cargo[std] = 1
+	h.total_time = ho.opens_at + 1.0
+	check(Deals.hand_over(h, ho.id).ok, "hand over from several stacks")
+	check(h.cargo.is_empty(), "all stacks used")
+	# open offers can't be closed
+	var u := deal_game()
+	var uo := first_offer(u, "okka")
+	u.deals.offers.append(uo)
+	u.cargo[std] = 9
+	u.total_time = uo.opens_at + 1.0
+	check(not Deals.hand_over(u, uo.id).ok, "open offers must be accepted first")
+	check(Deals.spots_here(u, "mireth", 32.0).is_empty(), "no spot before accepting")
+	Deals.accept(u, uo.id)
+	var sp := Deals.spots_here(u, "mireth", 32.0)
+	check(sp.size() == 1 and sp[0].action == "deal_handover" and sp[0].payload.offer == uo.id, "accepted offer gets a spot on foot")
+	check(Deals.spots_here(u, "cinder", 32.0).is_empty(), "and only on its planet")
+
+
+func test_deal_expiry_and_save() -> void:
+	var g := deal_game()
+	var o := first_offer(g, "okka")
+	g.deals.offers.append(o)
+	var a := first_offer(g, "sen")
+	a.id = 99
+	g.deals.offers.append(a)
+	Deals.accept(g, a.id)
+	var aff0: float = g.people.sen.affinity
+	g.total_time = maxf(o.expires_at, a.expires_at) + 1.0
+	g.tick(15.0)
+	check(Deals.find(g, o.id).status == "expired", "unanswered request expires")
+	check(Deals.find(g, a.id).status == "missed", "accepted but not delivered = missed")
+	check(g.people.sen.affinity < aff0, "missing a deal costs affinity")
+	check(not Deals.accept(g, o.id).ok, "can't accept an expired request")
+	# finished entries are pruned, active ones never
+	var p := deal_game()
+	for i in 30:
+		var f := first_offer(p, "okka")
+		f.id = 200 + i
+		f.status = "done"
+		p.deals.offers.append(f)
+	var act := first_offer(p, "sen")
+	act.id = 500
+	p.deals.offers.append(act)
+	p.tick(15.0)
+	var finished: int = p.deals.offers.filter(func(x): return x.status == "done").size()
+	check(finished <= int(data.deals.keep_finished) and Deals.find(p, 500).status == "open", "history is capped, open stays")
+	# save / load
+	var s := deal_game()
+	var so := first_offer(s, "okka")
+	s.deals.offers.append(so)
+	Deals.accept(s, so.id)
+	var s2 := Game.new()
+	s2.from_dict(data, JSON.parse_string(JSON.stringify(s.to_dict())))
+	check(Deals.find(s2, so.id).status == "accepted" and Deals.find(s2, so.id).qty == so.qty, "offers survive a save")
+	check(Deals.find(s2, so.id).price is int and Deals.find(s2, so.id).id is int, "ids and prices stay ints")
+	var old := s.to_dict()
+	old.erase("deals")
+	var s3 := Game.new()
+	s3.from_dict(data, old)
+	check(s3.deals.offers.is_empty(), "old save without deals starts empty")
