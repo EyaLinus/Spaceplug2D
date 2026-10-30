@@ -51,7 +51,7 @@ func _ready() -> void:
 	_title = UI.label("", 26, UI.ACCENT)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_title)
-	_leave_btn = UI.button("Undock [E]", func():
+	_leave_btn = UI.button("Undock", func():
 		if _filter.is_empty():
 			EventBus.undock_requested.emit()
 		else:
@@ -73,7 +73,8 @@ func _ready() -> void:
 ## "fence_only": true limits Deals to the fence.
 func open(filter: Dictionary = {}) -> void:
 	_filter = filter
-	_leave_btn.text = "Undock [E]" if filter.is_empty() else "Leave [E]"
+	# undock goes through ship_dock, leaving a surface counter through interact (see main.gd)
+	_leave_btn.text = "Undock [%s]" % Settings.key_label("ship_dock") if filter.is_empty() else "Leave [%s]" % Settings.key_label("interact")
 	visible = true
 	_lab_qty = mini(_lab_qty, GameState.game.lab_capacity())
 	refresh(true)
