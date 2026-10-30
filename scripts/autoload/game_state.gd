@@ -5,7 +5,7 @@ extends Node
 const Game = preload("res://scripts/core/game.gd")
 const Data = preload("res://scripts/core/data.gd")
 const SLOTS := 3
-const LEGACY_SAVE := "user://savegame.json"  ## single save file before v0.1.3, moved into slot 1
+const LEGACY_SAVE := "user://savegame.json"  ## single save file before the save slots (v0.1.4), moved into slot 1
 
 var data: Dictionary = {}
 var game: Game
