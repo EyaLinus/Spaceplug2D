@@ -158,6 +158,29 @@ func test_police_on_foot() -> void:
 	check(g.police_on_foot(0.5) == 1, "half security scales")
 	g.heat = 100.0
 	check(g.police_on_foot(1.0) == int(data.police.max), "capped at max")
+	var Nav = load("res://scripts/planet/nav.gd")
+	for loc in data.surfaces:
+		var s: Dictionary = data.surfaces[loc]
+		var grid: AStarGrid2D = Nav.build(s)
+		var t := float(s.tile)
+		for b in s.buildings:
+			if not b.has("door"):
+				continue
+			# from above the building to below it: the route must go around, never through a building
+			var r := Rect2(Vector2(b.rect[0], b.rect[1]) * t, Vector2(b.rect[2], b.rect[3]) * t)
+			var top := Vector2(r.get_center().x, r.position.y - t * 0.5)
+			var bottom := Vector2(r.get_center().x, r.end.y + t * 0.5)
+			var path: Array = Nav.path_between(grid, t, top, bottom)
+			var clean := path.size() > 2
+			var prev := top
+			for p in path:
+				for k in 9:
+					var q: Vector2 = prev.lerp(p, k / 8.0)
+					for o in s.buildings:
+						if Rect2(Vector2(o.rect[0], o.rect[1]) * t, Vector2(o.rect[2], o.rect[3]) * t).grow(-1).has_point(q):
+							clean = false
+				prev = p
+			check(clean, "%s: route around %s avoids buildings" % [loc, b.id])
 	var Officer = load("res://scripts/planet/officer.gd")
 	var cone := deg_to_rad(80.0)
 	check(Officer.sees(Vector2.ZERO, Vector2.RIGHT, Vector2(100, 10), 170.0, cone, []), "sees in front")

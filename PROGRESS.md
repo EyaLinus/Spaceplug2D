@@ -1,5 +1,11 @@
 # Progress log
 
+## Police pathfinding (2026-10-30)
+- `scripts/planet/nav.gd`: AStarGrid2D per surface (building tiles solid). Chasing officers re-path to the player every
+  0.35 s; an officer that gives up walks back to the roads around the buildings. Give-up range 320 → 480 px.
+- Verified: unit test routes around every building with a door on all three surfaces without touching a building;
+  UI smoke puts a chasing officer behind the Mireth hangar and checks it closes in without entering it.
+
 ## Art pass 1: pixel art for surfaces, characters and ship (2026-10-30)
 - First real art via the game-assets-2d skill workflow (pipeline in `docs/art.md`): player, officer and 8 NPC looks with
   4-direction walk cycles, ship, tiles for Mireth/Cinder/Bazaar, tinted roof/wall pieces + windows/doors/hatches,

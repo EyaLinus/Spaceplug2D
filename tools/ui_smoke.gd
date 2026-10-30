@@ -95,6 +95,32 @@ func _run() -> void:
 	cop.pick_next = sf._walker_path
 	step("police on foot")
 
+	# a chasing officer walks around the hangar instead of through it
+	var hang: Rect2 = sf._rect(sf.cfg.buildings[0].rect)
+	g.cargo["weed:glow"] = 1
+	g.heat = 60.0
+	sf.player.position = Vector2(hang.get_center().x, hang.end.y + 24.0)
+	cop.position = Vector2(hang.get_center().x, hang.position.y - 20.0)
+	cop.chasing = true
+	cop.speed = float(gs.data.police.chase_speed)
+	cop.path = []
+	var inside := false
+	var start_d: float = cop.position.distance_to(sf.player.position)
+	for i in 300:
+		await physics_frame
+		if hang.grow(-2).has_point(cop.position):
+			inside = true
+		if cop.position.distance_to(sf.player.position) < 40.0:
+			break
+	_assert(not inside, "chasing officer stays out of buildings")
+	_assert(cop.position.distance_to(sf.player.position) < start_d * 0.5, "chasing officer closes in around the building")
+	g.cargo.erase("weed:glow")
+	g.heat = 0.0
+	cop.chasing = false
+	cop.speed = float(gs.data.police.speed)
+	cop.path = []
+	step("police pathfinding")
+
 	gs.act(g.buy("cannabis", 5))
 	gs.act(g.buy("nanoflux", 5))
 	m.station._lab_adds = ["nanoflux", "", ""]

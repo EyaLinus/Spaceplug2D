@@ -39,7 +39,8 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 ## P3 – Police on the ground
 - [x] Reach Authority officers patrol the streets with vision cones; heat controls their number (shared with space heat), scaled per planet (`security`: Mireth 1, Cinder 0.5, Bazaar 0)
 - [x] Carrying product in an officer's sight → frisk bar; at high heat they chase you; bust on foot = confiscation + fine (same core bust)
-- [ ] Running away raises heat; officers path around buildings instead of walking through them
+- [x] Officers path around buildings (AStarGrid2D on the tile grid, `scripts/planet/nav.gd`)
+- [ ] Running away raises heat
 - [ ] Curfew at night, hiding spots, bribable officers
 - [ ] Planet heat zones: dealing in the plaza is hotter than in the back alleys
 
