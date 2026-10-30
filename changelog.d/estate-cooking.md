@@ -1,1 +1,0 @@
-- **Cook in your estate:** once the stations a recipe needs are set up, any of them opens the lab inside your estate. Missing stations are listed.
