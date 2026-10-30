@@ -16,6 +16,7 @@ func _init() -> void:
 	for t in [
 		"test_data_references",
 		"test_surface_layouts",
+		"test_police_on_foot",
 		"test_mixing_rules",
 		"test_buy_and_cargo_limit",
 		"test_lab_batch",
@@ -114,9 +115,28 @@ func test_surface_layouts() -> void:
 		check(not ld.get("fence", false) or "fence" in reachable, "%s fence reachable" % loc)
 		check(ld.get("fence", false) or not "fence" in reachable, "%s has no fence door without a fence" % loc)
 		check(s.has("pad"), "%s has a launch pad" % loc)
+		check(s.has("security"), "%s sets its police security" % loc)
 		for c in data.contacts:
 			if c.location == loc:
 				check(s.npcs.any(func(n): return n.get("contact", "") == c.id), "%s contact %s stands on the surface" % [loc, c.id])
+
+
+func test_police_on_foot() -> void:
+	var g := new_game()
+	check(g.police_on_foot(1.0) == 1, "one officer on a lawful planet at zero heat")
+	check(g.police_on_foot(0.0) == 0, "no police on a lawless deck")
+	check(g.police_on_foot(0.5) == 0, "half security: nobody at zero heat")
+	g.heat = 40.0
+	check(g.police_on_foot(1.0) == 3, "more officers with heat")
+	check(g.police_on_foot(0.5) == 1, "half security scales")
+	g.heat = 100.0
+	check(g.police_on_foot(1.0) == int(data.police.max), "capped at max")
+	var Officer = load("res://scripts/planet/officer.gd")
+	var cone := deg_to_rad(80.0)
+	check(Officer.sees(Vector2.ZERO, Vector2.RIGHT, Vector2(100, 10), 170.0, cone, []), "sees in front")
+	check(not Officer.sees(Vector2.ZERO, Vector2.RIGHT, Vector2(-100, 0), 170.0, cone, []), "blind behind")
+	check(not Officer.sees(Vector2.ZERO, Vector2.RIGHT, Vector2(300, 0), 170.0, cone, []), "out of range")
+	check(not Officer.sees(Vector2.ZERO, Vector2.RIGHT, Vector2(150, 0), 170.0, cone, [Rect2(60, -20, 20, 40)]), "walls block sight")
 
 
 func test_mixing_rules() -> void:

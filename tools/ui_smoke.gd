@@ -77,6 +77,24 @@ func _run() -> void:
 		_assert(not m.station.visible, "panel closes")
 	step("doors and people")
 
+	# police on foot: an officer looking at you while you carry product frisks and busts you
+	_assert(sf.officers.size() == g.police_on_foot(1.0) and sf.officers.size() > 0, "officers on Mireth")
+	var cop = sf.officers[0]
+	cop.pick_next = Callable()
+	cop.path = []
+	cop.position = sf.player.position + Vector2(70, 0)
+	cop.facing = Vector2.LEFT
+	g.cargo["weed:glow"] = 2
+	var busts_before: int = g.stats.busts
+	for i in 240:
+		cop.position = sf.player.position + Vector2(70, 0)
+		await physics_frame
+		if g.stats.busts > busts_before:
+			break
+	_assert(g.stats.busts > busts_before and not g.has_contraband(), "officer frisk busts the player on foot")
+	cop.pick_next = sf._walker_path
+	step("police on foot")
+
 	gs.act(g.buy("cannabis", 5))
 	gs.act(g.buy("nanoflux", 5))
 	m.station._lab_adds = ["nanoflux", "", ""]

@@ -37,8 +37,9 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [x] Second and third surface: Drift Bazaar as a walkable hull deck (with the fence's back room), Cinder Belt as a mining camp
 
 ## P3 – Police on the ground
-- [ ] Reach Authority officers patrol the streets with vision cones; heat controls their number (shared with space heat)
-- [ ] Carrying product near an officer → frisk check; running away raises heat; bust on foot = confiscation + fine
+- [x] Reach Authority officers patrol the streets with vision cones; heat controls their number (shared with space heat), scaled per planet (`security`: Mireth 1, Cinder 0.5, Bazaar 0)
+- [x] Carrying product in an officer's sight → frisk bar; at high heat they chase you; bust on foot = confiscation + fine (same core bust)
+- [ ] Running away raises heat; officers path around buildings instead of walking through them
 - [ ] Curfew at night, hiding spots, bribable officers
 - [ ] Planet heat zones: dealing in the plaza is hotter than in the back alleys
 

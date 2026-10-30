@@ -126,5 +126,17 @@
     "speed": 300,
     "chase_speed": 470,
     "wander_radius": 2200
+  },
+  "police": {
+    "base": 1,
+    "per_heat": 20,
+    "max": 4,
+    "vision": 170,
+    "cone_degrees": 80,
+    "frisk_seconds": 1.6,
+    "speed": 55,
+    "chase_speed": 150,
+    "chase_heat": 40,
+    "give_up_range": 320
   }
 }
