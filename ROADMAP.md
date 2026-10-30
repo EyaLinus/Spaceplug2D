@@ -62,7 +62,8 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 ## P6 – Expansion & 1.0
 - [ ] More planets with own laws, demand and security levels; jump lanes to a second system
 - [ ] Rival syndicate with territory and price wars; ship classes
-- [ ] Tutorial contract chain, mixing journal, balance pass with long sims, settings, localisation DE/EN
+- [x] Menu system: main + pause menu, 3 save slots, settings (volumes, window mode/size, VSync, key rebinding)
+- [ ] Tutorial contract chain, mixing journal, balance pass with long sims, localisation DE/EN
 
 ## Carried over from the v0.1 roadmap (fold into the milestones above when they are picked up)
 - Patrol feel in space: warning before scan range, asteroid fields to break pursuit, screen shake on bust

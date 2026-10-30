@@ -39,6 +39,22 @@ Every dockable location is now walkable; the docked menu is no longer used by an
   UI smoke lands on both, opens every door/person and takes off again; screenshots checked.
 - Gaps: both are still placeholder art; the map name label sits under the controls help at the bottom-left corner.
 
+## Menu system (2026-10-30, unreleased)
+- Main menu (Continue = latest slot, New game → pick slot, Load, Settings, Quit) and pause menu (Esc: Resume, Save,
+  Load, Settings, Save & main menu, Save & quit). Menus are overlays in `scripts/ui/menu/`; Esc always steps back one level.
+- Three save slots (`user://save_N.json`, `GameState.slot`); the old `user://savegame.json` moves into slot 1. The window
+  close button saves a running game.
+- `Settings` autoload (`user://settings.cfg`): Master/Music/SFX buses (AudioManager now plays on Music/SFX), windowed/
+  fullscreen, window size, VSync, rebinding of each action's primary key with swap inside a group (Flight / On foot /
+  General). HUD and surface prompts read the bound keys.
+
+**Verified:** 166 unit checks, UI smoke unchanged and green, new `tools/menu_smoke.gd` (CI step) drives the menus with
+real Esc / key events: slot picker, pause/resume, settings from pause, save/overwrite confirm, continue, load, delete,
+volume → bus, rebind + swap + cancel, reload from disk, reset. Screenshots of all screens checked under Xvfb.
+
+**Not verified:** fullscreen / window size only run on a real display (headless skips them); not tested on Windows yet.
+Gamepad bindings are not supported (keyboard only). Station "Undock [E]" button text is still fixed to E.
+
 ## v0.1.2 (2026-10-30) – planet vision P1: landing & walking
 Plan for the whole vision (planets as instanced on-foot levels, police, estates, production buildings, workers) is in
 ROADMAP.md as milestones P1–P6. P1 is done in this step:
