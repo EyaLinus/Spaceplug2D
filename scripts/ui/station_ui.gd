@@ -8,6 +8,7 @@ const UI = preload("res://scripts/ui/ui_theme.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Production = preload("res://scripts/core/production.gd")
+const People = preload("res://scripts/core/people.gd")
 const RunnerScript = preload("res://scripts/ui/minigames/minigame_runner.gd")
 
 var tabs: TabContainer
@@ -316,7 +317,7 @@ func _build_deals(g) -> Control:
 		var box := VBoxContainer.new()
 		var head := "%s" % c.name
 		if c.likes != "":
-			head += "  · loves %s · takes up to %d" % [g.data.traits[c.likes].name, c.max_units]
+			head += "  · loves %s · takes up to %d · %d cr left today" % [g.data.traits[c.likes].name, People.max_units(g, c.id), People.budget_left(g, c.id)]
 		else:
 			head += "  · buys anything at %d%% value" % int(float(g.data.market.fence_ratio) * 100.0)
 		var ready: bool = c.id == "" or g.contact_ready(c.id)
@@ -332,9 +333,9 @@ func _build_deals(g) -> Control:
 			var price: int = g.sell_price(k, c.id)
 			h.add_child(Art.with_icon(k, UI.label("%d × %s" % [g.cargo[k], g.item_name(k)], 16)))
 			h.add_child(UI.label("%d cr/unit" % price, 16, UI.GOLD))
-			var n: int = mini(int(g.cargo[k]), int(c.max_units))
-			var b := UI.button("Sell %d" % n, func(): GameState.act(g.sell(k, n, c.id)), 90)
-			b.disabled = not ready
+			var n: int = mini(int(g.cargo[k]), int(c.max_units) if c.id == "" else People.units_wanted(g, c.id, k))
+			var b := UI.button("Sell %d" % n if n > 0 else "Too pricey", func(): GameState.act(g.sell(k, n, c.id)), 90)
+			b.disabled = not ready or n <= 0
 			h.add_child(b)
 			box.add_child(h)
 		v.add_child(box)

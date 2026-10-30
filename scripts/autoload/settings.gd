@@ -26,6 +26,7 @@ const BINDABLE := [
 	{"action": "interact", "label": "Use / talk", "group": "On foot"},
 	{"action": "build_menu", "label": "Build menu (estate)", "group": "On foot"},
 	{"action": "ui_menu", "label": "Pause menu", "group": "General"},
+	{"action": "phone", "label": "Com-Phone", "group": "General"},
 ]
 
 var config_path := "user://settings.cfg"

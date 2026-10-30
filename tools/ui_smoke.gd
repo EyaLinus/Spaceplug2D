@@ -21,6 +21,17 @@ func step(name: String) -> void:
 	print("SMOKE %s" % name)
 
 
+func key(code: Key) -> void:
+	for pressed in [true, false]:
+		var ev := InputEventKey.new()
+		ev.physical_keycode = code
+		ev.keycode = code
+		ev.pressed = pressed
+		Input.parse_input_event(ev)
+		await process_frame
+	await process_frame
+
+
 func frames(n: int) -> void:
 	for i in n:
 		await process_frame
@@ -76,6 +87,40 @@ func _run() -> void:
 		await frames(1)
 		_assert(not m.station.visible, "panel closes")
 	step("doors and people")
+
+	# Com-Phone: Tab opens it on foot, Contacts lists the people met so far, Esc steps back and closes it
+	_assert(g.people.okka.known and not g.people.teo.known, "teo not met yet")
+	sf.place_player_at("teo")
+	await physics_frame
+	await physics_frame
+	_assert(sf.interact(), "talk to teo")
+	await frames(2)
+	_assert(g.people.teo.known, "talking to teo adds the contact")
+	m.station.close_requested.emit()
+	await frames(1)
+	await key(KEY_TAB)
+	_assert(m.phone.visible and m.phone.current_title() == "", "Tab opens the phone on its home screen")
+	_assert(sf.player.frozen, "player frozen while the phone is open")
+	var tile: Button = m.phone.find_child("App_contacts", true, false)
+	_assert(tile != null, "contacts app tile")
+	tile.pressed.emit()
+	await frames(2)
+	_assert(m.phone.current_title() == "Contacts", "contacts app opens")
+	_assert(m.phone.find_child("Contact_teo", true, false) != null and m.phone.find_child("Contact_okka", true, false) != null, "met people listed")
+	_assert(m.phone.find_child("Contact_marta", true, false) == null, "unmet people hidden")
+	var row: Button = m.phone.find_child("Contact_okka", true, false)
+	row.pressed.emit()
+	await frames(2)
+	_assert(m.phone.current_title() == g.contact("okka").name, "profile opens")
+	g.tick(0.1)  # a game event while open rebuilds the screen without errors
+	g.add_heat(0.0)
+	await frames(2)
+	await key(KEY_ESCAPE)
+	_assert(m.phone.visible and m.phone.current_title() == "Contacts", "Esc steps back to the list")
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	_assert(not m.phone.visible and not gs.paused, "Esc from home closes the phone without pausing")
+	step("com-phone contacts")
 
 	# police on foot: an officer looking at you while you carry product frisks and busts you
 	_assert(sf.officers.size() == g.police_on_foot(1.0) and sf.officers.size() > 0, "officers on Mireth")

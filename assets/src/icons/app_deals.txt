@@ -1,0 +1,25 @@
+# Phone app: Deal-O-Matic (speech bubble with credits).
+legend:
+. = transparent
+k = ink
+W = white
+w = stone
+y = gold
+Y = gold_dark
+---
+................
+..kkkkkkkkkkkk..
+.kWWWWWWWWWWWWk.
+.kWWWWWkkWWWWwk.
+.kWWWWkyykWWWwk.
+.kWWWWkyYkWWWwk.
+.kWWWWWkykWWWwk.
+.kWWWWkyykWWWwk.
+.kWWWWWkkWWWWwk.
+.kwWWWWWWWWWwwk.
+..kkkwwkkkkkkk..
+....kwk.........
+....kk..........
+...kk...........
+................
+................

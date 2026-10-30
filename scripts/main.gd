@@ -13,6 +13,7 @@ const MainMenuScript = preload("res://scripts/ui/menu/main_menu.gd")
 const PauseMenuScript = preload("res://scripts/ui/menu/pause_menu.gd")
 const SlotPanelScript = preload("res://scripts/ui/menu/slot_panel.gd")
 const SettingsPanelScript = preload("res://scripts/ui/menu/settings_panel.gd")
+const PhoneScript = preload("res://scripts/ui/phone/phone.gd")
 
 ## Which station tab a surface interaction opens.
 const SURFACE_TABS := {"market": "Market", "lab": "Lab", "shipyard": "Shipyard", "office": "Office", "deal": "Deals", "fence": "Deals"}
@@ -25,12 +26,14 @@ const ACTIONS := {
 	"ship_right": [KEY_D, KEY_RIGHT],
 	"ship_dock": [KEY_E],
 	"ui_menu": [KEY_ESCAPE, KEY_P],
+	"phone": [KEY_TAB],
 }
 
 var world: Node2D
 var surface: Node2D  ## current planet surface instance, null in space
 var hud: Control
 var station: Control
+var phone: Control  ## Com-Phone overlay (scripts/ui/phone), usable in flight and on foot
 var menu: Control
 var pause_menu: Control
 var slot_panel: Control  ## save slot list (new / load / save), opened from the main or pause menu
@@ -59,6 +62,8 @@ func _ready() -> void:
 	station = StationScript.new()
 	root.add_child(station)
 	station.close_requested.connect(station.close)
+	phone = PhoneScript.new()
+	root.add_child(phone)
 	station.estate_enter_requested.connect(func(eid: String): enter_estate(eid))
 	station.place_requested.connect(func(st: String):
 		station.close()
@@ -95,8 +100,32 @@ func _register_input() -> void:
 			InputMap.action_add_event(action, ev)
 
 
+func _in_game() -> bool:
+	return GameState.game != null and not (menu.visible or end_screen.visible or slot_panel.visible or settings_panel.visible)
+
+
+## The phone key is read here, before the GUI, so Tab never ends up as focus navigation.
+func _input(event: InputEvent) -> void:
+	if event.is_action_pressed("phone") and _in_game() and not GameState.paused:
+		toggle_phone()
+		get_viewport().set_input_as_handled()
+
+
+func toggle_phone() -> void:
+	if not phone.visible:
+		station.close()
+		if surface != null:
+			surface.placing = ""
+	phone.toggle()
+
+
 func _unhandled_input(event: InputEvent) -> void:
-	if GameState.game == null or menu.visible or end_screen.visible or slot_panel.visible or settings_panel.visible:
+	if not _in_game():
+		return
+	if phone.visible and event.is_action_pressed("ui_menu") and not GameState.paused:
+		phone.back()
+		return
+	if phone.visible and not event.is_action_pressed("ui_menu"):
 		return
 	if event.is_action_pressed("ui_menu"):
 		if surface != null and surface.placing != "" and not GameState.paused:
@@ -145,7 +174,8 @@ func load_slot(i: int) -> void:
 
 func _process(_delta: float) -> void:
 	if surface != null:
-		surface.player.frozen = GameState.paused or station.visible or end_screen.visible
+		surface.player.frozen = GameState.paused or station.visible or end_screen.visible or phone.visible
+	world.input_blocked = phone.visible
 
 
 func _enter_game() -> void:
@@ -155,6 +185,7 @@ func _enter_game() -> void:
 	pause_menu.close()
 	slot_panel.close()
 	settings_panel.close()
+	phone.close()
 	hud.visible = true
 	world.clear_patrols()
 	var g = GameState.game
@@ -240,6 +271,8 @@ func _on_surface_action(action: String, p: Dictionary) -> void:
 			return
 	if not SURFACE_TABS.has(action):
 		return
+	if p.get("contact", "") != "":
+		GameState.game.meet(p.contact)
 	station.open({"tabs": [SURFACE_TABS[action]], "title": p.title, "contact": p.get("contact", ""), "fence_only": action == "fence"})
 
 
@@ -304,6 +337,7 @@ func toggle_pause() -> void:
 
 func show_main_menu() -> void:
 	GameState.paused = true
+	phone.close()
 	world.active = false
 	_leave_surface()
 	station.close()
@@ -321,6 +355,7 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		GameState.paused = true
 		world.active = false
 		station.close()
+		phone.close()
 		var g = GameState.game
 		if p.won:
 			_end_label.text = "DEBT CLEARED\n\nThe Consortium tips its hat. Day %d, %d cr earned, %d units moved, busted %d×.\nThe Reach is yours to grow (more systems coming in the next builds)." % [g.day, g.stats.earned, g.stats.units_sold, g.stats.busts]
@@ -328,6 +363,8 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 			_end_label.text = "THE CONSORTIUM CAME TO COLLECT\n\nYou still owed %d cr on day %d.\nEarned %d cr, moved %d units, busted %d×." % [g.debt, g.day, g.stats.earned, g.stats.units_sold, g.stats.busts]
 		end_screen.visible = true
 		GameState.save_game()
+	elif kind == "met":
+		EventBus.toast.emit("New contact: %s. Open the Com-Phone [%s]." % [GameState.game.contact(p.contact).name, Settings.key_label("phone")], true)
 	elif kind == "busted":
 		EventBus.toast.emit("BUSTED: lost %d units, fined %d cr." % [p.lost, p.fine], false)
 

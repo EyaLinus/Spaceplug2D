@@ -90,6 +90,15 @@ func _run() -> void:
 	sf.interact()
 	await _save(out, "deals")
 	m.station.close()
+	var k: String = g.cargo.keys().filter(func(x): return x.contains(":"))[0]
+	g.sell(k, 2, "okka")
+	m.toggle_phone()
+	await _save(out, "phone_home")
+	m.phone.open_app("contacts")
+	await _save(out, "phone_contacts")
+	m.phone.push(g.contact("okka").name, func(gg): return m.phone.app_by_id("contacts").detail(gg, "okka"))
+	await _save(out, "phone_profile")
+	m.phone.close()
 	g.add_heat(55)
 	m.undock()
 	for i in 90:

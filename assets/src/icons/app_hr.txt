@@ -1,0 +1,28 @@
+# Phone app: HR / Dealers (two crew members).
+legend:
+. = transparent
+k = ink
+s = skin
+S = skin_dark
+h = hair
+b = blue
+B = blue_dark
+p = purple
+P = purple_dark
+---
+................
+..........kkk...
+...kkk...khhhk..
+..khhhk..ksssk..
+..ksssk..kSSSk..
+..kSSSk...kkk...
+...kkk...kpppk..
+..kbbbk.kppppPk.
+.kbbbbBkkppppPk.
+.kbbbbBkkppppPk.
+.kbbbbBkkPPPPPk.
+.kBBBBBk.kkkkk..
+..kkkkk.........
+................
+................
+................

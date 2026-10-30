@@ -20,6 +20,7 @@ shows "Windows protected your PC" → *More info* → *Run anyway*).
 | Space | Brake |
 | E | Dock / undock (when in range) |
 | Esc / P | Pause menu (save, sound, main menu) |
+| Tab | Com-Phone (contacts; works in flight and on foot, Esc steps back) |
 
 **On a planet (on foot)**
 | Key | Action |

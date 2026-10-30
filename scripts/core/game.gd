@@ -8,6 +8,7 @@ signal event(kind: String, payload: Dictionary)
 
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
+const People = preload("res://scripts/core/people.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -26,6 +27,7 @@ var stash: Dictionary = {}  ## finished lab output waiting at the hub
 var lab_queue: Array = []  ## [{product, qty, remaining, total}]
 var demand: Dictionary = {}  ## location -> base -> multiplier
 var contact_ready_at: Dictionary = {}  ## contact id -> total_time when they buy again
+var people: Dictionary = {}  ## contact id -> addiction, affinity, spent today, known, history (see people.gd)
 var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0}
 var state: String = "playing"  ## playing | won | lost
 var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
@@ -49,6 +51,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	stash = {}
 	lab_queue = []
 	contact_ready_at = {}
+	people = People.init_all(data)
 	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0}
 	state = "playing"
 	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
@@ -152,7 +155,7 @@ func sell_price(product_key: String, contact_id: String = "", loc: String = loca
 	if contact_id == "":
 		return int(round(v * float(data.market.fence_ratio)))
 	var c := contact(contact_id)
-	v *= float(c.get("budget_mult", 1.0))
+	v *= float(c.get("budget_mult", 1.0)) * People.price_mult(self, contact_id, p.base)
 	if p.traits.has(c.get("likes", "")):
 		v *= 1.0 + float(data.market.liked_trait_bonus)
 	return int(round(v))
@@ -232,6 +235,7 @@ func _new_day() -> void:
 		var m := float(data.market.max_demand)
 		demand[loc][b] = clampf(demand[loc][b] + rng.randf_range(-0.15, 0.25), float(data.market.min_demand), m)
 		_emit("rumour", {"location": loc, "base": b, "demand": demand[loc][b]})
+	People.new_day(self)
 	_emit("new_day", {"day": day})
 	if debt > 0 and day > debt_due_day:
 		state = "lost"
@@ -369,6 +373,12 @@ func start_batch(base: String, additives: Array, qty: int, scores: Dictionary = 
 	return _ok("Cooking %d %s%s." % [out_qty, item_name(product), extra])
 
 
+## First conversation with a named person: they show up in the Contacts app from now on.
+func meet(contact_id: String) -> void:
+	if not contact(contact_id).is_empty() and People.meet(self, contact_id):
+		_emit("met", {"contact": contact_id})
+
+
 func collect_stash() -> Dictionary:
 	if not lab_here():
 		return _fail("Your stash is at the hub.")
@@ -405,8 +415,10 @@ func sell(product_key: String, qty: int, contact_id: String = "") -> Dictionary:
 			return _fail("Contact isn't here.")
 		if not contact_ready(contact_id):
 			return _fail("%s isn't buying yet." % c.name)
-		if qty > int(c.max_units):
-			return _fail("%s takes at most %d." % [c.name, c.max_units])
+		if qty > People.max_units(self, contact_id):
+			return _fail("%s takes at most %d." % [c.name, People.max_units(self, contact_id)])
+		if sell_price(product_key, contact_id) * qty > People.budget_left(self, contact_id):
+			return _fail("%s can't afford that today (%d cr left)." % [c.name, People.budget_left(self, contact_id)])
 	var total := 0
 	for i in qty:
 		total += sell_price(product_key, contact_id)
@@ -417,6 +429,7 @@ func sell(product_key: String, qty: int, contact_id: String = "") -> Dictionary:
 	stats.units_sold += qty
 	if contact_id != "":
 		contact_ready_at[contact_id] = total_time + float(data.market.contact_cooldown)
+		People.record_deal(self, contact_id, product_key, qty, total, p)
 	add_heat(float(loc_data().heat_per_unit) * qty * heat_mult(p.base))
 	_emit("sold", {"product": product_key, "qty": qty, "credits": total, "contact": contact_id})
 	return _ok("Sold %d for %d cr." % [qty, total])
@@ -566,7 +579,7 @@ func to_dict() -> Dictionary:
 		"day": day, "day_time": snappedf(day_time, 0.01), "total_time": snappedf(total_time, 0.01),
 		"heat": snappedf(heat, 0.01), "location": location, "cargo": cargo.duplicate(), "stash": stash.duplicate(),
 		"lab_queue": lab_queue.duplicate(true), "demand": demand.duplicate(true),
-		"contact_ready_at": contact_ready_at.duplicate(), "upgrades": upgrades.duplicate(),
+		"contact_ready_at": contact_ready_at.duplicate(), "people": people.duplicate(true), "upgrades": upgrades.duplicate(),
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 	}
 
@@ -593,6 +606,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 				if demand[loc].has(nb):
 					demand[loc][nb] = float(d.demand[loc][b])
 	contact_ready_at = d.get("contact_ready_at", {}).duplicate()
+	people = People.from_save(data, d.get("people", {}))
 	for k in upgrades:
 		upgrades[k] = int(d.get("upgrades", {}).get(k, 0))
 	state = str(d.get("state", "playing"))

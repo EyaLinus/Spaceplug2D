@@ -96,12 +96,29 @@
     }
   },
   "contacts": [
-    {"id": "okka", "name": "Okka the Welder", "location": "mireth", "likes": "radiant", "max_units": 4, "budget_mult": 1.0},
-    {"id": "sen", "name": "Sen Varo", "location": "mireth", "likes": "euphoric", "max_units": 3, "budget_mult": 1.1},
-    {"id": "dax", "name": "Foreman Dax", "location": "cinder", "likes": "focused", "max_units": 6, "budget_mult": 1.05},
-    {"id": "lira", "name": "Lira Nine", "location": "bazaar", "likes": "smooth", "max_units": 5, "budget_mult": 1.15},
-    {"id": "grub", "name": "Old Grub", "location": "bazaar", "likes": "hush", "max_units": 8, "budget_mult": 0.95}
+    {"id": "okka", "name": "Okka the Welder", "location": "mireth", "likes": "radiant", "max_units": 4, "budget_mult": 1.0, "look": "npc_rust", "job": "Welder at the Mireth shipyard", "bio": "Burns twelve-hour shifts on hull plates and wants something that makes the sparks look pretty.", "prefers": ["weed"], "budget": 420, "addiction": 0.15, "affinity": 0.1, "known": true, "schedule": [{"from": 6, "to": 15, "place": "Shipyard"}, {"from": 15, "to": 22, "place": "Night Market"}, {"from": 22, "to": 6, "place": "Home"}]},
+    {"id": "sen", "name": "Sen Varo", "location": "mireth", "likes": "euphoric", "max_units": 3, "budget_mult": 1.1, "look": "npc_pink", "job": "Club host", "bio": "Runs the door at a dock club. Pays well for anything that keeps the crowd smiling.", "prefers": ["cocaine", "weed"], "budget": 520, "addiction": 0.25, "affinity": 0.0, "known": true, "schedule": [{"from": 11, "to": 19, "place": "Home"}, {"from": 19, "to": 4, "place": "Dock club"}, {"from": 4, "to": 11, "place": "Plaza"}]},
+    {"id": "dax", "name": "Foreman Dax", "location": "cinder", "likes": "focused", "max_units": 6, "budget_mult": 1.05, "look": "npc_slate", "job": "Foreman, Mining Camp 3", "bio": "Keeps a crew of forty drilling through double shifts. Buys in bulk, haggles hard.", "prefers": ["meth", "cocaine"], "budget": 900, "addiction": 0.1, "affinity": 0.0, "known": true, "schedule": [{"from": 5, "to": 17, "place": "Drill tower"}, {"from": 17, "to": 21, "place": "Canteen"}, {"from": 21, "to": 5, "place": "Bunkhouse"}]},
+    {"id": "lira", "name": "Lira Nine", "location": "bazaar", "likes": "smooth", "max_units": 5, "budget_mult": 1.15, "look": "npc_purple", "job": "Info broker", "bio": "Knows every ship that docks at the Bazaar. Taste for smooth product and smooth talk.", "prefers": ["cocaine", "fentanyl"], "budget": 800, "addiction": 0.05, "affinity": 0.0, "known": true, "schedule": [{"from": 9, "to": 20, "place": "Cantina"}, {"from": 20, "to": 9, "place": "Hull Market"}]},
+    {"id": "grub", "name": "Old Grub", "location": "bazaar", "likes": "hush", "max_units": 8, "budget_mult": 0.95, "look": "npc_green", "job": "Scrap dealer", "bio": "Has been on the Bazaar longer than the Bazaar. Quiet product for quiet nights.", "prefers": ["fentanyl", "meth"], "budget": 650, "addiction": 0.45, "affinity": 0.0, "known": true, "schedule": [{"from": 0, "to": 24, "place": "Cargo hold"}]},
+    {"id": "teo", "name": "Teo Brack", "location": "mireth", "likes": "glow", "max_units": 3, "budget_mult": 0.9, "look": "npc_sky", "job": "Flight-school dropout", "bio": "Spends his allowance on weed and his evenings on the cannery roof. Cheap, loyal, talks a lot.", "prefers": ["weed"], "budget": 220, "addiction": 0.2, "affinity": 0.2, "known": false, "schedule": [{"from": 10, "to": 18, "place": "Plaza"}, {"from": 18, "to": 2, "place": "Cannery roof"}, {"from": 2, "to": 10, "place": "Home"}]},
+    {"id": "vesna", "name": "Dr. Vesna Holt", "location": "mireth", "likes": "focused", "max_units": 4, "budget_mult": 1.25, "look": "npc_teal", "job": "Night-shift medic", "bio": "Patches up dock workers all night. Wants something clean to stay sharp, and pays for discretion.", "prefers": ["cocaine", "meth"], "budget": 700, "addiction": 0.0, "affinity": -0.1, "known": false, "schedule": [{"from": 20, "to": 8, "place": "Clinic"}, {"from": 8, "to": 20, "place": "Home"}]},
+    {"id": "marta", "name": "Marta Kell", "location": "cinder", "likes": "crisp", "max_units": 5, "budget_mult": 1.0, "look": "npc_red", "job": "Drill operator", "bio": "Pulls triple shifts to send money home. Started on the crew's meth to stay awake and never stopped.", "prefers": ["meth"], "budget": 480, "addiction": 0.55, "affinity": 0.0, "known": false, "schedule": [{"from": 5, "to": 17, "place": "Drill tower"}, {"from": 17, "to": 20, "place": "Canteen"}, {"from": 20, "to": 5, "place": "Bunkhouse"}]},
+    {"id": "ozzy", "name": "Ozzy Fenn", "location": "bazaar", "likes": "deep", "max_units": 3, "budget_mult": 0.85, "look": "npc_slate", "job": "Hull scrapper", "bio": "Strips wrecks for parts. Shaky hands, short temper, always comes back.", "prefers": ["fentanyl"], "budget": 380, "addiction": 0.7, "affinity": -0.2, "known": false, "schedule": [{"from": 6, "to": 16, "place": "Docking bay"}, {"from": 16, "to": 6, "place": "Vents"}]}
   ],
+  "people": {
+    "addictiveness": {"weed": 0.015, "cocaine": 0.03, "meth": 0.045, "fentanyl": 0.07},
+    "addiction_decay_per_day": 0.04,
+    "addiction_units_bonus": 4,
+    "addiction_budget_bonus": 0.6,
+    "affinity_per_deal": 0.03,
+    "affinity_liked_trait": 0.04,
+    "affinity_preferred": 0.02,
+    "affinity_grade": [-0.08, 0.0, 0.03, 0.06],
+    "affinity_price_bonus": 0.15,
+    "preferred_bonus": 0.1,
+    "history_len": 8
+  },
   "upgrades": {
     "cargo": {"name": "Cargo Hold", "levels": [20, 35, 55, 80], "costs": [600, 1500, 3500]},
     "engine": {"name": "Ion Engine", "levels": [1.0, 1.25, 1.5, 1.8], "costs": [500, 1400, 3000]},
