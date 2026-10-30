@@ -50,6 +50,30 @@ func _run() -> void:
 	m.station._lab_adds = ["nanoflux", "ion_syrup", ""]
 	m.station.refresh()
 	await _save(out, "lab")
+	# one shot per station minigame, mid-play
+	var runner = m.station.runner
+	runner.autoplay = true
+	runner.start("weed", ["nanoflux", "ion_syrup"], 5)
+	var shot: Array = []
+	for i in 4000:
+		await process_frame
+		if runner.current != null and runner.current.elapsed > 1.2 and not runner.plan[runner.index] in shot:
+			shot.append(runner.plan[runner.index])
+			await _save(out, "station_" + runner.plan[runner.index])
+		if not runner.result.is_empty():
+			await _save(out, "station_summary")
+			break
+	runner.abort()
+	g.buy("cannabis", 5)
+	runner.autoplay = false
+	g.cargo["pseudo"] = 5
+	g.cargo["nanoflux"] = int(g.cargo.get("nanoflux", 0)) + 5
+	runner.start("meth", ["nanoflux"], 5)
+	for i in 40:
+		await process_frame
+	await _save(out, "station_precursor_scale")
+	runner.abort()
+	g.cargo.erase("pseudo")
 	g.start_batch("weed", ["nanoflux"], 5)
 	g.tick(30)
 	g.collect_stash()

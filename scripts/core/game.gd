@@ -7,6 +7,7 @@ extends RefCounted
 signal event(kind: String, payload: Dictionary)
 
 const Mixing = preload("res://scripts/core/mixing.gd")
+const Production = preload("res://scripts/core/production.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -295,7 +296,8 @@ func buy_price(item: String, loc: String = location) -> int:
 	return -1
 
 
-func start_batch(base: String, additives: Array, qty: int) -> Dictionary:
+## Validates a batch without changing anything (the lab UI runs this before the station minigames start).
+func check_batch(base: String, additives: Array, qty: int) -> Dictionary:
 	if not loc_data().get("lab", false):
 		return _fail("No lab here.")
 	if not data.bases.has(base):
@@ -304,21 +306,39 @@ func start_batch(base: String, additives: Array, qty: int) -> Dictionary:
 		return _fail("Rig holds %d units per batch." % lab_capacity())
 	if lab_queue.size() >= 3:
 		return _fail("Lab queue is full.")
-	var raw: String = data.bases[base].raw
-	var need := {raw: qty}
-	for a in additives:
-		need[a] = int(need.get(a, 0)) + qty
+	var need := batch_needs(base, additives, qty)
 	for k in need:
 		if int(cargo.get(k, 0)) < need[k]:
 			return _fail("Missing %s (need %d)." % [item_name(k), need[k]])
+	return _ok("Ready.")
+
+
+func batch_needs(base: String, additives: Array, qty: int) -> Dictionary:
+	var need := {data.bases[base].raw: qty}
+	for a in additives:
+		need[a] = int(need.get(a, 0)) + qty
+	return need
+
+
+## scores: station id -> 0..1 from the station minigames (see Production). Empty = quick batch, Standard grade.
+func start_batch(base: String, additives: Array, qty: int, scores: Dictionary = {}) -> Dictionary:
+	var chk := check_batch(base, additives, qty)
+	if not chk.ok:
+		return chk
+	var need := batch_needs(base, additives, qty)
 	for k in need:
 		_add(cargo, k, -need[k])
-	var product := Mixing.key(base, Mixing.traits_for(data, base, additives))
+	var res := Production.outcome(data, scores)
+	var out_qty := Production.output_qty(qty, res.yield_mult)
+	var product := Mixing.key(base, Mixing.traits_for(data, base, additives), res.grade)
 	var t := batch_seconds(qty)
-	lab_queue.append({"product": product, "qty": qty, "remaining": t, "total": t})
-	add_heat(float(data.heat.per_lab_unit) * qty * heat_mult(base))
-	_emit("lab_started", {"product": product, "qty": qty})
-	return _ok("Cooking %d %s." % [qty, item_name(product)])
+	lab_queue.append({"product": product, "qty": out_qty, "remaining": t, "total": t})
+	add_heat(float(data.heat.per_lab_unit) * qty * heat_mult(base) * res.heat_mult)
+	_emit("lab_started", {"product": product, "qty": out_qty, "grade": res.grade})
+	var extra := ""
+	if out_qty != qty:
+		extra = " (%+d from prep work)" % (out_qty - qty)
+	return _ok("Cooking %d %s%s." % [out_qty, item_name(product), extra])
 
 
 func collect_stash() -> Dictionary:
