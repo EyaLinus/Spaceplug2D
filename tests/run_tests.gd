@@ -166,6 +166,12 @@ func test_police_on_foot() -> void:
 	check(g.police_on_foot(0.5) == 1, "half security scales")
 	g.heat = 100.0
 	check(g.police_on_foot(1.0) == int(data.police.max), "capped at max")
+	g.heat = 10.0
+	var gain := 0.0
+	for i in 100:
+		gain = g.chase_heat(1.0, gain)
+	check(is_equal_approx(gain, float(data.police.chase_heat_max_gain)), "chase heat is capped per chase")
+	check(is_equal_approx(g.heat, 10.0 + gain), "chase heat lands on the heat meter")
 	var Nav = load("res://scripts/planet/nav.gd")
 	for loc in data.surfaces:
 		var s: Dictionary = data.surfaces[loc]

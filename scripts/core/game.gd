@@ -106,6 +106,17 @@ func police_on_foot(security: float) -> int:
 	return clampi(n, 0, int(p.max))
 
 
+## Running from an officer draws attention: heat grows while chased, at most `chase_heat_max_gain` per chase.
+## Returns the new running total of the chase (the caller keeps it and resets it when the chase ends).
+func chase_heat(dt: float, gained: float) -> float:
+	var p: Dictionary = data.police
+	var add := minf(float(p.chase_heat_per_second) * dt, float(p.chase_heat_max_gain) - gained)
+	if add <= 0.0:
+		return gained
+	add_heat(add)
+	return gained + add
+
+
 func has_contraband() -> bool:
 	for k in cargo:
 		if Mixing.is_product(k) and int(cargo[k]) > 0:

@@ -1,0 +1,1 @@
+- **Running raises heat:** while an officer chases you on foot your heat climbs (0.6/s, at most +12 per chase).

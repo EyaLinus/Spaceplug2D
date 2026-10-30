@@ -1,5 +1,11 @@
 # Progress log
 
+## Chase heat (2026-10-30)
+- While an officer chases you on foot, heat rises 0.6/s, at most +12 per chase (`police.chase_heat_*`, `Game.chase_heat`).
+- Verified: 477 unit checks, UI smoke green. Gap: no human playtest of the numbers.
+
+# Progress log
+
 ## Art pass 3: UI icons (2026-10-30)
 - 19 pixel icons: 4 raws, 4 products (baggies), 4 additives (vials), 4 upgrades, HUD credits/day/heat (+cargo).
   Shown in market rows, hold, deals, shipyard and the top bar via `Art.with_icon()`.

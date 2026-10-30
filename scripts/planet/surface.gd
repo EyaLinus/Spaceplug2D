@@ -178,6 +178,9 @@ func _walker_path(from: Vector2) -> Array:
 
 # ---------------------------------------------------------------- per frame
 
+var _chase_gain := 0.0  ## heat added by the current chase, capped in Game.chase_heat
+
+
 func _physics_process(delta: float) -> void:
 	focus = {}
 	_update_police(delta)
@@ -215,12 +218,14 @@ func _update_police(delta: float) -> void:
 	if player.frozen:
 		return
 	var watched := false
+	var chased := false
 	var carrying: bool = g.has_contraband()
 	for o in officers:
 		var seen: bool = OfficerScript.sees(o.position, o.facing, player.position, o.vision, o.cone, _blockers)
 		if seen and carrying:
 			watched = true
 		if o.chasing:
+			chased = true
 			if not carrying or o.position.distance_to(player.position) > float(pc.give_up_range):
 				o.chasing = false
 				o.speed = float(pc.speed)
@@ -236,6 +241,7 @@ func _update_police(delta: float) -> void:
 			EventBus.toast.emit("An officer spotted you. Lose them!", false)
 	if _repath <= 0.0:
 		_repath = 0.35
+	_chase_gain = g.chase_heat(delta, _chase_gain) if chased else 0.0
 	var old := suspicion
 	if watched:
 		suspicion += delta / float(pc.frisk_seconds)
