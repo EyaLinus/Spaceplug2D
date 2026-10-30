@@ -1,0 +1,1 @@
+- **Station minigames:** cook batches by hand at the Trim Table / Precursor Scale, Mixing Station, Cook Stove and Packaging Table. Your hands decide yield (±20 %), the quality grade (Shoddy to Pristine, up to ×1.4 value) and how much heat the batch draws. "Quick batch" keeps the old one-click Standard result.

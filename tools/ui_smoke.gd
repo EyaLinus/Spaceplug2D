@@ -1,7 +1,7 @@
 extends SceneTree
 ## UI smoke test: boots the real main scene headless, lands on Mireth and walks the planet surface (collision,
 ## every door and person, take-off), plays the core loop through the UI layer
-## (buy, cook, sell, upgrade, bribe, pay), flies between locations, triggers a patrol bust,
+## (buy, cook, hand-made batch through every station minigame, sell, upgrade, bribe, pay), flies between locations, triggers a patrol bust,
 ## pauses, saves/loads and reaches both end screens. Any GDScript error shows up as "SCRIPT ERROR" (CI greps for it).
 ## godot --headless --path . -s res://tools/ui_smoke.gd
 
@@ -105,6 +105,56 @@ func _run() -> void:
 	gs.act(g.collect_stash())
 	await frames(2)
 	_assert(g.has_contraband(), "cooked product")
+	step("quick batch")
+
+	# hand-made batch: every station minigame through the real lab panel, played by the minigame bots
+	sf.place_player_at("cannery")
+	await physics_frame
+	await physics_frame
+	sf.interact()
+	await frames(2)
+	gs.act(g.buy("cannabis", 5))
+	gs.act(g.buy("nanoflux", 5))
+	var runner = m.station.runner
+	runner.autoplay = true
+	Engine.time_scale = 6.0
+	_assert(runner.start("weed", ["nanoflux"], 5).ok, "hand batch starts")
+	_assert(runner.plan == ["trim_table", "mixing_station", "cook_stove", "pack_table"], "weed stations %s" % [runner.plan])
+	var seen: Array = []
+	for i in 3000:
+		await process_frame
+		if runner.current != null and not runner.plan[runner.index] in seen:
+			seen.append(runner.plan[runner.index])
+		if not runner.visible:
+			break
+	Engine.time_scale = 1.0
+	_assert(seen == runner.plan, "every station minigame ran: %s" % [seen])
+	_assert(runner.scores.size() == 4 and not runner.visible, "hand batch finished: %s" % [runner.scores])
+	_assert(g.lab_queue.size() == 1 and g.lab_queue[0].product.begins_with("weed:overclock+radiant"), "hand batch queued: %s" % [g.lab_queue])
+	_assert(m.station.visible, "lab panel still open after the minigames")
+	step("hand batch %s -> %s" % [runner.scores, g.lab_queue[0]])
+	# Esc during a minigame skips the rest (neutral scores) and must not close the lab panel
+	gs.act(g.buy("cannabis", 2))
+	runner.autoplay = false
+	_assert(runner.start("weed", [], 2).ok, "second hand batch starts")
+	await frames(2)
+	var esc := InputEventKey.new()
+	esc.keycode = KEY_ESCAPE
+	esc.physical_keycode = KEY_ESCAPE
+	esc.pressed = true
+	m.get_viewport().push_input(esc)
+	await frames(2)
+	_assert(m.station.visible and runner.visible and not runner.result.is_empty(), "Esc skips to the summary, panel stays")
+	_assert(g.lab_queue.size() == 2 and g.lab_queue[1].qty == 2, "skipped batch is standard: %s" % [g.lab_queue])
+	m.get_viewport().push_input(esc)
+	await frames(2)
+	_assert(not runner.visible and m.station.visible, "second Esc closes the summary only")
+	g.tick(60.0)
+	gs.act(g.collect_stash())
+	m.station.close()
+	await frames(1)
+	step("minigame skip")
+
 	sf.place_player_at("okka")
 	await physics_frame
 	await physics_frame

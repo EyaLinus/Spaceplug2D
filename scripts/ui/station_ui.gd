@@ -6,6 +6,8 @@ extends Control
 
 const UI = preload("res://scripts/ui/ui_theme.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
+const Production = preload("res://scripts/core/production.gd")
+const RunnerScript = preload("res://scripts/ui/minigames/minigame_runner.gd")
 
 var tabs: TabContainer
 var _title: Label
@@ -16,6 +18,7 @@ var _lab_qty := 5
 var _dirty := false
 var _filter: Dictionary = {}  ## {} = full docked menu; else {tabs: [names], title, contact}
 var _leave_btn: Button
+var runner: Control  ## station minigames overlay for hand-made batches
 
 signal close_requested  ## "Leave" pressed while filtered (on a planet surface)
 
@@ -53,6 +56,9 @@ func _ready() -> void:
 	tabs = TabContainer.new()
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(tabs)
+	runner = RunnerScript.new()
+	add_child(runner)
+	runner.closed.connect(func(): refresh())
 	EventBus.game_event.connect(func(_k, _p): _dirty = true)
 	visible = false
 
@@ -68,6 +74,7 @@ func open(filter: Dictionary = {}) -> void:
 
 
 func close() -> void:
+	runner.abort()
 	visible = false
 
 
@@ -222,7 +229,21 @@ func _build_lab(g) -> Control:
 	for a in additives:
 		need.append("%d %s (have %d)" % [_lab_qty, g.item_name(a), g.cargo.get(a, 0)])
 	q.add_child(UI.label("Needs: " + ", ".join(PackedStringArray(need)), 15, UI.MUTED))
-	q.add_child(UI.button("Start batch", func(): GameState.act(g.start_batch(_lab_base, additives, _lab_qty)), 130))
+	var st_names: Array = []
+	for id in Production.stations_for(g.data, _lab_base, additives):
+		st_names.append(g.data.stations[id].name)
+	var st_label := UI.label("Stations: " + " → ".join(PackedStringArray(st_names)) + ". By hand you set yield, quality grade and heat; a quick batch is always Standard.", 15, UI.MUTED)
+	st_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	st_label.custom_minimum_size.x = 400
+	v.add_child(st_label)
+	var b_row := HBoxContainer.new()
+	b_row.add_theme_constant_override("separation", 10)
+	v.add_child(b_row)
+	b_row.add_child(UI.button("Cook by hand", func():
+		var r: Dictionary = runner.start(_lab_base, additives, _lab_qty)
+		if not r.ok:
+			GameState.act(r), 160))
+	b_row.add_child(UI.button("Quick batch (Standard)", func(): GameState.act(g.start_batch(_lab_base, additives, _lab_qty)), 220))
 	v.add_child(HSeparator.new())
 	v.add_child(UI.label("Queue", 18, UI.ACCENT))
 	if g.lab_queue.is_empty():

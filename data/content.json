@@ -113,6 +113,32 @@
     "seconds_per_unit": 1.5,
     "speed_per_level": 0.25
   },
+  "quality": {
+    "grades": [
+      {"name": "Shoddy", "min": 0.0, "value_mult": 0.75, "color": "#9a9a9a"},
+      {"name": "Standard", "min": 0.35, "value_mult": 1.0, "color": "#e6e9ff"},
+      {"name": "Premium", "min": 0.72, "value_mult": 1.2, "color": "#ffd166"},
+      {"name": "Pristine", "min": 0.9, "value_mult": 1.4, "color": "#4fe3c1"}
+    ],
+    "yield_min": 0.8,
+    "yield_max": 1.2,
+    "heat_min": 0.7,
+    "heat_max": 1.3,
+    "quick_score": 0.5
+  },
+  "station_order": ["trim_table", "precursor_scale", "mixing_station", "cook_stove", "pack_table"],
+  "stations": {
+    "trim_table": {"name": "Trim Table", "minigame": "trim", "affects": "yield", "bases": ["weed"],
+      "hint": "Click the fan leaves to snip them off. Don't nick the bud."},
+    "precursor_scale": {"name": "Precursor Scale", "minigame": "measure", "affects": "yield", "bases": ["cocaine", "meth", "fentanyl"],
+      "hint": "Space/click adds a scoop, right-click/Backspace takes a pinch off. Hit the target weight, then press Enter."},
+    "mixing_station": {"name": "Mixing Station", "minigame": "pour", "affects": "quality", "needs_additives": true,
+      "hint": "Hold Space/mouse to pour each additive. Release inside the green band."},
+    "cook_stove": {"name": "Cook Stove", "minigame": "heat", "affects": "quality",
+      "hint": "Hold Space/mouse to fire the burner. Keep the temperature inside the green band."},
+    "pack_table": {"name": "Packaging Table", "minigame": "pack", "affects": "heat",
+      "hint": "Press Space/click when the sealer is over the bag. Tight seals smell less (less heat)."}
+  },
   "ship": {
     "thrust": 520,
     "max_speed": 620,

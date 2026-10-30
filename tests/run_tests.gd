@@ -5,6 +5,7 @@ extends SceneTree
 const Game = preload("res://scripts/core/game.gd")
 const Data = preload("res://scripts/core/data.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
+const Production = preload("res://scripts/core/production.gd")
 
 var data: Dictionary
 var failures := 0
@@ -20,6 +21,10 @@ func _init() -> void:
 		"test_mixing_rules",
 		"test_buy_and_cargo_limit",
 		"test_lab_batch",
+		"test_production_stations",
+		"test_production_outcome",
+		"test_quality_grade_keys",
+		"test_station_minigames",
 		"test_sell_contact_and_fence",
 		"test_market_saturation_recovers",
 		"test_heat_and_patrols",
@@ -178,6 +183,94 @@ func test_lab_batch() -> void:
 		g.tick(1.0)
 	check(g.stash.get("weed:overclock+radiant", 0) == 5, "batch lands in stash")
 	check(g.collect_stash().ok and g.cargo.get("weed:overclock+radiant", 0) == 5, "collect stash")
+
+
+func test_production_stations() -> void:
+	check(Production.stations_for(data, "weed", []) == ["trim_table", "cook_stove", "pack_table"], "plain weed stations: %s" % [Production.stations_for(data, "weed", [])])
+	check(Production.stations_for(data, "meth", ["nanoflux"]) == ["precursor_scale", "mixing_station", "cook_stove", "pack_table"], "mixed meth stations")
+	var Runner = load("res://scripts/ui/minigames/registry.gd")
+	for id in data.stations:
+		var st: Dictionary = data.stations[id]
+		check(Runner.MINIGAMES.has(st.minigame), "station %s minigame %s is registered" % [id, st.minigame])
+		check(st.affects in ["yield", "quality", "heat"], "station %s affects a known stat" % id)
+		check(id in data.station_order, "station %s is in station_order" % id)
+	for b in data.bases:
+		var n := 0
+		for id in Production.stations_for(data, b, []):
+			if data.stations[id].affects == "yield":
+				n += 1
+		check(n == 1, "%s has exactly one prep (yield) station" % b)
+
+
+func test_production_outcome() -> void:
+	var quick := Production.outcome(data, {})
+	check(quick.grade == Mixing.STANDARD and is_equal_approx(quick.yield_mult, 1.0) and is_equal_approx(quick.heat_mult, 1.0), "quick batch is neutral: %s" % [quick])
+	var best := Production.outcome(data, {"trim_table": 1.0, "mixing_station": 1.0, "cook_stove": 1.0, "pack_table": 1.0})
+	check(best.grade == 3 and best.yield_mult > 1.1 and best.heat_mult < 0.8, "perfect hands: %s" % [best])
+	var worst := Production.outcome(data, {"trim_table": 0.0, "cook_stove": 0.0, "pack_table": 0.0})
+	check(worst.grade == 0 and worst.yield_mult < 0.9 and worst.heat_mult > 1.2, "botched: %s" % [worst])
+	# perfect batch vs. quick batch in the core
+	var a := new_game()
+	a.buy("cannabis", 5)
+	a.buy("nanoflux", 5)
+	var r := a.start_batch("weed", ["nanoflux"], 5, {"trim_table": 1.0, "mixing_station": 1.0, "cook_stove": 1.0, "pack_table": 1.0})
+	check(r.ok, "hand batch starts: %s" % r.msg)
+	var q := new_game()
+	q.buy("cannabis", 5)
+	q.buy("nanoflux", 5)
+	q.start_batch("weed", ["nanoflux"], 5)
+	check(a.lab_queue[0].qty == 6 and q.lab_queue[0].qty == 5, "yield bonus: %d vs %d" % [a.lab_queue[0].qty, q.lab_queue[0].qty])
+	check(a.lab_queue[0].product == "weed:overclock+radiant@3", "pristine key: %s" % a.lab_queue[0].product)
+	check(a.heat < q.heat, "good packaging means less heat")
+	check(Mixing.value(data, a.lab_queue[0].product) > Mixing.value(data, q.lab_queue[0].product) * 1.3, "pristine is worth more")
+	var tiny := new_game()
+	tiny.buy("cannabis", 1)
+	tiny.start_batch("weed", [], 1, {"trim_table": 0.0})
+	check(tiny.lab_queue[0].qty == 1, "a batch always yields at least one unit")
+
+
+func test_quality_grade_keys() -> void:
+	check(Mixing.key("weed", ["glow"], 1) == "weed:glow", "standard has no suffix")
+	var k := Mixing.key("cocaine", ["smooth", "crisp"], 2)
+	check(k == "cocaine:crisp+smooth@2", "graded key: %s" % k)
+	var p := Mixing.parse_key(k)
+	check(p.base == "cocaine" and p.traits == ["crisp", "smooth"] and p.grade == 2, "parse graded key: %s" % [p])
+	check(Mixing.parse_key("weed:glow").grade == 1, "old keys are standard")
+	check(Mixing.display_name(data, k).begins_with("Premium Cocaine"), "grade in name: %s" % Mixing.display_name(data, k))
+	var g := new_game()
+	g.cargo["weed:overclock+radiant@2"] = 2
+	g.cargo["weed:overclock+radiant"] = 2
+	check(g.sell_price("weed:overclock+radiant@2", "okka") > g.sell_price("weed:overclock+radiant", "okka"), "contacts pay more for premium")
+	check(g.sell("weed:overclock+radiant@2", 2, "okka").ok, "graded product sells")
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(h.cargo.get("weed:overclock+radiant", 0) == 2 and h.cargo.size() == 1, "graded cargo survives save")
+
+
+## Every registered minigame: a skilled bot scores high, doing nothing scores low, and each run ends on its own.
+func test_station_minigames() -> void:
+	var Runner = load("res://scripts/ui/minigames/registry.gd")
+	var ctx_for := func(base: String, seed_value: int) -> Dictionary:
+		return {"base": base, "tier": int(data.bases[base].tier), "additives": ["nanoflux", "ion_syrup"], "qty": 5, "data": data, "seed": seed_value}
+	for id in data.stations:
+		var st: Dictionary = data.stations[id]
+		var base: String = st.get("bases", ["meth"])[0]
+		for s in 4:
+			for skilled in [true, false]:
+				var mg: Control = Runner.MINIGAMES[st.minigame].new()
+				mg.setup(ctx_for.call(base, s + 1))
+				var t := 0.0
+				while not mg.done and t < 60.0:
+					if skilled:
+						mg.bot_input(1.0 / 60.0)
+					mg.step(1.0 / 60.0)
+					t += 1.0 / 60.0
+				check(mg.done, "%s ends (seed %d, skilled %s)" % [id, s + 1, skilled])
+				if skilled:
+					check(mg.score >= 0.8, "%s skilled score %.2f (seed %d)" % [id, mg.score, s + 1])
+				else:
+					check(mg.score <= 0.35, "%s idle score %.2f (seed %d)" % [id, mg.score, s + 1])
+				mg.free()
 
 
 func test_sell_contact_and_fence() -> void:
