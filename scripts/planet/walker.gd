@@ -1,6 +1,8 @@
 extends CharacterBody2D
-## Player on foot: 8-direction top-down walking with collision. Drawn procedurally (body, head, swinging legs).
+## Player on foot: 8-direction top-down walking with collision. Sprite sheet from the art registry,
+## procedural body as fallback.
 
+const Art = preload("res://scripts/core/art.gd")
 const SPEED := 170.0
 const RADIUS := 9.0
 
@@ -42,6 +44,8 @@ func walk(delta: float, dir: Vector2) -> void:
 
 func _draw() -> void:
 	draw_circle(Vector2(0, 12), 9.0, Color(0, 0, 0, 0.3))
+	if Art.draw_character(self, "player", facing, int(_step * 4.0 / TAU) if _moving else 0):
+		return
 	var swing := sin(_step) * 4.0 if _moving else 0.0
 	var leg := Color("#2a2f45")
 	draw_line(Vector2(-3, 4), Vector2(-3 + swing * 0.3, 12 + swing * 0.2), leg, 3.0)

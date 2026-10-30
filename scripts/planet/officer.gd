@@ -12,6 +12,7 @@ var _last := Vector2.ZERO
 
 func _ready() -> void:
 	color = Color("#3a6fd0")
+	look = "officer"
 	_last = position
 
 
@@ -45,10 +46,11 @@ func _draw() -> void:
 		pts.append(facing.rotated(-cone / 2.0 + cone * i / 12.0) * vision)
 	draw_colored_polygon(pts, Color(c, 0.12 + 0.18 * alert))
 	draw_polyline(pts + PackedVector2Array([Vector2.ZERO]), Color(c, 0.35), 1.0)
+	heading = facing
 	super._draw()
-	# cap and badge
-	draw_rect(Rect2(-6, -18, 12, 4), Color("#1a2a55"))
-	draw_circle(Vector2(0, -2), 2.0, Color("#ffd166"))
+	if Art.character("officer") == null:  # procedural cap and badge only without the sprite
+		draw_rect(Rect2(-6, -18, 12, 4), Color("#1a2a55"))
+		draw_circle(Vector2(0, -2), 2.0, Color("#ffd166"))
 	if chasing:
 		var font := ThemeDB.fallback_font
 		draw_string(font, Vector2(-4, -24), "!", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("#ff6b5f"))

@@ -1,0 +1,13 @@
+# Character looks: role letter (see sprites/char_*.txt) -> palette name.
+# Roles: H/h hair (or cap), S/s skin, C/c/A coat base/shade/highlight, P pants, B boots, k/E ink.
+# NPCs from data/surfaces.json pick the npc_* look whose coat C is closest to their "color" (scripts/core/art.gd).
+player:     {H: hair_dark, h: hair, S: skin, s: skin_dark, C: gold, c: gold_dark, A: gold_light, P: blue_dark, B: night}
+officer:    {H: blue_dark, h: blue, S: skin_light, s: skin, C: blue, c: blue_dark, A: gold, P: night, B: ink}
+npc_teal:   {H: hair_dark, h: hair, S: skin_light, s: skin, C: teal, c: teal_dark, A: white, P: slate_dark, B: night}
+npc_red:    {H: sand, h: wood, S: skin, s: skin_dark, C: red, c: red_dark, A: pink, P: night, B: ink}
+npc_purple: {H: ink, h: hair_dark, S: skin_dark, s: dirt, C: purple, c: purple_dark, A: pink, P: slate_dark, B: ink}
+npc_rust:   {H: hair, h: hair_dark, S: skin_light, s: skin, C: rust_light, c: rust, A: sand, P: dirt_dark, B: ink}
+npc_green:  {H: rust, h: rust_light, S: skin, s: skin_dark, C: leaf, c: grass_light, A: gold_light, P: shadow, B: ink}
+npc_slate:  {H: stone, h: white, S: skin, s: skin_dark, C: slate_light, c: slate, A: stone, P: shadow, B: ink}
+npc_sky:    {H: gold, h: gold_dark, S: skin_dark, s: dirt, C: blue_light, c: blue, A: white, P: blue_dark, B: night}
+npc_pink:   {H: purple_dark, h: purple, S: skin_light, s: skin, C: pink, c: purple, A: white, P: night, B: ink}

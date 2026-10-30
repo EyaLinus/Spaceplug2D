@@ -1,0 +1,110 @@
+# art_profile.yaml – single source of truth for Spaceplug2D art (game-assets-2d skill, schema 2).
+# Rebuild everything with: python3 tools/art/build_art.py
+schema_version: 2
+
+project:
+  name: "Spaceplug2D"
+  description: "2D top-down space smuggling / production sim. Grimy neon frontier sector (Halvane Reach): walkable planet surfaces in RPG-Maker style, inertial ship flight in space."
+  platform: [desktop]
+  tech_stack: "Godot 4.3 (GDScript, GL Compatibility)"
+  orientation: landscape
+
+style:
+  summary: "Chunky 16px top-down pixel art (3/4 RPG view), dark dusk palette with gold/teal neon accents, every sprite outlined in ink."
+  rules:
+    - "pixel art on a 16x16 art grid per world tile; exported pre-scaled 2x (1 art pixel = 2x2 texture pixels = 1/16 of a 32 px tile)"
+    - "palette-locked: only colors from `palette` below; no anti-aliasing, no gradients"
+    - "1 art-pixel outline in `ink` on characters, props and the ship; tiles and building pieces have no outline"
+    - "light from top-left: highlight = next lighter ramp step on top/left edges, shade = darker step on bottom/right"
+    - "characters: 16x16 art px, big head (rows 1-7), 3/4 view; sheet = rows down/up/right x cols idle/stepA/stepB; left = right mirrored"
+    - "building pieces (roof/wall tiles) are drawn in the neutral `stone` ramp and tinted at runtime with the building's color from data/surfaces.json, so new buildings need no new art"
+    - "drop shadows are not baked in: the game draws a translucent ellipse/rect under sprites"
+  references:
+    - assets/gfx/chars/player.png
+    - assets/gfx/tiles/mireth_ground.png
+    - assets/gfx/props/crate.png
+  font:
+    file: null
+    family: null
+
+palette:
+  ink: "#14121c"
+  night: "#1e1b2e"
+  shadow: "#2b2840"
+  slate_dark: "#3a3a4a"
+  slate: "#5a5b6a"
+  slate_light: "#8a8b9c"
+  stone: "#b4b6c4"
+  white: "#eef0ff"
+  grass_dark: "#22392f"
+  grass: "#2c4b3c"
+  grass_light: "#3d6a50"
+  leaf: "#5f9a5e"
+  dirt_dark: "#3e2a22"
+  dirt: "#563a2c"
+  rust: "#8a4a32"
+  rust_light: "#c27447"
+  sand: "#d9a86c"
+  wood_dark: "#4e3a1e"
+  wood: "#8a6a3e"
+  skin_dark: "#8d5a3e"
+  skin: "#c99b78"
+  skin_light: "#ecc39c"
+  hair_dark: "#2a1d18"
+  hair: "#5a3a28"
+  gold_dark: "#9a6a12"
+  gold: "#ffd166"
+  gold_light: "#ffeab0"
+  teal_dark: "#1e6e66"
+  teal: "#4fe3c1"
+  blue_dark: "#1a2a55"
+  blue: "#2b5f8a"
+  blue_light: "#5fb6c9"
+  red_dark: "#6e2230"
+  red: "#ff6b5f"
+  purple_dark: "#2e2440"
+  purple: "#6a3a8a"
+  pink: "#ff9ad5"
+
+ramps:
+  stone: [slate_dark, slate, slate_light, stone, white]
+  grass: [grass_dark, grass, grass_light, leaf]
+  dirt: [dirt_dark, dirt, rust, rust_light, sand]
+  wood: [wood_dark, wood, sand]
+  gold: [gold_dark, gold, gold_light]
+  teal: [teal_dark, teal]
+  blue: [blue_dark, blue, blue_light]
+  skin: [skin_dark, skin, skin_light]
+
+grid:
+  design_size_px: 16
+  pixel_art:
+    enabled: true
+    tile_px: 16
+    scale: 2
+
+methods:
+  sprite: pixel        # hand-written grids in assets/src/sprites/*.txt
+  tile: procedural     # tools/art/build_art.py, seeded noise, palette-locked
+  icon: svg
+  ui: svg
+
+outputs:
+  root: "assets/gfx"
+  default:
+    format: png
+    densities: [2]       # pre-scaled 2x; Godot draws 1:1 with texture_filter = nearest
+    naming: "{kind}/{name}.{ext}"
+  atlas:
+    enabled: false       # character sheets are small grids; Godot regions via scripts/core/art.gd
+  build_integration: false   # PNGs are committed; run tools/art/build_art.py after editing sources
+
+asset_kinds:
+  character: { display_px: 32, sheet: "3 cols x 3 rows of 32x32" }
+  tile: { display_px: 32 }
+  prop: { display_px: [32, 48] }
+  ship: { display_px: 32 }
+
+naming:
+  case: snake
+  prefixes: {}

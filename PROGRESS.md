@@ -1,5 +1,14 @@
 # Progress log
 
+## Art pass 1: pixel art for surfaces, characters and ship (2026-10-30)
+- First real art via the game-assets-2d skill workflow (pipeline in `docs/art.md`): player, officer and 8 NPC looks with
+  4-direction walk cycles, ship, tiles for Mireth/Cinder/Bazaar, tinted roof/wall pieces + windows/doors/hatches,
+  props (crate, barrel, rock, tree, lamp, vent, stall). Central registry `scripts/core/art.gd`, procedural fallback kept.
+- Verified: 328 unit checks (new: every surface/prop/look has art, sheet sizes, fallback returns null), UI smoke,
+  screenshots of all three surfaces and flight reviewed; palette check 0 % off-palette.
+- Gaps: space view (planets, stations, patrols) still procedural; characters have no idle animation; side-view arm
+  is simple; ground tiles are noise-based, no transitions between grass and road.
+
 ## Station minigames in the lab (2026-10-30)
 Every batch can now be cooked **by hand**: the Old Cannery lab runs it through its stations one after another
 (`scripts/ui/minigames/`, rules in `scripts/core/production.gd`, numbers in `content.json` → `stations`, `quality`).

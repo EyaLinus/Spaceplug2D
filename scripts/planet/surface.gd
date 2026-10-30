@@ -8,6 +8,7 @@ signal interacted(action: String, payload: Dictionary)
 const WalkerScript = preload("res://scripts/planet/walker.gd")
 const NpcScript = preload("res://scripts/planet/npc.gd")
 const OfficerScript = preload("res://scripts/planet/officer.gd")
+const Art = preload("res://scripts/core/art.gd")
 
 const INPUT := {
 	"move_up": [KEY_W, KEY_UP],
@@ -55,6 +56,8 @@ func setup(id: String, surface_cfg: Dictionary) -> void:
 func _ready() -> void:
 	register_input()
 	y_sort_enabled = true  # people walk in front of / behind each other by their y
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # pixel art; children inherit it
+	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED  # tinted roof/wall pieces are tiled
 	_rng.seed = hash(loc_id)
 	_build_collision()
 	_build_interactables()
@@ -274,24 +277,19 @@ func interactable(id: String) -> Dictionary:
 # ---------------------------------------------------------------- drawing
 
 func _draw() -> void:
-	var g1 := Color(cfg.get("ground", "#2b4538"))
-	var g2 := Color(cfg.get("ground_alt", "#2f4b3d"))
-	draw_rect(Rect2(Vector2.ZERO, map_size), g1)
-	var n := RandomNumberGenerator.new()
-	n.seed = hash(loc_id) + 7
-	for y in int(cfg.size[1]):
-		for x in int(cfg.size[0]):
-			if (x + y) % 2 == 0:
-				draw_rect(Rect2(x * tile, y * tile, tile, tile), g2)
-			if n.randf() < 0.18:
-				var p := Vector2(x + n.randf(), y + n.randf()) * tile
-				draw_line(p, p + Vector2(n.randf_range(-2, 2), -5), g1.lightened(0.18), 1.5)
+	var tiles: String = Art.TILESETS.get(loc_id, "")
+	var art := tiles != "" and Art.tex("tiles/%s_ground.png" % tiles) != null
+	if art:
+		Art.fill_tiles(self, "tiles/%s_ground.png" % tiles, Rect2(Vector2.ZERO, map_size), 1)
+	else:
+		_draw_ground_fallback()
 	var road := Color(cfg.get("road", "#45464f"))
 	var line := Color(cfg.get("road_line", "#6b6c78"))
 	for r in cfg.roads:
 		var rr := _rect(r)
 		draw_rect(rr.grow(3), road.darkened(0.25))
-		draw_rect(rr, road)
+		if not (art and Art.fill_tiles(self, "tiles/%s_road.png" % tiles, rr, 2)):
+			draw_rect(rr, road)
 	for r in cfg.roads:
 		var rr := _rect(r)
 		var horizontal := rr.size.x > rr.size.y
@@ -307,10 +305,11 @@ func _draw() -> void:
 			i += 32.0
 	for r in cfg.get("plazas", []):
 		var pr := _rect(r)
-		draw_rect(pr, Color("#5a5b63"))
-		for y in int(r[3]):
-			for x in int(r[2]):
-				draw_rect(Rect2(pr.position + Vector2(x, y) * tile, Vector2(tile, tile)), Color("#6a6b74"), false, 1.0)
+		if not (art and Art.fill_tiles(self, "tiles/%s_plaza.png" % tiles, pr, 3)):
+			draw_rect(pr, Color("#5a5b63"))
+			for y in int(r[3]):
+				for x in int(r[2]):
+					draw_rect(Rect2(pr.position + Vector2(x, y) * tile, Vector2(tile, tile)), Color("#6a6b74"), false, 1.0)
 		draw_circle(pr.get_center(), tile * 1.3, Color("#3e7a8c"))
 		draw_circle(pr.get_center(), tile * 1.0, Color("#5fb6c9"))
 		draw_arc(pr.get_center(), tile * 1.3, 0, TAU, 32, Color("#8a8b94"), 4.0)
@@ -324,6 +323,21 @@ func _draw() -> void:
 	draw_string(font, Vector2(tile * 0.5, map_size.y - tile * 0.4), cfg.get("name", ""), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1, 1, 1, 0.35))
 
 
+func _draw_ground_fallback() -> void:
+	var g1 := Color(cfg.get("ground", "#2b4538"))
+	var g2 := Color(cfg.get("ground_alt", "#2f4b3d"))
+	draw_rect(Rect2(Vector2.ZERO, map_size), g1)
+	var n := RandomNumberGenerator.new()
+	n.seed = hash(loc_id) + 7
+	for y in int(cfg.size[1]):
+		for x in int(cfg.size[0]):
+			if (x + y) % 2 == 0:
+				draw_rect(Rect2(x * tile, y * tile, tile, tile), g2)
+			if n.randf() < 0.18:
+				var p := Vector2(x + n.randf(), y + n.randf()) * tile
+				draw_line(p, p + Vector2(n.randf_range(-2, 2), -5), g1.lightened(0.18), 1.5)
+
+
 func _draw_pad() -> void:
 	var c := _px(cfg.pad.pos)
 	var r := float(cfg.pad.radius) * tile
@@ -333,7 +347,12 @@ func _draw_pad() -> void:
 	for i in 8:
 		var d := Vector2.RIGHT.rotated(i * TAU / 8.0)
 		draw_circle(c + d * (r - 8), 3.0, Color("#4fe3c1"))
-	# the parked ship, same silhouette as in flight but bigger
+	# the parked ship, same sprite as in flight but bigger
+	var ship_tex := Art.tex("ships/ship.png")
+	if ship_tex != null:
+		var sz := ship_tex.get_size() * 2.5
+		draw_texture_rect(ship_tex, Rect2(c - sz / 2.0, sz), false)
+		return
 	var s := 2.6
 	var hull := PackedVector2Array([Vector2(0, -20) * s + c, Vector2(13, 14) * s + c, Vector2(0, 8) * s + c, Vector2(-13, 14) * s + c])
 	draw_colored_polygon(hull, Color("#ffd166"))
@@ -350,19 +369,39 @@ func _draw_building(b: Dictionary) -> void:
 	var wall_h := minf(tile * 1.6, r.size.y * 0.4)
 	var roof_r := Rect2(r.position, Vector2(r.size.x, r.size.y - wall_h))
 	var wall_r := Rect2(Vector2(r.position.x, r.end.y - wall_h), Vector2(r.size.x, wall_h))
-	draw_rect(wall_r, wall)
-	draw_rect(roof_r, roof)
-	for i in int(roof_r.size.y / 10.0):
-		var y := roof_r.position.y + 6 + i * 10.0
-		draw_line(Vector2(roof_r.position.x + 2, y), Vector2(roof_r.end.x - 2, y), roof.darkened(0.15), 1.0)
-	draw_rect(roof_r, roof.lightened(0.15), false, 2.0)
-	# windows along the front wall
+	# art: neutral roof/wall pieces tiled and tinted with the building's colours, so any building gets art
+	var roof_t := Art.tex("buildings/roof.png")
+	var wall_t := Art.tex("buildings/wall.png")
+	var win_t := Art.tex("buildings/window.png")
+	if roof_t != null and wall_t != null:
+		draw_texture_rect(wall_t, wall_r, true, wall.lightened(0.25))
+		draw_texture_rect(roof_t, roof_r, true, roof.lightened(0.3))
+		draw_rect(Rect2(roof_r.position.x, roof_r.end.y - 4, roof_r.size.x, 4), roof.darkened(0.45))
+	else:
+		draw_rect(wall_r, wall)
+		draw_rect(roof_r, roof)
+		for i in int(roof_r.size.y / 10.0):
+			var y := roof_r.position.y + 6 + i * 10.0
+			draw_line(Vector2(roof_r.position.x + 2, y), Vector2(roof_r.end.x - 2, y), roof.darkened(0.15), 1.0)
+		draw_rect(roof_r, roof.lightened(0.15), false, 2.0)
+	var door_x := _px(b.door).x if b.has("door") and b.get("side", "bottom") != "top" else -INF
+	# windows along the front wall (not over a front door)
 	var wx := r.position.x + tile * 0.5
 	while wx < r.end.x - tile * 0.8:
-		draw_rect(Rect2(wx, wall_r.position.y + wall_h * 0.25, tile * 0.45, wall_h * 0.4), Color("#ffe8a3").darkened(0.15))
+		if win_t != null:
+			if absf(wx + tile * 0.5 - door_x) > tile * 0.9:
+				draw_texture(win_t, Vector2(wx, wall_r.position.y + (wall_h - tile) * 0.5))
+		else:
+			draw_rect(Rect2(wx, wall_r.position.y + wall_h * 0.25, tile * 0.45, wall_h * 0.4), Color("#ffe8a3").darkened(0.15))
 		wx += tile * 1.2
-	draw_rect(r, wall.darkened(0.45), false, 2.0)
+	draw_rect(r, wall.darkened(0.45) if roof_t == null else Color("#14121c"), false, 2.0)
 	if b.has("door"):
+		var d := _px(b.door)
+		var top: bool = b.get("side", "bottom") == "top"
+		var door_t := Art.tex("buildings/hatch.png" if top else "buildings/door.png")
+		if door_t != null:
+			draw_texture(door_t, Vector2(d.x - tile * 0.5, d.y - tile if not top else d.y - tile * 0.15))
+	if b.has("door") and Art.tex("buildings/door.png") == null:
 		var d := _px(b.door)
 		var top: bool = b.get("side", "bottom") == "top"
 		# top-side doors sit in the roof edge: draw a small porch so they read as entrances
@@ -381,6 +420,15 @@ func _draw_building(b: Dictionary) -> void:
 
 
 func _draw_prop(kind: String, p: Vector2) -> void:
+	var bottoms := {"tree": 12.0, "lamp": 12.0, "crate": 12.0, "rock": 10.0, "barrel": 12.0, "vent": 16.0, "stall": 12.0}
+	if bottoms.has(kind):
+		var shadow := {"tree": 14.0, "rock": 13.0, "barrel": 9.0, "crate": 11.0}
+		if shadow.has(kind):
+			draw_circle(p + Vector2(3, bottoms[kind] - 3.0), shadow[kind], Color(0, 0, 0, 0.25))
+		if kind == "lamp":
+			draw_circle(p + Vector2(0, -30), 22.0, Color(1.0, 0.85, 0.5, 0.07))
+		if Art.draw_prop(self, "props/%s.png" % kind, p, bottoms[kind]):
+			return
 	match kind:
 		"tree":
 			draw_circle(p + Vector2(4, 10), 14.0, Color(0, 0, 0, 0.25))

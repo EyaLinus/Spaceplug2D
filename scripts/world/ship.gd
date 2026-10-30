@@ -1,5 +1,8 @@
 extends Node2D
-## Player ship: inertial top-down flight (rotate + thrust + brake). Drawn procedurally.
+## Player ship: inertial top-down flight (rotate + thrust + brake). Hull sprite from the art registry
+## (procedural fallback), engine flame procedural.
+
+const Art = preload("res://scripts/core/art.gd")
 
 var velocity := Vector2.ZERO
 var thrusting := false
@@ -12,6 +15,7 @@ var _flame := 0.0
 
 func setup(ship_cfg: Dictionary) -> void:
 	cfg = ship_cfg
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
 func _physics_process(delta: float) -> void:
@@ -55,6 +59,10 @@ func _draw() -> void:
 		var f := 18.0 + 14.0 * _flame + randf() * 6.0
 		draw_colored_polygon(PackedVector2Array([Vector2(-6, 12), Vector2(6, 12), Vector2(0, 12 + f)]), Color(1.0, 0.6, 0.2, 0.85))
 		draw_colored_polygon(PackedVector2Array([Vector2(-3, 12), Vector2(3, 12), Vector2(0, 12 + f * 0.6)]), Color(1.0, 0.95, 0.6, 0.9))
+	var t := Art.tex("ships/ship.png")
+	if t != null:
+		draw_texture(t, -t.get_size() / 2.0)
+		return
 	var hull := PackedVector2Array([Vector2(0, -20), Vector2(13, 14), Vector2(0, 8), Vector2(-13, 14)])
 	draw_colored_polygon(hull, Color("#ffd166"))
 	draw_polyline(hull + PackedVector2Array([hull[0]]), Color("#7a4e00"), 2.0)

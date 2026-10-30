@@ -90,4 +90,15 @@ func _run() -> void:
 		m.world.ship.steer(1.0 / 60.0, true, false)
 		await physics_frame
 	await _save(out, "flight")
+	for loc in ["cinder", "bazaar"]:
+		m.world.ship.position = m.world.locations[loc].position + Vector2(0, m.world.locations[loc].radius + 20)
+		await physics_frame
+		await physics_frame
+		m.dock(loc)
+		for i in 30:
+			await physics_frame
+		await _save(out, "surface_%s" % loc)
+		m.undock()
+		for i in 5:
+			await physics_frame
 	quit()
