@@ -163,6 +163,6 @@
     "speed": 55,
     "chase_speed": 150,
     "chase_heat": 40,
-    "give_up_range": 320
+    "give_up_range": 480
   }
 }

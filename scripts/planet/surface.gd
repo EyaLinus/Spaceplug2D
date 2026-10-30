@@ -9,6 +9,7 @@ const WalkerScript = preload("res://scripts/planet/walker.gd")
 const NpcScript = preload("res://scripts/planet/npc.gd")
 const OfficerScript = preload("res://scripts/planet/officer.gd")
 const Art = preload("res://scripts/core/art.gd")
+const Nav = preload("res://scripts/planet/nav.gd")
 
 const INPUT := {
 	"move_up": [KEY_W, KEY_UP],
@@ -31,6 +32,8 @@ var walkers: Array = []
 var officers: Array = []
 var suspicion := 0.0  ## 0..1 while an officer watches you carry product; 1 = busted
 var _blockers: Array = []  ## building rects, block movement and sight
+var nav: AStarGrid2D  ## tile grid with buildings solid; chasing officers path around houses
+var _repath := 0.0
 var _overlay: Node2D  ## redrawn every frame (focus ring); the ground below is drawn once
 var _rng := RandomNumberGenerator.new()
 
@@ -60,6 +63,7 @@ func _ready() -> void:
 	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED  # tinted roof/wall pieces are tiled
 	_rng.seed = hash(loc_id)
 	_build_collision()
+	nav = Nav.build(cfg)
 	_build_interactables()
 	for n in cfg.get("npcs", []):
 		var npc := NpcScript.new()
@@ -163,6 +167,9 @@ func _walker_path(from: Vector2) -> Array:
 		return [target]
 	var a := _rect(cfg.roads[0])
 	var b := _rect(cfg.roads[1])
+	if not a.has_point(from) and not b.has_point(from):
+		# off the roads (an officer after a chase): walk back around the buildings
+		return Nav.path_between(nav, tile, from, target)
 	var same := (a.has_point(from) and a.has_point(target)) or (b.has_point(from) and b.has_point(target))
 	if same:
 		return [target]
@@ -219,12 +226,16 @@ func _update_police(delta: float) -> void:
 				o.speed = float(pc.speed)
 				o.path = []
 			else:
-				o.path = [player.position]
-				o.facing = (player.position - o.position).normalized()
+				_repath -= delta
+				if _repath <= 0.0 or o.path.is_empty():
+					o.path = Nav.path_between(nav, tile, o.position, player.position)
+				o.facing = (o.path[0] - o.position).normalized() if not o.path.is_empty() else o.facing
 		elif seen and carrying and g.heat >= float(pc.chase_heat):
 			o.chasing = true
 			o.speed = float(pc.chase_speed)
 			EventBus.toast.emit("An officer spotted you. Lose them!", false)
+	if _repath <= 0.0:
+		_repath = 0.35
 	var old := suspicion
 	if watched:
 		suspicion += delta / float(pc.frisk_seconds)
