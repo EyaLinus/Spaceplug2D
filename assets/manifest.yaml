@@ -212,6 +212,15 @@ assets:
     source: assets/src/sprites/vent.txt
     status: done
     updated: '2026-10-30'
+  ship_patrol:
+    created: '2026-10-30'
+    kind: sprite
+    method: pixel
+    outputs:
+    - assets/gfx/ships/patrol.png
+    source: assets/src/sprites/patrol.txt
+    status: done
+    updated: '2026-10-30'
   ship_player:
     created: '2026-10-30'
     kind: sprite
@@ -220,6 +229,46 @@ assets:
     outputs:
     - assets/gfx/ships/ship.png
     source: assets/src/sprites/ship.txt
+    status: done
+    updated: '2026-10-30'
+  space_bazaar:
+    created: '2026-10-30'
+    kind: space
+    method: procedural
+    note: space view body, see build_space()
+    outputs:
+    - assets/gfx/space/bazaar.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  space_beacon:
+    created: '2026-10-30'
+    kind: space
+    method: pixel
+    note: drawn 2x
+    outputs:
+    - assets/gfx/space/beacon.png
+    source: assets/src/sprites/beacon.txt
+    status: done
+    updated: '2026-10-30'
+  space_cinder:
+    created: '2026-10-30'
+    kind: space
+    method: procedural
+    note: space view body, see build_space()
+    outputs:
+    - assets/gfx/space/cinder.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  space_mireth:
+    created: '2026-10-30'
+    kind: space
+    method: procedural
+    note: space view body, see build_space()
+    outputs:
+    - assets/gfx/space/mireth.png
+    source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
   tile_bazaar_ground:

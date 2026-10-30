@@ -110,7 +110,8 @@ def build_characters() -> list[Path]:
 def build_sprites() -> list[Path]:
     out = []
     for name, folder in [("crate", "props"), ("barrel", "props"), ("rock", "props"), ("tree", "props"),
-                         ("lamp", "props"), ("vent", "props"), ("stall", "props"), ("ship", "ships")]:
+                         ("lamp", "props"), ("vent", "props"), ("stall", "props"), ("ship", "ships"),
+                         ("patrol", "ships"), ("beacon", "space")]:
         legend, frames = parse_grid(SRC / "sprites" / f"{name}.txt")
         out.append(save(grid_image(frames[0], legend), f"{folder}/{name}.png"))
     return out
@@ -305,6 +306,152 @@ def build_building_parts() -> list[Path]:
     return out
 
 
+# ---------------------------------------------------------------- space view (procedural bodies)
+
+BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
+LIGHT = (-0.55, -0.6, 0.58)  # top-left, towards the viewer
+
+
+def value_noise(seed: int, cells: int):
+    r = random.Random(seed)
+    g = [[r.random() for _ in range(cells + 1)] for _ in range(cells + 1)]
+
+    def f(u: float, v: float) -> float:  # u, v in 0..1
+        x, y = u * cells, v * cells
+        x0, y0 = min(int(x), cells - 1), min(int(y), cells - 1)
+        tx, ty = x - x0, y - y0
+        tx, ty = tx * tx * (3 - 2 * tx), ty * ty * (3 - 2 * ty)
+        a = g[y0][x0] + (g[y0][x0 + 1] - g[y0][x0]) * tx
+        b = g[y0 + 1][x0] + (g[y0 + 1][x0 + 1] - g[y0 + 1][x0]) * tx
+        return a + (b - a) * ty
+    return f
+
+
+def fbm(seed: int):
+    layers = [value_noise(seed + i, c) for i, c in enumerate((4, 8, 16))]
+    return lambda u, v: sum(l(u, v) * w for l, w in zip(layers, (0.55, 0.3, 0.15)))
+
+
+def shade(ramp: list[str], light: float, x: int, y: int) -> str:
+    """Pick a ramp step from 0..1 light with ordered dithering between steps (palette-locked shading)."""
+    t = max(0.0, min(0.999, light)) * (len(ramp) - 1)
+    i = int(t)
+    if t - i > (BAYER[y % 4][x % 4] + 0.5) / 16.0 and i + 1 < len(ramp):
+        i += 1
+    return ramp[i]
+
+
+def sphere(d: int, x: int, y: int, squash=lambda a: 1.0):
+    """Normal and light at pixel x, y of a d-wide disc, or None outside."""
+    import math
+    cx = cy = (d - 1) / 2.0
+    nx, ny = (x - cx) / (d / 2.0), (y - cy) / (d / 2.0)
+    rr = nx * nx + ny * ny
+    edge = squash(math.atan2(ny, nx))
+    if rr > edge * edge:
+        return None
+    nz = math.sqrt(max(0.0, 1 - rr))
+    l = nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2]
+    return nx, ny, nz, l
+
+
+def planet(d: int, seed: int, ocean: list[str], land: list[str], night: str) -> Image.Image:
+    n = fbm(seed)
+    img = Image.new("RGBA", (d, d), CLEAR)
+    for y in range(d):
+        for x in range(d):
+            s = sphere(d, x, y)
+            if s is None:
+                continue
+            nx, ny, nz, l = s
+            h = n(x / d, y / d)
+            ramp = land if h > 0.52 else ocean
+            light = 0.15 + 0.85 * max(0.0, l)
+            c = shade(ramp, light, x, y) if l > -0.05 else night
+            if l > -0.05 and l < 0.12 and BAYER[y % 4][x % 4] < 8:
+                c = night
+            img.putpixel((x, y), color(c))
+    return img
+
+
+def asteroid(d: int, seed: int, ramp: list[str]) -> Image.Image:
+    import math
+    lump = value_noise(seed, 12)
+    n = fbm(seed + 5)
+    r = random.Random(seed)
+    craters = [(r.uniform(0.2, 0.8) * d, r.uniform(0.25, 0.85) * d, r.uniform(0.05, 0.11) * d) for _ in range(6)]
+    img = Image.new("RGBA", (d, d), CLEAR)
+    squash = lambda a: 0.78 + 0.22 * lump((a + math.pi) / (2 * math.pi), 0.5)
+    for y in range(d):
+        for x in range(d):
+            s = sphere(d, x, y, squash)
+            if s is None:
+                continue
+            l = s[3] + (n(x / d, y / d) - 0.5) * 0.5
+            for cx, cy, cr in craters:
+                dd = math.hypot(x - cx, y - cy)
+                if dd < cr:
+                    l = l - 0.35 if (x - cx) + (y - cy) < 0 else l + 0.1
+            img.putpixel((x, y), color(shade(ramp, 0.1 + 0.8 * max(0.0, l), x, y)))
+    # outline pass: ink on transparent neighbours
+    out = img.copy()
+    for y in range(d):
+        for x in range(d):
+            if img.getpixel((x, y))[3] == 0:
+                continue
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                xx, yy = x + dx, y + dy
+                if not (0 <= xx < d and 0 <= yy < d) or img.getpixel((xx, yy))[3] == 0:
+                    out.putpixel((x, y), color("ink"))
+                    break
+    return out
+
+
+def station(d: int, accent: str) -> Image.Image:
+    """Ring station seen from above: segmented ring, four spokes, hub; lit windows on the ring."""
+    import math
+    img = Image.new("RGBA", (d, d), CLEAR)
+    c = (d - 1) / 2.0
+    R = d / 2.0
+    for y in range(d):
+        for x in range(d):
+            dx, dy = x - c, y - c
+            dist = math.hypot(dx, dy)
+            ang = math.atan2(dy, dx)
+            seg = int((ang + math.pi) / (2 * math.pi) * 24)
+            lit = 0.5 + 0.5 * (-(dx * 0.6 + dy * 0.7) / max(dist, 1))
+            col = None
+            if R * 0.72 <= dist < R - 0.5:
+                if dist >= R - 1.5 or dist < R * 0.72 + 1:
+                    col = "ink"
+                elif abs(((ang + math.pi) / (2 * math.pi) * 24) - seg - 0.5) > 0.44:
+                    col = "slate_dark"
+                elif abs(dist - R * 0.86) < 0.8 and seg % 2 == 0:
+                    col = "gold_light"
+                else:
+                    col = shade(["slate_dark", "slate", "slate_light", "stone"], lit, x, y)
+            elif dist < R * 0.24:
+                col = "ink" if dist >= R * 0.24 - 1.2 else (accent if dist < R * 0.1 else shade(["slate", "slate_light", "stone"], lit, x, y))
+            elif dist < R * 0.72:
+                for k in range(4):
+                    a = k * math.pi / 2 + math.pi / 4
+                    px = -math.sin(a) * dx + math.cos(a) * dy
+                    along = math.cos(a) * dx + math.sin(a) * dy
+                    if abs(px) < 2.2 and along > 0:
+                        col = "ink" if abs(px) > 1.2 else "slate_light"
+            if col:
+                img.putpixel((x, y), color(col))
+    return img
+
+
+def build_space() -> list[Path]:
+    out = []
+    out.append(save(planet(170, 7, ["blue_dark", "blue", "blue_light"], ["grass_dark", "grass", "grass_light", "leaf"], "night"), "space/mireth.png"))
+    out.append(save(asteroid(90, 11, ["dirt_dark", "dirt", "rust", "rust_light"]), "space/cinder.png"))
+    out.append(save(station(70, "purple"), "space/bazaar.png"))
+    return out
+
+
 def contact_sheet(paths: list[Path], dest: Path) -> None:
     pad, scale = 8, 2
     imgs = [Image.open(p) for p in paths]
@@ -330,7 +477,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--preview", help="also write a contact sheet of every output to this PNG")
     args = ap.parse_args()
-    paths = build_characters() + build_sprites() + build_tiles() + build_building_parts()
+    paths = build_characters() + build_sprites() + build_tiles() + build_building_parts() + build_space()
     for p in paths:
         print(p.relative_to(ROOT))
     if args.preview:

@@ -1,5 +1,12 @@
 # Progress log
 
+## Art pass 2: space view (2026-10-30)
+- Pixel art for Mireth (dithered sphere with continents), Cinder asteroid (craters, outpost hut), Drift Bazaar ring
+  station (rotates), customs beacon and patrol cutters; glow, scan circles and siren lights stay procedural.
+- Verified: 451 unit checks (every location has a space sprite, patrol sprite), UI + menu smoke, screenshots of each
+  location in space reviewed (`tools/shot.gd` now shoots them).
+- Gaps: new locations need a sprite in `build_space()` (the test enforces it); starfield still plain dots.
+
 ## Police pathfinding (2026-10-30)
 - `scripts/planet/nav.gd`: AStarGrid2D per surface (building tiles solid). Chasing officers re-path to the player every
   0.35 s; an officer that gives up walks back to the roads around the buildings. Give-up range 320 → 480 px.

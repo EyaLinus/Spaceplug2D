@@ -17,4 +17,7 @@ All art is pixel art built from text sources with the game-assets-2d skill workf
 - **Characters:** 3x3 sheet per look (rows down/up/right, columns idle/step A/step B; left = mirrored right).
   Named NPCs pick the `npc_*` look whose coat is closest to their data colour; walkers get a mix.
 
-Not covered yet: planets/stations/beacons in space, patrol ships, UI icons, building interiors, menu art.
+- **Space view:** planets, asteroid and station are procedural pixel art from `build_space()` (palette ramps + ordered
+  dithering, light from top-left), one PNG per location id (`space/<id>.png`); beacon and patrol are grids.
+
+Not covered yet: UI icons, building interiors, menu art.
