@@ -189,8 +189,7 @@ func _enter_game() -> void:
 	hud.visible = true
 	world.clear_patrols()
 	var g = GameState.game
-	var loc: String = g.location if g.location != "" else g.data.start.location
-	world.place_ship_at(loc)
+	world.place_ship_at(_resume_spot(g))
 	GameState.paused = false
 	AudioManager.set_ambient(true)
 	if g.location != "":
@@ -199,8 +198,23 @@ func _enter_game() -> void:
 		world.active = true
 
 
+## Where the ship reappears on load: the docked location, else the arrival side of the saved system.
+func _resume_spot(g) -> String:
+	if g.location != "":
+		return g.location
+	if g.loc_system(g.data.start.location) == g.system:
+		return g.data.start.location
+	for l in g.locations_in(g.system):
+		if g.data.locations[l].has("jump_to"):
+			return l
+	return g.patrol_home(g.system)
+
+
 func dock(loc: String) -> void:
 	var g = GameState.game
+	if GameState.data.locations.get(loc, {}).has("jump_to"):
+		jump(loc)
+		return
 	if g.location != loc:
 		var r: Dictionary = g.dock(loc)
 		if not r.ok:
@@ -214,6 +228,33 @@ func dock(loc: String) -> void:
 		_land(loc)
 	else:
 		station.open()
+
+
+## Jumps through a gate: toll + travel time in the core, a short hyperspace flash, then the next system is built
+## around the ship at the arrival gate.
+func jump(gate: String) -> void:
+	var g = GameState.game
+	var r: Dictionary = GameState.act(g.jump(gate))
+	if not r.ok:
+		return
+	AudioManager.play("dock")
+	var arrive: String = GameState.data.locations[gate].get("arrive", "")
+	world.show_system(g.system)
+	world.place_ship_at(arrive if world.locations.has(arrive) else g.patrol_home(g.system))
+	world.ship.velocity = Vector2.DOWN * 220.0
+	_flash()
+	GameState.save_game()
+
+
+func _flash() -> void:
+	var f := ColorRect.new()
+	f.color = Color(0.75, 0.95, 1.0, 0.9)
+	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ui_layer.add_child(f)
+	f.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var tw := f.create_tween()
+	tw.tween_property(f, "color:a", 0.0, 0.8)
+	tw.tween_callback(f.queue_free)
 
 
 ## Loads the planet surface instance for `loc` and hands the camera to the player on foot.

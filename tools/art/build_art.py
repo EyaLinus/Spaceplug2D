@@ -111,7 +111,7 @@ def build_characters() -> list[Path]:
 def build_sprites() -> list[Path]:
     out = []
     for name, folder in [("crate", "props"), ("barrel", "props"), ("rock", "props"), ("tree", "props"),
-                         ("lamp", "props"), ("vent", "props"), ("stall", "props"), ("ship", "ships"),
+                         ("lamp", "props"), ("vent", "props"), ("stall", "props"), ("cactus", "props"), ("ice_rock", "props"), ("ship", "ships"),
                          ("patrol", "ships"), ("beacon", "space")]:
         legend, frames = parse_grid(SRC / "sprites" / f"{name}.txt")
         out.append(save(grid_image(frames[0], legend), f"{folder}/{name}.png"))
@@ -218,6 +218,16 @@ def build_tiles() -> list[Path]:
             "ground": [plates("shadow", "night", "slate_dark", "purple_dark", 60 + s, s % 2 == 0) for s in range(4)],
             "road": [grate("purple_dark", "night", "purple") for _ in range(4)],
             "plaza": [plates("slate_dark", "night", "slate", "slate", 70 + s, s % 2 == 1) for s in range(4)],
+        },
+        "varrow": {  # desert dust town
+            "ground": [speckle("sand", [("rust_light", 0.07), ("wood", 0.02)], 80 + s, "rust_light" if s % 2 else None) for s in range(4)],
+            "road": [speckle("wood", [("wood_dark", 0.07), ("rust_light", 0.03)], 90 + s) for s in range(4)],
+            "plaza": [paving("rust_light", "rust", "sand", 100 + s) for s in range(4)],
+        },
+        "glacis": {  # ice colony
+            "ground": [speckle("stone", [("white", 0.08), ("slate_light", 0.03), ("blue_light", 0.012)], 110 + s) for s in range(4)],
+            "road": [plates("slate", "slate_dark", "shadow", "slate_light", 120 + s, s % 2 == 0) for s in range(4)],
+            "plaza": [paving("slate_light", "slate", "white", 130 + s) for s in range(4)],
         },
     }
     for biome, kinds in sets.items():
@@ -454,11 +464,44 @@ def station(d: int, accent: str) -> Image.Image:
     return img
 
 
+def gate(d: int) -> Image.Image:
+    """Jump gate seen from above: thick segmented ring with four clamps and teal emitters on the inner edge."""
+    import math
+    img = Image.new("RGBA", (d, d), CLEAR)
+    c = (d - 1) / 2.0
+    R = d / 2.0
+    for y in range(d):
+        for x in range(d):
+            dx, dy = x - c, y - c
+            dist = math.hypot(dx, dy)
+            ang = (math.atan2(dy, dx) + math.pi) / (2 * math.pi)
+            lit = 0.5 + 0.5 * (-(dx * 0.6 + dy * 0.7) / max(dist, 1))
+            col = None
+            clamp = min(abs(ang * 4 - round(ang * 4)), 1) < 0.045
+            outer = R - 0.5 + (2 if clamp else 0) - 2
+            if R * 0.62 <= dist < outer:
+                if dist >= outer - 1 or dist < R * 0.62 + 1:
+                    col = "ink"
+                elif abs(dist - R * 0.66) < 1 and int(ang * 32) % 2 == 0:
+                    col = "teal"
+                elif clamp:
+                    col = shade(["gold_dark", "gold", "gold_light"], lit, x, y)
+                else:
+                    col = shade(["slate_dark", "slate", "slate_light", "stone"], lit, x, y)
+            if col:
+                img.putpixel((x, y), color(col))
+    return img
+
+
 def build_space() -> list[Path]:
     out = []
     out.append(save(planet(170, 7, ["blue_dark", "blue", "blue_light"], ["grass_dark", "grass", "grass_light", "leaf"], "night"), "space/mireth.png"))
     out.append(save(asteroid(90, 11, ["dirt_dark", "dirt", "rust", "rust_light"]), "space/cinder.png"))
     out.append(save(station(70, "purple"), "space/bazaar.png"))
+    out.append(save(planet(150, 23, ["dirt_dark", "rust", "rust_light"], ["rust_light", "sand", "gold_light"], "night"), "space/varrow.png"))
+    out.append(save(planet(160, 31, ["slate_light", "stone", "white"], ["blue", "blue_light", "stone"], "night"), "space/glacis.png"))  # ice sheet, blue melt lakes
+    for g in ("halvane_gate", "kovar_gate"):  # one gate design, one file per location id (registry rule)
+        out.append(save(gate(60), f"space/{g}.png"))
     return out
 
 

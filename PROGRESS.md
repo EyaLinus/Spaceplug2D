@@ -1,5 +1,26 @@
 # Progress log
 
+## D1: galaxy model + two new planets (2026-10-30)
+- **Galaxy model:** `content.json` → `systems` (name, galaxy_pos for the later map app, security, `patrol_mult`, star and
+  nebula colours) and `jump` (fee 80 cr, 20 s travel time). Every location has a `system`; gates are locations of kind
+  `gate` with `jump_to` + `arrive`. Core in `game.gd`: `system` (saved; old saves fall back to the start system),
+  `loc_system`, `locations_in`, `patrol_home` (location with `patrol_base`, else the gate), `jump(gate)` (in flight only,
+  toll, ticks time, emits `jumped`); `patrol_count()` scales with the system's `patrol_mult`.
+- **World:** `world.gd` builds one system at a time (`show_system`, starfield/nebulae seeded per system), patrols fly from
+  the current system's base, gates count as "nearby". `main.gd` turns docking at a gate into a jump with a short white
+  flash; loading a save in flight puts the ship at its system's gate. HUD shows the system next to the day and
+  "[E] Jump to … (80 cr toll)".
+- **Kovar Expanse:** Varrow (desert, surface security 0.3, fence, cheap coca/pseudo, meth demand ×1.35, Dune Cellar
+  estate) and Glacis (ice, security 1.6, heat 3.5/unit, cocaine ×1.5/fentanyl ×1.4, additives, Cryo Vault 4, patrol base)
+  with walkable surfaces and 4 new named customers (Rhea, Kip, Ivo Halden, Nadia Frost).
+- Art (game-assets-2d pipeline): tile sets varrow/glacis, space sprites for both planets and the jump gate, props
+  cactus/ice_rock.
+- Verified: 897 unit checks (new `test_galaxy_and_jump`, surface/art tests cover the new planets), UI smoke jumps both
+  ways and walks every door and person on Varrow and Glacis, menu smoke, sim 5/5 won (bot stays in Halvane);
+  screenshots of both surfaces, both planets and the gate in space reviewed.
+- Gaps: the jump is a plain toll gate (A6 brings the galaxy map, charge-up and hyperspace VFX, D3 interdiction);
+  bot/sim ignores the second system; prices in Kovar are eyeballed; no mechanic/shipyard there yet.
+
 ## A1: Com-Phone + named customers (2026-10-30)
 - **Core** `scripts/core/people.gd`, state in `Game.people` (saved; old saves get defaults): addiction 0..1 (+ per unit by
   drug tier, −0.04/day), affinity −1..1 (+ per deal, liked trait, preferred drug, grade; Shoddy lowers it), daily budget

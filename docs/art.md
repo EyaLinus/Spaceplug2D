@@ -20,6 +20,10 @@ All art is pixel art built from text sources with the game-assets-2d skill workf
 - **Space view:** planets, asteroid and station are procedural pixel art from `build_space()` (palette ramps + ordered
   dithering, light from top-left), one PNG per location id (`space/<id>.png`); beacon and patrol are grids.
 
+- **New planets / gates:** Varrow (desert) and Glacis (ice) reuse `planet()` with other ramps and get their own tile
+  sets (`varrow_*`, `glacis_*`) plus props `cactus` and `ice_rock`; jump gates are `gate()` (one design, written once
+  per gate location id because the registry looks sprites up by id).
+
 - **Icons:** 16 px grids in `assets/src/icons` (items by data key, `up_<upgrade>`, `hud_*`); `Art.with_icon(key, control)`
   puts one in front of a label at 32 px; product keys use their base icon.
 

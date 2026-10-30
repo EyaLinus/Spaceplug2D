@@ -1,0 +1,25 @@
+# Ice shard cluster (Glacis).
+legend:
+. = transparent
+k = ink
+W = white
+S = stone
+b = blue_light
+B = blue
+---
+................
+.......k........
+......kWk.......
+......kWbk...k..
+..k..kWSbk..kWk.
+.kWk.kWSbk..kSbk
+.kWbkkWSbBk.kSbk
+.kSbkkSSbBkkWSbk
+.kSbkWSSbBkWSbBk
+kWSbkWSbbBkWSbBk
+kSSbBkSbBBkSSbBk
+kSbbBkSbBkkSbBk.
+.kbBBkbBBkkbBBk.
+..kkkkkkkkkkkk..
+................
+................

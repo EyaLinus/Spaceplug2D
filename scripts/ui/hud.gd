@@ -128,7 +128,7 @@ func _process(_delta: float) -> void:
 		return
 	_credits.text = "%d cr" % g.credits
 	_debt.text = "Debt %d cr · due day %d" % [g.debt, g.debt_due_day] if g.debt > 0 else "Debt cleared"
-	_day.text = "Day %d" % g.day
+	_day.text = "Day %d · %s" % [g.day, g.system_data().get("name", "")]
 	_day_bar.value = g.day_time / g.day_seconds() * 100.0
 	_heat.value = g.heat
 	_heat_label.text = "Heat %d · %d patrol%s" % [int(g.heat), g.patrol_count(), "" if g.patrol_count() == 1 else "s"]
@@ -147,7 +147,11 @@ func _process(_delta: float) -> void:
 	if surface != null:
 		_prompt.text = surface.prompt()
 	elif world != null and world.active and world.nearby != "":
-		_prompt.text = "[%s] Dock at %s" % [Settings.key_label("ship_dock"), g.data.locations[world.nearby].name]
+		var nl: Dictionary = g.data.locations[world.nearby]
+		if nl.has("jump_to"):
+			_prompt.text = "[%s] Jump to %s (%d cr toll)" % [Settings.key_label("ship_dock"), g.system_data(nl.jump_to).get("name", nl.jump_to), int(g.data.jump.fee)]
+		else:
+			_prompt.text = "[%s] Dock at %s" % [Settings.key_label("ship_dock"), nl.name]
 	else:
 		_prompt.text = ""
 	_minimap.queue_redraw()

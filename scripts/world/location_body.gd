@@ -1,5 +1,5 @@
 extends Node2D
-## A dockable place in the sector (planet, asteroid outpost, station, beacon). Pixel-art body from the art
+## A place in the current system (planet, asteroid outpost, station, beacon, jump gate). Pixel-art body from the art
 ## registry (space/<id>.png, procedural fallback); glow, rings, labels stay procedural.
 
 const Art = preload("res://scripts/core/art.gd")
@@ -59,6 +59,11 @@ func _draw_art(body: Texture2D, c: Color) -> void:
 			draw_circle(Vector2.ZERO, radius, Color(c, 0.12))
 			draw_arc(Vector2.ZERO, radius * (1.0 + pulse * 2.0), 0, TAU, 40, Color(c, 1.0 - pulse), 2.0)
 			draw_texture_rect(body, Rect2(-half * 2.0, half * 4.0), false)  # small buoy, shown 2x
+		"gate":
+			_draw_gate_field(c)
+			draw_set_transform(Vector2.ZERO, _spin * 0.5, Vector2.ONE)
+			draw_texture(body, -half)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		_:
 			draw_texture(body, -half)
 
@@ -89,8 +94,20 @@ func _draw_fallback(c: Color) -> void:
 				draw_line(d * 14.0, d * radius, c.lightened(0.2), 5.0)
 			draw_circle(Vector2.ZERO, 18.0, c.lightened(0.3))
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		"gate":
+			_draw_gate_field(c)
+			draw_arc(Vector2.ZERO, radius * 0.8, 0, TAU, 48, c.darkened(0.4), 10.0)
 		"beacon":
 			draw_circle(Vector2.ZERO, radius, Color(c, 0.25))
 			draw_circle(Vector2.ZERO, radius * 0.4, c)
 			var pulse := fmod(_spin * 5.0, 1.0)
 			draw_arc(Vector2.ZERO, radius * (1.0 + pulse * 2.0), 0, TAU, 40, Color(c, 1.0 - pulse), 2.0)
+
+
+## Shimmering jump field inside the gate ring.
+func _draw_gate_field(c: Color) -> void:
+	var pulse := 0.5 + 0.5 * sin(_spin * 12.0)
+	draw_circle(Vector2.ZERO, radius * 0.6, Color(c, 0.18 + 0.12 * pulse))
+	for i in 3:
+		var t := fmod(_spin * 2.0 + i / 3.0, 1.0)
+		draw_arc(Vector2.ZERO, radius * 0.6 * t, 0, TAU, 32, Color(c, 0.6 * (1.0 - t)), 2.0)

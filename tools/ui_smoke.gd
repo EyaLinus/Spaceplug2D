@@ -313,7 +313,10 @@ func _run() -> void:
 	_assert(m.world.ship.velocity.length() < 50.0, "brake stops the ship")
 	step("flight")
 
-	for loc in ["cinder", "bazaar"]:
+	for loc in ["cinder", "bazaar", "halvane_gate", "varrow", "glacis", "kovar_gate"]:
+		if g.data.locations[loc].has("jump_to"):
+			await _jump(m, g, loc)
+			continue
 		m.world.ship.position = m.world.locations[loc].position + Vector2(0, m.world.locations[loc].radius + 20)
 		await physics_frame
 		await physics_frame
@@ -386,6 +389,24 @@ func _run() -> void:
 		gs.delete_slot(i)
 	print("SMOKE DONE %d steps" % steps)
 	quit(0)
+
+
+## Flies into a jump gate and checks that the next system is built around the ship.
+func _jump(m, g, gate: String) -> void:
+	var to: String = g.data.locations[gate].jump_to
+	m.world.ship.position = m.world.locations[gate].position + Vector2(0, m.world.locations[gate].radius + 20)
+	await physics_frame
+	await physics_frame
+	_assert(m.world.nearby == gate, "in range of %s" % gate)
+	_assert(m.hud._prompt.text.contains("Jump"), "HUD offers the jump")
+	var credits: int = g.credits
+	m.dock(gate)
+	await frames(2)
+	_assert(g.system == to and m.world.system == to and g.location == "", "jumped to %s" % to)
+	_assert(g.credits < credits, "jump toll paid")
+	_assert(m.world.locations.keys().all(func(l): return g.loc_system(l) == to), "only %s locations are shown" % to)
+	_assert(m.world.active and m.surface == null, "flying after the jump")
+	step("jump to %s" % to)
 
 
 func _assert(cond: bool, msg: String) -> void:
