@@ -95,6 +95,9 @@ func test_art_registry() -> void:
 	for part in ["roof", "wall", "window", "door", "hatch"]:
 		check(Art.tex("buildings/%s.png" % part) != null, "building part %s" % part)
 	check(Art.tex("ships/ship.png") != null, "ship sprite")
+	check(Art.tex("ships/patrol.png") != null, "patrol sprite")
+	for loc in data.locations:
+		check(Art.tex("space/%s.png" % loc) != null, "location %s has a space sprite" % loc)
 	check(Art.tex("missing/nothing.png") == null, "missing art returns null (procedural fallback)")
 	check(Art.look_for_color(Color("#ff6b5f")) == "npc_red", "npc look follows data colour")
 

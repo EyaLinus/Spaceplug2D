@@ -90,6 +90,15 @@ func _run() -> void:
 		m.world.ship.steer(1.0 / 60.0, true, false)
 		await physics_frame
 	await _save(out, "flight")
+	for loc in m.world.locations:
+		m.world.ship.position = m.world.locations[loc].position + Vector2(0, m.world.locations[loc].radius + 120)
+		m.world.ship.stop()
+		for c in m.world.ship.get_children():
+			if c is Camera2D:
+				c.reset_smoothing()
+		for i in 10:
+			await physics_frame
+		await _save(out, "space_%s" % loc)
 	for loc in ["cinder", "bazaar"]:
 		m.world.ship.position = m.world.locations[loc].position + Vector2(0, m.world.locations[loc].radius + 20)
 		await physics_frame

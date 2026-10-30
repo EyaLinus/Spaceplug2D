@@ -1,0 +1,1 @@
+- **Space in pixel art:** Mireth, the Cinder Belt asteroid, the Drift Bazaar ring station, the customs beacon and the patrol cutters are now pixel art too.
