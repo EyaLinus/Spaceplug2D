@@ -149,6 +149,196 @@ assets:
     source: assets/src/sprites/char_down.txt
     status: done
     updated: '2026-10-30'
+  icon_cannabis:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/cannabis.png
+    source: assets/src/icons/cannabis.txt
+    status: done
+    updated: '2026-10-30'
+  icon_coca_leaf:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/coca_leaf.png
+    source: assets/src/icons/coca_leaf.txt
+    status: done
+    updated: '2026-10-30'
+  icon_cocaine:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/cocaine.png
+    source: assets/src/icons/cocaine.txt
+    status: done
+    updated: '2026-10-30'
+  icon_fent_precursor:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/fent_precursor.png
+    source: assets/src/icons/fent_precursor.txt
+    status: done
+    updated: '2026-10-30'
+  icon_fentanyl:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/fentanyl.png
+    source: assets/src/icons/fentanyl.txt
+    status: done
+    updated: '2026-10-30'
+  icon_hud_credits:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/hud_credits.png
+    source: assets/src/icons/hud_credits.txt
+    status: done
+    updated: '2026-10-30'
+  icon_hud_day:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/hud_day.png
+    source: assets/src/icons/hud_day.txt
+    status: done
+    updated: '2026-10-30'
+  icon_hud_heat:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/hud_heat.png
+    source: assets/src/icons/hud_heat.txt
+    status: done
+    updated: '2026-10-30'
+  icon_ion_syrup:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/ion_syrup.png
+    source: assets/src/icons/ion_syrup.txt
+    status: done
+    updated: '2026-10-30'
+  icon_meth:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/meth.png
+    source: assets/src/icons/meth.txt
+    status: done
+    updated: '2026-10-30'
+  icon_nanoflux:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/nanoflux.png
+    source: assets/src/icons/nanoflux.txt
+    status: done
+    updated: '2026-10-30'
+  icon_pseudo:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/pseudo.png
+    source: assets/src/icons/pseudo.txt
+    status: done
+    updated: '2026-10-30'
+  icon_static_pollen:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/static_pollen.png
+    source: assets/src/icons/static_pollen.txt
+    status: done
+    updated: '2026-10-30'
+  icon_up_cargo:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/up_cargo.png
+    source: assets/src/icons/up_cargo.txt
+    status: done
+    updated: '2026-10-30'
+  icon_up_engine:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/up_engine.png
+    source: assets/src/icons/up_engine.txt
+    status: done
+    updated: '2026-10-30'
+  icon_up_lab:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/up_lab.png
+    source: assets/src/icons/up_lab.txt
+    status: done
+    updated: '2026-10-30'
+  icon_up_stealth:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/up_stealth.png
+    source: assets/src/icons/up_stealth.txt
+    status: done
+    updated: '2026-10-30'
+  icon_void_salt:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/void_salt.png
+    source: assets/src/icons/void_salt.txt
+    status: done
+    updated: '2026-10-30'
+  icon_weed:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: UI icon 16px art, shown 32px
+    outputs:
+    - assets/gfx/icons/weed.png
+    source: assets/src/icons/weed.txt
+    status: done
+    updated: '2026-10-30'
   prop_barrel:
     created: '2026-10-30'
     kind: prop

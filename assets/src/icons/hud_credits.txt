@@ -1,0 +1,24 @@
+# HUD: credit chip.
+legend:
+. = transparent
+k = ink
+Y = gold_light
+y = gold
+d = gold_dark
+---
+................
+.....kkkkkk.....
+...kkYYYYyykk...
+..kYYyyyyyyydk..
+..kYyyykkyyydk..
+.kYyyykYYkyyydk.
+.kYyyykYkkyyydk.
+.kYyyyykYkyyydk.
+.kYyyykkYkyyydk.
+.kYyyykYYkyyydk.
+..kYyyykkyyydk..
+..kyyyyyyyyddk..
+...kkddddddkk...
+.....kkkkkk.....
+................
+................

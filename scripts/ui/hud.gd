@@ -3,6 +3,7 @@ extends Control
 ## On a planet surface the prompt, minimap and controls help switch to the on-foot versions.
 
 const UI = preload("res://scripts/ui/ui_theme.gd")
+const Art = preload("res://scripts/core/art.gd")
 
 var world: Node2D
 var surface: Node2D  ## set by main while on foot, null in space
@@ -47,9 +48,10 @@ func _ready() -> void:
 	_heat.max_value = 100
 	_cargo = UI.label("", 17)
 	_lab = UI.label("", 17, UI.ACCENT)
+	var icons := {_credits: "hud_credits", _day: "hud_day", _heat_label: "hud_heat", _cargo: "up_cargo"}
 	for c in [_credits, _debt, _day, _day_bar, _heat_label, _heat, _cargo, _lab]:
 		c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		row.add_child(c)
+		row.add_child(Art.with_icon(icons[c], c) if icons.has(c) else c)
 
 	_prompt = UI.label("", 22, UI.ACCENT)
 	_prompt.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)

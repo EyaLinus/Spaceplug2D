@@ -1,0 +1,27 @@
+# Product icon: zip baggie with white powder.
+legend:
+. = transparent
+k = ink
+R = red
+W = white
+w = stone
+S = slate_light
+c = stone
+C = white
+---
+................
+...kkkkkkkkkk...
+...kRRRRRRRRk...
+...kkkkkkkkkk...
+..kWwwwwwwwwwk..
+..kWccccccccwk..
+..kWcCcccCccwk..
+..kWccCccccCwk..
+..kWcccCccccwk..
+..kWcCccccCcwk..
+..kWccccCcccwk..
+..kWcCccccccwk..
+..kWwwwwwwwwwk..
+..kSwwwwwwwwSk..
+...kkkkkkkkkk...
+................

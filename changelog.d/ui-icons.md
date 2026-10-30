@@ -1,0 +1,1 @@
+- **Icons:** goods, additives, products, ship upgrades and the top bar (credits, day, heat, cargo) now show pixel-art icons.

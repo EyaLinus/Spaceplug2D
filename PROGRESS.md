@@ -1,5 +1,11 @@
 # Progress log
 
+## Art pass 3: UI icons (2026-10-30)
+- 19 pixel icons: 4 raws, 4 products (baggies), 4 additives (vials), 4 upgrades, HUD credits/day/heat (+cargo).
+  Shown in market rows, hold, deals, shipyard and the top bar via `Art.with_icon()`.
+- Verified: 468 unit checks (every raw/additive/base/upgrade has an icon), UI + menu smoke, market/deals/HUD screenshots.
+- Gaps: lab dropdowns and minigame panels have no icons yet.
+
 ## Art pass 2: space view (2026-10-30)
 - Pixel art for Mireth (dithered sphere with continents), Cinder asteroid (craters, outpost hut), Drift Bazaar ring
   station (rotates), customs beacon and patrol cutters; glow, scan circles and siren lights stay procedural.

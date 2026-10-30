@@ -1,0 +1,24 @@
+# Upgrade: cargo hold.
+legend:
+. = transparent
+k = ink
+l = sand
+w = wood
+d = wood_dark
+---
+................
+................
+.kkkkkkkkkkkkkk.
+.kllllllllllllk.
+.klwwwwwwwwwwlk.
+.kllllllllllllk.
+.kkkkkkkkkkkkkk.
+.kwddwwwwwwddwk.
+.kwwddwwwwddwwk.
+.kwwwddwwddwwwk.
+.kwwwwddddwwwwk.
+.kwwwddwwddwwwk.
+.kwwddwwwwddwwk.
+.kddddddddddddk.
+.kkkkkkkkkkkkkk.
+................
