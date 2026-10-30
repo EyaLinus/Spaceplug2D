@@ -1,3 +1,0 @@
-- **Menus:** new main menu (Continue, New game, Load game, Settings, Quit) and pause menu (Esc) with Save game, Load game, Settings, Save & main menu and Save & quit. Keyboard navigation works without a mouse; Esc always goes one step back.
-- **Save slots:** three save slots with day, credits, location and save time; overwriting and deleting ask once more on the same button. Your old save moves into slot 1 automatically. Closing the window mid-run saves too.
-- **Settings:** master, music and effects volume; windowed/fullscreen, window size and VSync; rebind every key (flight, on foot, pause). Conflicting keys in the same group swap. On-screen key hints follow your bindings. Saved in settings.cfg.
