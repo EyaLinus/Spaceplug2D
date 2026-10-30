@@ -147,6 +147,11 @@ func sell_price(product_key: String, contact_id: String = "", loc: String = loca
 	return int(round(v))
 
 
+## Stronger drugs draw more attention: heat from cooking and selling scales with the product tier.
+func heat_mult(base: String) -> float:
+	return float(data.bases.get(base, {}).get("heat_mult", 1.0))
+
+
 func upgrade_cost(key: String) -> int:
 	var costs: Array = data.upgrades[key].costs
 	var lvl: int = upgrades[key]
@@ -304,7 +309,7 @@ func start_batch(base: String, additives: Array, qty: int) -> Dictionary:
 	var product := Mixing.key(base, Mixing.traits_for(data, base, additives))
 	var t := batch_seconds(qty)
 	lab_queue.append({"product": product, "qty": qty, "remaining": t, "total": t})
-	add_heat(float(data.heat.per_lab_unit) * qty)
+	add_heat(float(data.heat.per_lab_unit) * qty * heat_mult(base))
 	_emit("lab_started", {"product": product, "qty": qty})
 	return _ok("Cooking %d %s." % [qty, item_name(product)])
 
@@ -357,7 +362,7 @@ func sell(product_key: String, qty: int, contact_id: String = "") -> Dictionary:
 	stats.units_sold += qty
 	if contact_id != "":
 		contact_ready_at[contact_id] = total_time + float(data.market.contact_cooldown)
-	add_heat(float(loc_data().heat_per_unit) * qty)
+	add_heat(float(loc_data().heat_per_unit) * qty * heat_mult(p.base))
 	_emit("sold", {"product": product_key, "qty": qty, "credits": total, "contact": contact_id})
 	return _ok("Sold %d for %d cr." % [qty, total])
 
@@ -448,16 +453,17 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	total_time = float(d.get("total_time", 0.0))
 	heat = float(d.get("heat", 0.0))
 	location = str(d.get("location", ""))
-	cargo = _int_dict(d.get("cargo", {}))
-	stash = _int_dict(d.get("stash", {}))
+	cargo = _int_dict(_migrate_keys(d.get("cargo", {})))
+	stash = _int_dict(_migrate_keys(d.get("stash", {})))
 	lab_queue = []
 	for j in d.get("lab_queue", []):
-		lab_queue.append({"product": j.product, "qty": int(j.qty), "remaining": float(j.remaining), "total": float(j.total)})
+		lab_queue.append({"product": _migrate_key(j.product), "qty": int(j.qty), "remaining": float(j.remaining), "total": float(j.total)})
 	for loc in d.get("demand", {}):
 		if demand.has(loc):
 			for b in d.demand[loc]:
-				if demand[loc].has(b):
-					demand[loc][b] = float(d.demand[loc][b])
+				var nb: String = RENAMED.get(b, b)
+				if demand[loc].has(nb):
+					demand[loc][nb] = float(d.demand[loc][b])
 	contact_ready_at = d.get("contact_ready_at", {}).duplicate()
 	for k in upgrades:
 		upgrades[k] = int(d.get("upgrades", {}).get(k, 0))
@@ -466,6 +472,23 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 		stats[k] = int(d.get("stats", {}).get(k, 0))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
+
+
+## v0.1.0 used invented names; map them to the v0.1.1 drug ladder so old saves keep their cargo.
+const RENAMED := {"sporegel": "cannabis", "cryoshard": "coca_leaf", "driftglow": "weed", "shardlight": "cocaine"}
+
+
+static func _migrate_key(k: String) -> String:
+	var parts := k.split(":")
+	parts[0] = RENAMED.get(parts[0], parts[0])
+	return ":".join(parts)
+
+
+static func _migrate_keys(src: Dictionary) -> Dictionary:
+	var r := {}
+	for k in src:
+		r[_migrate_key(k)] = src[k]
+	return r
 
 
 static func _int_dict(src: Dictionary) -> Dictionary:

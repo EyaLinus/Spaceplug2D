@@ -92,7 +92,7 @@ func _ready() -> void:
 	_minimap.draw.connect(_draw_minimap)
 	add_child(_minimap)
 
-	var help := UI.label("W/↑ thrust   A/D turn   S brake   E dock   Esc menu", 14, UI.MUTED)
+	var help := UI.label("W/↑ thrust   S/↓ reverse   A/D turn   Space brake   E dock   Esc menu", 14, UI.MUTED)
 	help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	help.offset_left = 12
 	help.offset_top = -30

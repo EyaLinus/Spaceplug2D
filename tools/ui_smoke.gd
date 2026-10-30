@@ -44,18 +44,18 @@ func _run() -> void:
 		await frames(1)
 	step("hub tabs %s" % [m.station.tab_names()])
 
-	gs.act(g.buy("sporegel", 5))
+	gs.act(g.buy("cannabis", 5))
 	gs.act(g.buy("nanoflux", 5))
 	m.station._lab_adds = ["nanoflux", "", ""]
 	m.station._lab_qty = 5
 	m.station.refresh()
-	gs.act(g.start_batch("driftglow", ["nanoflux"], 5))
+	gs.act(g.start_batch("weed", ["nanoflux"], 5))
 	await frames(2)
 	g.tick(30.0)
 	gs.act(g.collect_stash())
 	await frames(2)
 	_assert(g.has_contraband(), "cooked product")
-	gs.act(g.sell("driftglow:overclock+radiant", 3, "okka"))
+	gs.act(g.sell("weed:overclock+radiant", 3, "okka"))
 	await frames(2)
 	step("cook and sell")
 
@@ -74,6 +74,13 @@ func _run() -> void:
 	for i in 120:
 		m.world.ship.steer(1.0 / 60.0, true, false)
 		await physics_frame
+	var v_fwd: Vector2 = m.world.ship.velocity
+	for i in 30:
+		m.world.ship.steer(1.0 / 60.0, false, false, true)
+	_assert(m.world.ship.velocity.length() < v_fwd.length(), "reverse thrust slows forward motion")
+	for i in 60:
+		m.world.ship.steer(1.0 / 60.0, false, true)
+	_assert(m.world.ship.velocity.length() < 50.0, "brake stops the ship")
 	step("flight")
 
 	for loc in ["cinder", "bazaar"]:
@@ -91,7 +98,7 @@ func _run() -> void:
 		await frames(1)
 
 	# patrol bust: park a patrol on top of the ship while carrying product
-	g.cargo["driftglow:glow"] = 3
+	g.cargo["weed:glow"] = 3
 	g.add_heat(60)
 	await physics_frame
 	await physics_frame

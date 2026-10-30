@@ -8,10 +8,11 @@ const StationScript = preload("res://scripts/ui/station_ui.gd")
 
 const ACTIONS := {
 	"ship_thrust": [KEY_W, KEY_UP],
-	"ship_brake": [KEY_S, KEY_DOWN],
+	"ship_reverse": [KEY_S, KEY_DOWN],
+	"ship_brake": [KEY_SPACE],
 	"ship_left": [KEY_A, KEY_LEFT],
 	"ship_right": [KEY_D, KEY_RIGHT],
-	"ship_dock": [KEY_E, KEY_SPACE],
+	"ship_dock": [KEY_E],
 	"ui_menu": [KEY_ESCAPE, KEY_P],
 }
 
@@ -201,7 +202,7 @@ func _build_main_menu() -> Control:
 	v.add_child(_continue_btn)
 	v.add_child(UI.button("Sound: on/off", func(): AudioManager.set_enabled(not AudioManager.enabled)))
 	v.add_child(UI.button("Quit", func(): get_tree().quit()))
-	var help := UI.label("You start on Mireth with a debt to the Ouroboros Consortium.\nBuy Sporegel and additives, cook product in your lab, sell to contacts across the sector.\nEvery deal raises heat. Heat brings patrols – stay out of their scan circles while carrying product.", 14, UI.MUTED)
+	var help := UI.label("You start on Mireth with a debt to the Ouroboros Consortium.\nBuy Cannabis Buds and additives, cook product in your lab, sell to contacts across the sector.\nEvery deal raises heat. Heat brings patrols – stay out of their scan circles while carrying product.", 14, UI.MUTED)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(help)
 	var ver := UI.label("v%s" % ProjectSettings.get_setting("application/config/version", "dev"), 12, UI.MUTED)
