@@ -5,6 +5,8 @@ extends SceneTree
 ## pauses, saves/loads and reaches both end screens. Any GDScript error shows up as "SCRIPT ERROR" (CI greps for it).
 ## godot --headless --path . -s res://tools/ui_smoke.gd
 
+const Workers = preload("res://scripts/core/workers.gd")
+
 var steps := 0
 
 
@@ -121,6 +123,62 @@ func _run() -> void:
 	await key(KEY_ESCAPE)
 	_assert(not m.phone.visible and not gs.paused, "Esc from home closes the phone without pausing")
 	step("com-phone contacts")
+
+	# HR app: hire through the phone, assign, set the auto recipe, a day passes and wages are paid
+	var hr_saved: Dictionary = g.to_dict()
+	g.credits += 5000
+	g.buy_estate("cannery_annex")
+	_assert(g.estate_owned("cannery_annex"), "annex bought for the HR test")
+	g.place_building("cannery_annex", "trim_table", 0, 0)
+	g.place_building("cannery_annex", "cook_stove", 2, 0)
+	g.place_building("cannery_annex", "pack_table", 4, 0)
+	g.place_building("cannery_annex", "extractor", 6, 0)
+	m.toggle_phone()
+	await frames(2)
+	m.phone.open_app("hr")
+	await frames(2)
+	_assert(m.phone.current_title() == "HR" and m.phone.find_child("Hire_pia", true, false) != null, "HR app lists candidates")
+	m.phone.find_child("Hire_pia", true, false).pressed.emit()
+	await frames(2)
+	var credits_before: int = g.credits
+	m.phone.find_child("HireBtn", true, false).pressed.emit()
+	await frames(2)
+	_assert(Workers.hired(g, "pia") and g.credits < credits_before, "hire button hires and charges")
+	m.phone.find_child("Assign_pia_cannery_annex", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.workers[0].estate == "cannery_annex", "assign button assigns")
+	await key(KEY_ESCAPE)
+	m.phone.find_child("EstateRow_cannery_annex", true, false).pressed.emit()
+	await frames(2)
+	var opt: OptionButton = m.phone.find_child("Recipe_cannery_annex", true, false)
+	opt.select(1)
+	opt.item_selected.emit(1)
+	await frames(2)
+	_assert(g.estates.cannery_annex.recipe.base == g.data.bases.keys()[0], "recipe picker sets the auto recipe")
+	g.cargo["cannabis"] = 5
+	g.inside_estate = "cannery_annex"
+	g._emit("storage_changed", {})  # the screen rebuilds and enables the buttons
+	await frames(2)
+	m.phone.find_child("StoreRaws", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.cargo.is_empty() and not g.estates.cannery_annex.job.is_empty(), "stock button moves raws to storage and the lab hand starts cooking")
+	g.tick(60.0)
+	await frames(2)
+	_assert(g.stats.worker_batches >= 1, "the lab hand cooked a batch")
+	m.phone.find_child("TakeProducts", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.has_contraband(), "take button loads the products")
+	g.inside_estate = ""
+	var c1: int = g.credits
+	g.tick(g.day_seconds())
+	await frames(2)
+	_assert(g.credits == c1 - Workers.wage_total(g), "wages are charged on a new day")
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	_assert(not m.phone.visible, "phone closed again")
+	g.from_dict(g.data, hr_saved)  # later steps expect the annex to be unowned
+	step("hr app")
 
 	# police on foot: an officer looking at you while you carry product frisks and busts you
 	_assert(sf.officers.size() == g.police_on_foot(1.0) and sf.officers.size() > 0, "officers on Mireth")
