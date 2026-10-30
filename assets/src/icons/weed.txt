@@ -1,0 +1,27 @@
+# Product icon: zip baggie with green buds.
+legend:
+. = transparent
+k = ink
+R = red
+W = white
+w = stone
+S = slate_light
+c = grass_light
+C = leaf
+---
+................
+...kkkkkkkkkk...
+...kRRRRRRRRk...
+...kkkkkkkkkk...
+..kWwwwwwwwwwk..
+..kWccccccccwk..
+..kWcCcccCccwk..
+..kWccCccccCwk..
+..kWcccCccccwk..
+..kWcCccccCcwk..
+..kWccccCcccwk..
+..kWcCccccccwk..
+..kWwwwwwwwwwk..
+..kSwwwwwwwwSk..
+...kkkkkkkkkk...
+................

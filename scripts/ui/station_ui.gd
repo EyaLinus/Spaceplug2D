@@ -6,6 +6,7 @@ extends Control
 
 const UI = preload("res://scripts/ui/ui_theme.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
+const Art = preload("res://scripts/core/art.gd")
 const Production = preload("res://scripts/core/production.gd")
 const RunnerScript = preload("res://scripts/ui/minigames/minigame_runner.gd")
 
@@ -156,7 +157,7 @@ func _build_market(g) -> Control:
 		if price < 0:
 			continue
 		any = true
-		gr.add_child(UI.label(g.item_name(item)))
+		gr.add_child(Art.with_icon(item, UI.label(g.item_name(item))))
 		gr.add_child(UI.label("%d cr" % price, 17, UI.GOLD))
 		gr.add_child(UI.label(str(g.cargo.get(item, 0))))
 		gr.add_child(UI.button("+1", func(): GameState.act(g.buy(item, 1)), 50))
@@ -170,7 +171,7 @@ func _build_market(g) -> Control:
 	if g.cargo.is_empty():
 		v.add_child(UI.label("Empty.", 16, UI.MUTED))
 	for k in g.cargo:
-		v.add_child(UI.label("%d × %s" % [g.cargo[k], g.item_name(k)], 16, UI.WARN if Mixing.is_product(k) else UI.TEXT))
+		v.add_child(Art.with_icon(k, UI.label("%d × %s" % [g.cargo[k], g.item_name(k)], 16, UI.WARN if Mixing.is_product(k) else UI.TEXT)))
 	return v
 
 
@@ -312,7 +313,7 @@ func _build_deals(g) -> Control:
 			var h := HBoxContainer.new()
 			h.add_theme_constant_override("separation", 10)
 			var price: int = g.sell_price(k, c.id)
-			h.add_child(UI.label("%d × %s" % [g.cargo[k], g.item_name(k)], 16))
+			h.add_child(Art.with_icon(k, UI.label("%d × %s" % [g.cargo[k], g.item_name(k)], 16)))
 			h.add_child(UI.label("%d cr/unit" % price, 16, UI.GOLD))
 			var n: int = mini(int(g.cargo[k]), int(c.max_units))
 			var b := UI.button("Sell %d" % n, func(): GameState.act(g.sell(k, n, c.id)), 90)
@@ -335,7 +336,7 @@ func _build_shipyard(g) -> Control:
 	for k in g.data.upgrades:
 		var u: Dictionary = g.data.upgrades[k]
 		var lvl: int = g.upgrades[k]
-		gr.add_child(UI.label("%s Mk %d" % [u.name, lvl + 1], 17))
+		gr.add_child(Art.with_icon("up_" + k, UI.label("%s Mk %d" % [u.name, lvl + 1], 17)))
 		gr.add_child(UI.label(_upgrade_value(k, u.levels[lvl]), 16, UI.MUTED))
 		var cost: int = g.upgrade_cost(k)
 		if cost < 0:

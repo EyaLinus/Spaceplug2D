@@ -20,4 +20,7 @@ All art is pixel art built from text sources with the game-assets-2d skill workf
 - **Space view:** planets, asteroid and station are procedural pixel art from `build_space()` (palette ramps + ordered
   dithering, light from top-left), one PNG per location id (`space/<id>.png`); beacon and patrol are grids.
 
-Not covered yet: UI icons, building interiors, menu art.
+- **Icons:** 16 px grids in `assets/src/icons` (items by data key, `up_<upgrade>`, `hud_*`); `Art.with_icon(key, control)`
+  puts one in front of a label at 32 px; product keys use their base icon.
+
+Not covered yet: building interiors, menu art, lab dropdown icons.

@@ -39,6 +39,12 @@ func _run() -> void:
 	for i in 40:
 		await physics_frame
 	await _save(out, "surface_plaza")
+	sf.place_player_at("market")
+	for i in 5:
+		await physics_frame
+	sf.interact()
+	await _save(out, "market")
+	m.station.close()
 	g.buy("cannabis", 5)
 	g.buy("nanoflux", 5)
 	g.buy("ion_syrup", 5)

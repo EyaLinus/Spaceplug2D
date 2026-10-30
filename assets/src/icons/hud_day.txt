@@ -1,0 +1,25 @@
+# HUD: day clock.
+legend:
+. = transparent
+k = ink
+W = white
+w = stone
+y = gold
+s = slate
+---
+................
+.....kkkkkk.....
+...kkWWWWWWkk...
+..kWWWWkWWWWwk..
+..kWWWWkWWWWwk..
+.kWWWWWkWWWWWwk.
+.kWWWWWkWWWWWwk.
+.kWWWWWkkkkkWwk.
+.kWWWWWWWWWWWwk.
+.kWWWWWWWWWWWwk.
+..kWWWWWWWWWwk..
+..kwWWWWWWWwwk..
+...kkwwwwwwkk...
+.....kkkkkk.....
+................
+................
