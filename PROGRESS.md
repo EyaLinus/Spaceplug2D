@@ -1,5 +1,21 @@
 # Progress log
 
+## E3: visible ship upgrades (2026-10-30)
+- **Modules:** every bought upgrade level adds a pixel-art module to the player ship: engine nacelles (Mk2 small,
+  Mk3 with fins, Mk4 with a centre booster), cargo pods on struts (one, bigger, two per side), stealth plating (wing
+  panels → most of the hull → full dark hull with teal sensor strips), hydro rig dome (small, large, plus tanks).
+  Sources `assets/src/sprites/ship_<upgrade>.txt` (24x24, one frame per level), `build_ship_modules()` in build_art.py.
+- **Drawing:** `Art.draw_ship(ci, levels)` layers engine/cargo under and stealth/lab over the hull. Used by the ship in
+  flight (`world.gd` passes `Game.upgrades`), the parked ship on the landing pad (redraws on `upgraded`) and a new 3x
+  preview in the shipyard tab (`scripts/ui/ship_preview.gd`). Engine flames come from `Art.SHIP_NOZZLES` (1/3/3/3
+  nozzles) and burn teal-hot with higher engine levels.
+- **No gameplay change:** hull is not an upgrade yet, so "hull" is shown through the stealth plating; weapons/shields
+  (E2) plug in as further keys in `SHIP_UNDER`/`SHIP_OVER`.
+- Verified: unit checks incl. new module/nozzle checks in `test_art_registry`, UI smoke, screenshots (`shipyard`,
+  `flight_upgraded` added to `tools/shot.gd`) reviewed.
+- Gaps: no collision/size change for bigger ships (modules are cosmetic); Mk4 cargo + Mk4 engine make the silhouette
+  busy at 1x zoom.
+
 ## C1: Lab stations II – Extractor + Refiner (2026-10-30)
 - **Purity:** new station stat `affects: "purity"`. `Production.outcome()` returns `purity` (average of the purity
   stations, missing = `quick_score`) and the grade now uses `lerp(quality stations, purity, quality.purity_weight = 0.5)`.

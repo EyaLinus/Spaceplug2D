@@ -1,6 +1,6 @@
 extends Node2D
-## Player ship: inertial top-down flight (rotate + thrust + brake). Hull sprite from the art registry
-## (procedural fallback), engine flame procedural.
+## Player ship: inertial top-down flight (rotate + thrust + brake). Hull sprite plus one visible module per bought
+## upgrade from the art registry (procedural fallback), engine flames procedural (one per nozzle of the engine level).
 
 const Art = preload("res://scripts/core/art.gd")
 
@@ -8,6 +8,7 @@ var velocity := Vector2.ZERO
 var thrusting := false
 var frozen := false  ## true while docked or paused
 var engine_mult := 1.0
+var modules: Dictionary = {}  ## upgrade key -> level (Game.upgrades); picks the module sprites and nozzles
 var cfg: Dictionary = {}
 
 var _flame := 0.0
@@ -56,12 +57,16 @@ func stop() -> void:
 
 func _draw() -> void:
 	if _flame > 0.05:
-		var f := 18.0 + 14.0 * _flame + randf() * 6.0
-		draw_colored_polygon(PackedVector2Array([Vector2(-6, 12), Vector2(6, 12), Vector2(0, 12 + f)]), Color(1.0, 0.6, 0.2, 0.85))
-		draw_colored_polygon(PackedVector2Array([Vector2(-3, 12), Vector2(3, 12), Vector2(0, 12 + f * 0.6)]), Color(1.0, 0.95, 0.6, 0.9))
-	var t := Art.tex("ships/ship.png")
-	if t != null:
-		draw_texture(t, -t.get_size() / 2.0)
+		var lvl := int(modules.get("engine", 0))
+		# upgraded engines burn hotter: ion-teal core instead of yellow
+		var core := Color(1.0, 0.95, 0.6, 0.9).lerp(Color(0.6, 1.0, 0.95, 0.95), lvl / 3.0)
+		for n in Art.ship_nozzles(lvl):
+			var o: Vector2 = n[0]
+			var w: float = 6.0 * float(n[1])
+			var f := (18.0 + 14.0 * _flame + randf() * 6.0) * float(n[1])
+			draw_colored_polygon(PackedVector2Array([o + Vector2(-w, 0), o + Vector2(w, 0), o + Vector2(0, f)]), Color(1.0, 0.6, 0.2, 0.85))
+			draw_colored_polygon(PackedVector2Array([o + Vector2(-w / 2, 0), o + Vector2(w / 2, 0), o + Vector2(0, f * 0.6)]), core)
+	if Art.draw_ship(self, modules):
 		return
 	var hull := PackedVector2Array([Vector2(0, -20), Vector2(13, 14), Vector2(0, 8), Vector2(-13, 14)])
 	draw_colored_polygon(hull, Color("#ffd166"))

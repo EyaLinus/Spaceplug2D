@@ -39,6 +39,16 @@ func _run() -> void:
 	for i in 40:
 		await physics_frame
 	await _save(out, "surface_plaza")
+	g.credits += 3000
+	g.buy_upgrade("engine")
+	g.buy_upgrade("cargo")
+	g.buy_upgrade("cargo")
+	sf.place_player_at("rusk")
+	for i in 5:
+		await physics_frame
+	sf.interact()
+	await _save(out, "shipyard")
+	m.station.close()
 	sf.place_player_at("market")
 	for i in 5:
 		await physics_frame
@@ -125,6 +135,16 @@ func _run() -> void:
 		m.world.ship.steer(1.0 / 60.0, true, false)
 		await physics_frame
 	await _save(out, "flight")
+	# fully upgraded ship: every module visible, in flight and in the shipyard preview
+	var before: Dictionary = g.upgrades.duplicate()
+	for up_key in g.upgrades:
+		g.upgrades[up_key] = g.data.upgrades[up_key].levels.size() - 1
+	Input.action_press("ship_thrust")
+	for i in 30:
+		await physics_frame
+	await _save(out, "flight_upgraded")
+	Input.action_release("ship_thrust")
+	g.upgrades = before
 	for loc in m.world.locations:
 		m.world.ship.position = m.world.locations[loc].position + Vector2(0, m.world.locations[loc].radius + 120)
 		m.world.ship.stop()

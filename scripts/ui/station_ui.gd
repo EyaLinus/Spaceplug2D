@@ -10,6 +10,7 @@ const Art = preload("res://scripts/core/art.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const RunnerScript = preload("res://scripts/ui/minigames/minigame_runner.gd")
+const ShipPreview = preload("res://scripts/ui/ship_preview.gd")
 
 var tabs: TabContainer
 var _title: Label
@@ -426,7 +427,11 @@ func _build_shipyard(g) -> Control:
 			var b := UI.button("Buy", func(): GameState.act(g.buy_upgrade(k)), 70)
 			b.disabled = cost > g.credits
 			gr.add_child(b)
-	return gr
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 24)
+	h.add_child(ShipPreview.new(g.upgrades))
+	h.add_child(gr)
+	return h
 
 
 static func _upgrade_value(key: String, v) -> String:

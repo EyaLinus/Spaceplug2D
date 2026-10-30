@@ -24,6 +24,13 @@ All art is pixel art built from text sources with the game-assets-2d skill workf
   sets (`varrow_*`, `glacis_*`) plus props `cactus` and `ice_rock`; jump gates are `gate()` (one design, written once
   per gate location id because the registry looks sprites up by id).
 
+- **Ship upgrade modules:** `assets/src/sprites/ship_<upgrade>.txt` (engine, cargo, stealth, lab) hold one 24x24 frame per
+  bought level (Mk2–Mk4), aligned to the 16x16 hull at offset 4,4, written as `ships/mod_<upgrade>_<level>.png`.
+  `Art.draw_ship()` layers them (`SHIP_UNDER` engine/cargo below the hull, `SHIP_OVER` stealth/lab above) for flight,
+  the parked ship on the pad and the shipyard preview; `Art.SHIP_NOZZLES` places one exhaust flame per engine nacelle.
+  Weapons/shields (E2) = one more grid file + a key in `SHIP_UNDER`/`SHIP_OVER`. `ship_composite()` in build_art.py
+  renders a loadout for review.
+
 - **Icons:** 16 px grids in `assets/src/icons` (items by data key, `up_<upgrade>`, `hud_*`); `Art.with_icon(key, control)`
   puts one in front of a label at 32 px; product keys use their base icon.
 

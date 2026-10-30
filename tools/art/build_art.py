@@ -128,6 +128,38 @@ def build_stations() -> list[Path]:
     return out
 
 
+SHIP_MODULES = ("engine", "cargo", "stealth", "lab")
+
+
+def build_ship_modules() -> list[Path]:
+    """Upgrade modules for the player ship: ship_<key>.txt holds one 24x24 frame per upgrade level (Mk2..Mk4),
+    aligned to the 16x16 hull at offset 4,4. Written as ships/mod_<key>_<level>.png (48 px); level 0 has none.
+    ship_composite() renders a full loadout for review (unused by the game, which layers the PNGs itself)."""
+    out = []
+    for key in SHIP_MODULES:
+        legend, frames = parse_grid(SRC / "sprites" / f"ship_{key}.txt")
+        for lvl, frame in enumerate(frames, start=1):
+            out.append(save(grid_image(frame, legend), f"ships/mod_{key}_{lvl}.png"))
+    return out
+
+
+def ship_composite(levels: dict) -> Image.Image:
+    """Hull plus modules in draw order (engine, cargo under the hull; stealth, lab over it), unscaled."""
+    legend, frames = parse_grid(SRC / "sprites" / "ship.txt")
+    img = Image.new("RGBA", (24, 24), CLEAR)
+    mods = {k: parse_grid(SRC / "sprites" / f"ship_{k}.txt") for k in SHIP_MODULES}
+    def layer(k):
+        lvl = levels.get(k, 0)
+        if lvl > 0:
+            lg, fr = mods[k]
+            m = grid_image(fr[lvl - 1], lg)
+            img.alpha_composite(m)
+    layer("engine"); layer("cargo")
+    img.alpha_composite(grid_image(frames[0], legend), (4, 4))
+    layer("stealth"); layer("lab")
+    return img
+
+
 def build_icons() -> list[Path]:
     """UI icons: 16 px grids in assets/src/icons, one PNG each (32 px)."""
     out = []
@@ -540,7 +572,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--preview", help="also write a contact sheet of every output to this PNG")
     args = ap.parse_args()
-    paths = build_characters() + build_sprites() + build_stations() + build_tiles() + build_building_parts() + build_space() + build_icons()
+    paths = build_characters() + build_sprites() + build_stations() + build_tiles() + build_building_parts() + build_space() + build_icons() + build_ship_modules()
     for p in paths:
         print(p.relative_to(ROOT))
     if args.preview:

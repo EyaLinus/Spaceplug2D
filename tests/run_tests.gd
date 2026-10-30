@@ -102,6 +102,13 @@ func test_art_registry() -> void:
 		check(Art.tex("buildings/%s.png" % part) != null, "building part %s" % part)
 	check(Art.tex("ships/ship.png") != null, "ship sprite")
 	check(Art.tex("ships/patrol.png") != null, "patrol sprite")
+	for k in Art.SHIP_UNDER + Art.SHIP_OVER:
+		check(data.upgrades.has(k), "ship module %s is an upgrade" % k)
+		check(Art.ship_module(k, 0) == null, "%s level 0 has no module" % k)
+		for lvl in range(1, data.upgrades[k].levels.size()):
+			var m: Texture2D = Art.ship_module(k, lvl)
+			check(m != null and m.get_size() == Vector2(48, 48), "ship module %s Mk %d is 48 px" % [k, lvl + 1])
+	check(Art.SHIP_NOZZLES.size() == data.upgrades.engine.levels.size(), "one nozzle layout per engine level")
 	for k in data.raws.keys() + data.additives.keys() + data.bases.keys():
 		check(Art.icon_for(k) != null, "item %s has an icon" % k)
 	for k in data.upgrades:

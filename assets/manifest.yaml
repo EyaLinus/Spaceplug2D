@@ -480,6 +480,50 @@ assets:
     source: assets/src/sprites/vent.txt
     status: done
     updated: '2026-10-30'
+  ship_mod_cargo:
+    created: '2026-10-30'
+    kind: sprite
+    note: ship upgrade module Mk2-Mk4, 48 px layered on ship_player (Art.draw_ship)
+    outputs:
+    - assets/gfx/ships/mod_cargo_1.png
+    - assets/gfx/ships/mod_cargo_2.png
+    - assets/gfx/ships/mod_cargo_3.png
+    source: assets/src/sprites/ship_cargo.txt
+    status: done
+    updated: '2026-10-30'
+  ship_mod_engine:
+    created: '2026-10-30'
+    kind: sprite
+    note: ship upgrade module Mk2-Mk4, 48 px layered on ship_player (Art.draw_ship)
+    outputs:
+    - assets/gfx/ships/mod_engine_1.png
+    - assets/gfx/ships/mod_engine_2.png
+    - assets/gfx/ships/mod_engine_3.png
+    source: assets/src/sprites/ship_engine.txt
+    status: done
+    updated: '2026-10-30'
+  ship_mod_lab:
+    created: '2026-10-30'
+    kind: sprite
+    note: ship upgrade module Mk2-Mk4, 48 px layered on ship_player (Art.draw_ship)
+    outputs:
+    - assets/gfx/ships/mod_lab_1.png
+    - assets/gfx/ships/mod_lab_2.png
+    - assets/gfx/ships/mod_lab_3.png
+    source: assets/src/sprites/ship_lab.txt
+    status: done
+    updated: '2026-10-30'
+  ship_mod_stealth:
+    created: '2026-10-30'
+    kind: sprite
+    note: ship upgrade module Mk2-Mk4, 48 px layered on ship_player (Art.draw_ship)
+    outputs:
+    - assets/gfx/ships/mod_stealth_1.png
+    - assets/gfx/ships/mod_stealth_2.png
+    - assets/gfx/ships/mod_stealth_3.png
+    source: assets/src/sprites/ship_stealth.txt
+    status: done
+    updated: '2026-10-30'
   ship_patrol:
     created: '2026-10-30'
     kind: sprite
@@ -542,22 +586,22 @@ assets:
     created: '2026-10-30'
     kind: sprite
     method: procedural
+    note: jump gate ring, shared design
     outputs:
     - assets/gfx/space/halvane_gate.png
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
-    note: jump gate ring, shared design
   space_kovar_gate:
     created: '2026-10-30'
     kind: sprite
     method: procedural
+    note: jump gate ring, shared design
     outputs:
     - assets/gfx/space/kovar_gate.png
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
-    note: jump gate ring, shared design
   space_mireth:
     created: '2026-10-30'
     kind: space
@@ -716,32 +760,32 @@ assets:
     created: '2026-10-30'
     kind: tile
     method: procedural
+    note: strip of 4 variants, 32px
     outputs:
     - assets/gfx/tiles/glacis_ground.png
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
-    note: strip of 4 variants, 32px
   tile_glacis_plaza:
     created: '2026-10-30'
     kind: tile
     method: procedural
+    note: strip of 4 variants, 32px
     outputs:
     - assets/gfx/tiles/glacis_plaza.png
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
-    note: strip of 4 variants, 32px
   tile_glacis_road:
     created: '2026-10-30'
     kind: tile
     method: procedural
+    note: strip of 4 variants, 32px
     outputs:
     - assets/gfx/tiles/glacis_road.png
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
-    note: strip of 4 variants, 32px
   tile_mireth_ground:
     created: '2026-10-30'
     kind: tile
@@ -776,29 +820,29 @@ assets:
     created: '2026-10-30'
     kind: tile
     method: procedural
+    note: strip of 4 variants, 32px
     outputs:
     - assets/gfx/tiles/varrow_ground.png
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
-    note: strip of 4 variants, 32px
   tile_varrow_plaza:
     created: '2026-10-30'
     kind: tile
     method: procedural
+    note: strip of 4 variants, 32px
     outputs:
     - assets/gfx/tiles/varrow_plaza.png
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
-    note: strip of 4 variants, 32px
   tile_varrow_road:
     created: '2026-10-30'
     kind: tile
     method: procedural
+    note: strip of 4 variants, 32px
     outputs:
     - assets/gfx/tiles/varrow_road.png
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
-    note: strip of 4 variants, 32px

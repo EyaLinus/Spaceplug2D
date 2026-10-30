@@ -89,7 +89,7 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
   systems is a plain jump for now. Touches: content.json locations, surfaces.json, art.
 - [x] **C1 Lab stations II.** Extractor and Refiner as new stations with two new minigames (temperature balancing,
   reaction equilibrium) that set purity; purity joins the quality grade. Touches: minigames/, production.gd, stations.
-- **E3 Visible ship upgrades.** Engine, hull, cargo, stealth (later weapons/shields) levels change the ship sprite
+- [x] **E3 Visible ship upgrades.** Engine, hull, cargo, stealth (later weapons/shields) levels change the ship sprite
   (modular parts in the art pipeline). Touches: ship.gd, art only.
 - → **Release v0.1.5** when wave 1 is merged.
 
