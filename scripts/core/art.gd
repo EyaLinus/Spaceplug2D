@@ -9,7 +9,9 @@ const TILE := 32  ## one tile in a tile strip (px)
 const WALK := [0, 1, 0, 2]  ## sheet columns for a walk cycle: idle, step A, idle, step B
 
 ## Surface id -> tile set (tiles/<set>_ground|road|plaza.png). Unknown surfaces keep procedural ground.
-const TILESETS := {"mireth": "mireth", "cinder": "cinder", "bazaar": "bazaar"}
+const TILESETS := {
+	"mireth": "mireth", "cinder": "cinder", "bazaar": "bazaar", "varrow": "varrow", "glacis": "glacis",
+}
 
 ## NPC looks and their coat colour; an NPC gets the look whose coat is closest to its data colour.
 const NPC_LOOKS := {

@@ -35,6 +35,7 @@ func _init() -> void:
 		"test_people_save",
 		"test_market_saturation_recovers",
 		"test_heat_and_patrols",
+		"test_galaxy_and_jump",
 		"test_bust",
 		"test_upgrades",
 		"test_bribe",
@@ -512,6 +513,43 @@ func test_heat_and_patrols() -> void:
 	g.undock()
 	g.tick(10.0)
 	check(is_equal_approx(g.heat, 100.0 - 10.0 * float(data.heat.decay_per_second)), "heat decays in flight")
+
+
+## Systems, their locations, jump gates and per-system patrols (D1).
+func test_galaxy_and_jump() -> void:
+	check(data.systems.size() >= 2, "at least two star systems")
+	for loc in data.locations:
+		var ld: Dictionary = data.locations[loc]
+		check(data.systems.has(ld.get("system", "")), "%s belongs to a known system" % loc)
+		if ld.has("jump_to"):
+			check(data.systems.has(ld.jump_to) and ld.jump_to != ld.system, "%s jumps to another system" % loc)
+			var arr: Dictionary = data.locations.get(ld.arrive, {})
+			check(arr.get("system", "") == ld.jump_to and arr.get("jump_to", "") == ld.system, "%s arrives at the return gate" % loc)
+	var g := new_game()
+	check(g.system == "halvane" and g.loc_system("mireth") == "halvane", "new game starts in the Halvane Reach")
+	check(g.patrol_home() == "beacon", "Halvane patrols fly from the customs beacon")
+	check(g.locations_in("kovar").has("varrow") and g.locations_in("kovar").has("glacis"), "Kovar holds the two new planets")
+	for p in ["varrow", "glacis"]:
+		check(data.surfaces.has(p) and not data.contacts.filter(func(c): return c.location == p).is_empty(), "%s is walkable and has customers" % p)
+	check(float(data.surfaces.varrow.security) < float(data.surfaces.mireth.security) and float(data.surfaces.glacis.security) > float(data.surfaces.mireth.security), "Varrow lawless, Glacis high security")
+	check(not g.jump("halvane_gate").ok, "no jump while docked")
+	g.undock()
+	check(not g.jump("kovar_gate").ok, "cannot use a gate of another system")
+	var before := g.credits
+	var t := g.total_time
+	var r := g.jump("halvane_gate")
+	check(r.ok and g.system == "kovar", "jump to the Kovar Expanse")
+	check(g.credits == before - int(data.jump.fee) and g.total_time > t, "jump costs the toll and travel time")
+	check(g.patrol_home() == "glacis", "Kovar patrols fly from Glacis")
+	g.add_heat(60)
+	check(g.patrol_count() < 3, "frontier system has fewer patrols than Halvane at the same heat")
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(h.system == "kovar", "system survives save/load in flight")
+	check(g.dock("glacis").ok and g.system == "kovar", "dock on Glacis")
+	g.credits = 10
+	g.undock()
+	check(not g.jump("kovar_gate").ok and g.system == "kovar", "no jump without the toll")
 
 
 func test_bust() -> void:

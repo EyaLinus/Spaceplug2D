@@ -408,6 +408,15 @@ assets:
     source: assets/src/sprites/barrel.txt
     status: done
     updated: '2026-10-30'
+  prop_cactus:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    outputs:
+    - assets/gfx/props/cactus.png
+    source: assets/src/sprites/cactus.txt
+    status: done
+    updated: '2026-10-30'
   prop_crate:
     created: '2026-10-30'
     kind: prop
@@ -415,6 +424,15 @@ assets:
     outputs:
     - assets/gfx/props/crate.png
     source: assets/src/sprites/crate.txt
+    status: done
+    updated: '2026-10-30'
+  prop_ice_rock:
+    created: '2026-10-30'
+    kind: prop
+    method: pixel
+    outputs:
+    - assets/gfx/props/ice_rock.png
+    source: assets/src/sprites/ice_rock.txt
     status: done
     updated: '2026-10-30'
   prop_lamp:
@@ -511,6 +529,35 @@ assets:
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
+  space_glacis:
+    created: '2026-10-30'
+    kind: sprite
+    method: procedural
+    outputs:
+    - assets/gfx/space/glacis.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  space_halvane_gate:
+    created: '2026-10-30'
+    kind: sprite
+    method: procedural
+    outputs:
+    - assets/gfx/space/halvane_gate.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+    note: jump gate ring, shared design
+  space_kovar_gate:
+    created: '2026-10-30'
+    kind: sprite
+    method: procedural
+    outputs:
+    - assets/gfx/space/kovar_gate.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+    note: jump gate ring, shared design
   space_mireth:
     created: '2026-10-30'
     kind: space
@@ -518,6 +565,15 @@ assets:
     note: space view body, see build_space()
     outputs:
     - assets/gfx/space/mireth.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+  space_varrow:
+    created: '2026-10-30'
+    kind: sprite
+    method: procedural
+    outputs:
+    - assets/gfx/space/varrow.png
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
@@ -581,6 +637,36 @@ assets:
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
+  tile_glacis_ground:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    outputs:
+    - assets/gfx/tiles/glacis_ground.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+    note: strip of 4 variants, 32px
+  tile_glacis_plaza:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    outputs:
+    - assets/gfx/tiles/glacis_plaza.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+    note: strip of 4 variants, 32px
+  tile_glacis_road:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    outputs:
+    - assets/gfx/tiles/glacis_road.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+    note: strip of 4 variants, 32px
   tile_mireth_ground:
     created: '2026-10-30'
     kind: tile
@@ -611,3 +697,33 @@ assets:
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
+  tile_varrow_ground:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    outputs:
+    - assets/gfx/tiles/varrow_ground.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+    note: strip of 4 variants, 32px
+  tile_varrow_plaza:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    outputs:
+    - assets/gfx/tiles/varrow_plaza.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+    note: strip of 4 variants, 32px
+  tile_varrow_road:
+    created: '2026-10-30'
+    kind: tile
+    method: procedural
+    outputs:
+    - assets/gfx/tiles/varrow_road.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-10-30'
+    note: strip of 4 variants, 32px

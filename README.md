@@ -31,11 +31,13 @@ shows "Windows protected your PC" → *More info* → *Run anyway*).
 
 ## Core loop (prototype v0.1)
 1. **Buy** precursors plus additives. Drug ladder (tier: raw → where):
-   T1 Weed (Cannabis Buds, Mireth/Cinder) · T2 Cocaine (Coca Leaf, Cinder) · T3 Meth (Pseudoephedrine, Cinder) ·
-   T4 Fentanyl (Fentanyl Precursor, Drift Bazaar). Higher tier = higher base value and more heat per unit (×1 … ×2.4).
+   T1 Weed (Cannabis Buds, Mireth/Cinder/Glacis) · T2 Cocaine (Coca Leaf, Cinder/Varrow) · T3 Meth (Pseudoephedrine,
+   Cinder/Varrow) · T4 Fentanyl (Fentanyl Precursor, Drift Bazaar). Higher tier = higher base value and more heat per unit (×1 … ×2.4).
 2. **Cook** in the Mireth lab: base + up to 3 additives. Each additive transforms existing traits and adds its own
    (e.g. Nanoflux turns *Glow* into *Radiant*). More valuable traits → higher price.
-3. **Sell** to contacts (each loves one trait, pays a premium, has a cooldown) or to the Drift Bazaar fence.
+3. **Sell** to contacts (each loves one trait, pays a premium, has a cooldown) or to a fence (Drift Bazaar, Varrow).
+   A jump gate (80 cr toll) links the Halvane Reach with the Kovar Expanse: lawless desert Varrow and the rich,
+   heavily policed ice colony Glacis.
    Every sale saturates local demand, which recovers over time.
 4. **Heat** rises with cooking and selling (most at Mireth, least at the Bazaar). More heat → more patrols; above 30 they
    chase you. A patrol scan on a ship carrying product = **bust** (product confiscated + fine). Bribe the fixer to cool down.

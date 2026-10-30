@@ -22,6 +22,7 @@ var day_time: float = 0.0
 var total_time: float = 0.0
 var heat: float = 0.0
 var location: String = ""  ## location id while docked, "" while flying
+var system: String = ""  ## star system the ship is in (content.json "systems"); travel between systems = jump()
 var cargo: Dictionary = {}  ## item key -> qty (raw ids, additive ids, product keys)
 var stash: Dictionary = {}  ## finished lab output waiting at the hub
 var lab_queue: Array = []  ## [{product, qty, remaining, total}]
@@ -47,6 +48,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	total_time = 0.0
 	heat = 0.0
 	location = s.location
+	system = loc_system(location)
 	cargo = s.get("cargo", {}).duplicate()
 	stash = {}
 	lab_queue = []
@@ -67,6 +69,35 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 
 func loc_data(loc: String = location) -> Dictionary:
 	return data.locations.get(loc, {})
+
+
+## Star system a location belongs to. Locations without "system" sit in the first listed system.
+func loc_system(loc: String) -> String:
+	var ld: Dictionary = data.locations.get(loc, {})
+	if ld.has("system"):
+		return str(ld.system)
+	return str(data.get("systems", {}).keys()[0]) if not data.get("systems", {}).is_empty() else ""
+
+
+func system_data(sys: String = system) -> Dictionary:
+	return data.get("systems", {}).get(sys, {})
+
+
+## Location ids in a star system, in content order.
+func locations_in(sys: String = system) -> Array:
+	return data.locations.keys().filter(func(l): return loc_system(l) == sys)
+
+
+## The patrol base (or the jump gate as a fallback) of a system: where its patrols wander from.
+func patrol_home(sys: String = system) -> String:
+	var ids := locations_in(sys)
+	for l in ids:
+		if data.locations[l].get("patrol_base", false):
+			return l
+	for l in ids:
+		if data.locations[l].has("jump_to"):
+			return l
+	return ids[0] if not ids.is_empty() else ""
 
 
 func cargo_used() -> int:
@@ -102,7 +133,9 @@ func scan_radius() -> float:
 
 func patrol_count() -> int:
 	var h: Dictionary = data.heat
-	return mini(int(h.patrol_base) + int(heat / float(h.patrol_per_heat)), int(h.patrol_max))
+	var n := int(h.patrol_base) + int(heat / float(h.patrol_per_heat))
+	n = int(n * float(system_data().get("patrol_mult", 1.0)))  # frontier systems are patrolled thinner
+	return mini(n, int(h.patrol_max))
 
 
 ## Reach Authority officers walking a planet surface. security: the surface's police factor (0 = lawless).
@@ -260,6 +293,7 @@ func dock(loc: String) -> Dictionary:
 	if ld.is_empty() or not ld.get("dockable", true):
 		return _fail("Cannot dock there.")
 	location = loc
+	system = loc_system(loc)
 	_emit("docked", {"location": loc})
 	return _ok("Docked at %s." % ld.name)
 
@@ -271,6 +305,26 @@ func undock() -> Dictionary:
 	location = ""
 	_emit("undocked", {"location": loc})
 	return _ok("Undocked.")
+
+
+## Jumps through `gate` (a location with "jump_to") to the next system. Costs the gate toll and some travel time.
+## The world puts the ship at the arrival gate (`arrive`).
+func jump(gate: String) -> Dictionary:
+	var gd: Dictionary = loc_data(gate)
+	if location != "":
+		return _fail("Undock first.")
+	if gd.is_empty() or not gd.has("jump_to") or loc_system(gate) != system:
+		return _fail("No jump gate there.")
+	var j: Dictionary = data.get("jump", {})
+	var fee := int(j.get("fee", 0))
+	if credits < fee:
+		return _fail("The gate toll is %d cr." % fee)
+	credits -= fee
+	var from := system
+	system = str(gd.jump_to)
+	tick(float(j.get("seconds", 0.0)))
+	_emit("jumped", {"from": from, "to": system, "gate": gate, "arrive": str(gd.get("arrive", ""))})
+	return _ok("Jumped to %s (%d cr toll)." % [system_data().get("name", system), fee])
 
 
 func buy(item: String, qty: int) -> Dictionary:
@@ -577,7 +631,7 @@ func to_dict() -> Dictionary:
 	return {
 		"version": SAVE_VERSION, "credits": credits, "debt": debt, "debt_due_day": debt_due_day,
 		"day": day, "day_time": snappedf(day_time, 0.01), "total_time": snappedf(total_time, 0.01),
-		"heat": snappedf(heat, 0.01), "location": location, "cargo": cargo.duplicate(), "stash": stash.duplicate(),
+		"heat": snappedf(heat, 0.01), "location": location, "system": system, "cargo": cargo.duplicate(), "stash": stash.duplicate(),
 		"lab_queue": lab_queue.duplicate(true), "demand": demand.duplicate(true),
 		"contact_ready_at": contact_ready_at.duplicate(), "people": people.duplicate(true), "upgrades": upgrades.duplicate(),
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
@@ -594,6 +648,9 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	total_time = float(d.get("total_time", 0.0))
 	heat = float(d.get("heat", 0.0))
 	location = str(d.get("location", ""))
+	system = str(d.get("system", "")) if location == "" else loc_system(location)
+	if not data.get("systems", {}).has(system):
+		system = loc_system(location if location != "" else str(data.start.location))
 	cargo = _int_dict(_migrate_keys(d.get("cargo", {})))
 	stash = _int_dict(_migrate_keys(d.get("stash", {})))
 	lab_queue = []

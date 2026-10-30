@@ -103,5 +103,65 @@
     "walkers": 7,
     "security": 0.0,
     "props": [["vent", 2, 2], ["vent", 14, 2], ["vent", 34, 12], ["vent", 2, 22], ["crate", 20.6, 3], ["crate", 21.3, 3.6], ["crate", 34, 22], ["barrel", 33, 15], ["barrel", 33.6, 15.5], ["lamp", 16.5, 10.5], ["lamp", 20.5, 10.5], ["lamp", 16.5, 14.5], ["lamp", 20.5, 14.5], ["stall", 25, 10.4], ["stall", 31, 10.4]]
+    },
+  "varrow": {
+    "name": "Varrow · Dust Town",
+    "size": [44, 30],
+    "tile": 32,
+    "ground": "#9a6a3e",
+    "ground_alt": "#a3713f",
+    "road": "#7a5434",
+    "road_line": "#c29a62",
+    "spawn": [8.5, 11.5],
+    "roads": [[0, 14, 44, 3], [21, 0, 3, 30], [31, 10, 3, 4], [30, 17, 3, 2], [7, 17, 3, 2], [39, 17, 3, 2]],
+    "plazas": [],
+    "pad": {"pos": [8, 5.5], "radius": 3.2, "label": "Your ship – take off"},
+    "buildings": [
+      {"id": "saltmarket", "name": "Saltpan Market", "rect": [26, 3, 13, 7], "door": [32.5, 10], "side": "bottom", "wall": "#8a6a3e", "roof": "#c27447", "sign": "SALTPAN", "action": "market", "label": "Saltpan Market – coca & precursor"},
+      {"id": "cantina", "name": "Dust Cantina", "rect": [26, 19, 9, 6], "door": [31.5, 19], "side": "top", "wall": "#6b4a32", "roof": "#8a3a2e", "sign": "CANTINA", "action": "fence", "label": "Dust Cantina back room – the fence"},
+      {"id": "yard", "name": "Caravan Yard", "rect": [37, 19, 6, 7], "wall": "#7a6a52", "roof": "#5a4a2e", "sign": "CARAVANS"},
+      {"id": "cellar", "name": "Dune Cellar", "rect": [4, 19, 9, 6], "door": [8.5, 19], "side": "top", "wall": "#8a7050", "roof": "#6b5a3a", "sign": "FOR SALE", "action": "estate", "estate": "dune_cellar", "label": "Dune Cellar (estate)"},
+      {"id": "tank", "name": "Water tower", "rect": [15, 20, 4, 5], "wall": "#5a5b6a", "roof": "#2b5f8a"},
+      {"id": "hut_a", "name": "Adobe hut", "rect": [13, 3, 5, 5], "wall": "#a07a50", "roof": "#8a5a3c"}
+    ],
+    "npcs": [
+      {"id": "rhea", "name": "Rhea Dunmore", "pos": [36.5, 17.5], "action": "deal", "contact": "rhea", "color": "#c27447"},
+      {"id": "kip", "name": "Kip Sallow", "pos": [24.5, 12.5], "action": "deal", "contact": "kip", "color": "#5f9a5e"}
+    ],
+    "walkers": 4,
+    "security": 0.3,
+    "props": [["cactus", 2, 2], ["cactus", 19.5, 4], ["cactus", 42, 3], ["cactus", 2, 28], ["cactus", 24, 27], ["cactus", 41, 28], ["cactus", 14, 27.5],
+      ["rock", 11, 11], ["rock", 42, 11], ["rock", 19, 28], ["barrel", 25, 10.5], ["barrel", 25.6, 11], ["barrel", 36, 26.5], ["crate", 39.5, 11.5], ["crate", 40.2, 12],
+      ["stall", 28, 11.4], ["stall", 36, 11.4], ["lamp", 20.5, 13.5], ["lamp", 24.5, 13.5], ["lamp", 20.5, 17.5], ["lamp", 24.5, 17.5]]
+  },
+  "glacis": {
+    "name": "Glacis · Kessel Dome",
+    "size": [46, 32],
+    "tile": 32,
+    "ground": "#c8dce6",
+    "ground_alt": "#d2e4ec",
+    "road": "#5a5b6a",
+    "road_line": "#8fd1e8",
+    "spawn": [8.5, 11.5],
+    "roads": [[0, 15, 46, 3], [22, 0, 3, 32], [33, 11, 3, 4], [16, 18, 3, 5], [7, 18, 3, 3]],
+    "plazas": [[19, 12, 9, 9]],
+    "pad": {"pos": [8, 5.5], "radius": 3.2, "label": "Landing pad – take off"},
+    "buildings": [
+      {"id": "exchange", "name": "Dome Exchange", "rect": [28, 3, 12, 8], "door": [34.5, 11], "side": "bottom", "wall": "#5a6a8a", "roof": "#2b5f8a", "sign": "EXCHANGE", "action": "market", "label": "Dome Exchange – additives & buds"},
+      {"id": "post", "name": "Authority Post", "rect": [41, 3, 4, 6], "wall": "#3a4a6a", "roof": "#3a6fd0", "sign": "RA"},
+      {"id": "tower", "name": "Kessel Tower", "rect": [2, 21, 10, 8], "wall": "#6a7080", "roof": "#3a3a4a", "sign": "KESSEL"},
+      {"id": "vault", "name": "Cryo Vault 4", "rect": [15, 23, 5, 6], "door": [17.5, 23], "side": "top", "wall": "#7a8a9a", "roof": "#5fb6c9", "sign": "VAULT 4", "action": "estate", "estate": "cryo_vault", "label": "Cryo Vault 4 (estate)"},
+      {"id": "lounge", "name": "Dome Lounge", "rect": [30, 22, 10, 7], "wall": "#4a3a5a", "roof": "#6a3a8a", "sign": "LOUNGE"},
+      {"id": "habitat", "name": "Habitat block", "rect": [13, 2, 5, 5], "wall": "#8a8b9c", "roof": "#5a5b6a"}
+    ],
+    "npcs": [
+      {"id": "halden", "name": "Ivo Halden", "pos": [34.5, 20.5], "action": "deal", "contact": "halden", "color": "#5fb6c9"},
+      {"id": "nadia", "name": "Nadia Frost", "pos": [26.5, 21.5], "action": "deal", "contact": "nadia", "color": "#4fe3c1"}
+    ],
+    "walkers": 6,
+    "security": 1.6,
+    "props": [["ice_rock", 2, 2], ["ice_rock", 20, 3], ["ice_rock", 44, 12], ["ice_rock", 2, 30], ["ice_rock", 24, 30], ["ice_rock", 44, 30], ["ice_rock", 13, 30],
+      ["lamp", 19.5, 14.5], ["lamp", 27.5, 14.5], ["lamp", 19.5, 20.5], ["lamp", 27.5, 20.5], ["lamp", 10, 14.5], ["lamp", 38, 14.5],
+      ["crate", 26.5, 3], ["crate", 27, 3.6], ["crate", 40.5, 11.5], ["vent", 12, 20], ["vent", 41, 20], ["stall", 30, 12.4], ["stall", 38, 12.4]]
   }
 }

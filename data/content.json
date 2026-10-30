@@ -69,30 +69,68 @@
     "meth": {"name": "Meth", "tier": 3, "raw": "pseudo", "innate": "crisp", "base_value": 95, "heat_mult": 1.7},
     "fentanyl": {"name": "Fentanyl", "tier": 4, "raw": "fent_precursor", "innate": "deep", "base_value": 150, "heat_mult": 2.4}
   },
+  "systems": {
+    "halvane": {
+      "name": "Halvane Reach", "galaxy_pos": [0, 0], "security": "medium", "patrol_mult": 1.0,
+      "star": "#ffd9a0", "nebula": ["#5a2680", "#1a5a66"],
+      "desc": "Your home turf. Reach Authority patrols out of Customs Beacon K-7."
+    },
+    "kovar": {
+      "name": "Kovar Expanse", "galaxy_pos": [5, -2], "security": "low", "patrol_mult": 0.6,
+      "star": "#a0d8ff", "nebula": ["#6e3a22", "#2b4f8a"],
+      "desc": "Frontier system one jump out. Lawless dust towns, one rich corporate ice colony."
+    }
+  },
+  "jump": {"fee": 80, "seconds": 20},
   "locations": {
     "mireth": {
-      "name": "Mireth", "kind": "planet", "pos": [0, 0], "radius": 170, "color": "#3d7a6a",
+      "name": "Mireth", "system": "halvane", "kind": "planet", "pos": [0, 0], "radius": 170, "color": "#3d7a6a",
       "desc": "Hub world. Your rented hydro rig hides in the old cannery district.",
       "sells_raw": {"cannabis": 10}, "sells_additives": true, "lab": true, "shipyard": true, "office": true,
       "fence": false, "heat_per_unit": 2.5, "demand": {"weed": 1.0, "cocaine": 0.9, "meth": 1.0, "fentanyl": 0.8}
     },
     "cinder": {
-      "name": "Cinder Belt Outpost", "kind": "asteroid", "pos": [2600, -1400], "radius": 90, "color": "#8a5a3c",
+      "name": "Cinder Belt Outpost", "system": "halvane", "kind": "asteroid", "pos": [2600, -1400], "radius": 90, "color": "#8a5a3c",
       "desc": "Mining camp. Cheap raws, thirsty miners.",
       "sells_raw": {"cannabis": 7, "coca_leaf": 18, "pseudo": 45}, "sells_additives": false, "lab": false, "shipyard": false, "office": false,
       "fence": false, "heat_per_unit": 1.5, "demand": {"weed": 1.15, "cocaine": 0.8, "meth": 1.2, "fentanyl": 0.9}
     },
     "bazaar": {
-      "name": "Drift Bazaar", "kind": "station", "pos": [-2200, 1800], "radius": 70, "color": "#7a4f9a",
+      "name": "Drift Bazaar", "system": "halvane", "kind": "station", "pos": [-2200, 1800], "radius": 70, "color": "#7a4f9a",
       "desc": "Pirate market welded from old hulls. Nobody asks questions.",
       "sells_raw": {"fent_precursor": 110}, "sells_additives": true, "lab": false, "shipyard": false, "office": false,
       "fence": true, "heat_per_unit": 0.8, "demand": {"weed": 0.9, "cocaine": 1.2, "meth": 1.1, "fentanyl": 1.25}
     },
     "beacon": {
-      "name": "Customs Beacon K-7", "kind": "beacon", "pos": [1300, 2300], "radius": 50, "color": "#3a6fd0",
+      "name": "Customs Beacon K-7", "system": "halvane", "kind": "beacon", "pos": [1300, 2300], "radius": 50, "color": "#3a6fd0",
       "desc": "Reach Authority patrol base. Stay clear.",
       "sells_raw": {}, "sells_additives": false, "lab": false, "shipyard": false, "office": false,
+      "fence": false, "heat_per_unit": 0, "demand": {}, "dockable": false, "patrol_base": true
+    },
+    "halvane_gate": {
+      "name": "Kovar Jump Gate", "system": "halvane", "kind": "gate", "pos": [3500, 1300], "radius": 60, "color": "#4fe3c1",
+      "desc": "Old survey gate. Pay the toll, jump to the Kovar Expanse.", "jump_to": "kovar", "arrive": "kovar_gate",
+      "sells_raw": {}, "sells_additives": false, "lab": false, "shipyard": false, "office": false,
       "fence": false, "heat_per_unit": 0, "demand": {}, "dockable": false
+    },
+    "kovar_gate": {
+      "name": "Halvane Jump Gate", "system": "kovar", "kind": "gate", "pos": [-3400, 700], "radius": 60, "color": "#4fe3c1",
+      "desc": "The way back to the Halvane Reach.", "jump_to": "halvane", "arrive": "halvane_gate",
+      "sells_raw": {}, "sells_additives": false, "lab": false, "shipyard": false, "office": false,
+      "fence": false, "heat_per_unit": 0, "demand": {}, "dockable": false
+    },
+    "varrow": {
+      "name": "Varrow", "system": "kovar", "kind": "planet", "pos": [-900, -1500], "radius": 150, "color": "#c27447",
+      "desc": "Desert frontier world. Dust towns, cheap precursors, nobody in uniform for a hundred klicks.",
+      "sells_raw": {"coca_leaf": 14, "pseudo": 36}, "sells_additives": false, "lab": false, "shipyard": false, "office": false,
+      "fence": true, "heat_per_unit": 1.0, "demand": {"weed": 0.8, "cocaine": 1.0, "meth": 1.35, "fentanyl": 1.05}
+    },
+    "glacis": {
+      "name": "Glacis", "system": "kovar", "kind": "planet", "pos": [2000, 1300], "radius": 160, "color": "#8fd1e8",
+      "desc": "Corporate ice colony. Rich buyers, heavy security, Authority cutters in orbit.",
+      "sells_raw": {"cannabis": 15}, "sells_additives": true, "lab": false, "shipyard": false, "office": false,
+      "fence": false, "heat_per_unit": 3.5, "demand": {"weed": 1.15, "cocaine": 1.5, "meth": 0.85, "fentanyl": 1.4},
+      "patrol_base": true
     }
   },
   "contacts": [
@@ -104,7 +142,11 @@
     {"id": "teo", "name": "Teo Brack", "location": "mireth", "likes": "glow", "max_units": 3, "budget_mult": 0.9, "look": "npc_sky", "job": "Flight-school dropout", "bio": "Spends his allowance on weed and his evenings on the cannery roof. Cheap, loyal, talks a lot.", "prefers": ["weed"], "budget": 220, "addiction": 0.2, "affinity": 0.2, "known": false, "schedule": [{"from": 10, "to": 18, "place": "Plaza"}, {"from": 18, "to": 2, "place": "Cannery roof"}, {"from": 2, "to": 10, "place": "Home"}]},
     {"id": "vesna", "name": "Dr. Vesna Holt", "location": "mireth", "likes": "focused", "max_units": 4, "budget_mult": 1.25, "look": "npc_teal", "job": "Night-shift medic", "bio": "Patches up dock workers all night. Wants something clean to stay sharp, and pays for discretion.", "prefers": ["cocaine", "meth"], "budget": 700, "addiction": 0.0, "affinity": -0.1, "known": false, "schedule": [{"from": 20, "to": 8, "place": "Clinic"}, {"from": 8, "to": 20, "place": "Home"}]},
     {"id": "marta", "name": "Marta Kell", "location": "cinder", "likes": "crisp", "max_units": 5, "budget_mult": 1.0, "look": "npc_red", "job": "Drill operator", "bio": "Pulls triple shifts to send money home. Started on the crew's meth to stay awake and never stopped.", "prefers": ["meth"], "budget": 480, "addiction": 0.55, "affinity": 0.0, "known": false, "schedule": [{"from": 5, "to": 17, "place": "Drill tower"}, {"from": 17, "to": 20, "place": "Canteen"}, {"from": 20, "to": 5, "place": "Bunkhouse"}]},
-    {"id": "ozzy", "name": "Ozzy Fenn", "location": "bazaar", "likes": "deep", "max_units": 3, "budget_mult": 0.85, "look": "npc_slate", "job": "Hull scrapper", "bio": "Strips wrecks for parts. Shaky hands, short temper, always comes back.", "prefers": ["fentanyl"], "budget": 380, "addiction": 0.7, "affinity": -0.2, "known": false, "schedule": [{"from": 6, "to": 16, "place": "Docking bay"}, {"from": 16, "to": 6, "place": "Vents"}]}
+    {"id": "ozzy", "name": "Ozzy Fenn", "location": "bazaar", "likes": "deep", "max_units": 3, "budget_mult": 0.85, "look": "npc_slate", "job": "Hull scrapper", "bio": "Strips wrecks for parts. Shaky hands, short temper, always comes back.", "prefers": ["fentanyl"], "budget": 380, "addiction": 0.7, "affinity": -0.2, "known": false, "schedule": [{"from": 6, "to": 16, "place": "Docking bay"}, {"from": 16, "to": 6, "place": "Vents"}]},
+    {"id": "rhea", "name": "Rhea Dunmore", "location": "varrow", "likes": "jittery", "max_units": 6, "budget_mult": 0.95, "look": "npc_rust", "job": "Caravan boss", "bio": "Runs water haulers across the salt flats. Drivers stay awake on whatever she brings back.", "prefers": ["meth", "cocaine"], "budget": 760, "addiction": 0.3, "affinity": 0.0, "known": true, "schedule": [{"from": 4, "to": 14, "place": "Caravan yard"}, {"from": 14, "to": 22, "place": "Saltpan Market"}, {"from": 22, "to": 4, "place": "Home"}]},
+    {"id": "kip", "name": "Kip Sallow", "location": "varrow", "likes": "sweet", "max_units": 4, "budget_mult": 0.85, "look": "npc_green", "job": "Moisture farmer", "bio": "Lives off a failing condenser. Pays in small bills and big promises.", "prefers": ["weed", "meth"], "budget": 300, "addiction": 0.4, "affinity": 0.1, "known": false, "schedule": [{"from": 5, "to": 13, "place": "Condenser field"}, {"from": 13, "to": 5, "place": "Dust Cantina"}]},
+    {"id": "halden", "name": "Ivo Halden", "location": "glacis", "likes": "smooth", "max_units": 4, "budget_mult": 1.35, "look": "npc_sky", "job": "Mining exec", "bio": "Signs off on ore quotas worth more than your ship. Wants discreet, clean product and never haggles.", "prefers": ["cocaine"], "budget": 1300, "addiction": 0.1, "affinity": 0.0, "known": true, "schedule": [{"from": 8, "to": 18, "place": "Kessel Tower"}, {"from": 18, "to": 8, "place": "Dome Lounge"}]},
+    {"id": "nadia", "name": "Nadia Frost", "location": "glacis", "likes": "deep", "max_units": 3, "budget_mult": 1.2, "look": "npc_teal", "job": "Cryo-lab tech", "bio": "Night shift at the cryo labs. Knows exactly what she is buying and checks every gram.", "prefers": ["fentanyl", "cocaine"], "budget": 900, "addiction": 0.35, "affinity": -0.1, "known": false, "schedule": [{"from": 20, "to": 8, "place": "Cryo labs"}, {"from": 8, "to": 20, "place": "Habitat ring"}]}
   ],
   "people": {
     "addictiveness": {"weed": 0.015, "cocaine": 0.03, "meth": 0.045, "fentanyl": 0.07},
@@ -186,7 +228,9 @@
     "cannery_annex": {"name": "Cannery Annex", "location": "mireth", "price": 1500, "size": [9, 6], "desc": "Damp storage hall behind the cannery. Room for a small line."},
     "ridge_glasshouse": {"name": "Ridge Glasshouse", "location": "mireth", "price": 4500, "size": [13, 8], "desc": "Old hydro glasshouse on the ridge. Big, bright, discreet."},
     "shaft_shack": {"name": "Shaft 9 Shack", "location": "cinder", "price": 1200, "size": [8, 5], "desc": "Abandoned miners' shack next to a dry shaft."},
-    "hull_locker": {"name": "Hull Locker 13", "location": "bazaar", "price": 2200, "size": [9, 5], "desc": "Welded cargo locker. Nobody on the Bazaar asks what you do in it."}
+    "hull_locker": {"name": "Hull Locker 13", "location": "bazaar", "price": 2200, "size": [9, 5], "desc": "Welded cargo locker. Nobody on the Bazaar asks what you do in it."},
+    "dune_cellar": {"name": "Dune Cellar", "location": "varrow", "price": 1800, "size": [11, 6], "desc": "Cool cellar under a buried water tank. Nobody out here asks, nobody comes looking."},
+    "cryo_vault": {"name": "Cryo Vault 4", "location": "glacis", "price": 5200, "size": [12, 7], "desc": "Leased cold-storage vault in the corporate quarter. Pricey, clean, right under the Authority's nose."}
   },
   "buildables": {
     "trim_table": {"cost": 150, "size": [2, 1]},

@@ -1,5 +1,6 @@
 extends Node2D
-## The sector: starfield, locations, player ship, patrols and camera.
+## The current star system: starfield, its locations, player ship, patrols and camera.
+## Only one system is built at a time; show_system() swaps it after a jump or a load.
 ## Owns the spatial rules (dock range, patrol scans) and turns them into core actions via GameState.
 
 const ShipScript = preload("res://scripts/world/ship.gd")
@@ -10,29 +11,20 @@ const SECTOR_HALF := 4200.0
 
 var ship: Node2D
 var camera: Camera2D
-var locations: Dictionary = {}  ## id -> location node
+var system: String = ""  ## star system currently built
+var locations: Dictionary = {}  ## id -> location node (current system only)
 var patrols: Array = []
 var nearby: String = ""  ## dockable location in range, "" if none
 var scan := 0.0  ## 0..1, busted at 1
 var active := false  ## false while docked / in menus
 var input_blocked := false  ## the ship holds position (no steering) while the phone is open
 var _stars: Array = []
+var _nebulae: Array = []  ## [pos, radius, colour]
 var _patrol_seed := 1
 
 
 func _ready() -> void:
-	var r := RandomNumberGenerator.new()
-	r.seed = 1234
-	for i in 2600:
-		var tint := Color(1, 1, 1).lerp(Color(0.6, 0.8, 1.0) if r.randf() < 0.5 else Color(1.0, 0.85, 0.6), r.randf() * 0.6)
-		tint.a = r.randf_range(0.25, 0.9)
-		_stars.append([Vector2(r.randf_range(-SECTOR_HALF, SECTOR_HALF), r.randf_range(-SECTOR_HALF, SECTOR_HALF)), r.randf_range(0.6, 2.2), tint])
 	var data: Dictionary = GameState.data
-	for id in data.locations:
-		var n := LocationScript.new()
-		n.setup(id, data.locations[id])
-		add_child(n)
-		locations[id] = n
 	ship = ShipScript.new()
 	ship.setup(data.ship)
 	add_child(ship)
@@ -40,10 +32,48 @@ func _ready() -> void:
 	camera.position_smoothing_enabled = true
 	camera.position_smoothing_speed = 6.0
 	ship.add_child(camera)
+	var first: String = data.systems.keys()[0] if data.has("systems") else ""
+	show_system(first)
+
+
+## Builds the starfield and locations of `sys` (no-op if it is already shown). Patrols are dropped.
+func show_system(sys: String) -> void:
+	if sys == system and not locations.is_empty():
+		return
+	system = sys
+	clear_patrols()
+	for id in locations:
+		locations[id].queue_free()
+	locations.clear()
+	var data: Dictionary = GameState.data
+	var info: Dictionary = data.get("systems", {}).get(sys, {})
+	var r := RandomNumberGenerator.new()
+	r.seed = hash(sys) if sys != "" else 1234
+	var star := Color(info.get("star", "#ffd9a0"))
+	_stars.clear()
+	for i in 2600:
+		var tint := Color(1, 1, 1).lerp(Color(0.6, 0.8, 1.0) if r.randf() < 0.5 else star, r.randf() * 0.6)
+		tint.a = r.randf_range(0.25, 0.9)
+		_stars.append([Vector2(r.randf_range(-SECTOR_HALF, SECTOR_HALF), r.randf_range(-SECTOR_HALF, SECTOR_HALF)), r.randf_range(0.6, 2.2), tint])
+	_nebulae.clear()
+	for c in info.get("nebula", ["#5a2680", "#1a5a66"]):
+		_nebulae.append([Vector2(r.randf_range(-2400, 2400), r.randf_range(-2000, 2000)), r.randf_range(800, 1200), Color(c, 0.05)])
+	for id in data.locations:
+		var ld: Dictionary = data.locations[id]
+		if str(ld.get("system", sys)) != sys:
+			continue
+		var n := LocationScript.new()
+		n.setup(id, ld)
+		add_child(n)
+		move_child(n, 0)
+		locations[id] = n
+	queue_redraw()
 
 
 ## Puts the ship next to the location the game says it is at (new game / load / undock).
 func place_ship_at(loc_id: String) -> void:
+	if GameState.game != null:
+		show_system(GameState.game.loc_system(loc_id))
 	var n: Node2D = locations.get(loc_id)
 	if n == null:
 		return
@@ -88,7 +118,7 @@ func _update_nearby() -> void:
 	var range := float(GameState.data.ship.dock_range)
 	for id in locations:
 		var n: Node2D = locations[id]
-		var can: bool = bool(n.info.get("dockable", true)) and ship.position.distance_to(n.position) < n.radius + range
+		var can: bool = (bool(n.info.get("dockable", true)) or n.info.has("jump_to")) and ship.position.distance_to(n.position) < n.radius + range
 		n.highlight = can
 		if can:
 			nearby = id
@@ -96,7 +126,7 @@ func _update_nearby() -> void:
 
 func _sync_patrols(g) -> void:
 	var want: int = g.patrol_count()
-	var home: Vector2 = locations["beacon"].position
+	var home: Vector2 = _patrol_home(g)
 	while patrols.size() < want:
 		var p := PatrolScript.new()
 		_patrol_seed += 1
@@ -110,6 +140,11 @@ func _sync_patrols(g) -> void:
 	for p in patrols:
 		p.scan_radius = radius
 		p.step(get_physics_process_delta_time(), ship.position, chase and p.position.distance_to(ship.position) < 1600.0)
+
+
+func _patrol_home(g) -> Vector2:
+	var n: Node2D = locations.get(g.patrol_home(system))
+	return n.position if n != null else Vector2.ZERO
 
 
 func _update_scan(g, delta: float) -> void:
@@ -130,7 +165,7 @@ func _update_scan(g, delta: float) -> void:
 		scan = 0.0
 		GameState.act(g.bust())
 		# shove the ship away so the next scan does not start immediately
-		ship.velocity = (ship.position - locations["beacon"].position).normalized() * 300.0
+		ship.velocity = (ship.position - _patrol_home(g)).normalized() * 300.0
 	if old != scan:
 		EventBus.scan_progress.emit(scan)
 
@@ -138,7 +173,7 @@ func _update_scan(g, delta: float) -> void:
 func _draw() -> void:
 	for s in _stars:
 		draw_circle(s[0], s[1], s[2])
-	# faint nebulae for depth
-	draw_circle(Vector2(-1800, -1600), 900.0, Color(0.35, 0.15, 0.5, 0.06))
-	draw_circle(Vector2(2200, 1200), 1100.0, Color(0.1, 0.35, 0.4, 0.05))
+	# faint nebulae for depth, tinted per system
+	for nb in _nebulae:
+		draw_circle(nb[0], nb[1], nb[2])
 	draw_rect(Rect2(-SECTOR_HALF, -SECTOR_HALF, SECTOR_HALF * 2, SECTOR_HALF * 2), Color(0.3, 0.6, 1.0, 0.25), false, 4.0)

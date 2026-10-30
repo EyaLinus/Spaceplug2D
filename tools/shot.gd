@@ -125,4 +125,27 @@ func _run() -> void:
 		m.undock()
 		for i in 5:
 			await physics_frame
+	# second system: jump through the gate, then the new planets from orbit and on foot
+	m.dock("halvane_gate")
+	for i in 20:
+		await physics_frame
+	for loc in m.world.locations:
+		m.world.ship.position = m.world.locations[loc].position + Vector2(0, m.world.locations[loc].radius + 120)
+		m.world.ship.stop()
+		m.world.camera.reset_smoothing()
+		for i in 10:
+			await physics_frame
+		await _save(out, "space_%s" % loc)
+	for loc in ["varrow", "glacis"]:
+		m.dock(loc)
+		for i in 30:
+			await physics_frame
+		await _save(out, "surface_%s" % loc)
+		m.surface.place_player_at(m.surface.cfg.npcs[0].id)
+		for i in 30:
+			await physics_frame
+		await _save(out, "surface_%s_town" % loc)
+		m.undock()
+		for i in 5:
+			await physics_frame
 	quit()
