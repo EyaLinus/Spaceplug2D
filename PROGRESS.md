@@ -1,5 +1,23 @@
 # Progress log
 
+## A1: Com-Phone + named customers (2026-10-30)
+- **Core** `scripts/core/people.gd`, state in `Game.people` (saved; old saves get defaults): addiction 0..1 (+ per unit by
+  drug tier, −0.04/day), affinity −1..1 (+ per deal, liked trait, preferred drug, grade; Shoddy lowers it), daily budget
+  (grows with addiction, resets each day), deal size (grows with addiction), price × affinity × preferred drug, last 8
+  deals, `known` flag (`Game.meet()` when you talk to someone), schedule data with `whereabouts(hour)`.
+  Rules in `content.json` → `people`, profiles in `contacts` (job, bio, look, prefers, budget, schedule).
+- 9 named customers, 4 new (Teo, Vesna on Mireth, Marta on Cinder, Ozzy on the Bazaar), placed on their surfaces.
+- **Com-Phone** `scripts/ui/phone/`: overlay [Tab] (rebindable) in flight and on foot, home screen from `registry.gd`,
+  apps subclass `phone_app.gd` (home(), badge()); screens stack via `phone.push(title, builder)` and rebuild after every
+  game event. Ship holds position / player is frozen while it is open; time keeps running.
+- **Contacts app**: met people by location with mood, addiction, ready dot; profile with portrait, bio, "now at",
+  affinity/addiction/budget meters, prefers, loves, deal size, status, schedule, history. Unmet people as a hint only.
+- Art: 6 phone app icons (contacts + deals, deaddrop, hr, orders, map ready for later apps).
+- Verified: 663 unit checks, UI smoke (meet Teo, Tab, contacts list/profile, Esc back/close), menu smoke, sim 5/5 won,
+  screenshots of home, list and profile checked.
+- Gaps: schedules are data only (B1 makes people walk them); balance got easier (sim avg win day 8.0 → 6.2 with
+  4 more buyers and affinity bonus), fine for now since prices are eyeballed; Deals panel still exists (A2 replaces it).
+
 ## P4 step 2: cook in your estate (2026-10-30)
 - Inside an owned estate every placed station opens the Lab (plus its own Station tab). A batch needs the stations its
   recipe runs through (`Production.stations_for`); missing ones are named in the lab and block the batch.

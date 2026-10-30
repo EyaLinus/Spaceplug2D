@@ -1,0 +1,27 @@
+# Phone app: Contacts (address card with a person).
+legend:
+. = transparent
+k = ink
+W = white
+w = stone
+t = teal
+T = teal_dark
+s = skin
+h = hair_dark
+---
+................
+................
+.kkkkkkkkkkkkkk.
+.kWWWWWWWWWWWwk.
+.kWWkkkkWWWWWwk.
+.kWkhhhhkWWWWwk.
+.kWkhsshkWkkkwk.
+.kWksssskWWWWwk.
+.kWWksskWWkkkwk.
+.kWkttttkWWWWwk.
+.kkttttttkkkkwk.
+.kTttttttTWWWwk.
+.kwwwwwwwwwwwwk.
+.kkkkkkkkkkkkkk.
+................
+................

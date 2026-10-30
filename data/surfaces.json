@@ -37,7 +37,9 @@
     "npcs": [
       {"id": "rusk", "name": "Rusk (mechanic)", "pos": [12.5, 11.5], "action": "shipyard", "color": "#ff9a4d", "label": "Rusk – ship upgrades"},
       {"id": "okka", "name": "Okka the Welder", "pos": [20.5, 13.5], "action": "deal", "contact": "okka", "color": "#ffd166"},
-      {"id": "sen", "name": "Sen Varo", "pos": [26.5, 19.5], "action": "deal", "contact": "sen", "color": "#ff5fd2"}
+      {"id": "sen", "name": "Sen Varo", "pos": [26.5, 19.5], "action": "deal", "contact": "sen", "color": "#ff5fd2"},
+      {"id": "teo", "name": "Teo Brack", "pos": [27.5, 13.5], "action": "deal", "contact": "teo", "color": "#5fb6c9"},
+      {"id": "vesna", "name": "Dr. Vesna Holt", "pos": [45.5, 19.5], "action": "deal", "contact": "vesna", "color": "#4fe3c1"}
     ],
     "walkers": 6,
     "security": 1.0,
@@ -68,7 +70,8 @@
       {"id": "drill", "name": "Drill tower", "rect": [32, 16, 3, 8], "wall": "#3a3a40", "roof": "#c08a3a"}
     ],
     "npcs": [
-      {"id": "dax", "name": "Foreman Dax", "pos": [20.5, 16.2], "action": "deal", "contact": "dax", "color": "#ffb347"}
+      {"id": "dax", "name": "Foreman Dax", "pos": [20.5, 16.2], "action": "deal", "contact": "dax", "color": "#ffb347"},
+      {"id": "marta", "name": "Marta Kell", "pos": [31.5, 15.6], "action": "deal", "contact": "marta", "color": "#ff6b5f"}
     ],
     "walkers": 4,
     "security": 0.5,
@@ -94,7 +97,8 @@
     ],
     "npcs": [
       {"id": "lira", "name": "Lira Nine", "pos": [21.5, 9.5], "action": "deal", "contact": "lira", "color": "#c9b8ff"},
-      {"id": "grub", "name": "Old Grub", "pos": [16, 15.5], "action": "deal", "contact": "grub", "color": "#8fd18f"}
+      {"id": "grub", "name": "Old Grub", "pos": [16, 15.5], "action": "deal", "contact": "grub", "color": "#8fd18f"},
+      {"id": "ozzy", "name": "Ozzy Fenn", "pos": [10.5, 9.5], "action": "deal", "contact": "ozzy", "color": "#8a8b9c"}
     ],
     "walkers": 7,
     "security": 0.0,

@@ -81,7 +81,7 @@ functions/sections, so they rebase cleanly if each milestone puts its rules in i
 The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is safe to share.
 
 ### Wave 1 – foundations (all four can run in parallel)
-- **A1 Com-Phone + Contacts + named NPCs** ← in progress. Phone overlay [Tab] in flight and on foot with a modular app
+- [x] **A1 Com-Phone + Contacts + named NPCs**. Phone overlay [Tab] in flight and on foot with a modular app
   framework (`scripts/ui/phone/`, one script per app, registry); Contacts app; core `people.gd`: every customer is a
   named person with preferred drugs, liked trait, daily budget, addiction, affinity, deal history and a schedule (data).
 - **D1 Galaxy model + 2 new planets.** Systems in `content.json` (Halvane Reach + a second system), two new planets

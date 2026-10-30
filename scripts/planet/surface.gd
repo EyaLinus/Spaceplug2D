@@ -61,6 +61,13 @@ func setup(id: String, surface_cfg: Dictionary) -> void:
 	map_size = Vector2(cfg.size[0], cfg.size[1]) * tile
 
 
+func _contact_look(id: String) -> String:
+	for c in GameState.data.get("contacts", []):
+		if c.id == id:
+			return c.get("look", "")
+	return ""
+
+
 func _ready() -> void:
 	register_input()
 	y_sort_enabled = true  # people walk in front of / behind each other by their y
@@ -74,6 +81,8 @@ func _ready() -> void:
 		var npc := NpcScript.new()
 		npc.display_name = n.name
 		npc.color = Color(n.get("color", "#8fb3ff"))
+		if n.get("contact", "") != "":  # named people wear the look from their profile
+			npc.look = _contact_look(n.contact)
 		npc.position = _px(n.pos)
 		add_child(npc)
 		npcs[n.id] = npc

@@ -6,6 +6,8 @@ const Game = preload("res://scripts/core/game.gd")
 const Data = preload("res://scripts/core/data.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
+const People = preload("res://scripts/core/people.gd")
+const ArtReg = preload("res://scripts/core/art.gd")
 
 var data: Dictionary
 var failures := 0
@@ -28,6 +30,9 @@ func _init() -> void:
 		"test_quality_grade_keys",
 		"test_station_minigames",
 		"test_sell_contact_and_fence",
+		"test_people_profiles",
+		"test_people_deals",
+		"test_people_save",
 		"test_market_saturation_recovers",
 		"test_heat_and_patrols",
 		"test_bust",
@@ -377,6 +382,94 @@ func test_station_minigames() -> void:
 				else:
 					check(mg.score <= 0.35, "%s idle score %.2f (seed %d)" % [id, mg.score, s + 1])
 				mg.free()
+
+
+func test_people_profiles() -> void:
+	var ids := {}
+	for c in data.contacts:
+		check(not ids.has(c.id), "contact id %s unique" % c.id)
+		ids[c.id] = true
+		check(data.locations.has(c.location), "%s location exists" % c.id)
+		check(data.traits.has(c.likes), "%s liked trait exists" % c.id)
+		check(not c.get("prefers", []).is_empty(), "%s prefers at least one drug" % c.id)
+		for b in c.get("prefers", []):
+			check(data.bases.has(b), "%s prefers known drug %s" % [c.id, b])
+		check(int(c.get("budget", 0)) > 0, "%s has a budget" % c.id)
+		check(str(c.get("bio", "")) != "" and str(c.get("job", "")) != "", "%s has job and bio" % c.id)
+		check(ArtReg.NPC_LOOKS.has(c.get("look", "")), "%s look exists" % c.id)
+		# the schedule covers all 24 hours
+		var covered := true
+		for h in 24:
+			if People.whereabouts(c, h + 0.5).is_empty():
+				covered = false
+		check(covered, "%s schedule covers the whole day" % c.id)
+	check(data.contacts.size() >= 9, "at least 9 named people")
+	for b in data.bases:
+		check(data.people.addictiveness.has(b), "addictiveness for %s" % b)
+	check(data.people.addictiveness.fentanyl > data.people.addictiveness.weed, "stronger drugs hook faster")
+	var g := new_game()
+	var okka: Dictionary = g.contact("okka")
+	check(People.whereabouts(okka, 23.0).place == "Home" and People.whereabouts(okka, 3.0).place == "Home", "schedule wraps midnight")
+	check(People.mood(0.7) == "Loyal" and People.mood(-0.7) == "Hostile", "mood labels")
+	check(g.people.okka.known and not g.people.teo.known, "start contacts known, new people unknown")
+	g.meet("teo")
+	check(g.people.teo.known, "meeting makes a person known")
+
+
+func test_people_deals() -> void:
+	var g := new_game()
+	g.location = "mireth"
+	var p := "weed:overclock+radiant"
+	g.cargo[p] = 30
+	var units0 := People.max_units(g, "okka")
+	var price0: int = g.sell_price(p, "okka")
+	var r: Dictionary = g.sell(p, 2, "okka")
+	check(r.ok, "sell to okka: %s" % r.msg)
+	var s: Dictionary = g.people.okka
+	check(s.addiction > 0.15, "deal raises addiction")
+	check(s.affinity > 0.1, "deal with liked trait raises affinity")
+	check(s.spent > 0 and s.history.size() == 1 and s.history[0].qty == 2, "deal recorded in history")
+	g.demand.mireth.weed = 1.0
+	check(g.sell_price(p, "okka") > price0, "higher affinity pays more")
+	# budget caps the deal
+	s.spent = People.daily_budget(g, "okka") - 10
+	g.contact_ready_at.erase("okka")
+	check(People.units_wanted(g, "okka", p) == 0, "no budget left -> wants nothing")
+	check(not g.sell(p, 1, "okka").ok, "sale over budget fails")
+	# addiction raises deal size and budget
+	var budget0 := People.daily_budget(g, "okka")
+	s.addiction = 1.0
+	check(People.max_units(g, "okka") == units0 + int(data.people.addiction_units_bonus), "hooked buys more units")
+	check(People.daily_budget(g, "okka") > budget0, "hooked spends more")
+	# a new day resets spending and lets addiction fade
+	g.tick(g.day_seconds() + 0.1)
+	check(s.spent == 0 and s.addiction < 1.0, "new day resets budget and decays addiction")
+	# shoddy product hurts affinity
+	g.contact_ready_at.erase("sen")
+	var aff0: float = g.people.sen.affinity
+	g.cargo["weed:glow@0"] = 3
+	check(g.sell("weed:glow@0", 1, "sen").ok, "sell shoddy to sen")
+	check(g.people.sen.affinity < aff0, "shoddy product lowers affinity")
+	# preferred drug pays more
+	check(People.price_mult(g, "teo", "weed") > People.price_mult(g, "vesna", "weed"), "preferred drug bonus")
+
+
+func test_people_save() -> void:
+	var g := new_game()
+	g.location = "mireth"
+	g.cargo["weed:glow"] = 5
+	g.sell("weed:glow", 2, "okka")
+	g.meet("teo")
+	var d: Dictionary = JSON.parse_string(JSON.stringify(g.to_dict()))
+	var g2 := Game.new()
+	g2.from_dict(data, d)
+	check(g2.people.okka.history.size() == 1, "history survives save")
+	check(is_equal_approx(g2.people.okka.addiction, g.people.okka.addiction), "addiction survives save")
+	check(g2.people.teo.known, "known flag survives save")
+	d.erase("people")
+	var g3 := Game.new()
+	g3.from_dict(data, d)
+	check(g3.people.has("marta") and g3.people.okka.history.is_empty(), "old save without people gets defaults")
 
 
 func test_sell_contact_and_fence() -> void:

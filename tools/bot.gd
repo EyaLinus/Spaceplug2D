@@ -5,6 +5,7 @@ extends RefCounted
 
 const Game = preload("res://scripts/core/game.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
+const People = preload("res://scripts/core/people.gd")
 
 const RECIPE := ["nanoflux"]  ## weed + nanoflux = Radiant/Overclock, a solid early-game product
 const BUST_CHANCE_PER_PATROL := 0.04
@@ -33,7 +34,9 @@ static func sell_here(g: Game) -> void:
 	for c in g.contacts_at():
 		for k in g.cargo.keys():
 			if Mixing.is_product(k) and g.contact_ready(c.id):
-				g.sell(k, mini(int(g.cargo[k]), int(c.max_units)), c.id)
+				var n := mini(int(g.cargo[k]), People.units_wanted(g, c.id, k))
+				if n > 0:
+					g.sell(k, n, c.id)
 	if g.loc_data().get("fence", false):
 		for k in g.cargo.keys():
 			if Mixing.is_product(k):

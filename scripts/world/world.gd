@@ -15,6 +15,7 @@ var patrols: Array = []
 var nearby: String = ""  ## dockable location in range, "" if none
 var scan := 0.0  ## 0..1, busted at 1
 var active := false  ## false while docked / in menus
+var input_blocked := false  ## the ship holds position (no steering) while the phone is open
 var _stars: Array = []
 var _patrol_seed := 1
 
@@ -63,7 +64,7 @@ func _physics_process(delta: float) -> void:
 	var g = GameState.game
 	if g == null:
 		return
-	ship.frozen = not active or GameState.paused
+	ship.frozen = not active or GameState.paused or input_blocked
 	ship.engine_mult = g.engine_mult()
 	if GameState.paused:
 		return

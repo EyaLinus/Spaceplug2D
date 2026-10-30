@@ -149,6 +149,66 @@ assets:
     source: assets/src/sprites/char_down.txt
     status: done
     updated: '2026-10-30'
+  icon_app_contacts:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: Com-Phone app icon 16px, shown 64px on the home screen
+    outputs:
+    - assets/gfx/icons/app_contacts.png
+    source: assets/src/icons/app_contacts.txt
+    status: done
+    updated: '2026-10-30'
+  icon_app_deaddrop:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: Com-Phone app icon 16px, shown 64px on the home screen
+    outputs:
+    - assets/gfx/icons/app_deaddrop.png
+    source: assets/src/icons/app_deaddrop.txt
+    status: done
+    updated: '2026-10-30'
+  icon_app_deals:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: Com-Phone app icon 16px, shown 64px on the home screen
+    outputs:
+    - assets/gfx/icons/app_deals.png
+    source: assets/src/icons/app_deals.txt
+    status: done
+    updated: '2026-10-30'
+  icon_app_hr:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: Com-Phone app icon 16px, shown 64px on the home screen
+    outputs:
+    - assets/gfx/icons/app_hr.png
+    source: assets/src/icons/app_hr.txt
+    status: done
+    updated: '2026-10-30'
+  icon_app_map:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: Com-Phone app icon 16px, shown 64px on the home screen
+    outputs:
+    - assets/gfx/icons/app_map.png
+    source: assets/src/icons/app_map.txt
+    status: done
+    updated: '2026-10-30'
+  icon_app_orders:
+    created: '2026-10-30'
+    kind: icon
+    method: pixel
+    note: Com-Phone app icon 16px, shown 64px on the home screen
+    outputs:
+    - assets/gfx/icons/app_orders.png
+    source: assets/src/icons/app_orders.txt
+    status: done
+    updated: '2026-10-30'
   icon_cannabis:
     created: '2026-10-30'
     kind: icon
