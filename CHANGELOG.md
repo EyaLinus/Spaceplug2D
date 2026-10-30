@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.1.5 – 2026-10-30
+- **Visible ship upgrades:** every upgrade you buy at the mechanic now shows on your ship: engine nacelles with extra exhaust flames that burn hotter per level, cargo pods, dark stealth plating and a hydro rig dome. The shipyard shows a large preview of your current ship, and the parked ship on the landing pad changes too.
+- **Lab II – Extractor and Refiner:** two new lab stations with their own minigames. The **Extractor** (weed, cocaine) has you ride a moving temperature profile on a chart recorder; the **Refiner** (cocaine, meth, fentanyl) has you hold a runaway reaction in equilibrium with delayed acid/base doses and a limited reagent supply. Both set the new **purity**, which counts half towards the quality grade, so a Pristine batch now needs a clean extraction or refinement too. The batch summary shows the purity.
+- **Estates:** Extractor (450 cr) and Refiner (550 cr) can be built in estates. Existing estates need them before they can cook the drugs that use them.
+- **Station art:** all seven lab stations now have pixel-art sprites inside estates, with smaller name tags.
+- **Second star system:** fly to the Kovar Jump Gate at the edge of the Halvane Reach and jump (80 cr toll, a few seconds of travel time) into the **Kovar Expanse**. Each system has its own starfield, patrols and HUD name; saves remember which system you are in.
+- **Varrow:** lawless desert world (almost no police on foot, thin patrols in the system), cheap Coca Leaf and Pseudoephedrine at the Saltpan Market, a fence in the Dust Cantina, hungry meth buyers, and the Dune Cellar estate (1,800 cr). New customers: Rhea Dunmore and Kip Sallow.
+- **Glacis:** corporate ice colony with rich buyers (cocaine ×1.5, fentanyl ×1.4) but heavy security: more officers, a lot of heat per sale and Authority cutters in orbit. Dome Exchange sells additives, Cryo Vault 4 is a pricey estate (5,200 cr). New customers: Ivo Halden and Nadia Frost.
+- **Com-Phone [Tab]:** a handheld with apps, usable in flight and on foot. First app: **Contacts** with every person you have met: mood (affinity), addiction, today's budget, favourite drugs, schedule and recent deals.
+- **Named customers:** customers now have a job, a story, a daily budget and preferred drugs. Selling raises their addiction (stronger drugs faster) and their affinity (more with their favourite trait and good grades, less with Shoddy product); loyal and hooked customers pay and buy more. Four new people to meet: Teo Brack and Dr. Vesna Holt on Mireth, Marta Kell on Cinder, Ozzy Fenn on the Bazaar.
+
 ## v0.1.4 – 2026-10-30
 - **Estates:** buy property on Mireth, the Cinder Belt or the Drift Bazaar, walk inside and set up production stations with the build menu (B). Once the stations a recipe needs stand, any of them opens the lab right there; missing stations are listed.
 - **Icons:** goods, additives, products, ship upgrades and the top bar (credits, day, heat, cargo) now show pixel-art icons.

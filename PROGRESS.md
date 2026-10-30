@@ -1,5 +1,9 @@
 # Progress log
 
+## Release v0.1.5 (2026-10-30)
+- Phase 2 wave 1 complete: A1 Com-Phone + Contacts, D1 Kovar system (Varrow, Glacis), C1 Extractor/Refiner, E3 visible
+  ship upgrades. Changelog folded, version 0.1.5 in project.godot and export_presets.cfg. Next: wave 2 (A2, A3, B2, B1).
+
 ## E3: visible ship upgrades (2026-10-30)
 - **Modules:** every bought upgrade level adds a pixel-art module to the player ship: engine nacelles (Mk2 small,
   Mk3 with fins, Mk4 with a centre booster), cargo pods on struts (one, bigger, two per side), stealth plating (wing
