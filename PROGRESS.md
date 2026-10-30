@@ -1,5 +1,14 @@
 # Progress log
 
+## World: Cinder Belt and Drift Bazaar on foot (2026-10-30)
+Every dockable location is now walkable; the docked menu is no longer used by any location (kept as fallback).
+- Cinder Belt · Mining Camp 3: landing pad, Ore Depot (raws), Foreman Dax, canteen, bunkhouse, drill tower, rocks/barrels.
+- Drift Bazaar · Hull Deck: docking bay, Hull Market (additives + fentanyl precursor), the Back Room (fence only),
+  Lira Nine and Old Grub, cantina, cargo hold, vents.
+- Verified: 228 unit checks (new: every dockable location has a surface, fence door exists only where there is a fence),
+  UI smoke lands on both, opens every door/person and takes off again; screenshots checked.
+- Gaps: both are still placeholder art; the map name label sits under the controls help at the bottom-left corner.
+
 ## v0.1.2 (2026-10-30) – planet vision P1: landing & walking
 Plan for the whole vision (planets as instanced on-foot levels, police, estates, production buildings, workers) is in
 ROADMAP.md as milestones P1–P6. P1 is done in this step:

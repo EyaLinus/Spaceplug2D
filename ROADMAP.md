@@ -34,7 +34,7 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [ ] Building interiors as their own small instances (enter door → interior scene) instead of opening a panel at the door
 - [ ] NPC schedules (home ↔ work ↔ plaza by time of day), day/night tint, idle chatter bubbles
 - [ ] Customers on foot: NPCs who want product walk up to you; you deal with them directly (replaces part of the contacts menu)
-- [ ] Second surface: Drift Bazaar as a walkable station deck; Cinder Belt as a mining camp
+- [x] Second and third surface: Drift Bazaar as a walkable hull deck (with the fence's back room), Cinder Belt as a mining camp
 
 ## P3 – Police on the ground
 - [ ] Reach Authority officers patrol the streets with vision cones; heat controls their number (shared with space heat)

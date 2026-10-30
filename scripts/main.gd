@@ -10,7 +10,7 @@ const StationScript = preload("res://scripts/ui/station_ui.gd")
 const SurfaceScript = preload("res://scripts/planet/surface.gd")
 
 ## Which station tab a surface interaction opens.
-const SURFACE_TABS := {"market": "Market", "lab": "Lab", "shipyard": "Shipyard", "office": "Office", "deal": "Deals"}
+const SURFACE_TABS := {"market": "Market", "lab": "Lab", "shipyard": "Shipyard", "office": "Office", "deal": "Deals", "fence": "Deals"}
 
 const ACTIONS := {
 	"ship_thrust": [KEY_W, KEY_UP],
@@ -178,7 +178,7 @@ func _on_surface_action(action: String, p: Dictionary) -> void:
 		return
 	if not SURFACE_TABS.has(action):
 		return
-	station.open({"tabs": [SURFACE_TABS[action]], "title": p.title, "contact": p.get("contact", "")})
+	station.open({"tabs": [SURFACE_TABS[action]], "title": p.title, "contact": p.get("contact", ""), "fence_only": action == "fence"})
 
 
 func undock() -> void:
