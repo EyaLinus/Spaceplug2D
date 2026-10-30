@@ -1,0 +1,1 @@
+- **Estates:** buy property on Mireth, the Cinder Belt or the Drift Bazaar, walk inside and set up production stations with the build menu (B). Cooking with your own stations comes in the next build.

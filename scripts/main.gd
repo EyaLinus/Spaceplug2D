@@ -8,6 +8,7 @@ const WorldScript = preload("res://scripts/world/world.gd")
 const HudScript = preload("res://scripts/ui/hud.gd")
 const StationScript = preload("res://scripts/ui/station_ui.gd")
 const SurfaceScript = preload("res://scripts/planet/surface.gd")
+const EstateLayout = preload("res://scripts/planet/estate_layout.gd")
 const MainMenuScript = preload("res://scripts/ui/menu/main_menu.gd")
 const PauseMenuScript = preload("res://scripts/ui/menu/pause_menu.gd")
 const SlotPanelScript = preload("res://scripts/ui/menu/slot_panel.gd")
@@ -58,6 +59,14 @@ func _ready() -> void:
 	station = StationScript.new()
 	root.add_child(station)
 	station.close_requested.connect(station.close)
+	station.estate_enter_requested.connect(func(eid: String): enter_estate(eid))
+	station.place_requested.connect(func(st: String):
+		station.close()
+		if surface != null:
+			surface.placing = st)
+	station.estate_changed.connect(func():
+		if surface != null and surface.cfg.has("estate"):
+			enter_estate(surface.cfg.estate, surface.player.position))
 	menu = _build_main_menu()
 	root.add_child(menu)
 	pause_menu = _build_pause_menu()
@@ -90,7 +99,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if GameState.game == null or menu.visible or end_screen.visible or slot_panel.visible or settings_panel.visible:
 		return
 	if event.is_action_pressed("ui_menu"):
-		if surface != null and station.visible and not GameState.paused:
+		if surface != null and surface.placing != "" and not GameState.paused:
+			surface.placing = ""
+		elif surface != null and station.visible and not GameState.paused:
 			station.close()
 		else:
 			toggle_pause()
@@ -100,6 +111,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				station.close()
 			else:
 				surface.interact()
+		elif event.is_action_pressed("build_menu") and not GameState.paused and surface.cfg.has("estate") and not station.visible:
+			open_build_menu()
 	elif event.is_action_pressed("ship_dock") and not GameState.paused:
 		if station.visible:
 			undock()
@@ -173,7 +186,7 @@ func dock(loc: String) -> void:
 
 
 ## Loads the planet surface instance for `loc` and hands the camera to the player on foot.
-func _land(loc: String) -> void:
+func _land(loc: String, announce := true) -> void:
 	_leave_surface()
 	surface = SurfaceScript.new()
 	surface.setup(loc, GameState.data.surfaces[loc])
@@ -183,7 +196,8 @@ func _land(loc: String) -> void:
 	world.visible = false
 	hud.surface = surface
 	surface.place_player_at("pad")
-	EventBus.toast.emit("Landed on %s. Walk to a building or person and press E." % GameState.data.locations[loc].name, true)
+	if announce:
+		EventBus.toast.emit("Landed on %s. Walk to a building or person and press E." % GameState.data.locations[loc].name, true)
 
 
 func _leave_surface() -> void:
@@ -199,12 +213,67 @@ func _leave_surface() -> void:
 
 
 func _on_surface_action(action: String, p: Dictionary) -> void:
-	if action == "takeoff":
-		undock()
-		return
+	var g = GameState.game
+	match action:
+		"takeoff":
+			undock()
+			return
+		"estate":
+			var eid: String = GameState.data.surfaces[g.location].buildings.filter(func(b): return b.id == p.id)[0].estate
+			if g.estate_owned(eid):
+				enter_estate(eid)
+			else:
+				station.open({"tabs": ["Estate"], "title": GameState.data.estates[eid].name, "estate": eid})
+			return
+		"exit_estate":
+			leave_estate()
+			return
+		"station":
+			var bd: Dictionary = surface.cfg.buildings.filter(func(b): return b.id == p.id)[0]
+			station.open({"tabs": ["Station"], "title": bd.name, "estate": surface.cfg.estate, "index": bd.index})
+			return
+		"place":
+			if GameState.act(g.place_building(surface.cfg.estate, p.station, p.x, p.y)).ok:
+				enter_estate(surface.cfg.estate, surface.player.position)
+			return
 	if not SURFACE_TABS.has(action):
 		return
 	station.open({"tabs": [SURFACE_TABS[action]], "title": p.title, "contact": p.get("contact", ""), "fence_only": action == "fence"})
+
+
+## Instances the inside of an owned estate (on the current planet) and puts the player at the door, or at `at`
+## when the room is rebuilt after placing/removing a station.
+func enter_estate(eid: String, at = null) -> void:
+	var g = GameState.game
+	station.close()
+	_leave_surface()
+	surface = SurfaceScript.new()
+	surface.setup("estate:" + eid, EstateLayout.build_cfg(GameState.data, eid, g.estates[eid].buildings))
+	surface.can_place = func(st: String, x: int, y: int) -> bool: return g.can_place(eid, st, x, y)
+	surface.interacted.connect(_on_surface_action)
+	add_child(surface)
+	move_child(surface, world.get_index() + 1)
+	world.visible = false
+	hud.surface = surface
+	if at != null:
+		surface.player.position = at
+	else:
+		surface.place_player_at("exit")
+		EventBus.toast.emit("%s. [%s] build menu." % [GameState.data.estates[eid].name, Settings.key_label("build_menu")], true)
+
+
+## Back out onto the planet, in front of the estate's door.
+func leave_estate() -> void:
+	var eid: String = surface.cfg.estate
+	var loc: String = GameState.game.location
+	_land(loc, false)
+	for b in GameState.data.surfaces[loc].buildings:
+		if b.get("estate", "") == eid:
+			surface.place_player_at(b.id)
+
+
+func open_build_menu() -> void:
+	station.open({"tabs": ["Build"], "title": "Build – %s" % GameState.data.estates[surface.cfg.estate].name, "estate": surface.cfg.estate})
 
 
 func undock() -> void:

@@ -29,9 +29,9 @@
        "wall": "#5d5a52", "roof": "#3b3a36", "sign": "CANNERY", "action": "lab", "label": "Old Cannery – your hydro rig"},
       {"id": "office", "name": "Ouroboros Consortium", "rect": [36, 21, 11, 8], "door": [40.5, 21], "side": "top",
        "wall": "#2e2440", "roof": "#5a2d6e", "sign": "OUROBOROS", "action": "office", "label": "Consortium office"},
-      {"id": "house_a", "name": "Housing block", "rect": [43, 3, 5, 6], "wall": "#6a6f7a", "roof": "#3f6b5c"},
+      {"id": "glasshouse", "name": "Ridge Glasshouse", "rect": [43, 3, 5, 6], "door": [45.5, 9], "side": "bottom", "wall": "#5a7a6a", "roof": "#8fd1c0", "sign": "FOR SALE", "action": "estate", "estate": "ridge_glasshouse", "label": "Ridge Glasshouse (estate)"},
       {"id": "house_b", "name": "Housing block", "rect": [27, 23, 6, 5], "wall": "#6f6458", "roof": "#7a3f3a"},
-      {"id": "house_c", "name": "Housing block", "rect": [17, 24, 4, 5], "wall": "#5f6a63", "roof": "#2f5d7a"},
+      {"id": "annex", "name": "Cannery Annex", "rect": [17, 24, 4, 5], "door": [19, 24], "side": "top", "wall": "#5f6a63", "roof": "#2f5d7a", "sign": "ANNEX", "action": "estate", "estate": "cannery_annex", "label": "Cannery Annex (estate)"},
       {"id": "house_d", "name": "Housing block", "rect": [27, 29, 8, 4], "wall": "#6a6f7a", "roof": "#6b5a2e"}
     ],
     "npcs": [
@@ -64,7 +64,7 @@
     "buildings": [
       {"id": "depot", "name": "Ore Depot", "rect": [22, 3, 11, 7], "door": [27.5, 10], "side": "bottom", "wall": "#6b5040", "roof": "#8a5a3c", "sign": "ORE DEPOT", "action": "market", "label": "Ore Depot – raws"},
       {"id": "canteen", "name": "Miners' Canteen", "rect": [21, 17, 10, 6], "wall": "#5a4a40", "roof": "#3a5a6b", "sign": "CANTEEN"},
-      {"id": "bunks", "name": "Bunkhouse", "rect": [3, 17, 9, 6], "wall": "#5d5048", "roof": "#6b3a2e", "sign": "BUNKS"},
+      {"id": "shack", "name": "Shaft 9 Shack", "rect": [3, 17, 9, 6], "door": [7.5, 17], "side": "top", "wall": "#5d5048", "roof": "#6b3a2e", "sign": "SHAFT 9", "action": "estate", "estate": "shaft_shack", "label": "Shaft 9 Shack (estate)"},
       {"id": "drill", "name": "Drill tower", "rect": [32, 16, 3, 8], "wall": "#3a3a40", "roof": "#c08a3a"}
     ],
     "npcs": [
@@ -90,7 +90,7 @@
       {"id": "hullmarket", "name": "Hull Market", "rect": [22, 2, 12, 7], "door": [28.5, 9], "side": "bottom", "wall": "#4a3a5a", "roof": "#7a4f9a", "sign": "HULL MARKET", "action": "market", "label": "Hull Market – additives & precursor"},
       {"id": "backroom", "name": "The Back Room", "rect": [3, 16, 9, 6], "door": [7.5, 16], "side": "top", "wall": "#3a2e2e", "roof": "#5a2e3e", "sign": "BACK ROOM", "action": "fence", "label": "The Fence – buys anything"},
       {"id": "cantina", "name": "Rust Cantina", "rect": [22, 16, 10, 6], "wall": "#3e3a4a", "roof": "#2e5a5a", "sign": "CANTINA"},
-      {"id": "cargo", "name": "Cargo hold", "rect": [13, 17, 3, 5], "wall": "#4a4a52", "roof": "#5a5a2e"}
+      {"id": "locker", "name": "Hull Locker 13", "rect": [13, 17, 3, 5], "door": [14.5, 17], "side": "top", "wall": "#4a4a52", "roof": "#5a5a2e", "sign": "13", "action": "estate", "estate": "hull_locker", "label": "Hull Locker 13 (estate)"}
     ],
     "npcs": [
       {"id": "lira", "name": "Lira Nine", "pos": [21.5, 9.5], "action": "deal", "contact": "lira", "color": "#c9b8ff"},

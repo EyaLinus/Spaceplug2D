@@ -164,5 +164,19 @@
     "chase_speed": 150,
     "chase_heat": 40,
     "give_up_range": 480
-  }
+  },
+  "estates": {
+    "cannery_annex": {"name": "Cannery Annex", "location": "mireth", "price": 1500, "size": [9, 6], "desc": "Damp storage hall behind the cannery. Room for a small line."},
+    "ridge_glasshouse": {"name": "Ridge Glasshouse", "location": "mireth", "price": 4500, "size": [13, 8], "desc": "Old hydro glasshouse on the ridge. Big, bright, discreet."},
+    "shaft_shack": {"name": "Shaft 9 Shack", "location": "cinder", "price": 1200, "size": [8, 5], "desc": "Abandoned miners' shack next to a dry shaft."},
+    "hull_locker": {"name": "Hull Locker 13", "location": "bazaar", "price": 2200, "size": [9, 5], "desc": "Welded cargo locker. Nobody on the Bazaar asks what you do in it."}
+  },
+  "buildables": {
+    "trim_table": {"cost": 150, "size": [2, 1]},
+    "precursor_scale": {"cost": 200, "size": [1, 1]},
+    "mixing_station": {"cost": 350, "size": [2, 1]},
+    "cook_stove": {"cost": 400, "size": [2, 2]},
+    "pack_table": {"cost": 250, "size": [2, 1]}
+  },
+  "estate_refund": 0.5
 }

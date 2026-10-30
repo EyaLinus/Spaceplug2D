@@ -21,6 +21,9 @@ var _leave_btn: Button
 var runner: Control  ## station minigames overlay for hand-made batches
 
 signal close_requested  ## "Leave" pressed while filtered (on a planet surface)
+signal estate_enter_requested(estate_id: String)  ## "Go inside" on an estate you own
+signal place_requested(station_id: String)  ## build menu: start placing this station
+signal estate_changed  ## a building was removed; the estate interior has to be rebuilt
 
 
 func _ready() -> void:
@@ -106,6 +109,14 @@ func refresh(reset_tab := false) -> void:
 		_add_tab("Shipyard", _build_shipyard(g))
 	if ld.get("office", false) and _wants("Office"):
 		_add_tab("Office", _build_office(g))
+	# estate panels only exist as filtered panels (a door, the build menu, a placed station)
+	if _filter.has("estate"):
+		if _wants("Estate"):
+			_add_tab("Estate", _build_estate(g))
+		if _wants("Build"):
+			_add_tab("Build", _build_build_menu(g))
+		if _wants("Station"):
+			_add_tab("Station", _build_station(g))
 	tabs.current_tab = clampi(current, 0, tabs.get_tab_count() - 1)
 
 
@@ -325,6 +336,67 @@ func _build_deals(g) -> Control:
 	for b in g.demand.get(g.location, {}):
 		dem.append("%s %d%%" % [g.data.bases[b].name, int(g.demand[g.location][b] * 100.0)])
 	v.add_child(UI.label("Local demand: " + ", ".join(PackedStringArray(dem)), 15, UI.MUTED))
+	return v
+
+
+# ---------------------------------------------------------------- estates
+
+func _build_estate(g) -> Control:
+	var id: String = _filter.estate
+	var e: Dictionary = g.data.estates[id]
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	v.add_child(UI.label(e.desc, 16))
+	v.add_child(UI.label("Floor space %d × %d cells. Place production stations inside, hire workers later." % [int(e.size[0]), int(e.size[1])], 15, UI.MUTED))
+	if g.estate_owned(id):
+		v.add_child(UI.label("Yours. %d station(s) set up." % g.estates[id].buildings.size(), 17, UI.ACCENT))
+		v.add_child(UI.button("Go inside", func(): estate_enter_requested.emit(id), 160))
+	else:
+		v.add_child(UI.label("For sale: %d cr" % int(e.price), 19, UI.GOLD))
+		var b := UI.button("Buy for %d cr" % int(e.price), func():
+			if GameState.act(g.buy_estate(id)).ok:
+				estate_enter_requested.emit(id), 200)
+		b.disabled = g.credits < int(e.price)
+		v.add_child(b)
+	return v
+
+
+func _build_build_menu(g) -> Control:
+	var gr := _grid(4)
+	for h in ["Station", "Cost", "Size", ""]:
+		gr.add_child(UI.label(h, 15, UI.MUTED))
+	for k in g.data.buildables:
+		var bd: Dictionary = g.data.buildables[k]
+		var st: Dictionary = g.data.stations[k]
+		var name_l := UI.label(st.name, 17)
+		name_l.tooltip_text = st.get("hint", "")
+		gr.add_child(name_l)
+		gr.add_child(UI.label("%d cr" % int(bd.cost), 16, UI.GOLD))
+		gr.add_child(UI.label("%d × %d · %s" % [int(bd.size[0]), int(bd.size[1]), st.affects], 15, UI.MUTED))
+		var b := UI.button("Place", func(): place_requested.emit(k), 80)
+		b.disabled = g.credits < int(bd.cost)
+		gr.add_child(b)
+	var v := VBoxContainer.new()
+	v.add_child(gr)
+	v.add_child(UI.label("Pick a station, then walk to a free spot: it goes on the cells in front of you. Cooking with your own stations comes next.", 14, UI.MUTED))
+	return v
+
+
+func _build_station(g) -> Control:
+	var id: String = _filter.estate
+	var i: int = _filter.index
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	if i >= g.estates[id].buildings.size():
+		return v
+	var b: Dictionary = g.estates[id].buildings[i]
+	var st: Dictionary = g.data.stations[b.id]
+	v.add_child(UI.label("%s · improves %s" % [st.name, st.affects], 17, UI.ACCENT))
+	v.add_child(UI.label(st.get("hint", ""), 15, UI.MUTED))
+	var refund := int(round(int(g.data.buildables[b.id].cost) * float(g.data.estate_refund)))
+	v.add_child(UI.button("Take down (+%d cr)" % refund, func():
+		if GameState.act(g.remove_building(id, i)).ok:
+			estate_changed.emit(), 200))
 	return v
 
 

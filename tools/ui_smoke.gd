@@ -121,6 +121,50 @@ func _run() -> void:
 	cop.path = []
 	step("police pathfinding")
 
+	# estates: buy the Cannery Annex, go inside, place a station, open it, leave
+	g.credits = 99999
+	sf.place_player_at("annex")
+	await physics_frame
+	await physics_frame
+	_assert(sf.interact(), "use the annex door")
+	await frames(2)
+	_assert(m.station.visible and m.station.tab_names() == ["Estate"], "annex door opens the estate panel")
+	gs.act(g.buy_estate("cannery_annex"))
+	m.station.estate_enter_requested.emit("cannery_annex")
+	await frames(2)
+	var es = m.surface
+	_assert(es != null and es.cfg.get("estate", "") == "cannery_annex" and not m.station.visible, "inside the annex")
+	m.open_build_menu()
+	await frames(1)
+	_assert(m.station.tab_names() == ["Build"], "build menu")
+	m.station.place_requested.emit("cook_stove")
+	await frames(1)
+	_assert(es.placing == "cook_stove" and not m.station.visible, "placing mode")
+	es.player.position = Vector2(2 * 32 + 16, 2 * 32 + 10)
+	es.player.facing = Vector2.DOWN
+	await physics_frame
+	_assert(es.can_place.call("cook_stove", es.ghost_cell().x, es.ghost_cell().y), "ghost on free cells (%s)" % [es.ghost_cell()])
+	es.interact()
+	await frames(2)
+	_assert(g.estates.cannery_annex.buildings.size() == 1, "station placed")
+	es = m.surface
+	_assert(es.cfg.buildings.any(func(b): return b.get("station", "") == "cook_stove"), "room rebuilt with the stove")
+	es.place_player_at("b0")
+	await physics_frame
+	await physics_frame
+	_assert(es.interact(), "use the placed stove")
+	await frames(2)
+	_assert(m.station.tab_names() == ["Station"], "station panel")
+	m.station.close()
+	es.place_player_at("exit")
+	await physics_frame
+	await physics_frame
+	_assert(es.interact(), "leave the annex")
+	await frames(2)
+	sf = m.surface
+	_assert(sf.loc_id == "mireth" and sf.player.position.distance_to(sf.interactable("annex").stand) < 1.0, "back on Mireth at the annex door")
+	step("estate buy, build, leave")
+
 	gs.act(g.buy("cannabis", 5))
 	gs.act(g.buy("nanoflux", 5))
 	m.station._lab_adds = ["nanoflux", "", ""]

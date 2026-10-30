@@ -29,6 +29,7 @@ var contact_ready_at: Dictionary = {}  ## contact id -> total_time when they buy
 var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0}
 var state: String = "playing"  ## playing | won | lost
 var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
+var estates: Dictionary = {}  ## owned estate id -> {"buildings": [{"id": station id, "x": int, "y": int}]}
 
 
 func new_game(content: Dictionary, seed_value: int = 1) -> void:
@@ -50,6 +51,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0}
 	state = "playing"
 	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
+	estates = {}
 	demand = {}
 	for loc in data.locations:
 		demand[loc] = {}
@@ -457,6 +459,79 @@ func bust() -> Dictionary:
 	return _ok("Busted! Lost %d units and paid %d cr." % [lost, fine])
 
 
+# ---------------------------------------------------------------- estates
+
+func estate_owned(id: String) -> bool:
+	return estates.has(id)
+
+
+func buy_estate(id: String) -> Dictionary:
+	if not data.estates.has(id):
+		return _fail("Unknown property.")
+	var e: Dictionary = data.estates[id]
+	if estates.has(id):
+		return _fail("You already own %s." % e.name)
+	if location != e.location:
+		return _fail("You have to be on %s to sign for it." % data.locations[e.location].name)
+	if credits < int(e.price):
+		return _fail("%s costs %d cr." % [e.name, int(e.price)])
+	credits -= int(e.price)
+	estates[id] = {"buildings": []}
+	_emit("estate_bought", {"estate": id})
+	return _ok("You own %s now. Go inside and set up production." % e.name)
+
+
+## The door cell (bottom middle) stays free so you can always get in and out.
+func estate_door(id: String) -> Vector2i:
+	var size: Array = data.estates[id].size
+	return Vector2i(int(size[0]) / 2, int(size[1]) - 1)
+
+
+func building_rect(b: Dictionary) -> Rect2i:
+	var size: Array = data.buildables[b.id].size
+	return Rect2i(int(b.x), int(b.y), int(size[0]), int(size[1]))
+
+
+func can_place(estate_id: String, station: String, x: int, y: int) -> bool:
+	if not estates.has(estate_id) or not data.buildables.has(station):
+		return false
+	var size: Array = data.estates[estate_id].size
+	var r := building_rect({"id": station, "x": x, "y": y})
+	if not Rect2i(0, 0, int(size[0]), int(size[1])).encloses(r) or r.has_point(estate_door(estate_id)):
+		return false
+	for b in estates[estate_id].buildings:
+		if building_rect(b).intersects(r):
+			return false
+	return true
+
+
+func place_building(estate_id: String, station: String, x: int, y: int) -> Dictionary:
+	if not estates.has(estate_id):
+		return _fail("You don't own that.")
+	if not data.buildables.has(station):
+		return _fail("Can't build that.")
+	if not can_place(estate_id, station, x, y):
+		return _fail("No room there.")
+	var cost := int(data.buildables[station].cost)
+	if credits < cost:
+		return _fail("%s costs %d cr." % [data.stations[station].name, cost])
+	credits -= cost
+	estates[estate_id].buildings.append({"id": station, "x": x, "y": y})
+	_emit("building_placed", {"estate": estate_id, "station": station})
+	return _ok("%s set up." % data.stations[station].name)
+
+
+func remove_building(estate_id: String, index: int) -> Dictionary:
+	if not estates.has(estate_id) or index < 0 or index >= estates[estate_id].buildings.size():
+		return _fail("Nothing to remove.")
+	var b: Dictionary = estates[estate_id].buildings[index]
+	var refund := int(round(int(data.buildables[b.id].cost) * float(data.estate_refund)))
+	estates[estate_id].buildings.remove_at(index)
+	credits += refund
+	_emit("building_removed", {"estate": estate_id, "station": b.id})
+	return _ok("%s taken down, sold the parts for %d cr." % [data.stations[b.id].name, refund])
+
+
 # ---------------------------------------------------------------- save / load
 
 func to_dict() -> Dictionary:
@@ -466,7 +541,7 @@ func to_dict() -> Dictionary:
 		"heat": snappedf(heat, 0.01), "location": location, "cargo": cargo.duplicate(), "stash": stash.duplicate(),
 		"lab_queue": lab_queue.duplicate(true), "demand": demand.duplicate(true),
 		"contact_ready_at": contact_ready_at.duplicate(), "upgrades": upgrades.duplicate(),
-		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state),
+		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 	}
 
 
@@ -497,6 +572,12 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	state = str(d.get("state", "playing"))
 	for k in stats:
 		stats[k] = int(d.get("stats", {}).get(k, 0))
+	for e in d.get("estates", {}):
+		if data.estates.has(e):
+			var list: Array = []
+			for b in d.estates[e].get("buildings", []):
+				list.append({"id": str(b.id), "x": int(b.x), "y": int(b.y)})
+			estates[e] = {"buildings": list}
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

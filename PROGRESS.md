@@ -1,5 +1,17 @@
 # Progress log
 
+## P4 step 1: estates (2026-10-30)
+- Four estates for sale (`content.json` → `estates`): Cannery Annex (1,500 cr) and Ridge Glasshouse (4,500 cr) on Mireth,
+  Shaft 9 Shack (1,200 cr) on Cinder, Hull Locker 13 (2,200 cr) on the Bazaar. Each is a building on its surface.
+- Buying opens the estate: its own instanced room (`scripts/planet/estate_layout.gd` → surface config, 2× zoom),
+  [B] build menu lists the station types from the minigame station registry (`content.json` → `buildables`: cost + size),
+  placement ghost on the cells in front of you (green/red), E places, Esc cancels. Using a placed station lets you take
+  it down for 50 % back. The door cell always stays free. Core: `Game.buy_estate/can_place/place_building/remove_building`, saved.
+- Verified: 495 unit checks (estate buy rules, placement bounds/overlap/door, save round-trip, refund, every estate has
+  a surface building), UI smoke buys the annex, places a stove through the ghost, opens it, leaves; screenshots checked.
+- Gaps: you cannot cook with your own stations yet (next step); no rotation, no upkeep, no selling estates;
+  machines are procedural drawings, labels overflow on 1-cell stations.
+
 ## Police pathfinding (2026-10-30)
 - `scripts/planet/nav.gd`: AStarGrid2D per surface (building tiles solid). Chasing officers re-path to the player every
   0.35 s; an officer that gives up walks back to the roads around the buildings. Give-up range 320 → 480 px.

@@ -17,6 +17,7 @@ const INPUT := {
 	"move_left": [KEY_A, KEY_LEFT],
 	"move_right": [KEY_D, KEY_RIGHT],
 	"interact": [KEY_E, KEY_ENTER],
+	"build_menu": [KEY_B],
 }
 
 var loc_id := ""
@@ -36,6 +37,10 @@ var nav: AStarGrid2D  ## tile grid with buildings solid; chasing officers path a
 var _repath := 0.0
 var _overlay: Node2D  ## redrawn every frame (focus ring); the ground below is drawn once
 var _rng := RandomNumberGenerator.new()
+## Estate interiors (cfg has "estate"): while `placing` holds a station id, a ghost of it sits on the cells in front
+## of the player and E asks main to place it there. can_place(station, x, y) -> bool is set by main.
+var placing := ""
+var can_place: Callable
 
 
 static func register_input() -> void:
@@ -90,7 +95,16 @@ func _ready() -> void:
 	camera.limit_bottom = int(map_size.y)
 	camera.position_smoothing_enabled = true
 	camera.position_smoothing_speed = 8.0
-	camera.zoom = Vector2(1.5, 1.5)  # closer, RPG-like framing; the map is bigger than one screen on purpose
+	var z := float(cfg.get("zoom", 1.5))  # closer, RPG-like framing; planets are bigger than one screen on purpose
+	camera.zoom = Vector2(z, z)
+	# rooms smaller than the screen: centre them instead of pinning them to the top-left corner
+	var view := get_viewport_rect().size / z
+	if map_size.x < view.x:
+		camera.limit_left = int(map_size.x / 2.0 - view.x / 2.0)
+		camera.limit_right = int(map_size.x / 2.0 + view.x / 2.0)
+	if map_size.y < view.y:
+		camera.limit_top = int(map_size.y / 2.0 - view.y / 2.0)
+		camera.limit_bottom = int(map_size.y / 2.0 + view.y / 2.0)
 	player.add_child(camera)
 	camera.make_current()
 	_overlay = Node2D.new()
@@ -149,6 +163,9 @@ func _build_interactables() -> void:
 		var label: String = n.get("label", "Talk to %s" % n.name)
 		interactables.append({"pos": _px(n.pos), "stand": _px(n.pos) + Vector2(0, 26), "range": 44.0, "label": label, "action": n.action,
 			"payload": {"id": n.id, "title": n.name, "contact": n.get("contact", "")}})
+	for x in cfg.get("exits", []):
+		interactables.append({"pos": _px(x.pos), "stand": _px(x.pos) + Vector2(0, -12), "range": 40.0, "label": x.label,
+			"action": x.action, "payload": {"id": x.id, "title": x.label}})
 	if cfg.has("pad"):
 		interactables.append({"pos": _px(cfg.pad.pos), "stand": _px(cfg.pad.pos) + Vector2(0, tile * 1.4 + 18),
 			"range": float(cfg.pad.radius) * tile * 0.75, "label": cfg.pad.label,
@@ -181,7 +198,7 @@ func _walker_path(from: Vector2) -> Array:
 func _physics_process(delta: float) -> void:
 	focus = {}
 	_update_police(delta)
-	if player.frozen:
+	if player.frozen or placing != "":
 		_overlay.queue_redraw()
 		return
 	var best := INF
@@ -258,11 +275,17 @@ func _update_police(delta: float) -> void:
 
 ## Text for the HUD prompt, "" when nothing is in reach.
 func prompt() -> String:
+	if placing != "":
+		return "[%s] Place %s   [Esc] cancel" % [Settings.key_label("interact"), GameState.data.stations[placing].name]
 	return "" if focus.is_empty() else "[%s] %s" % [Settings.key_label("interact"), focus.label]
 
 
 ## Uses whatever the player stands next to. Returns false if nothing is in reach.
 func interact() -> bool:
+	if placing != "":
+		var c := ghost_cell()
+		interacted.emit("place", {"station": placing, "x": c.x, "y": c.y, "id": "place", "title": ""})
+		return true
 	if focus.is_empty():
 		return false
 	interacted.emit(focus.action, focus.payload)
@@ -270,6 +293,25 @@ func interact() -> bool:
 
 
 ## Moves the player next to an interactable (by payload id); used on landing and by tests.
+## Estate cell (top-left) the placement ghost covers: the cells just in front of the player.
+func ghost_cell() -> Vector2i:
+	var size: Array = GameState.data.buildables[placing].size
+	var off := int(cfg.get("estate_offset", 0))
+	var f: Vector2 = player.facing
+	var step := Vector2i(roundi(f.x), roundi(f.y)) if absf(f.x) > 0.4 or absf(f.y) > 0.4 else Vector2i(0, 1)
+	var feet := Vector2i(((player.position + Vector2(0, 4)) / tile).floor()) - Vector2i(off, off)
+	var c := feet + step
+	if step.x < 0:
+		c.x -= int(size[0]) - 1
+	if step.y < 0:
+		c.y -= int(size[1]) - 1
+	if step.x == 0:
+		c.x -= (int(size[0]) - 1) / 2
+	if step.y == 0:
+		c.y -= (int(size[1]) - 1) / 2
+	return c
+
+
 func place_player_at(id: String) -> void:
 	for it in interactables:
 		if it.payload.id == id:
@@ -344,7 +386,7 @@ func _draw_ground_fallback() -> void:
 		for x in int(cfg.size[0]):
 			if (x + y) % 2 == 0:
 				draw_rect(Rect2(x * tile, y * tile, tile, tile), g2)
-			if n.randf() < 0.18:
+			if n.randf() < 0.18 and cfg.get("grass", true):
 				var p := Vector2(x + n.randf(), y + n.randf()) * tile
 				draw_line(p, p + Vector2(n.randf_range(-2, 2), -5), g1.lightened(0.18), 1.5)
 
@@ -373,6 +415,14 @@ func _draw_pad() -> void:
 
 func _draw_building(b: Dictionary) -> void:
 	var r := _rect(b.rect)
+	match b.get("style", ""):
+		"wall":
+			draw_rect(r, Color(b.wall))
+			draw_rect(r, Color(b.wall).lightened(0.15), false, 2.0)
+			return
+		"machine":
+			_draw_machine(b, r)
+			return
 	var wall := Color(b.get("wall", "#666666"))
 	var roof := Color(b.get("roof", "#444444"))
 	draw_rect(Rect2(r.position + Vector2(6, 8), r.size), Color(0, 0, 0, 0.3))
@@ -430,6 +480,36 @@ func _draw_building(b: Dictionary) -> void:
 		draw_string(font, sp, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("#4fe3c1"))
 
 
+## Production station inside an estate: a work surface with a few parts that hint at what it does.
+func _draw_machine(b: Dictionary, r: Rect2) -> void:
+	var inner := r.grow(-4)
+	draw_rect(Rect2(inner.position + Vector2(4, 6), inner.size), Color(0, 0, 0, 0.3))
+	draw_rect(inner, Color("#6b6f7a"))
+	draw_rect(Rect2(inner.position, Vector2(inner.size.x, 6)), Color("#9aa0ad"))
+	draw_rect(inner, Color("#2a2d36"), false, 2.0)
+	var c := inner.get_center()
+	match b.get("station", ""):
+		"trim_table":
+			draw_circle(c + Vector2(-10, 2), 7.0, Color("#3f8a5e"))
+			draw_line(c + Vector2(4, -4), c + Vector2(16, 6), Color("#d0d0d0"), 2.0)
+		"precursor_scale":
+			draw_rect(Rect2(c - Vector2(9, 4), Vector2(18, 10)), Color("#c9d1d9"))
+			draw_circle(c + Vector2(0, -6), 4.0, Color("#ffd166"))
+		"mixing_station":
+			for i in 3:
+				draw_rect(Rect2(c + Vector2(-20 + i * 14, -8), Vector2(8, 16)), [Color("#7fffd4"), Color("#ff9ad5"), Color("#ffd166")][i])
+		"cook_stove":
+			draw_circle(c + Vector2(-12, -10), 9.0, Color("#2a2a30"))
+			draw_circle(c + Vector2(12, 10), 9.0, Color("#2a2a30"))
+			draw_circle(c + Vector2(-12, -10), 5.0, Color("#ff6b3a"))
+		"pack_table":
+			draw_rect(Rect2(c - Vector2(16, 6), Vector2(12, 12)), Color("#c9b88a"))
+			draw_rect(Rect2(c + Vector2(4, -6), Vector2(12, 12)), Color("#c9b88a"))
+	var font := ThemeDB.fallback_font
+	var w := font.get_string_size(b.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+	draw_string(font, Vector2(c.x - w / 2.0, inner.end.y - 3), b.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#e6e9ff"))
+
+
 func _draw_prop(kind: String, p: Vector2) -> void:
 	var bottoms := {"tree": 12.0, "lamp": 12.0, "crate": 12.0, "rock": 10.0, "barrel": 12.0, "vent": 16.0, "stall": 12.0}
 	if bottoms.has(kind):
@@ -478,6 +558,15 @@ func _draw_prop(kind: String, p: Vector2) -> void:
 
 
 func _draw_overlay() -> void:
+	if placing != "" and GameState.data.buildables.has(placing):
+		var c := ghost_cell()
+		var size: Array = GameState.data.buildables[placing].size
+		var off := int(cfg.get("estate_offset", 0))
+		var ok: bool = can_place.is_valid() and can_place.call(placing, c.x, c.y)
+		var gr := Rect2(Vector2(c.x + off, c.y + off) * tile, Vector2(size[0], size[1]) * tile)
+		var col := Color(0.31, 0.89, 0.76) if ok else Color(1.0, 0.42, 0.37)
+		_overlay.draw_rect(gr, Color(col, 0.25))
+		_overlay.draw_rect(gr, col, false, 2.0)
 	if focus.is_empty():
 		return
 	var p: Vector2 = focus.pos

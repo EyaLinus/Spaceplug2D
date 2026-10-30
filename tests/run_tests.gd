@@ -19,6 +19,7 @@ func _init() -> void:
 		"test_surface_layouts",
 		"test_art_registry",
 		"test_police_on_foot",
+		"test_estates",
 		"test_mixing_rules",
 		"test_buy_and_cargo_limit",
 		"test_lab_batch",
@@ -100,7 +101,7 @@ func test_art_registry() -> void:
 
 func test_surface_layouts() -> void:
 	check(data.surfaces.has(data.start.location), "start location has a walkable surface")
-	var actions := ["market", "lab", "shipyard", "office", "deal", "fence", "takeoff"]
+	var actions := ["market", "lab", "shipyard", "office", "deal", "fence", "estate", "takeoff"]
 	for loc in data.locations:
 		check(data.surfaces.has(loc) or not data.locations[loc].get("dockable", true), "dockable %s has a surface" % loc)
 	for loc in data.surfaces:
@@ -116,6 +117,8 @@ func test_surface_layouts() -> void:
 			rects.append(r)
 			if b.has("action"):
 				check(b.action in actions, "%s/%s action %s known" % [loc, b.id, b.action])
+				if b.action == "estate":
+					check(data.estates.has(b.estate) and data.estates[b.estate].location == loc, "%s/%s sells an estate of this planet" % [loc, b.id])
 				var door := Vector2(b.door[0], b.door[1])
 				var edge_y: float = r.end.y if b.get("side", "bottom") == "bottom" else r.position.y
 				check(is_equal_approx(door.y, edge_y) and door.x > r.position.x and door.x < r.end.x, "%s/%s door on its edge" % [loc, b.id])
@@ -143,6 +146,9 @@ func test_surface_layouts() -> void:
 		check(ld.get("fence", false) or not "fence" in reachable, "%s has no fence door without a fence" % loc)
 		check(s.has("pad"), "%s has a launch pad" % loc)
 		check(s.has("security"), "%s sets its police security" % loc)
+		for e in data.estates:
+			if data.estates[e].location == loc:
+				check(s.buildings.any(func(b): return b.get("estate", "") == e), "%s estate %s has a building" % [loc, e])
 		for c in data.contacts:
 			if c.location == loc:
 				check(s.npcs.any(func(n): return n.get("contact", "") == c.id), "%s contact %s stands on the surface" % [loc, c.id])
@@ -187,6 +193,33 @@ func test_police_on_foot() -> void:
 	check(not Officer.sees(Vector2.ZERO, Vector2.RIGHT, Vector2(-100, 0), 170.0, cone, []), "blind behind")
 	check(not Officer.sees(Vector2.ZERO, Vector2.RIGHT, Vector2(300, 0), 170.0, cone, []), "out of range")
 	check(not Officer.sees(Vector2.ZERO, Vector2.RIGHT, Vector2(150, 0), 170.0, cone, [Rect2(60, -20, 20, 40)]), "walls block sight")
+
+
+func test_estates() -> void:
+	for e in data.estates:
+		check(data.locations.has(data.estates[e].location), "estate %s location exists" % e)
+	for b in data.buildables:
+		check(data.stations.has(b), "buildable %s is a station" % b)
+	var g := new_game()
+	g.credits = 10000
+	check(not g.buy_estate("shaft_shack").ok, "can't buy an estate on another planet")
+	check(g.buy_estate("cannery_annex").ok and g.estate_owned("cannery_annex"), "buy estate")
+	check(g.credits == 10000 - int(data.estates.cannery_annex.price), "estate price paid")
+	check(not g.buy_estate("cannery_annex").ok, "can't buy twice")
+	var door: Vector2i = g.estate_door("cannery_annex")
+	check(not g.can_place("cannery_annex", "trim_table", door.x, door.y), "door cell stays free")
+	check(not g.can_place("cannery_annex", "cook_stove", 8, 0), "must fit inside")
+	var before: int = g.credits
+	check(g.place_building("cannery_annex", "cook_stove", 0, 0).ok, "place cook stove")
+	check(g.credits == before - int(data.buildables.cook_stove.cost), "building cost paid")
+	check(not g.place_building("cannery_annex", "mixing_station", 1, 1).ok, "no overlap")
+	check(g.place_building("cannery_annex", "mixing_station", 2, 0).ok, "place next to it")
+	var g2 := Game.new()
+	g2.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(g2.estate_owned("cannery_annex") and g2.estates.cannery_annex.buildings.size() == 2, "estates survive save/load")
+	before = g.credits
+	check(g.remove_building("cannery_annex", 0).ok and g.estates.cannery_annex.buildings.size() == 1, "remove building")
+	check(g.credits == before + int(round(int(data.buildables.cook_stove.cost) * float(data.estate_refund))), "partial refund")
 
 
 func test_mixing_rules() -> void:
