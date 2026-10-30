@@ -1,1 +1,0 @@
-- **Visible ship upgrades:** every upgrade you buy at the mechanic now shows on your ship: engine nacelles with extra exhaust flames that burn hotter per level, cargo pods, dark stealth plating and a hydro rig dome. The shipyard shows a large preview of your current ship, and the parked ship on the landing pad changes too.

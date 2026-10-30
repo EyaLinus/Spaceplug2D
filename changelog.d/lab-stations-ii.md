@@ -1,3 +1,0 @@
-- **Lab II – Extractor and Refiner:** two new lab stations with their own minigames. The **Extractor** (weed, cocaine) has you ride a moving temperature profile on a chart recorder; the **Refiner** (cocaine, meth, fentanyl) has you hold a runaway reaction in equilibrium with delayed acid/base doses and a limited reagent supply. Both set the new **purity**, which counts half towards the quality grade, so a Pristine batch now needs a clean extraction or refinement too. The batch summary shows the purity.
-- **Estates:** Extractor (450 cr) and Refiner (550 cr) can be built in estates. Existing estates need them before they can cook the drugs that use them.
-- **Station art:** all seven lab stations now have pixel-art sprites inside estates, with smaller name tags.
