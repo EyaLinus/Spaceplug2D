@@ -1,0 +1,1 @@
+- **Deal-O-Matic (Com-Phone app):** customers you know text you requests (drug, amount, price with a 15 % premium). Accept, haggle (+10 % / +25 %, odds shown, better with loyal or hooked customers) or decline. Agreed deals are handed over in person: the customer gets a gold $ marker, talk to them and press Hand over. Missing the meet or a failed haggle costs affinity.

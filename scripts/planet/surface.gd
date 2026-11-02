@@ -61,6 +61,20 @@ func setup(id: String, surface_cfg: Dictionary) -> void:
 	map_size = Vector2(cfg.size[0], cfg.size[1]) * tile
 
 
+## People you agreed a Deal-O-Matic deal with carry a "$" marker.
+func _update_deal_markers() -> void:
+	var g = GameState.game
+	if g == null:
+		return
+	var agreed := {}
+	for o in g.offers:
+		if o.state == "accepted":
+			agreed[o.contact] = true
+	for n in cfg.get("npcs", []):
+		if npcs.has(n.id):
+			npcs[n.id].marker = agreed.has(n.get("contact", ""))
+
+
 func _contact_look(id: String) -> String:
 	for c in GameState.data.get("contacts", []):
 		if c.id == id:
@@ -209,6 +223,7 @@ func _walker_path(from: Vector2) -> Array:
 
 func _physics_process(delta: float) -> void:
 	focus = {}
+	_update_deal_markers()
 	_update_police(delta)
 	if player.frozen or placing != "":
 		_overlay.queue_redraw()

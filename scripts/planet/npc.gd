@@ -11,6 +11,7 @@ var speed := 55.0
 var path: Array = []  ## Vector2 waypoints still to walk
 var pick_next: Callable  ## returns a new path when this one is done (walkers only)
 var look := ""  ## character sheet name in assets/gfx/chars; "" = closest npc_* look to `color`
+var marker := false  ## gold "$" above the head: you have an agreed deal with this person
 var heading := Vector2.DOWN  ## last walking direction, picks the sprite row
 var _step := 0.0
 var _t := 0.0
@@ -52,6 +53,11 @@ func _draw() -> void:
 
 
 func _draw_name() -> void:
+	if marker:
+		var f := ThemeDB.fallback_font
+		var bob := sin(_t * 4.0) * 2.0
+		draw_string(f, Vector2(-5, -38 + bob), "$", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0, 0, 0, 0.6))
+		draw_string(f, Vector2(-6, -39 + bob), "$", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("#ffd166"))
 	if display_name != "":
 		var font := ThemeDB.fallback_font
 		var w := font.get_string_size(display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x

@@ -7,6 +7,7 @@ const Data = preload("res://scripts/core/data.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const Deals = preload("res://scripts/core/deals.gd")
 const ArtReg = preload("res://scripts/core/art.gd")
 
 var data: Dictionary
@@ -33,6 +34,9 @@ func _init() -> void:
 		"test_people_profiles",
 		"test_people_deals",
 		"test_people_save",
+		"test_deal_requests",
+		"test_deal_answers",
+		"test_deal_fulfill",
 		"test_market_saturation_recovers",
 		"test_heat_and_patrols",
 		"test_galaxy_and_jump",
@@ -498,6 +502,107 @@ func test_people_save() -> void:
 	var g3 := Game.new()
 	g3.from_dict(data, d)
 	check(g3.people.has("marta") and g3.people.okka.history.is_empty(), "old save without people gets defaults")
+
+
+func test_deal_requests() -> void:
+	var g := new_game()
+	check(g.offers.is_empty(), "no requests at start")
+	for i in 40:
+		g.tick(10.0)
+	check(not g.offers.is_empty(), "known customers text requests over time")
+	var ids := {}
+	for o in g.offers:
+		check(g.people[o.contact].known, "only known people text (%s)" % o.contact)
+		check(o.base in g.contact(o.contact).prefers, "request for a preferred drug")
+		check(int(o.qty) >= 1 and int(o.qty) <= People.max_units(g, o.contact), "request size within deal size")
+		check(not ids.has(o.id), "offer ids unique")
+		ids[o.id] = true
+	var open := 0
+	for o in g.offers:
+		if o.state in Deals.OPEN:
+			open += 1
+	check(open <= int(data.deals.max_open), "open requests capped")
+	# unanswered requests expire
+	var g2 := new_game()
+	var o2: Dictionary = Deals.request(g2, "okka")
+	check(not o2.is_empty() and o2.state == "new", "manual request")
+	check(int(o2.price) > g2.sell_price("weed:glow", "okka", "mireth"), "texted price includes the premium")
+	g2.tick(float(data.deals.answer_seconds) + 1.0)
+	check(o2.state == "expired", "unanswered request expires")
+
+
+func test_deal_answers() -> void:
+	var g := new_game()
+	var o: Dictionary = Deals.request(g, "sen")
+	var aff0: float = g.people.sen.affinity
+	check(Deals.decline(g, o.id).ok and o.state == "declined", "decline")
+	check(g.people.sen.affinity < aff0, "declining costs a little affinity")
+	o = Deals.request(g, "sen")
+	check(Deals.accept(g, o.id).ok and o.state == "accepted", "accept")
+	check(float(o.expires_at) > g.total_time + 100.0, "meet window set")
+	check(o.msgs.size() >= 3, "conversation recorded")
+	# counter odds: small raises are likelier, loyal and hooked customers pay more
+	check(Deals.counter_chance(g, "okka", 0.1) > Deals.counter_chance(g, "okka", 0.25), "bigger raise, lower odds")
+	g.people.okka.affinity = 1.0
+	g.people.okka.addiction = 1.0
+	check(Deals.counter_chance(g, "okka", 0.25) > 0.6, "loyal + hooked customer usually accepts")
+	var accepted := 0
+	var refused := 0
+	for i in 30:
+		var gg := new_game()
+		gg.rng.seed = i
+		var oo: Dictionary = Deals.request(gg, "teo")
+		var p0: int = oo.price
+		var r: Dictionary = Deals.counter(gg, oo.id, 0.1)
+		if r.ok:
+			accepted += 1
+			check(oo.state == "accepted" and oo.price > p0, "counter accepted raises the price")
+		else:
+			refused += 1
+			check(oo.state == "new" and oo.price == p0 and oo.countered, "refused counter keeps the price")
+			check(not Deals.counter(gg, oo.id, 0.1).ok, "only one counter")
+	check(accepted > 0 and refused > 0, "counter outcome varies (%d/%d)" % [accepted, refused])
+	# an accepted deal you never deliver costs more affinity
+	var g3 := new_game()
+	var o3: Dictionary = Deals.request(g3, "okka")
+	Deals.accept(g3, o3.id)
+	var a3: float = g3.people.okka.affinity
+	g3.tick(float(data.deals.meet_seconds) + 1.0)
+	check(o3.state == "expired" and g3.people.okka.affinity < a3 + float(data.deals.affinity_noshow) * 0.5, "no-show hurts")
+
+
+func test_deal_fulfill() -> void:
+	var g := new_game()
+	g.location = "cinder"
+	var o: Dictionary = Deals.request(g, "okka")
+	Deals.accept(g, o.id)
+	var key := Mixing.key(o.base, [data.bases[o.base].innate])
+	g.cargo[key] = int(o.qty) + 2
+	check(not Deals.fulfill(g, o.id, key).ok, "must meet on their planet")
+	g.location = "mireth"
+	check(Deals.agreed_at(g, "mireth").has(o), "agreed deal listed at the meet planet")
+	var wrong := "cocaine:crisp" if o.base != "cocaine" else "weed:glow"
+	g.cargo[wrong] = 10
+	check(not Deals.fulfill(g, o.id, wrong).ok, "wrong drug refused")
+	var credits0 := g.credits
+	var hist0: int = g.people.okka.history.size()
+	var r: Dictionary = Deals.fulfill(g, o.id, key)
+	check(r.ok, "hand over: %s" % r.msg)
+	check(g.credits == credits0 + int(o.price) * int(o.qty), "paid the agreed price")
+	check(int(g.cargo[key]) == 2 and o.state == "done", "units handed over, deal done")
+	check(g.people.okka.history.size() == hist0 + 1, "deal in history")
+	check(not Deals.fulfill(g, o.id, key).ok, "can't deliver twice")
+	# save roundtrip keeps the conversation
+	var o2: Dictionary = Deals.request(g, "sen")
+	var d: Dictionary = JSON.parse_string(JSON.stringify(g.to_dict()))
+	var g2 := Game.new()
+	g2.from_dict(data, d)
+	check(g2.offers.size() == g.offers.size() and Deals.find(g2, o2.id).state == "new", "offers survive save")
+	check(Deals.accept(g2, int(o2.id)).ok, "loaded offer can be answered")
+	d.erase("offers")
+	var g3 := Game.new()
+	g3.from_dict(data, d)
+	check(g3.offers.is_empty(), "old save without offers")
 
 
 func test_sell_contact_and_fence() -> void:
