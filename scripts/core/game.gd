@@ -10,6 +10,7 @@ const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const Deals = preload("res://scripts/core/deals.gd")
+const Orders = preload("res://scripts/core/orders.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -37,6 +38,11 @@ var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0}
 var state: String = "playing"  ## playing | won | lost
 var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
 var estates: Dictionary = {}  ## owned estate id -> {"buildings": [{"id": station id, "x": int, "y": int}]}
+var orders: Array = []  ## open phone orders in transit (see orders.gd)
+var order_seq: int = 0
+var estate_stock: Dictionary = {}  ## estate id -> item -> qty delivered there, unloaded by collect_stash() inside
+var kits: Dictionary = {}  ## station id -> flat-packed kits delivered by phone order, placed for free in build mode
+var orders_unseen: int = 0  ## deliveries since the Orders app was last opened (runtime only)
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 
 
@@ -65,6 +71,11 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	state = "playing"
 	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
 	estates = {}
+	orders = []
+	order_seq = 0
+	estate_stock = {}
+	kits = {}
+	orders_unseen = 0
 	demand = {}
 	for loc in data.locations:
 		demand[loc] = {}
@@ -160,6 +171,8 @@ func has_contraband() -> bool:
 
 
 func item_name(item_key: String) -> String:
+	if item_key.begins_with("kit:"):
+		return str(data.stations.get(item_key.substr(4), {}).get("name", item_key)) + " kit"
 	if Mixing.is_product(item_key):
 		return Mixing.display_name(data, item_key)
 	if data.raws.has(item_key):
@@ -236,6 +249,7 @@ func tick(dt: float) -> void:
 	_tick_lab(dt)
 	_tick_demand(dt)
 	Deals.tick(self, dt)
+	Orders.tick(self)
 	while day_time >= day_seconds():
 		day_time -= day_seconds()
 		_new_day()
@@ -444,6 +458,8 @@ func meet(contact_id: String) -> void:
 func collect_stash() -> Dictionary:
 	if not lab_here():
 		return _fail("Your stash is at the hub.")
+	if estates.has(inside_estate):
+		Orders.unload_estate(self, inside_estate)
 	if stash.is_empty():
 		return _fail("Stash is empty.")
 	var moved := 0
@@ -613,10 +629,13 @@ func place_building(estate_id: String, station: String, x: int, y: int) -> Dicti
 		return _fail("Can't build that.")
 	if not can_place(estate_id, station, x, y):
 		return _fail("No room there.")
-	var cost := int(data.buildables[station].cost)
-	if credits < cost:
-		return _fail("%s costs %d cr." % [data.stations[station].name, cost])
-	credits -= cost
+	if int(kits.get(station, 0)) > 0:
+		_add(kits, station, -1)
+	else:
+		var cost := int(data.buildables[station].cost)
+		if credits < cost:
+			return _fail("%s costs %d cr." % [data.stations[station].name, cost])
+		credits -= cost
 	estates[estate_id].buildings.append({"id": station, "x": x, "y": y})
 	_emit("building_placed", {"estate": estate_id, "station": station})
 	return _ok("%s set up." % data.stations[station].name)
@@ -644,6 +663,8 @@ func to_dict() -> Dictionary:
 		"contact_ready_at": contact_ready_at.duplicate(), "people": people.duplicate(true), "offers": offers.duplicate(true),
 		"next_offer_id": next_offer_id, "offer_clock": snappedf(offer_clock, 0.01), "upgrades": upgrades.duplicate(),
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
+		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
+		"kits": kits.duplicate(),
 	}
 
 
@@ -695,6 +716,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 			for b in d.estates[e].get("buildings", []):
 				list.append({"id": str(b.id), "x": int(b.x), "y": int(b.y)})
 			estates[e] = {"buildings": list}
+	Orders.from_save(self, d)
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

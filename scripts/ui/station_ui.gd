@@ -402,14 +402,15 @@ func _build_build_menu(g) -> Control:
 		var name_l := UI.label(st.name, 17)
 		name_l.tooltip_text = st.get("hint", "")
 		gr.add_child(name_l)
-		gr.add_child(UI.label("%d cr" % int(bd.cost), 16, UI.GOLD))
+		var kit_n := int(g.kits.get(k, 0))
+		gr.add_child(UI.label(("Kit ×%d" % kit_n) if kit_n > 0 else "%d cr" % int(bd.cost), 16, UI.ACCENT if kit_n > 0 else UI.GOLD))
 		gr.add_child(UI.label("%d × %d · %s" % [int(bd.size[0]), int(bd.size[1]), st.affects], 15, UI.MUTED))
 		var b := UI.button("Place", func(): place_requested.emit(k), 80)
-		b.disabled = g.credits < int(bd.cost)
+		b.disabled = g.credits < int(bd.cost) and kit_n <= 0
 		gr.add_child(b)
 	var v := VBoxContainer.new()
 	v.add_child(gr)
-	v.add_child(UI.label("Pick a station, then walk to a free spot: it goes on the cells in front of you. Cooking with your own stations comes next.", 14, UI.MUTED))
+	v.add_child(UI.label("Pick a station, then walk to a free spot: it goes on the cells in front of you. Station kits ordered in the phone's Orders app are placed for free.", 14, UI.MUTED))
 	return v
 
 
