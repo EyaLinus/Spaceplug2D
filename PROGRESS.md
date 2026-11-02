@@ -1,5 +1,21 @@
 # Progress log
 
+## A2: Deal-O-Matic (2026-11-02)
+- **Core** `scripts/core/deals.gd`, state `Game.offers` (+ `next_offer_id`, `offer_clock`, saved; old saves start empty).
+  Every 40 s each known customer without an open deal may text (chance 0.3 × (0.5 + addiction), max 3 open):
+  a preferred drug, qty within deal size and today's budget, price = their Standard price + 15 % premium.
+  Accept → 150 s to meet them; counter +10/+25 % once (chance 0.8 − 2.6 × raise + 0.4 × affinity + 0.4 × addiction);
+  decline −0.02 affinity, failed counter −0.03, no-show −0.08. Fulfil in person: any product of the right drug,
+  heat × 0.8 vs. a walk-up sale. Rules in `content.json` → `deals`.
+- **Phone app** `apps/deals_app.gd`: threads sorted new → agreed → closed, chat bubbles, Accept / +10 % / +25 % /
+  Decline with shown odds, agreed deals show where to meet, time left and whether the hold has enough.
+- **On foot:** customers with an agreed deal carry a gold "$"; their Deals panel has a Hand over button.
+  Toasts for new requests and missed meets.
+- Verified: 1078 unit checks (request rules, expiry, decline/accept/counter odds and outcomes, no-show, fulfil rules,
+  save), UI smoke drives text → phone accept → marker → hand over, menu smoke, sim 5/5 (bot ignores texts),
+  screenshots of list, thread and marker checked.
+- Deviations/gaps: the meeting point is the customer on their planet, not a separate spot (dead drops are A4); the
+  walk-up Deals panel stays as a fallback; the balance bot does not use texts yet; prices are eyeballed.
 ## A3: Market & Orders app (2026-11-02)
 - **Core** `scripts/core/orders.gd`, state on `Game`: `orders` (open, saved), `order_seq`, `estate_stock` (estate id -> items, saved),
   `orders_unseen` (runtime, app badge). Phone price = cheapest walk-in price anywhere + 35% markup, plus a delivery fee

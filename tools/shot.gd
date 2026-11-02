@@ -128,7 +128,20 @@ func _run() -> void:
 	await _save(out, "phone_contacts")
 	m.phone.push(g.contact("okka").name, func(gg): return m.phone.app_by_id("contacts").detail(gg, "okka"))
 	await _save(out, "phone_profile")
+	var Deals = load("res://scripts/core/deals.gd")
+	var o1: Dictionary = Deals.request(g, "sen")
+	var o2: Dictionary = Deals.request(g, "okka")
+	Deals.accept(g, o2.id)
+	Deals.request(g, "teo")
+	m.phone.open_app("deals")
+	await _save(out, "phone_deals")
+	m.phone.push("Sen Varo", func(gg): return m.phone.app_by_id("deals").thread(gg, int(o1.id)))
+	await _save(out, "phone_deal_thread")
 	m.phone.close()
+	sf.place_player_at("okka")
+	for i in 5:
+		await physics_frame
+	await _save(out, "deal_marker")
 	g.add_heat(55)
 	m.undock()
 	for i in 90:

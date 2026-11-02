@@ -122,6 +122,48 @@ func _run() -> void:
 	_assert(not m.phone.visible and not gs.paused, "Esc from home closes the phone without pausing")
 	step("com-phone contacts")
 
+	# Deal-O-Matic: a text arrives, accept it in the phone, hand it over in person
+	var Deals = load("res://scripts/core/deals.gd")
+	g.contact_ready_at.erase("okka")
+	var offer: Dictionary = Deals.request(g, "okka")
+	_assert(not offer.is_empty(), "okka texts a request")
+	var deal_key: String = Deals.Mixing.key(offer.base, [g.data.bases[offer.base].innate])
+	g.cargo[deal_key] = int(g.cargo.get(deal_key, 0)) + int(offer.qty)
+	await key(KEY_TAB)
+	var dtile: Button = m.phone.find_child("App_deals", true, false)
+	_assert(dtile != null, "deals app tile")
+	dtile.pressed.emit()
+	await frames(2)
+	var orow: Button = m.phone.find_child("Offer_%d" % int(offer.id), true, false)
+	_assert(orow != null, "request listed in Deal-O-Matic")
+	orow.pressed.emit()
+	await frames(2)
+	var acc: Button = m.phone.find_child("Accept", true, false)
+	_assert(acc != null, "accept button")
+	acc.pressed.emit()
+	await frames(2)
+	_assert(offer.state == "accepted", "request accepted from the phone")
+	_assert(m.phone.find_child("Cancel", true, false) != null, "thread shows the agreed deal")
+	await key(KEY_TAB)
+	_assert(not m.phone.visible, "Tab closes the phone")
+	await frames(2)
+	_assert(sf.npcs.okka.marker, "okka carries the deal marker")
+	sf.place_player_at("okka")
+	await physics_frame
+	await physics_frame
+	_assert(sf.interact(), "talk to okka")
+	await frames(2)
+	var hand: Button = m.station.find_child("HandOver", true, false)
+	_assert(hand != null, "hand-over button in okka's deals panel")
+	var deal_credits_before: int = g.credits
+	hand.pressed.emit()
+	await frames(2)
+	_assert(offer.state == "done" and g.credits == deal_credits_before + int(offer.price) * int(offer.qty), "deal handed over and paid")
+	m.station.close_requested.emit()
+	await frames(2)
+	_assert(not sf.npcs.okka.marker, "marker gone after the deal")
+	step("deal-o-matic")
+
 	# Market & Orders: order from the phone, goods arrive after the delivery time, cancel refunds
 	var credits_start: int = g.credits
 	g.credits = maxi(g.credits, 500)
