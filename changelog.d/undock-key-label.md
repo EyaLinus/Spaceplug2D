@@ -1,1 +1,0 @@
-- **Fix:** The station window's Undock/Leave button now shows the current key binding instead of a hardcoded [E].

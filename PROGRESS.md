@@ -1,5 +1,10 @@
 # Progress log
 
+## Release v0.1.6 (2026-11-02)
+- Phase 2 wave 2 complete: A2 Deal-O-Matic, A3 Market & Orders, B2 ship cargo bay, B1 NPC schedules + day/night.
+  Changelog folded, version 0.1.6 in project.godot and export_presets.cfg. Next: wave 3 (A4 DeadDrops, B3 workers
+  (open PR #30), A5 dealers, A6 galaxy map + jump).
+
 ## B1: NPC schedules on foot (2026-11-02)
 - Surfaces have `spots` (schedule place name → tile, `surfaces.json`). `People.spot(c, spots, hour, slot)` picks the
   spot of the current schedule place, nudged by the person's index on the surface so people sharing a place stand

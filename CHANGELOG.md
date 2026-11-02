@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.6 – 2026-11-02
+- **Living planets:** named people follow their daily schedule on foot (work, market, cantina, home …) and walk there when the hour changes; they stop when you walk up to them. Planets now have a day/night light, and a day starts at 06:00.
+- **Ship cargo bay:** Your ship now has its own estate grid. While docked, take the ramp next to the landing pad (or the "Cargo Bay" tab on stations without a surface) to enter the bay, place lab stations and cook there, even where there is no lab. Closed in flight; old saves get an empty bay.
+- **Deal-O-Matic (Com-Phone app):** customers you know text you requests (drug, amount, price with a 15 % premium). Accept, haggle (+10 % / +25 %, odds shown, better with loyal or hooked customers) or decline. Agreed deals are handed over in person: the customer gets a gold $ marker, talk to them and press Hand over. Missing the meet or a failed haggle costs affinity.
+- **Market & Orders app:** new Com-Phone app. Order cannabis, coca leaf, precursors, additives and flat-packed station kits (15% cheaper than building on site, placed for free in build mode) from anywhere (flight or on foot), pay cost plus a delivery fee (standard or express), and the goods arrive after a countdown in the hub stash or in an estate you own; collect them inside the estate. Open orders can be cancelled (goods refunded, fee lost). Walk-in markets stay cheaper.
+- **Fix:** The station window's Undock/Leave button now shows the current key binding instead of a hardcoded [E].
+
 ## v0.1.5 – 2026-10-30
 - **Visible ship upgrades:** every upgrade you buy at the mechanic now shows on your ship: engine nacelles with extra exhaust flames that burn hotter per level, cargo pods, dark stealth plating and a hydro rig dome. The shipyard shows a large preview of your current ship, and the parked ship on the landing pad changes too.
 - **Lab II – Extractor and Refiner:** two new lab stations with their own minigames. The **Extractor** (weed, cocaine) has you ride a moving temperature profile on a chart recorder; the **Refiner** (cocaine, meth, fentanyl) has you hold a runaway reaction in equilibrium with delayed acid/base doses and a limited reagent supply. Both set the new **purity**, which counts half towards the quality grade, so a Pristine batch now needs a clean extraction or refinement too. The batch summary shows the purity.
