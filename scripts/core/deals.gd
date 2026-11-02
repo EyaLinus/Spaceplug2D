@@ -5,7 +5,7 @@ extends RefCounted
 ## State on Game.offers (saved). Numbers in content.json "deals". Pure functions on a Game, no scene deps.
 ##
 ## offer: {id, contact, base, qty, price (per unit), state, expires_at (total_time), place, countered, msgs: [{me, text}]}
-## state: new (waiting for your answer) | accepted (meet them) | done | declined | expired
+## state: new (waiting for your answer) | accepted (meet them) | dropped (goods wait in a dead drop, deaddrops.gd) | done | declined | expired | stolen
 
 const People = preload("res://scripts/core/people.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
@@ -133,7 +133,7 @@ static func _trim(g) -> void:
 	var keep := int(rules(g).get("history", 12))
 	var closed := 0
 	for i in range(g.offers.size() - 1, -1, -1):
-		if not (g.offers[i].state in OPEN):
+		if not (g.offers[i].state in OPEN) and g.offers[i].state != "dropped":  # "dropped" = waiting at a dead drop
 			closed += 1
 			if closed > keep:
 				g.offers.remove_at(i)

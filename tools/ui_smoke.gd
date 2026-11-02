@@ -220,6 +220,44 @@ func _run() -> void:
 	g.stash.erase("cannabis")
 	step("com-phone orders")
 
+	# DeadDrop: request a drop, leave an agreed deal in it, the customer collects and pays
+	var Deals2 = load("res://scripts/core/deals.gd")
+	var Mixing2 = load("res://scripts/core/mixing.gd")
+	g.data.deaddrops.theft_chance = 0.0
+	g.data.deaddrops.theft_heat = 0.0
+	g.credits = maxi(g.credits, 500)
+	await key(KEY_TAB)
+	var ddtile: Button = m.phone.find_child("App_deaddrop", true, false)
+	_assert(ddtile != null, "deaddrop app tile")
+	ddtile.pressed.emit()
+	await frames(2)
+	_assert(m.phone.current_title() == "DeadDrop", "deaddrop app opens")
+	var dropreq: Button = m.phone.find_child("DropRequest_mireth", true, false)
+	_assert(dropreq != null and not dropreq.disabled, "drop request button")
+	dropreq.pressed.emit()
+	await frames(2)
+	_assert(g.drops.size() == 1, "drop requested")
+	var doffer: Dictionary = Deals2.request(g, "okka")
+	Deals2.accept(g, doffer.id)
+	var dkey: String = Mixing2.key(doffer.base, [g.data.bases[doffer.base].innate])
+	g.cargo[dkey] = int(doffer.qty)
+	await frames(3)
+	var ddeal: Button = m.phone.find_child("DropDeal_%d" % int(doffer.id), true, false)
+	_assert(ddeal != null and not ddeal.disabled, "drop-off button for the deal")
+	var dcredits: int = g.credits
+	ddeal.pressed.emit()
+	await frames(2)
+	_assert(doffer.state == "dropped", "goods left in the drop")
+	g.tick(40.0)
+	await frames(2)
+	_assert(doffer.state == "done" and g.credits >= dcredits + int(doffer.price) * int(doffer.qty), "customer collected and paid")
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	_assert(not m.phone.visible, "phone closes after deaddrop")
+	g.drops.clear()
+	g.credits = credits_start
+	step("com-phone deaddrop")
+
 	# police on foot: an officer looking at you while you carry product frisks and busts you
 	_assert(sf.officers.size() == g.police_on_foot(1.0) and sf.officers.size() > 0, "officers on Mireth")
 	var cop = sf.officers[0]

@@ -11,6 +11,7 @@ const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Orders = preload("res://scripts/core/orders.gd")
+const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -45,6 +46,9 @@ var order_seq: int = 0
 var estate_stock: Dictionary = {}  ## estate id -> item -> qty delivered there, unloaded by collect_stash() inside
 var kits: Dictionary = {}  ## station id -> flat-packed kits delivered by phone order, placed for free in build mode
 var orders_unseen: int = 0  ## deliveries since the Orders app was last opened (runtime only)
+var drops: Array = []  ## dead drops you requested (see deaddrops.gd)
+var next_drop_id: int = 0
+var drops_unseen: int = 0  ## finished drop jobs since the DeadDrop app was opened (runtime only)
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 
 
@@ -78,6 +82,9 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	estate_stock = {}
 	kits = {}
 	orders_unseen = 0
+	drops = []
+	next_drop_id = 0
+	drops_unseen = 0
 	demand = {}
 	for loc in data.locations:
 		demand[loc] = {}
@@ -252,6 +259,7 @@ func tick(dt: float) -> void:
 	_tick_demand(dt)
 	Deals.tick(self, dt)
 	Orders.tick(self)
+	Deaddrops.tick(self)
 	while day_time >= day_seconds():
 		day_time -= day_seconds()
 		_new_day()
@@ -684,7 +692,7 @@ func to_dict() -> Dictionary:
 		"next_offer_id": next_offer_id, "offer_clock": snappedf(offer_clock, 0.01), "upgrades": upgrades.duplicate(),
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
-		"kits": kits.duplicate(),
+		"kits": kits.duplicate(), "drops": drops.duplicate(true), "next_drop_id": next_drop_id,
 	}
 
 
@@ -739,6 +747,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	if not estates.has(SHIP_BAY):
 		estates[SHIP_BAY] = {"buildings": []}
 	Orders.from_save(self, d)
+	Deaddrops.from_save(self, d)
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 
