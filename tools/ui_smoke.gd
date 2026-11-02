@@ -5,6 +5,8 @@ extends SceneTree
 ## pauses, saves/loads and reaches both end screens. Any GDScript error shows up as "SCRIPT ERROR" (CI greps for it).
 ## godot --headless --path . -s res://tools/ui_smoke.gd
 
+const Combat = preload("res://scripts/core/combat.gd")
+
 var steps := 0
 
 
@@ -30,6 +32,11 @@ func key(code: Key) -> void:
 		Input.parse_input_event(ev)
 		await process_frame
 	await process_frame
+
+
+func pframes(n: int) -> void:
+	for i in n:
+		await physics_frame
 
 
 func frames(n: int) -> void:
@@ -241,7 +248,7 @@ func _run() -> void:
 	# a chasing officer walks around the hangar instead of through it
 	var hang: Rect2 = sf._rect(sf.cfg.buildings[0].rect)
 	g.cargo["weed:glow"] = 1
-	g.heat = 60.0
+	g.heat = 45.0  # chasing, but below the heat where officers draw their weapons (combat.officer.draw_heat)
 	sf.player.position = Vector2(hang.get_center().x, hang.end.y + 24.0)
 	cop.position = Vector2(hang.get_center().x, hang.position.y - 20.0)
 	cop.chasing = true
@@ -263,6 +270,118 @@ func _run() -> void:
 	cop.speed = float(gs.data.police.speed)
 	cop.path = []
 	step("police pathfinding")
+
+	# ground combat: aim, fire, cover, armed officers, knock-out, weapon wheel
+	sf.use_mouse = false
+	for o in sf.officers:
+		o.pick_next = Callable()
+		o.path = []
+		o.chasing = false
+	_assert(sf.covers.size() >= 3 and sf._bullet_blockers.size() >= sf.covers.size() + sf.cfg.buildings.size(), "Mireth has cover pieces that stop bullets")
+	var cop2 = sf.officers[0]
+	var hp0: float = cop2.hp
+	g.heat = 0.0
+	g.credits = 5000
+	g.hp = Combat.max_hp(g)
+	var cv: Rect2 = sf.covers[0]
+	var ctr := cv.get_center()
+	var side := Vector2(130, 0) if cv.size.x >= cv.size.y else Vector2(0, 130)
+	sf.player.position = ctr - side
+	cop2.position = ctr + side
+	sf.aim_point = cop2.position
+	g.cooldown = 0.0
+	_assert(sf.shoot(), "pistol shot leaves the muzzle")
+	await pframes(40)
+	_assert(cop2.hp == hp0 and sf.bullets.is_empty(), "cover stops the bullet (officer hp %.0f/%.0f)" % [cop2.hp, hp0])
+	_assert(not cop2.provoked, "an officer behind cover is not provoked")
+	sf.player.position = ctr - side + side.orthogonal().normalized() * 70.0
+	cop2.position = ctr + side + side.orthogonal().normalized() * 70.0
+	sf.aim_point = cop2.position
+	g.cooldown = 0.0
+	var ammo0: int = g.ammo.pistol
+	_assert(sf.shoot() and g.ammo.pistol == ammo0 - 1, "a shot costs a round")
+	await pframes(40)
+	_assert(cop2.hp < hp0 and cop2.provoked, "a clear shot hurts the officer and provokes him (hp %.0f)" % cop2.hp)
+	_assert(g.heat >= float(gs.data.combat.officer.hit_heat), "shooting an officer raises heat")
+	# real mouse button + reload key through the input system
+	g.cooldown = 0.0
+	g.reload_left = 0.0
+	var mb := InputEventMouseButton.new()
+	mb.button_index = MOUSE_BUTTON_LEFT
+	mb.pressed = true
+	Input.parse_input_event(mb)
+	await pframes(2)
+	mb = InputEventMouseButton.new()
+	mb.button_index = MOUSE_BUTTON_LEFT
+	mb.pressed = false
+	Input.parse_input_event(mb)
+	await pframes(2)
+	_assert(g.ammo.pistol <= ammo0 - 2, "left mouse button fires (ammo %d)" % g.ammo.pistol)
+	await key(KEY_R)
+	_assert(g.reload_left > 0.0, "R starts a reload")
+	await pframes(90)
+	_assert(g.ammo.pistol == 12 and g.reload_left == 0.0, "reload finishes")
+	# armed officer shoots back; knock-out wakes the player at the pad
+	g.heat = 70.0
+	cop2.hp = cop2.max_hp
+	cop2.provoked = false
+	sf.player.position = Vector2(14 * 32, 16.5 * 32)
+	cop2.position = sf.player.position + Vector2(160, 0)
+	cop2.facing = Vector2.LEFT
+	cop2.fire_cd = 0.0
+	var hp1: float = g.hp
+	for i in 240:
+		cop2.position = sf.player.position + Vector2(160, 0)
+		await physics_frame
+		if g.hp < hp1:
+			break
+	_assert(cop2.armed and g.hp < hp1, "an officer draws and shoots at high heat (hp %.0f)" % g.hp)
+	g.cargo["weed:glow"] = 3
+	g.hp = 1.0
+	var ko0: int = g.stats.knockouts
+	var credits0: int = g.credits
+	for i in 300:
+		cop2.position = sf.player.position + Vector2(160, 0) if g.stats.knockouts == ko0 else Vector2(40 * 32, 5 * 32)
+		await physics_frame
+		if g.stats.knockouts > ko0:
+			break
+	_assert(g.stats.knockouts == ko0 + 1 and g.credits < credits0 and not g.has_contraband(), "knocked out: fined, product gone")
+	_assert(g.hp == Combat.max_hp(g) * float(gs.data.combat.player.ko_hp_ratio), "wakes up half healthy")
+	_assert(sf.player.position.distance_to(sf.interactable("pad").stand) < 1.0, "wakes up at the launch pad")
+	# officer kill
+	for o in sf.officers:
+		o.position = Vector2(40 * 32, 5 * 32)
+		o.hold = true
+	g.heat = 0.0
+	cop2 = sf.officers[0]
+	cop2.hp = 5.0
+	cop2.provoked = false
+	var kills0: int = g.stats.kills
+	sf.player.position = Vector2(14 * 32, 16.5 * 32)
+	cop2.position = sf.player.position + Vector2(100, 0)
+	sf.aim_point = cop2.position
+	g.cooldown = 0.0
+	sf.shoot()
+	await pframes(20)
+	_assert(g.stats.kills == kills0 + 1 and not sf.officers.has(cop2), "an officer can be shot down")
+	# weapon wheel: buy and equip the smg
+	g.credits = 5000
+	sf.open_wheel()
+	_assert(sf.wheel_open, "weapon wheel opens")
+	sf.wheel_sel = 1
+	sf.close_wheel(true)
+	_assert(not sf.wheel_open and g.weapon == "smg" and g.weapons.has("smg") and g.credits == 5000 - int(gs.data.combat.weapons.smg.price), "wheel buys and equips the smg")
+	await key(KEY_1)
+	_assert(g.weapon == "pistol", "key 1 equips the pistol")
+	g.hp = Combat.max_hp(g)
+	g.heat = 0.0
+	g.cargo.erase("weed:glow")
+	sf.bullets.clear()
+	for o in sf.officers:
+		o.hold = false
+		o.pick_next = sf._walker_path
+	sf.use_mouse = true
+	step("ground combat")
 
 	# estates: buy the Cannery Annex, go inside, place a station, open it, leave
 	g.credits = 99999
