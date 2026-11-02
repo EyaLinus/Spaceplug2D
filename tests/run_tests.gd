@@ -7,6 +7,8 @@ const Data = preload("res://scripts/core/data.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const Deals = preload("res://scripts/core/deals.gd")
+const Orders = preload("res://scripts/core/orders.gd")
 const ArtReg = preload("res://scripts/core/art.gd")
 
 var data: Dictionary
@@ -23,6 +25,9 @@ func _init() -> void:
 		"test_police_on_foot",
 		"test_estates",
 		"test_ship_bay",
+		"test_orders",
+		"test_order_kits",
+		"test_orders_save",
 		"test_mixing_rules",
 		"test_buy_and_cargo_limit",
 		"test_lab_batch",
@@ -34,6 +39,9 @@ func _init() -> void:
 		"test_people_profiles",
 		"test_people_deals",
 		"test_people_save",
+		"test_deal_requests",
+		"test_deal_answers",
+		"test_deal_fulfill",
 		"test_market_saturation_recovers",
 		"test_heat_and_patrols",
 		"test_galaxy_and_jump",
@@ -311,6 +319,124 @@ func test_ship_bay() -> void:
 	check(g.lab_here() and g.missing_stations("weed", []).size() > 0, "ship bay is a lab at Cinder")
 
 
+func test_orders() -> void:
+	var rules: Dictionary = data.orders
+	for k in ["markup", "fee_pct", "fee_min", "express_fee_mult", "seconds", "far_seconds", "max_qty", "max_open", "cancel_refund"]:
+		check(rules.has(k), "orders rule %s exists" % k)
+	check(float(rules.seconds.express) < float(rules.seconds.standard), "express is faster")
+	var g := new_game()
+	g.credits = 5000
+	var cat: Array = Orders.catalog(g)
+	check(cat.size() == data.raws.size() + data.additives.size() + data.buildables.size(), "catalog lists raws, additives and station kits")
+	for e in cat:
+		if e.kind == "kit":
+			continue
+		var walk_in := 999999
+		for loc in data.locations:
+			var p: int = g.buy_price(e.item, loc)
+			if p >= 0:
+				walk_in = mini(walk_in, p)
+		check(Orders.unit_price(g, e.item) > walk_in, "%s is dearer by phone than walking in" % e.item)
+	check(Orders.unit_price(g, "nope") < 0, "unknown item has no price")
+	var q: Dictionary = Orders.quote(g, "cannabis", 10, "stash", false)
+	check(q.ok and q.total == q.cost + q.fee and q.fee >= int(rules.fee_min), "quote adds a fee: %s" % [q])
+	var qx: Dictionary = Orders.quote(g, "cannabis", 10, "stash", true)
+	check(qx.fee > q.fee and qx.seconds < q.seconds, "express costs more and arrives sooner")
+	check(not Orders.quote(g, "cannabis", 0, "stash", false).ok, "zero quantity refused")
+	check(not Orders.quote(g, "cannabis", int(rules.max_qty) + 1, "stash", false).ok, "over max quantity refused")
+	check(not Orders.quote(g, "cannabis", 5, "cannery_annex", false).ok, "can't deliver to an estate you don't own")
+	check(not Orders.quote(g, "nope", 5, "stash", false).ok, "unknown item refused")
+	# order from anywhere (even in flight); the goods come later
+	g.location = ""
+	var before: int = g.credits
+	var r: Dictionary = Orders.place(g, "cannabis", 10, "stash", false)
+	check(r.ok and g.credits == before - q.total, "ordering charges cost + fee")
+	check(g.orders.size() == 1 and g.stash.get("cannabis", 0) == 0, "goods are not there yet")
+	g.tick(float(rules.seconds.standard) - 1.0)
+	check(g.orders.size() == 1, "still in transit")
+	g.tick(2.0)
+	check(g.orders.is_empty() and g.stash.get("cannabis", 0) == 10, "delivered to the stash")
+	check(g.orders_unseen == 1, "delivery counted as unseen")
+	# estate delivery lands in the estate, collected when you stand inside
+	g.credits = 20000
+	g.location = "mireth"
+	g.buy_estate("cannery_annex")
+	g.location = ""
+	check(Orders.destinations(g).size() == 2, "stash plus the owned estate")
+	var far: Dictionary = Orders.quote(g, "nanoflux", 5, "cannery_annex", false)
+	check(far.ok, "estate destination accepted")
+	check(Orders.place(g, "nanoflux", 5, "cannery_annex", true).ok, "order to the estate")
+	g.tick(float(rules.seconds.express) + 1.0)
+	check(int(g.estate_stock.get("cannery_annex", {}).get("nanoflux", 0)) == 5, "arrived in the estate stock")
+	g.stash = {}
+	g.inside_estate = "cannery_annex"
+	check(g.collect_stash().ok and g.cargo.get("nanoflux", 0) == 5 and g.estate_stock.get("cannery_annex", {}).is_empty(), "collect unloads the estate stock into the hold")
+	g.inside_estate = ""
+	# limits, funds, cancel
+	g.credits = 5
+	check(not Orders.place(g, "cannabis", 10, "stash", false).ok, "not enough credits")
+	g.credits = 5000
+	for i in int(rules.max_open):
+		check(Orders.place(g, "nanoflux", 1, "stash", false).ok, "order %d" % i)
+	check(not Orders.place(g, "nanoflux", 1, "stash", false).ok, "too many open orders")
+	var first: Dictionary = g.orders[0]
+	before = g.credits
+	check(Orders.cancel(g, int(first.id)).ok and g.orders.size() == int(rules.max_open) - 1, "cancel removes the order")
+	check(g.credits == before + int(round(int(first.cost) * float(rules.cancel_refund))), "cancel refunds the goods minus the fee")
+	check(not Orders.cancel(g, 9999).ok, "unknown order can't be cancelled")
+
+
+func test_order_kits() -> void:
+	var g := new_game()
+	g.credits = 10000
+	var kit_price: int = Orders.unit_price(g, "kit:cook_stove")
+	check(kit_price > 0 and kit_price < int(data.buildables.cook_stove.cost), "kit is cheaper than building on site")
+	check(Orders.unit_price(g, "kit:nope") < 0, "unknown kit has no price")
+	check(g.item_name("kit:cook_stove") == "Cook Stove kit", "kit name")
+	check(Orders.place(g, "kit:cook_stove", 2, "stash", false).ok, "order two stove kits")
+	g.tick(float(data.orders.seconds.standard) + 1.0)
+	check(int(g.kits.get("cook_stove", 0)) == 2 and not g.stash.has("kit:cook_stove"), "kits delivered to the kit shelf, not the stash")
+	g.buy_estate("cannery_annex")
+	var before: int = g.credits
+	check(g.place_building("cannery_annex", "cook_stove", 0, 0).ok and g.credits == before, "placing with a kit is free")
+	check(int(g.kits.cook_stove) == 1, "one kit used")
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(int(h.kits.get("cook_stove", 0)) == 1, "kits survive save/load")
+	g.place_building("cannery_annex", "cook_stove", 3, 0)
+	before = g.credits
+	check(g.place_building("cannery_annex", "cook_stove", 5, 0).ok and g.credits == before - int(data.buildables.cook_stove.cost), "without kits you pay again")
+
+
+func test_orders_save() -> void:
+	var g := new_game()
+	g.credits = 5000
+	Orders.place(g, "cannabis", 6, "stash", false)
+	g.estates["cannery_annex"] = {"buildings": []}
+	g.estate_stock = {"cannery_annex": {"nanoflux": 3}}
+	var json := JSON.stringify(g.to_dict())
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(json))
+	check(h.orders.size() == 1 and int(h.orders[0].qty) == 6 and h.orders[0].dest == "stash", "open orders survive save/load")
+	check(int(h.estate_stock.cannery_annex.nanoflux) == 3, "estate stock survives save/load")
+	check(JSON.stringify(h.to_dict()) == json, "save with orders is stable")
+	h.tick(500.0)
+	check(h.stash.get("cannabis", 0) == 6, "restored order still delivers")
+	var d := new_game().to_dict()
+	d.erase("orders")
+	d.erase("estate_stock")
+	var old := Game.new()
+	old.from_dict(data, d)
+	check(old.orders.is_empty() and old.estate_stock.is_empty(), "old saves load without orders")
+	# a saved order for an estate that no longer exists is dropped, goods go to the stash
+	var d2 := new_game().to_dict()
+	d2.orders = [{"id": 1, "item": "cannabis", "qty": 2, "dest": "ghost_estate", "due": 5.0, "cost": 20, "fee": 12, "express": false}]
+	var h2 := Game.new()
+	h2.from_dict(data, d2)
+	h2.tick(10.0)
+	check(h2.stash.get("cannabis", 0) == 2, "unknown destination falls back to the stash")
+
+
 func test_mixing_rules() -> void:
 	check(Mixing.traits_for(data, "weed", []) == ["glow"], "plain weed has glow")
 	# nanoflux turns glow into radiant and adds overclock
@@ -540,6 +666,107 @@ func test_people_save() -> void:
 	var g3 := Game.new()
 	g3.from_dict(data, d)
 	check(g3.people.has("marta") and g3.people.okka.history.is_empty(), "old save without people gets defaults")
+
+
+func test_deal_requests() -> void:
+	var g := new_game()
+	check(g.offers.is_empty(), "no requests at start")
+	for i in 40:
+		g.tick(10.0)
+	check(not g.offers.is_empty(), "known customers text requests over time")
+	var ids := {}
+	for o in g.offers:
+		check(g.people[o.contact].known, "only known people text (%s)" % o.contact)
+		check(o.base in g.contact(o.contact).prefers, "request for a preferred drug")
+		check(int(o.qty) >= 1 and int(o.qty) <= People.max_units(g, o.contact), "request size within deal size")
+		check(not ids.has(o.id), "offer ids unique")
+		ids[o.id] = true
+	var open := 0
+	for o in g.offers:
+		if o.state in Deals.OPEN:
+			open += 1
+	check(open <= int(data.deals.max_open), "open requests capped")
+	# unanswered requests expire
+	var g2 := new_game()
+	var o2: Dictionary = Deals.request(g2, "okka")
+	check(not o2.is_empty() and o2.state == "new", "manual request")
+	check(int(o2.price) > g2.sell_price("weed:glow", "okka", "mireth"), "texted price includes the premium")
+	g2.tick(float(data.deals.answer_seconds) + 1.0)
+	check(o2.state == "expired", "unanswered request expires")
+
+
+func test_deal_answers() -> void:
+	var g := new_game()
+	var o: Dictionary = Deals.request(g, "sen")
+	var aff0: float = g.people.sen.affinity
+	check(Deals.decline(g, o.id).ok and o.state == "declined", "decline")
+	check(g.people.sen.affinity < aff0, "declining costs a little affinity")
+	o = Deals.request(g, "sen")
+	check(Deals.accept(g, o.id).ok and o.state == "accepted", "accept")
+	check(float(o.expires_at) > g.total_time + 100.0, "meet window set")
+	check(o.msgs.size() >= 3, "conversation recorded")
+	# counter odds: small raises are likelier, loyal and hooked customers pay more
+	check(Deals.counter_chance(g, "okka", 0.1) > Deals.counter_chance(g, "okka", 0.25), "bigger raise, lower odds")
+	g.people.okka.affinity = 1.0
+	g.people.okka.addiction = 1.0
+	check(Deals.counter_chance(g, "okka", 0.25) > 0.6, "loyal + hooked customer usually accepts")
+	var accepted := 0
+	var refused := 0
+	for i in 30:
+		var gg := new_game()
+		gg.rng.seed = i
+		var oo: Dictionary = Deals.request(gg, "teo")
+		var p0: int = oo.price
+		var r: Dictionary = Deals.counter(gg, oo.id, 0.1)
+		if r.ok:
+			accepted += 1
+			check(oo.state == "accepted" and oo.price > p0, "counter accepted raises the price")
+		else:
+			refused += 1
+			check(oo.state == "new" and oo.price == p0 and oo.countered, "refused counter keeps the price")
+			check(not Deals.counter(gg, oo.id, 0.1).ok, "only one counter")
+	check(accepted > 0 and refused > 0, "counter outcome varies (%d/%d)" % [accepted, refused])
+	# an accepted deal you never deliver costs more affinity
+	var g3 := new_game()
+	var o3: Dictionary = Deals.request(g3, "okka")
+	Deals.accept(g3, o3.id)
+	var a3: float = g3.people.okka.affinity
+	g3.tick(float(data.deals.meet_seconds) + 1.0)
+	check(o3.state == "expired" and g3.people.okka.affinity < a3 + float(data.deals.affinity_noshow) * 0.5, "no-show hurts")
+
+
+func test_deal_fulfill() -> void:
+	var g := new_game()
+	g.location = "cinder"
+	var o: Dictionary = Deals.request(g, "okka")
+	Deals.accept(g, o.id)
+	var key := Mixing.key(o.base, [data.bases[o.base].innate])
+	g.cargo[key] = int(o.qty) + 2
+	check(not Deals.fulfill(g, o.id, key).ok, "must meet on their planet")
+	g.location = "mireth"
+	check(Deals.agreed_at(g, "mireth").has(o), "agreed deal listed at the meet planet")
+	var wrong := "cocaine:crisp" if o.base != "cocaine" else "weed:glow"
+	g.cargo[wrong] = 10
+	check(not Deals.fulfill(g, o.id, wrong).ok, "wrong drug refused")
+	var credits0 := g.credits
+	var hist0: int = g.people.okka.history.size()
+	var r: Dictionary = Deals.fulfill(g, o.id, key)
+	check(r.ok, "hand over: %s" % r.msg)
+	check(g.credits == credits0 + int(o.price) * int(o.qty), "paid the agreed price")
+	check(int(g.cargo[key]) == 2 and o.state == "done", "units handed over, deal done")
+	check(g.people.okka.history.size() == hist0 + 1, "deal in history")
+	check(not Deals.fulfill(g, o.id, key).ok, "can't deliver twice")
+	# save roundtrip keeps the conversation
+	var o2: Dictionary = Deals.request(g, "sen")
+	var d: Dictionary = JSON.parse_string(JSON.stringify(g.to_dict()))
+	var g2 := Game.new()
+	g2.from_dict(data, d)
+	check(g2.offers.size() == g.offers.size() and Deals.find(g2, o2.id).state == "new", "offers survive save")
+	check(Deals.accept(g2, int(o2.id)).ok, "loaded offer can be answered")
+	d.erase("offers")
+	var g3 := Game.new()
+	g3.from_dict(data, d)
+	check(g3.offers.is_empty(), "old save without offers")
 
 
 func test_sell_contact_and_fence() -> void:

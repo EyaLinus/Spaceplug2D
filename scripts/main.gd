@@ -14,6 +14,7 @@ const PauseMenuScript = preload("res://scripts/ui/menu/pause_menu.gd")
 const SlotPanelScript = preload("res://scripts/ui/menu/slot_panel.gd")
 const SettingsPanelScript = preload("res://scripts/ui/menu/settings_panel.gd")
 const PhoneScript = preload("res://scripts/ui/phone/phone.gd")
+const Deals = preload("res://scripts/core/deals.gd")
 
 ## Which station tab a surface interaction opens.
 const SURFACE_TABS := {"market": "Market", "lab": "Lab", "shipyard": "Shipyard", "office": "Office", "deal": "Deals", "fence": "Deals"}
@@ -428,6 +429,11 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 			_end_label.text = "THE CONSORTIUM CAME TO COLLECT\n\nYou still owed %d cr on day %d.\nEarned %d cr, moved %d units, busted %d×." % [g.debt, g.day, g.stats.earned, g.stats.units_sold, g.stats.busts]
 		end_screen.visible = true
 		GameState.save_game()
+	elif kind == "offer_new":
+		var o: Dictionary = Deals.find(GameState.game, p.offer)
+		EventBus.toast.emit("%s wants %d %s. [%s] Deal-O-Matic" % [GameState.game.contact(p.contact).name, o.qty, GameState.data.bases[o.base].name, Settings.key_label("phone")], true)
+	elif kind == "offer_expired" and p.was == "accepted":
+		EventBus.toast.emit("You missed the meet with %s." % GameState.game.contact(p.contact).name, false)
 	elif kind == "met":
 		EventBus.toast.emit("New contact: %s. Open the Com-Phone [%s]." % [GameState.game.contact(p.contact).name, Settings.key_label("phone")], true)
 	elif kind == "busted":

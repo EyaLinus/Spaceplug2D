@@ -161,6 +161,11 @@
     "preferred_bonus": 0.1,
     "history_len": 8
   },
+  "deals": {
+    "interval": 40, "chance": 0.3, "max_open": 3, "answer_seconds": 90, "meet_seconds": 150, "premium": 0.15,
+    "accept_base": 0.8, "accept_per_raise": 2.6, "accept_affinity": 0.4, "accept_addiction": 0.4,
+    "affinity_decline": -0.02, "affinity_counter_fail": -0.03, "affinity_noshow": -0.08, "heat_mult": 0.8, "history": 12
+  },
   "upgrades": {
     "cargo": {"name": "Cargo Hold", "levels": [20, 35, 55, 80], "costs": [600, 1500, 3500]},
     "engine": {"name": "Ion Engine", "levels": [1.0, 1.25, 1.5, 1.8], "costs": [500, 1400, 3000]},
@@ -246,6 +251,11 @@
     "cook_stove": {"cost": 400, "size": [2, 2]},
     "refiner": {"cost": 550, "size": [2, 2]},
     "pack_table": {"cost": 250, "size": [2, 1]}
+  },
+  "orders": {
+    "markup": 0.35, "fee_pct": 0.06, "fee_min": 12, "express_fee_mult": 2.0,
+    "seconds": {"standard": 90, "express": 30}, "far_seconds": 60,
+    "max_qty": 40, "max_open": 6, "cancel_refund": 0.8, "kit_price": 0.85
   },
   "estate_refund": 0.5
 }

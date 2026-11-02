@@ -11,6 +11,39 @@
 - Verified: unit tests (new `test_ship_bay`), UI smoke (ramp, place, leave), menu smoke, sim 5/5 won.
 - Gaps: size does not grow with the cargo upgrade; no generator/crate buildables yet (needs the production-buildings
   milestone); the ramp has no art, only an interaction label.
+## A2: Deal-O-Matic (2026-11-02)
+- **Core** `scripts/core/deals.gd`, state `Game.offers` (+ `next_offer_id`, `offer_clock`, saved; old saves start empty).
+  Every 40 s each known customer without an open deal may text (chance 0.3 × (0.5 + addiction), max 3 open):
+  a preferred drug, qty within deal size and today's budget, price = their Standard price + 15 % premium.
+  Accept → 150 s to meet them; counter +10/+25 % once (chance 0.8 − 2.6 × raise + 0.4 × affinity + 0.4 × addiction);
+  decline −0.02 affinity, failed counter −0.03, no-show −0.08. Fulfil in person: any product of the right drug,
+  heat × 0.8 vs. a walk-up sale. Rules in `content.json` → `deals`.
+- **Phone app** `apps/deals_app.gd`: threads sorted new → agreed → closed, chat bubbles, Accept / +10 % / +25 % /
+  Decline with shown odds, agreed deals show where to meet, time left and whether the hold has enough.
+- **On foot:** customers with an agreed deal carry a gold "$"; their Deals panel has a Hand over button.
+  Toasts for new requests and missed meets.
+- Verified: 1078 unit checks (request rules, expiry, decline/accept/counter odds and outcomes, no-show, fulfil rules,
+  save), UI smoke drives text → phone accept → marker → hand over, menu smoke, sim 5/5 (bot ignores texts),
+  screenshots of list, thread and marker checked.
+- Deviations/gaps: the meeting point is the customer on their planet, not a separate spot (dead drops are A4); the
+  walk-up Deals panel stays as a fallback; the balance bot does not use texts yet; prices are eyeballed.
+## A3: Market & Orders app (2026-11-02)
+- **Core** `scripts/core/orders.gd`, state on `Game`: `orders` (open, saved), `order_seq`, `estate_stock` (estate id -> items, saved),
+  `orders_unseen` (runtime, app badge). Phone price = cheapest walk-in price anywhere + 35% markup, plus a delivery fee
+  (6%, min 12 cr; express x2 fee, 30 s instead of 90 s; +60 s to estates outside the start system). Max 40 per order, 6 open
+  orders. Goods arrive via `Game.tick` in the hub stash or an owned estate's stock; `collect_stash()` inside the estate
+  unloads that stock into the stash first, then loads the hold. Cancel refunds 80% of the goods, fee is lost. Rules in
+  `content.json` -> `orders`. Old saves load with no orders; orders for unknown estates fall back to the stash.
+- **Phone app** `apps/orders_app.gd` (one line in `registry.gd`): destination picker, standard/express, per-item qty
+  stepper (Shift = 5) with live total, in-transit list with countdown and cancel, badge for new deliveries. HUD toast and
+  sound on delivery.
+- **Station kits** (lab expansions): every buildable can be ordered as `kit:<station>` for 85% of the on-site build
+  cost (`orders.kit_price`). Kits land in `Game.kits` (saved), the estate build menu shows "Kit ×N" and
+  `place_building` uses a kit instead of credits.
+- Verified: unit tests (new `test_orders`, `test_order_kits`, `test_orders_save`), UI smoke (order from the phone,
+  delivery, cancel), menu smoke, sim 4/4 won.
+- Gaps: no price history or per-planet stock, delivery time is flat per speed, estate stock is not shown inside the
+  estate UI except via [collect]. Kits can't be ordered to a specific estate (they are a global shelf).
 
 ## Release v0.1.5 (2026-10-30)
 - Phase 2 wave 1 complete: A1 Com-Phone + Contacts, D1 Kovar system (Varrow, Glacis), C1 Extractor/Refiner, E3 visible

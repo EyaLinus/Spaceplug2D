@@ -9,6 +9,7 @@ const Mixing = preload("res://scripts/core/mixing.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const Deals = preload("res://scripts/core/deals.gd")
 const RunnerScript = preload("res://scripts/ui/minigames/minigame_runner.gd")
 const ShipPreview = preload("res://scripts/ui/ship_preview.gd")
 
@@ -298,6 +299,24 @@ func _chosen_additives() -> Array:
 
 # ---------------------------------------------------------------- deals
 
+## The deal agreed over the Deal-O-Matic with this person: hand it over here.
+func _add_agreed_deal(g, box: VBoxContainer, c: Dictionary) -> void:
+	var o: Dictionary = Deals.open_for(g, c.id)
+	if o.is_empty() or o.state != "accepted":
+		return
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	h.add_child(UI.label("Agreed: %d × %s for %d cr each" % [o.qty, g.data.bases[o.base].name, o.price], 16, UI.GOLD))
+	var have: Array = Deals.matching_products(g, o)
+	if have.is_empty():
+		h.add_child(UI.label("(you don't carry enough)", 15, UI.WARN))
+	for k in have:
+		var b := UI.button("Hand over %s" % g.item_name(k), func(): GameState.act(Deals.fulfill(g, int(o.id), k)), 120)
+		b.name = "HandOver"
+		h.add_child(b)
+	box.add_child(h)
+
+
 func _build_deals(g) -> Control:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
@@ -329,6 +348,8 @@ func _build_deals(g) -> Control:
 		if not ready:
 			head += "  · back in %ds" % int(float(g.contact_ready_at[c.id]) - g.total_time)
 		box.add_child(UI.label(head, 17, UI.ACCENT if ready else UI.MUTED))
+		if c.id != "":
+			_add_agreed_deal(g, box, c)
 		for k in products:
 			var p := Mixing.parse_key(k)
 			if not g.demand.get(g.location, {}).has(p.base):
@@ -384,14 +405,15 @@ func _build_build_menu(g) -> Control:
 		var name_l := UI.label(st.name, 17)
 		name_l.tooltip_text = st.get("hint", "")
 		gr.add_child(name_l)
-		gr.add_child(UI.label("%d cr" % int(bd.cost), 16, UI.GOLD))
+		var kit_n := int(g.kits.get(k, 0))
+		gr.add_child(UI.label(("Kit ×%d" % kit_n) if kit_n > 0 else "%d cr" % int(bd.cost), 16, UI.ACCENT if kit_n > 0 else UI.GOLD))
 		gr.add_child(UI.label("%d × %d · %s" % [int(bd.size[0]), int(bd.size[1]), st.affects], 15, UI.MUTED))
 		var b := UI.button("Place", func(): place_requested.emit(k), 80)
-		b.disabled = g.credits < int(bd.cost)
+		b.disabled = g.credits < int(bd.cost) and kit_n <= 0
 		gr.add_child(b)
 	var v := VBoxContainer.new()
 	v.add_child(gr)
-	v.add_child(UI.label("Pick a station, then walk to a free spot: it goes on the cells in front of you. Cooking with your own stations comes next.", 14, UI.MUTED))
+	v.add_child(UI.label("Pick a station, then walk to a free spot: it goes on the cells in front of you. Station kits ordered in the phone's Orders app are placed for free.", 14, UI.MUTED))
 	return v
 
 
