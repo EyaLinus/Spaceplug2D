@@ -20,7 +20,7 @@ shows "Windows protected your PC" → *More info* → *Run anyway*).
 | Space | Brake |
 | E | Dock / undock (when in range) |
 | Esc / P | Pause menu (save, sound, main menu) |
-| Tab | Com-Phone (contacts; works in flight and on foot, Esc steps back) |
+| Tab | Com-Phone (contacts, orders, galaxy map; works in flight and on foot, Esc steps back) |
 
 **On a planet (on foot)**
 | Key | Action |
@@ -55,6 +55,7 @@ shows "Windows protected your PC" → *More info* → *Run anyway*).
 ## Architecture
 ```
 scripts/core/       headless simulation, no Node dependencies (testable)
+  galaxy.gd         lanes, route planning, heat/price overlays and the jump drive charge (phone Map app)
   game.gd           state + actions (buy, cook, sell, upgrade, bribe, bust, debt), tick(), save/load
   mixing.gd         recipe → traits → product key/value
   data.gd           loads data/content.json

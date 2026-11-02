@@ -135,6 +135,40 @@ func _run() -> void:
 		m.world.ship.steer(1.0 / 60.0, true, false)
 		await physics_frame
 	await _save(out, "flight")
+	# galaxy map app: heat overlay with a planned route, price overlay, price comparison, charging, hyperspace
+	m.toggle_phone()
+	m.phone.open_app("map")
+	m.phone.find_child("MapSys_kovar", true, false).pressed.emit()
+	for i in 4:
+		await physics_frame
+	await _save(out, "phone_map_heat")
+	m.phone.find_child("MapMode_price", true, false).pressed.emit()
+	for i in 4:
+		await physics_frame
+	await _save(out, "phone_map_price")
+	m.phone.push("Prices", func(gg): return m.phone.app_by_id("map")._prices(gg))
+	for i in 4:
+		await physics_frame
+	await _save(out, "phone_map_prices")
+	m.phone.home()
+	m.phone.open_app("map")
+	m.phone.find_child("MapMode_heat", true, false).pressed.emit()
+	m.phone.find_child("MapJump", true, false).pressed.emit()
+	g.tick(g.jump_plan.need * 0.6)
+	for i in 6:
+		await physics_frame
+	await _save(out, "jump_charging")
+	m.phone.close()
+	g.tick(30.0)
+	for i in 4:
+		await physics_frame
+	await _save(out, "jump_hyperspace")
+	await create_timer(2.5).timeout
+	await _save(out, "jump_arrived")
+	m.phone.close()
+	m.hyper.burst = 0.0
+	m.dock("kovar_gate")
+	await create_timer(2.5).timeout
 	# fully upgraded ship: every module visible, in flight and in the shipyard preview
 	var before: Dictionary = g.upgrades.duplicate()
 	for up_key in g.upgrades:

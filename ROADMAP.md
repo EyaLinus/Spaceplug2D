@@ -113,7 +113,7 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
   workers run stations in an estate and move items storage → station → storage. Needs #14, A1.
 - **A5 Dealers & couriers** (HR app part 2) [P5]. Dealers sell to your customers on their own (cut, bust risk), couriers
   move goods between estates and drops. Needs A2, A4, B3.
-- **A6 Galaxy Map app + Jump Drive.** Map app with heat overlay, price comparison per location and route planning;
+- [x] **A6 Galaxy Map app + Jump Drive.** Map app with heat overlay, price comparison per location and route planning;
   interstellar jump with charge-up, hyperspace VFX and loading transition. Needs D1, A1. Not parallel with E2 (world.gd).
 - → **Release v0.1.7**.
 

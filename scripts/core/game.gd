@@ -10,6 +10,7 @@ const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const Orders = preload("res://scripts/core/orders.gd")
+const Galaxy = preload("res://scripts/core/galaxy.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -39,6 +40,7 @@ var order_seq: int = 0
 var estate_stock: Dictionary = {}  ## estate id -> item -> qty delivered there, unloaded by collect_stash() inside
 var kits: Dictionary = {}  ## station id -> flat-packed kits delivered by phone order, placed for free in build mode
 var orders_unseen: int = 0  ## deliveries since the Orders app was last opened (runtime only)
+var jump_plan: Dictionary = {}  ## jump drive charge in progress (runtime only, see galaxy.gd)
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 
 
@@ -69,6 +71,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	estate_stock = {}
 	kits = {}
 	orders_unseen = 0
+	jump_plan = {}
 	demand = {}
 	for loc in data.locations:
 		demand[loc] = {}
@@ -242,6 +245,7 @@ func tick(dt: float) -> void:
 	_tick_lab(dt)
 	_tick_demand(dt)
 	Orders.tick(self)
+	Galaxy.tick(self, dt)
 	while day_time >= day_seconds():
 		day_time -= day_seconds()
 		_new_day()
