@@ -1,5 +1,19 @@
 # Progress log
 
+## B1: NPC schedules on foot (2026-11-02)
+- Surfaces have `spots` (schedule place name → tile, `surfaces.json`). `People.spot(c, spots, hour, slot)` picks the
+  spot of the current schedule place, nudged by the person's index on the surface so people sharing a place stand
+  side by side. Named people start at their current spot on landing and walk there (AStarGrid path) when the hour
+  changes; while the player is within 60 px they stop (`npc.hold`), so a conversation never walks away. Their
+  interaction point follows them.
+- Day/night: `time.daylight` colour keys, `CanvasModulate` on outdoor surfaces (interiors excluded). A day now starts
+  at 06:00 (`time.day_start_hour`), so the phone clock, contact schedules and Deal-O-Matic places shift accordingly.
+- Verified: 1816 unit checks (every schedule place has a spot on the person's surface, every spot walkable and
+  reachable at every hour, day start, daylight), UI smoke (schedule change → Okka walks, her interaction point
+  follows, light changes), menu smoke, night screenshot.
+- Gaps vs. the old draft PR #5: no idle chatter bubbles; anonymous walkers keep roaming; people stand at a spot in front
+  of "Home" instead of going indoors (keeps them dealable).
+
 ## B2: ship cargo bay estate (2026-10-30)
 - **Core:** `estates["ship_bay"]` (`Game.SHIP_BAY`, content.json estates entry flagged `"ship": true`, 7x4 cells) is
   always owned (also created for old saves) and not for sale. `estate_reachable()` gates `enter_ship_bay`, `can_place`,

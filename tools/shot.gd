@@ -142,6 +142,15 @@ func _run() -> void:
 	for i in 5:
 		await physics_frame
 	await _save(out, "deal_marker")
+	var day0: float = g.day_time
+	g.day_time = g.day_seconds() * 16.0 / 24.0  # 22:00
+	for i in 60:
+		await physics_frame
+	sf.place_player_at("okka")
+	for i in 5:
+		await physics_frame
+	await _save(out, "surface_night")
+	g.day_time = day0
 	g.add_heat(55)
 	m.undock()
 	for i in 90:

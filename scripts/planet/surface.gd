@@ -10,6 +10,7 @@ const NpcScript = preload("res://scripts/planet/npc.gd")
 const OfficerScript = preload("res://scripts/planet/officer.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Nav = preload("res://scripts/planet/nav.gd")
+const People = preload("res://scripts/core/people.gd")
 
 const INPUT := {
 	"move_up": [KEY_W, KEY_UP],
@@ -37,6 +38,9 @@ var nav: AStarGrid2D  ## tile grid with buildings solid; chasing officers path a
 var _repath := 0.0
 var _overlay: Node2D  ## redrawn every frame (focus ring); the ground below is drawn once
 var _rng := RandomNumberGenerator.new()
+var _spot_of: Dictionary = {}  ## named npc id -> schedule spot it is at / walking to
+var _schedule_t := 0.0
+var _daylight: CanvasModulate
 ## Estate interiors (cfg has "estate"): while `placing` holds a station id, a ghost of it sits on the cells in front
 ## of the player and E asks main to place it there. can_place(station, x, y) -> bool is set by main.
 var placing := ""
@@ -59,6 +63,42 @@ func setup(id: String, surface_cfg: Dictionary) -> void:
 	cfg = surface_cfg
 	tile = float(cfg.get("tile", 32))
 	map_size = Vector2(cfg.size[0], cfg.size[1]) * tile
+
+
+## Spot (tile units) where the named npc `n` should be at the current hour, [] if their place isn't on this surface.
+func _schedule_spot(n: Dictionary) -> Array:
+	var g = GameState.game
+	if g == null:
+		return []
+	for c in GameState.data.get("contacts", []):
+		if c.id == n.contact:
+			return People.spot(c, cfg.get("spots", {}), People.hour(g), cfg.npcs.find(n))
+	return []
+
+
+## Named people walk to the next place of their schedule when the hour changes. Someone you are standing next to
+## finishes the conversation first (keeps interactions stable).
+func _update_schedules(delta: float) -> void:
+	_schedule_t -= delta
+	if _schedule_t > 0.0 or GameState.paused:
+		return
+	_schedule_t = 0.5
+	for n in cfg.get("npcs", []):
+		if n.get("contact", "") == "" or not npcs.has(n.id):
+			continue
+		var sp := _schedule_spot(n)
+		if sp.is_empty() or sp == _spot_of.get(n.id, []):
+			continue
+		var npc: Node2D = npcs[n.id]
+		if player != null and player.position.distance_to(npc.position) < 80.0:
+			continue
+		_spot_of[n.id] = sp
+		npc.path = Nav.path_between(nav, tile, npc.position, _px(sp))
+
+
+func _update_daylight() -> void:
+	if _daylight != null and GameState.game != null:
+		_daylight.color = People.daylight(GameState.data, People.hour(GameState.game))
 
 
 ## People you agreed a Deal-O-Matic deal with carry a "$" marker.
@@ -101,8 +141,18 @@ func _ready() -> void:
 		if n.get("contact", "") != "":  # named people wear the look from their profile
 			npc.look = _contact_look(n.contact)
 		npc.position = _px(n.pos)
+		if n.get("contact", "") != "":  # named people start where their schedule puts them right now
+			var sp := _schedule_spot(n)
+			if not sp.is_empty():
+				npc.position = _px(sp)
+				_spot_of[n.id] = sp
 		add_child(npc)
 		npcs[n.id] = npc
+		var it := interactable(n.id)
+		if not it.is_empty():
+			it.npc = npc  # the interaction point follows the person around
+			it.pos = npc.position
+			it.stand = npc.position + Vector2(0, 26)
 	for i in int(cfg.get("walkers", 0)):
 		var w := NpcScript.new()
 		w.color = Color.from_hsv(_rng.randf(), 0.35, 0.75)
@@ -133,6 +183,10 @@ func _ready() -> void:
 		camera.limit_bottom = int(map_size.y / 2.0 + view.y / 2.0)
 	player.add_child(camera)
 	camera.make_current()
+	if not cfg.has("estate"):  # interiors keep their own lighting
+		_daylight = CanvasModulate.new()
+		add_child(_daylight)
+		_update_daylight()
 	_overlay = Node2D.new()
 	_overlay.z_index = 1
 	_overlay.draw.connect(_draw_overlay)
@@ -224,6 +278,13 @@ func _walker_path(from: Vector2) -> Array:
 func _physics_process(delta: float) -> void:
 	focus = {}
 	_update_deal_markers()
+	_update_schedules(delta)
+	_update_daylight()
+	for it in interactables:
+		if it.has("npc"):
+			it.npc.hold = player != null and player.position.distance_to(it.npc.position) < 60.0
+			it.pos = it.npc.position
+			it.stand = it.npc.position + Vector2(0, 26)
 	_update_police(delta)
 	if player.frozen or placing != "":
 		_overlay.queue_redraw()

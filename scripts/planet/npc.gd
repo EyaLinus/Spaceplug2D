@@ -11,6 +11,7 @@ var speed := 55.0
 var path: Array = []  ## Vector2 waypoints still to walk
 var pick_next: Callable  ## returns a new path when this one is done (walkers only)
 var look := ""  ## character sheet name in assets/gfx/chars; "" = closest npc_* look to `color`
+var hold := false  ## named people stop walking while the player stands next to them
 var marker := false  ## gold "$" above the head: you have an agreed deal with this person
 var heading := Vector2.DOWN  ## last walking direction, picks the sprite row
 var _step := 0.0
@@ -21,7 +22,7 @@ func _process(delta: float) -> void:
 	_t += delta
 	if path.is_empty() and pick_next.is_valid():
 		path = pick_next.call(position)
-	if not path.is_empty():
+	if not path.is_empty() and not hold:
 		var target: Vector2 = path[0]
 		var to := target - position
 		if to.length() < 3.0:
@@ -35,7 +36,7 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	draw_circle(Vector2(0, 12), 8.0, Color(0, 0, 0, 0.28))
-	var moving := not path.is_empty()
+	var moving := not path.is_empty() and not hold
 	if look == "":  # named people match their data colour; anonymous walkers get a varied mix
 		look = Art.look_for_color(color) if display_name != "" else Art.NPC_LOOKS.keys()[get_instance_id() % Art.NPC_LOOKS.size()]
 	if Art.draw_character(self, look, heading, int(_step * 4.0 / TAU) if moving else 0):
