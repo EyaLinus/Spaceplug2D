@@ -1,5 +1,16 @@
 # Progress log
 
+## B2: ship cargo bay estate (2026-10-30)
+- **Core:** `estates["ship_bay"]` (`Game.SHIP_BAY`, content.json estates entry flagged `"ship": true`, 7x4 cells) is
+  always owned (also created for old saves) and not for sale. `estate_reachable()` gates `enter_ship_bay`, `can_place`,
+  `place_building` and `remove_building`: only while docked. Everything else (door cell, refund, cooking via
+  `lab_here`/`missing_stations`, save round-trip) is the existing estate code; `estate_layout.gd` is unchanged.
+- **UI:** a ramp interactable beside the landing pad (added in `main._with_ship_ramp`, so `surface.gd` and
+  `surfaces.json` are untouched) enters the bay; its exit door returns to the pad. Stations without a surface get a
+  "Cargo Bay" tab in the docked menu. Build menu and placement work as in any estate.
+- Verified: unit tests (new `test_ship_bay`), UI smoke (ramp, place, leave), menu smoke, sim 5/5 won.
+- Gaps: size does not grow with the cargo upgrade; no generator/crate buildables yet (needs the production-buildings
+  milestone); the ramp has no art, only an interaction label.
 ## A2: Deal-O-Matic (2026-11-02)
 - **Core** `scripts/core/deals.gd`, state `Game.offers` (+ `next_offer_id`, `offer_clock`, saved; old saves start empty).
   Every 40 s each known customer without an open deal may text (chance 0.3 × (0.5 + addiction), max 3 open):

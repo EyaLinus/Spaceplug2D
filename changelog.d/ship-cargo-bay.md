@@ -1,0 +1,1 @@
+- **Ship cargo bay:** Your ship now has its own estate grid. While docked, take the ramp next to the landing pad (or the "Cargo Bay" tab on stations without a surface) to enter the bay, place lab stations and cook there, even where there is no lab. Closed in flight; old saves get an empty bay.

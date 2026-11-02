@@ -58,7 +58,8 @@ static func unit_price(g, item: String) -> int:
 static func destinations(g) -> Array:
 	var r: Array = [{"id": "stash", "name": "Hub stash"}]
 	for e in g.estates:
-		r.append({"id": e, "name": g.data.estates[e].name})
+		if not g.data.estates[e].get("ship", false):  # the ship moves, couriers deliver to fixed addresses only
+			r.append({"id": e, "name": g.data.estates[e].name})
 	return r
 
 
