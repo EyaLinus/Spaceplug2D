@@ -1,0 +1,1 @@
+- **Living planets:** named people follow their daily schedule on foot (work, market, cantina, home …) and walk there when the hour changes; they stop when you walk up to them. Planets now have a day/night light, and a day starts at 06:00.

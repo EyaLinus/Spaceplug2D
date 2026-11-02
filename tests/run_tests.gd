@@ -39,6 +39,7 @@ func _init() -> void:
 		"test_people_profiles",
 		"test_people_deals",
 		"test_people_save",
+		"test_people_schedules_on_surfaces",
 		"test_deal_requests",
 		"test_deal_answers",
 		"test_deal_fulfill",
@@ -666,6 +667,36 @@ func test_people_save() -> void:
 	var g3 := Game.new()
 	g3.from_dict(data, d)
 	check(g3.people.has("marta") and g3.people.okka.history.is_empty(), "old save without people gets defaults")
+
+
+func test_people_schedules_on_surfaces() -> void:
+	var Nav = load("res://scripts/planet/nav.gd")
+	for loc in data.surfaces:
+		var cfg: Dictionary = data.surfaces[loc]
+		if cfg.has("estate"):
+			continue
+		var nav: AStarGrid2D = Nav.build(cfg)
+		var start := Vector2i(int(cfg.spawn[0]), int(cfg.spawn[1]))
+		for n in cfg.get("npcs", []):
+			if n.get("contact", "") == "":
+				continue
+			var c: Dictionary = {}
+			for cc in data.contacts:
+				if cc.id == n.contact:
+					c = cc
+			for e in c.get("schedule", []):
+				check(cfg.get("spots", {}).has(e.place), "%s has a spot for %s's %s" % [loc, c.id, e.place])
+			for h in 24:
+				var sp: Array = People.spot(c, cfg.get("spots", {}), h + 0.5, cfg.npcs.find(n))
+				if sp.is_empty():
+					continue
+				var cell := Vector2i(int(floor(sp[0])), int(floor(sp[1])))
+				check(nav.region.has_point(cell) and not nav.is_point_solid(cell), "%s spot of %s at %d:00 is walkable" % [loc, c.id, h])
+				check(not nav.get_id_path(start, cell).is_empty(), "%s spot of %s at %d:00 is reachable" % [loc, c.id, h])
+	var g := new_game()
+	check(is_equal_approx(People.hour(g), float(data.time.day_start_hour)), "a day starts at %d:00" % int(data.time.day_start_hour))
+	check(People.daylight(data, 12.0).v > People.daylight(data, 0.0).v + 0.2, "noon is brighter than midnight")
+	check(People.daylight(data, 23.9).is_equal_approx(People.daylight(data, 0.0)) or People.daylight(data, 23.9).v - People.daylight(data, 0.0).v < 0.05, "daylight wraps at midnight")
 
 
 func test_deal_requests() -> void:

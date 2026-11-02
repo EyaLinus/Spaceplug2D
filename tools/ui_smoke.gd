@@ -164,6 +164,24 @@ func _run() -> void:
 	_assert(not sf.npcs.okka.marker, "marker gone after the deal")
 	step("deal-o-matic")
 
+	# NPC schedules: when the hour moves Okka to her next place she walks there; the light follows the clock
+	var People = load("res://scripts/core/people.gd")
+	sf.place_player_at("pad")
+	var okka_cfg: Dictionary = g.contact("okka")
+	var place0: String = People.whereabouts(okka_cfg, People.hour(g)).place
+	var light0: Color = sf._daylight.color
+	var guard_h := 0
+	while People.whereabouts(okka_cfg, People.hour(g)).place == place0 and guard_h < 48:
+		g.tick(g.day_seconds() / 48.0)
+		guard_h += 1
+	await frames(40)
+	var target_px: Vector2 = sf._px(sf._spot_of.okka)
+	_assert(People.whereabouts(okka_cfg, People.hour(g)).place != place0, "okka's schedule moves on")
+	_assert(not sf.npcs.okka.path.is_empty() or sf.npcs.okka.position.distance_to(target_px) < 4.0, "okka walks to her next place")
+	_assert(sf.interactable("okka").pos == sf.npcs.okka.position, "okka's interaction point follows her")
+	_assert(sf._daylight.color != light0, "daylight changes with the hour")
+	step("npc schedules")
+
 	# Market & Orders: order from the phone, goods arrive after the delivery time, cancel refunds
 	var credits_start: int = g.credits
 	g.credits = maxi(g.credits, 500)
@@ -384,7 +402,7 @@ func _run() -> void:
 	await physics_frame
 	sf.interact()
 	await frames(2)
-	_assert(m.station.visible and m.station._filter.get("contact", "") == "okka", "deals panel limited to Okka")
+	_assert(m.station.visible and m.station._filter.get("contact", "") == "okka", "deals panel limited to Okka (focus %s, filter %s, okka at %s, player %s)" % [sf.focus.get("payload", {}), m.station._filter, sf.npcs.okka.position, sf.player.position])
 	gs.act(g.sell("weed:overclock+radiant", 3, "okka"))
 	await frames(2)
 	m.station.close()

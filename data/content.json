@@ -8,7 +8,9 @@
     "cargo": {}
   },
   "time": {
-    "day_seconds": 180
+    "day_seconds": 180,
+    "day_start_hour": 6,
+    "daylight": [[0, "#6a78b8"], [5, "#6a78b8"], [7, "#f0c8a8"], [9, "#ffffff"], [17, "#ffffff"], [19.5, "#f0b090"], [21.5, "#6a78b8"]]
   },
   "heat": {
     "max": 100,

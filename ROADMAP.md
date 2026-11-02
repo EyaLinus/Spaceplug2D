@@ -101,7 +101,7 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
   arrive in the stash or an estate. Market buildings stay as a cheaper walk-in option. Needs #14 (estates).
 - [x] **B2 Ship cargo bay estate.** The ship gets its own estate grid (machines, tables, crates, generator) that you can
   enter while docked; reuses estate_layout/build mode from #14. Parallel with A2/A3.
-- **B1 NPCs on foot with schedules** [P2]. Revive draft PR #5 on top of A1: named people walk home ↔ work ↔ plaza by
+- [x] **B1 NPCs on foot with schedules** [P2]. Revive draft PR #5 on top of A1: named people walk home ↔ work ↔ plaza by
   time of day, day/night tint, chatter; customers in the Contacts app can be found where their schedule says.
   Run after A2 or coordinate (both touch surface.gd).
 - → **Release v0.1.6**.
