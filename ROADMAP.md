@@ -97,7 +97,7 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
 - **A2 Deal-O-Matic.** Customers text you requests (product, amount, price, place, time window) driven by addiction,
   budget and schedule; you accept, counter (haggling success depends on affinity) or decline; the deal is closed on
   foot at the agreed spot. Replaces the Deals panel for named customers (fence stays). Not parallel with B1 (surface.gd).
-- **A3 Market & Orders app.** Order raws, additives and equipment from the phone with delivery time and fee; goods
+- [x] **A3 Market & Orders app.** Order raws, additives and equipment from the phone with delivery time and fee; goods
   arrive in the stash or an estate. Market buildings stay as a cheaper walk-in option. Needs #14 (estates).
 - **B2 Ship cargo bay estate.** The ship gets its own estate grid (machines, tables, crates, generator) that you can
   enter while docked; reuses estate_layout/build mode from #14. Parallel with A2/A3.
