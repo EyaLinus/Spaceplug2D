@@ -37,6 +37,7 @@ var estates: Dictionary = {}  ## owned estate id -> {"buildings": [{"id": statio
 var orders: Array = []  ## open phone orders in transit (see orders.gd)
 var order_seq: int = 0
 var estate_stock: Dictionary = {}  ## estate id -> item -> qty delivered there, unloaded by collect_stash() inside
+var kits: Dictionary = {}  ## station id -> flat-packed kits delivered by phone order, placed for free in build mode
 var orders_unseen: int = 0  ## deliveries since the Orders app was last opened (runtime only)
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 
@@ -66,6 +67,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	orders = []
 	order_seq = 0
 	estate_stock = {}
+	kits = {}
 	orders_unseen = 0
 	demand = {}
 	for loc in data.locations:
@@ -162,6 +164,8 @@ func has_contraband() -> bool:
 
 
 func item_name(item_key: String) -> String:
+	if item_key.begins_with("kit:"):
+		return str(data.stations.get(item_key.substr(4), {}).get("name", item_key)) + " kit"
 	if Mixing.is_product(item_key):
 		return Mixing.display_name(data, item_key)
 	if data.raws.has(item_key):
@@ -617,10 +621,13 @@ func place_building(estate_id: String, station: String, x: int, y: int) -> Dicti
 		return _fail("Can't build that.")
 	if not can_place(estate_id, station, x, y):
 		return _fail("No room there.")
-	var cost := int(data.buildables[station].cost)
-	if credits < cost:
-		return _fail("%s costs %d cr." % [data.stations[station].name, cost])
-	credits -= cost
+	if int(kits.get(station, 0)) > 0:
+		_add(kits, station, -1)
+	else:
+		var cost := int(data.buildables[station].cost)
+		if credits < cost:
+			return _fail("%s costs %d cr." % [data.stations[station].name, cost])
+		credits -= cost
 	estates[estate_id].buildings.append({"id": station, "x": x, "y": y})
 	_emit("building_placed", {"estate": estate_id, "station": station})
 	return _ok("%s set up." % data.stations[station].name)
@@ -648,6 +655,7 @@ func to_dict() -> Dictionary:
 		"contact_ready_at": contact_ready_at.duplicate(), "people": people.duplicate(true), "upgrades": upgrades.duplicate(),
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
+		"kits": kits.duplicate(),
 	}
 
 

@@ -1,5 +1,5 @@
 extends "res://scripts/ui/phone/phone_app.gd"
-## Market & Orders: order raws and additives from anywhere. Pick a destination (hub stash or an owned estate) and
+## Market & Orders: order raws, additives and station kits from anywhere. Pick a destination (hub stash or an owned estate) and
 ## standard or express delivery, set the amount per item and order. Open orders show a countdown and can be
 ## cancelled. Rules and numbers live in scripts/core/orders.gd and content.json "orders".
 
@@ -38,8 +38,15 @@ func home(g, _phone) -> Control:
 		v.add_child(UI.label("IN TRANSIT", 13, UI.MUTED))
 		for o in g.orders:
 			v.add_child(_order_row(g, o))
-	v.add_child(UI.label("SHOP", 13, UI.MUTED))
+	var heads := {"raw": "RAWS", "additive": "ADDITIVES", "kit": "STATION KITS (placed free in build mode)"}
+	var last := ""
 	for e in Orders.catalog(g):
+		if e.kind != last:
+			last = e.kind
+			v.add_child(UI.label(heads.get(last, "SHOP"), 13, UI.MUTED))
+		if last == "kit" and int(g.kits.get(str(e.item).substr(4), 0)) > 0:
+			e = e.duplicate()
+			e.name = "%s (have %d)" % [e.name, int(g.kits[str(e.item).substr(4)])]
 		v.add_child(_shop_row(g, e))
 	var tip := UI.label("Walk-in markets are cheaper but you have to be there.", 12, UI.MUTED)
 	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -92,7 +99,7 @@ func _options(g) -> Control:
 
 func _shop_row(g, e: Dictionary) -> Control:
 	var item: String = e.item
-	var n: int = clampi(int(_qty.get(item, 5)), 1, int(Orders.rules(g).max_qty))
+	var n: int = clampi(int(_qty.get(item, 1 if e.kind == "kit" else 5)), 1, int(Orders.rules(g).max_qty))
 	_qty[item] = n
 	var q := Orders.quote(g, item, n, _dest, _express)
 	var panel := PanelContainer.new()

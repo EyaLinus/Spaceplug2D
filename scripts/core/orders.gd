@@ -1,5 +1,5 @@
 extends RefCounted
-## Market & Orders (phone app): order raws and additives from anywhere, pay cost + delivery fee up front, goods
+## Market & Orders (phone app): order raws, additives and station kits from anywhere, pay cost + delivery fee up front, goods
 ## arrive after a delivery time in the hub stash or in an estate you own. Walk-in markets stay cheaper (no markup,
 ## no fee). Rules in content.json "orders"; state on Game: `orders` (open), `estate_stock` (estate id -> item -> qty),
 ## `orders_unseen` (deliveries since the phone app was last opened, runtime only). Pure functions on a Game.
@@ -11,18 +11,39 @@ static func rules(g) -> Dictionary:
 	return g.data.get("orders", {})
 
 
-## Everything that can be ordered: raws first, then additives. [{item, name, kind}]
+## Everything that can be ordered: raws, additives, then station kits for estates. [{item, name, kind}]
 static func catalog(g) -> Array:
 	var r: Array = []
 	for k in g.data.raws:
 		r.append({"item": k, "name": g.data.raws[k].name, "kind": "raw"})
 	for k in g.data.additives:
 		r.append({"item": k, "name": g.data.additives[k].name, "kind": "additive"})
+	for k in g.data.buildables:
+		r.append({"item": KIT + k, "name": g.item_name(KIT + k), "kind": "kit"})
 	return r
+
+
+## Station kits ("kit:<station id>") are flat-packed lab equipment: delivered into Game.kits, then placed for free in
+## an estate's build mode. Cheaper than having the station built on site (rules.kit_price x build cost).
+const KIT := "kit:"
+
+
+static func is_kit(item: String) -> bool:
+	return item.begins_with(KIT)
+
+
+static func known(g, item: String) -> bool:
+	if is_kit(item):
+		return g.data.buildables.has(item.substr(KIT.length()))
+	return g.data.raws.has(item) or g.data.additives.has(item)
 
 
 ## Phone unit price: the cheapest walk-in price anywhere plus the markup. -1 for unknown items.
 static func unit_price(g, item: String) -> int:
+	if is_kit(item):
+		if not known(g, item):
+			return -1
+		return int(ceil(int(g.data.buildables[item.substr(KIT.length())].cost) * float(rules(g).get("kit_price", 1.0))))
 	var best := -1
 	for loc in g.data.locations:
 		var p: int = g.buy_price(item, loc)
@@ -113,6 +134,11 @@ static func tick(g) -> void:
 			continue
 		var dest := str(o.dest)
 		var bag: Dictionary = g.stash
+		if is_kit(str(o.item)):
+			g._add(g.kits, str(o.item).substr(KIT.length()), int(o.qty))
+			g.orders_unseen += 1
+			g._emit("order_delivered", {"item": o.item, "qty": int(o.qty), "dest": "stash"})
+			continue
 		if dest != "stash" and g.estates.has(dest):
 			if not g.estate_stock.has(dest):
 				g.estate_stock[dest] = {}
@@ -137,7 +163,7 @@ static func from_save(g, d: Dictionary) -> void:
 	g.orders = []
 	for o in d.get("orders", []):
 		var item := str(o.get("item", ""))
-		if g.data.raws.has(item) or g.data.additives.has(item):
+		if known(g, item):
 			g.orders.append({
 				"id": int(o.id), "item": item, "qty": int(o.qty), "dest": str(o.dest), "due": float(o.due),
 				"cost": int(o.cost), "fee": int(o.fee), "express": bool(o.get("express", false)),
@@ -145,6 +171,11 @@ static func from_save(g, d: Dictionary) -> void:
 	g.order_seq = int(d.get("order_seq", 0))
 	for o in g.orders:
 		g.order_seq = maxi(g.order_seq, int(o.id))
+	g.kits = {}
+	var ks: Dictionary = d.get("kits", {})
+	for k in ks:
+		if g.data.buildables.has(k) and int(ks[k]) > 0:
+			g.kits[k] = int(ks[k])
 	g.estate_stock = {}
 	var es: Dictionary = d.get("estate_stock", {})
 	for e in es:

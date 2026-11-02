@@ -24,6 +24,7 @@ func _init() -> void:
 		"test_police_on_foot",
 		"test_estates",
 		"test_orders",
+		"test_order_kits",
 		"test_orders_save",
 		"test_mixing_rules",
 		"test_buy_and_cargo_limit",
@@ -280,8 +281,10 @@ func test_orders() -> void:
 	var g := new_game()
 	g.credits = 5000
 	var cat: Array = Orders.catalog(g)
-	check(cat.size() == data.raws.size() + data.additives.size(), "catalog lists every raw and additive")
+	check(cat.size() == data.raws.size() + data.additives.size() + data.buildables.size(), "catalog lists raws, additives and station kits")
 	for e in cat:
+		if e.kind == "kit":
+			continue
 		var walk_in := 999999
 		for loc in data.locations:
 			var p: int = g.buy_price(e.item, loc)
@@ -335,6 +338,28 @@ func test_orders() -> void:
 	check(Orders.cancel(g, int(first.id)).ok and g.orders.size() == int(rules.max_open) - 1, "cancel removes the order")
 	check(g.credits == before + int(round(int(first.cost) * float(rules.cancel_refund))), "cancel refunds the goods minus the fee")
 	check(not Orders.cancel(g, 9999).ok, "unknown order can't be cancelled")
+
+
+func test_order_kits() -> void:
+	var g := new_game()
+	g.credits = 10000
+	var kit_price: int = Orders.unit_price(g, "kit:cook_stove")
+	check(kit_price > 0 and kit_price < int(data.buildables.cook_stove.cost), "kit is cheaper than building on site")
+	check(Orders.unit_price(g, "kit:nope") < 0, "unknown kit has no price")
+	check(g.item_name("kit:cook_stove") == "Cook Stove kit", "kit name")
+	check(Orders.place(g, "kit:cook_stove", 2, "stash", false).ok, "order two stove kits")
+	g.tick(float(data.orders.seconds.standard) + 1.0)
+	check(int(g.kits.get("cook_stove", 0)) == 2 and not g.stash.has("kit:cook_stove"), "kits delivered to the kit shelf, not the stash")
+	g.buy_estate("cannery_annex")
+	var before: int = g.credits
+	check(g.place_building("cannery_annex", "cook_stove", 0, 0).ok and g.credits == before, "placing with a kit is free")
+	check(int(g.kits.cook_stove) == 1, "one kit used")
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(int(h.kits.get("cook_stove", 0)) == 1, "kits survive save/load")
+	g.place_building("cannery_annex", "cook_stove", 3, 0)
+	before = g.credits
+	check(g.place_building("cannery_annex", "cook_stove", 5, 0).ok and g.credits == before - int(data.buildables.cook_stove.cost), "without kits you pay again")
 
 
 func test_orders_save() -> void:
