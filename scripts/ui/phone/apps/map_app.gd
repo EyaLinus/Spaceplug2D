@@ -4,12 +4,13 @@ extends "res://scripts/ui/phone/phone_app.gd"
 ## Rules and numbers live in scripts/core/galaxy.gd and content.json "jump".
 
 const Galaxy = preload("res://scripts/core/galaxy.gd")
+const Cartels = preload("res://scripts/core/cartels.gd")
 
 const CANVAS_H := 170.0
 const COLD := Color("#4fe3c1")
 const HOT := Color("#ff6b5f")
 
-var _mode := "heat"  ## heat | price
+var _mode := "heat"  ## heat | price | influence
 var _sel := ""  ## selected system id, "" = the one you are in
 var _tab := "buy"  ## price screen: buy | sell
 
@@ -52,7 +53,8 @@ func home(g, phone) -> Control:
 	v.add_theme_constant_override("separation", 6)
 	v.add_child(_mode_row(g))
 	v.add_child(_canvas(g))
-	var legend := UI.label("Glow = patrol pressure at your heat." if _mode == "heat" else "Glow = share of the cheapest raws and additives sold there.", 12, UI.MUTED)
+	var legend := UI.label(_legend(), 12, UI.MUTED)
+	legend.name = "MapLegend"
 	legend.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(legend)
 	v.add_child(_system_panel(g))
@@ -64,10 +66,33 @@ func home(g, phone) -> Control:
 
 # ---------------------------------------------------------------- map
 
+func _legend() -> String:
+	match _mode:
+		"heat":
+			return "Glow = patrol pressure at your heat."
+		"influence":
+			return "Glow = who runs the system (average share of its locations). Selling, drops and shooting raiders raise your share; high share = better prices and fewer pirates, low share = robberies."
+	return "Glow = share of the cheapest raws and additives sold there."
+
+
+## Holder with the biggest average share in a system: you or a cartel.
+func _system_top(g, sys: String) -> String:
+	var best := Cartels.NONE
+	var bv := 0.0
+	for k in Cartels.holders(g):
+		if k == Cartels.NONE:
+			continue
+		var v := Cartels.system_share(g, sys, k)
+		if v > bv:
+			best = k
+			bv = v
+	return best
+
+
 func _mode_row(g) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
-	for m in [["heat", "Heat overlay"], ["price", "Price overlay"]]:
+	for m in [["heat", "Heat"], ["price", "Prices"], ["influence", "Influence"]]:
 		var b := UI.button(m[1], func():
 			_mode = m[0]
 			_refresh_soon(), 0)
@@ -125,6 +150,10 @@ func _canvas(g) -> Control:
 			var lv := Galaxy.heat_level(g, s)
 			col = COLD.lerp(HOT, lv)
 			rad = 26.0 + 22.0 * lv
+		elif _mode == "influence":
+			var top := _system_top(g, s)
+			col = Cartels.color(g, top)
+			rad = 20.0 + 50.0 * Cartels.system_share(g, s, top)
 		else:
 			var sh := float(share.get(s, 0.0))
 			col = UI.GOLD
@@ -184,10 +213,25 @@ func _system_panel(g) -> Control:
 	hr.add_child(bar)
 	hr.add_child(UI.label("%d patrols" % Galaxy.patrols_in(g, _sel), 13, UI.MUTED))
 	col.add_child(hr)
+	if _mode == "influence":
+		col.add_child(_cartel_list(g))
 	var best := _best_buys(g)
 	for loc in g.locations_in(_sel):
 		col.add_child(_location_row(g, loc, best))
 	return panel
+
+
+## Legend of the three cartels: colour, boss and home turf.
+func _cartel_list(g) -> Control:
+	var v := VBoxContainer.new()
+	v.name = "MapCartels"
+	v.add_theme_constant_override("separation", 1)
+	for c in Cartels.list(g):
+		var l := UI.label("%s: %s, %s. Home: %s." % [c.name, c.boss, c.boss_title, g.data.locations[c.home].name], 12, Cartels.color(g, c.id))
+		l.name = "MapCartel_" + str(c.id)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(l)
+	return v
 
 
 ## item -> cheapest location id, for the star marks.
@@ -209,6 +253,8 @@ func _location_row(g, loc: String, best: Dictionary) -> Control:
 		sub = "Jump gate to %s" % g.data.systems[ld.jump_to].name
 	elif not ld.get("dockable", true):
 		sub = "Patrol base. Stay clear."
+	elif _mode == "influence":
+		sub = _influence_text(g, loc)
 	elif _mode == "heat":
 		sub = "sale heat %s/unit" % str(risk.sale_heat)
 		if risk.security >= 0.0:
@@ -228,7 +274,42 @@ func _location_row(g, loc: String, best: Dictionary) -> Control:
 	var s := UI.label(sub, 12, UI.MUTED)
 	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(s)
+	if _mode == "influence" and g.influence.has(loc):
+		box.add_child(_influence_bar(g, loc))
 	return box
+
+
+func _influence_text(g, loc: String) -> String:
+	if not g.influence.has(loc):
+		return "Nobody fights over this place."
+	var tier := Cartels.tier(g, loc)
+	var parts: Array = []
+	for k in Cartels.holders(g):
+		var v := Cartels.share(g, loc, k)
+		if v >= 0.01 and k != Cartels.NONE:
+			parts.append("%s %d%%" % [Cartels.who_name(g, k), int(round(v * 100.0))])
+	var note := {"high": "respected: better prices", "low": "weak: robbery risk", "mid": "contested"}[tier]
+	return "%s  (%s)" % [", ".join(PackedStringArray(parts)), note]
+
+
+## Stacked bar of the shares at a location in the holders' colours.
+func _influence_bar(g, loc: String) -> Control:
+	var bar := HBoxContainer.new()
+	bar.name = "MapInf_" + loc
+	bar.add_theme_constant_override("separation", 0)
+	bar.custom_minimum_size = Vector2(0, 8)
+	for k in Cartels.holders(g):
+		var v := Cartels.share(g, loc, k)
+		if v <= 0.0:
+			continue
+		var seg := ColorRect.new()
+		seg.color = Cartels.color(g, k)
+		seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		seg.size_flags_stretch_ratio = v
+		seg.custom_minimum_size = Vector2(1, 8)
+		seg.tooltip_text = "%s %d%%" % [Cartels.who_name(g, k), int(round(v * 100.0))]
+		bar.add_child(seg)
+	return bar
 
 
 # ---------------------------------------------------------------- jump drive

@@ -9,6 +9,7 @@ extends RefCounted
 ##
 ## drop = {id, loc, spot, expires_at (total_time), job: {} or {kind: "deal"|"courier", key, qty, due, offer?, pay?, fee?}}
 
+const Cartels = preload("res://scripts/core/cartels.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const People = preload("res://scripts/core/people.gd")
@@ -97,11 +98,12 @@ static func deal_heat(g, o: Dictionary) -> float:
 		* float(Deals.rules(g).get("heat_mult", 1.0)) * float(rules(g).get("heat_mult", 1.0))
 
 
-static func theft_chance(g, kind: String) -> float:
+static func theft_chance(g, kind: String, loc := "") -> float:
 	var r := rules(g)
 	var p := float(r.get("theft_chance", 0.0)) + float(g.heat) / float(g.data.heat.max) * float(r.get("theft_heat", 0.0))
 	if kind == "courier":
 		p += float(r.get("courier_extra_theft", 0.0))
+	p += Cartels.theft_bonus(g, loc)
 	return clampf(p, 0.0, 0.9)
 
 
@@ -183,7 +185,7 @@ static func _finish(g, d: Dictionary) -> void:
 	d.job = {}
 	d.expires_at = g.total_time + float(rules(g).get("ttl", 600.0))
 	g.drops_unseen += 1
-	var stolen: bool = g.rng.randf() < theft_chance(g, str(j.kind))
+	var stolen: bool = g.rng.randf() < theft_chance(g, str(j.kind), str(d.loc))
 	if j.kind == "deal":
 		var o := Deals.find(g, int(j.offer))
 		if o.is_empty():

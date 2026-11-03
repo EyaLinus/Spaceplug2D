@@ -1,5 +1,27 @@
 # Progress log
 
+## I1: enemy cartels + sector influence (phase 3 wave 9, 2026-11-03)
+- **Core** `scripts/core/cartels.gd`, data in content.json `cartels`, state `Game.influence` {location: {you, none,
+  cartel id: share}} (saved, shares add up to 1) for every location with demand. Cartels: Ouroboros Consortium (Mara Vesk,
+  home Glacis), Black Comets (Vael Sorn, Cinder Belt), Dust Kings (Dagan Rusk, Varrow); each has a colour and starting
+  presence, and never drops below `home_floor` at home. You start at the `neutral` share (0.15) everywhere, so prices and
+  pirate pressure are exactly as before until you play.
+- **Movement:** sales (fence, contacts, deals) and dealer sales raise your share where they happen, delivered drops
+  raise it, downed raiders cost the Black Comets ground in that system, a wreck / knock-out / stolen drop lowers it (the
+  strongest local rival, or the Comets for a wreck, takes it). Each day your lead above neutral bleeds back by
+  `decay_per_day`. Event `influence_tier` (high >= 0.4, low < 0.08) drives toasts; `robbed` is the new dealer robbery event.
+- **Effects:** `sell_mult` (sell price, also Galaxy sell table and dealer street price), `buy_mult` (raws and additives),
+  `pirate_mult` (SpaceCombat.pressure, per system average, clamped 0.6..1.5), and below the low tier a daily chance that
+  the strongest rival robs your dealers there (half cash, half stock) and `rob_theft_bonus` on dead-drop theft.
+- **UI:** Map app third overlay "Influence": glow in the leading holder's colour, per-location share bar and text,
+  cartel legend with bosses and homes; toasts for tier changes and robberies.
+- **Tests:** new `test_cartels_*` (data, neutral start, movement and floors, effects, events, robbery, save / old save /
+  garbage save) and a UI smoke check for the overlay.
+- **NOT executed:** no Godot binary was available in this environment, so the unit tests, UI smoke and sim have not been
+  run; the GDScript was reviewed by hand only. Run `godot --headless --path . -s res://tests/run_tests.gd` first.
+- Gaps: bosses are only names for now (boss fights, cartel stations and fighter wings are E4, interdiction is D3);
+  numbers eyeballed; no quest uses influence yet.
+
 ## Release v0.1.10 (2026-11-03)
 - Phase 3 wave 8: D4 bigger planet maps with districts and landmarks (#55), B4 every person a named customer (#56).
   Changelog folded, version 0.1.10. Next: wave 9 (I1 cartels + sector influence, E4 space combat II, D3 interdiction)

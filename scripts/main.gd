@@ -19,6 +19,7 @@ const HyperspaceScript = preload("res://scripts/ui/hyperspace.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
+const Cartels = preload("res://scripts/core/cartels.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 
 ## Which station tab a surface interaction opens.
@@ -470,6 +471,14 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		EventBus.toast.emit("A drop was cleaned out: %d units stolen." % p.qty, false)
 	elif kind == "product_discovered":
 		EventBus.toast.emit("New product: %s. Price it in the Products app [%s]." % [GameState.game.item_name(p.product), Settings.key_label("phone")], true)
+	elif kind == "influence_tier":
+		var ln: String = GameState.game.loc_data(p.loc).get("name", "")
+		if p.tier == "low":
+			EventBus.toast.emit("Your name means nothing on %s. Dealers and drops there are fair game." % ln, false)
+		elif p.tier == "high":
+			EventBus.toast.emit("%s respects you: better prices, fewer raiders." % ln, true)
+	elif kind == "robbed":
+		EventBus.toast.emit("%s robbed %s on %s: %d units and %d cr gone." % [Cartels.who_name(GameState.game, p.cartel), Dealers.candidate(GameState.game, p.dealer).name, GameState.game.loc_data(p.loc).get("name", ""), p.units, p.credits], false)
 	elif kind == "dealer_busted":
 		EventBus.toast.emit("%s got busted on %s: %d units and %d cr gone." % [Dealers.candidate(GameState.game, p.dealer).name, GameState.game.loc_data(p.loc).get("name", ""), p.units, p.credits], false)
 	elif kind == "dealer_cash_full":

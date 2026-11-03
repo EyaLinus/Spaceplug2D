@@ -8,6 +8,7 @@ extends RefCounted
 
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Products = preload("res://scripts/core/products.gd")
+const Cartels = preload("res://scripts/core/cartels.gd")
 
 
 static func cfg(g) -> Dictionary:
@@ -151,7 +152,7 @@ static func street_price(g, product_key: String, loc: String) -> int:
 	var dem := float(g.demand.get(loc, {}).get(p.base, 0.0))
 	if dem <= 0.0:
 		return -1
-	var market := int(round(Mixing.value(g.data, product_key) * dem))
+	var market := int(round(Mixing.value(g.data, product_key) * dem * Cartels.sell_mult(g, loc)))
 	var ask := Products.asking(g, product_key)
 	if ask < 0:
 		return maxi(market, 1)

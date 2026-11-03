@@ -11,6 +11,7 @@ extends RefCounted
 ## jump_plan = {} (idle) or {route: [system ids, route[0] = current system], to, charge, need, ready, busts}
 
 const Mixing = preload("res://scripts/core/mixing.gd")
+const Cartels = preload("res://scripts/core/cartels.gd")
 
 
 static func rules(g) -> Dictionary:
@@ -157,7 +158,7 @@ static func sell_table(g) -> Array:
 		for loc in g.data.locations:
 			var d: float = float(g.demand.get(loc, {}).get(b, 0.0))
 			if d > 0.0:
-				offers.append({"loc": loc, "system": g.loc_system(loc), "price": int(round(v * d)), "fence": bool(g.data.locations[loc].get("fence", false))})
+				offers.append({"loc": loc, "system": g.loc_system(loc), "price": int(round(v * d * Cartels.sell_mult(g, loc))), "fence": bool(g.data.locations[loc].get("fence", false))})
 		offers.sort_custom(func(a, c): return a.price > c.price)
 		r.append({"base": b, "name": base.name, "offers": offers})
 	return r

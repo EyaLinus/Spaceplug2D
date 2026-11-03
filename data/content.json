@@ -167,6 +167,28 @@
     "tolerance_base": 0.05, "tolerance_affinity": 0.15, "tolerance_addiction": 0.3,
     "bargain_ratio": 0.9, "affinity_bargain": 0.02, "max_price_mult": 4.0, "price_steps": [1, 5, 25]
   },
+  "cartels": {
+    "neutral": 0.15, "decay_per_day": 0.01, "home_floor": 0.3, "tier_high": 0.4, "tier_low": 0.08,
+    "sell_gain": 0.3, "buy_gain": 0.25, "pirate_gain": 0.8, "pirate_min": 0.6, "pirate_max": 1.5,
+    "sale_per_unit": 0.003, "drop_gain": 0.02, "drop_loss": 0.03, "dealer_sale_per_unit": 0.002,
+    "raider_kill": 0.01, "wreck_loss": 0.02, "knockout_loss": 0.03,
+    "rob_chance": 0.35, "rob_cash": 0.5, "rob_stock": 0.5, "rob_theft_bonus": 0.2,
+    "pirate_cartel": "black_comets",
+    "list": [
+      {"id": "ouroboros", "name": "Ouroboros Consortium", "short": "Ouroboros", "color": "#d9b44a", "home": "glacis",
+       "boss": "Mara Vesk", "boss_title": "Head of Receivables",
+       "desc": "Corporate lenders with a private fleet. They own your debt and every ice-colony buyer worth having.",
+       "presence": {"glacis": 0.6, "mireth": 0.25, "bazaar": 0.1}},
+      {"id": "black_comets", "name": "Black Comets", "short": "Comets", "color": "#e4575f", "home": "cinder",
+       "boss": "Vael Sorn", "boss_title": "Captain of the Tail",
+       "desc": "Lane raiders out of the Cinder Belt. They jump traders, tax the bazaar and shoot anyone who sells on their rocks.",
+       "presence": {"cinder": 0.6, "bazaar": 0.35, "varrow": 0.05}},
+      {"id": "dust_kings", "name": "Dust Kings", "short": "Dust Kings", "color": "#4aa3d9", "home": "varrow",
+       "boss": "Dagan Rusk", "boss_title": "King of the Salt Flats",
+       "desc": "Frontier smugglers who run the dust towns of Kovar and sell protection to anyone with a hold full of product.",
+       "presence": {"varrow": 0.6, "glacis": 0.15, "cinder": 0.1}}
+    ]
+  },
   "dealers": {
     "max_dealers": 3, "sell_seconds": 20, "units_base": 1, "units_skill": 3, "tolerance": 0.1, "max_cash": 2500,
     "bust_base": 0.008, "bust_per_heat": 0.0006, "jail_seconds": 240, "heat_mult": 0.5,

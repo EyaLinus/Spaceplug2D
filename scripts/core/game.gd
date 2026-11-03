@@ -20,6 +20,7 @@ const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
+const Cartels = preload("res://scripts/core/cartels.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const SAVE_VERSION := 1
 
@@ -74,6 +75,7 @@ var recipes: Dictionary = {}  ## recipe book: recipe key -> {base, additives, ma
 var prices: Dictionary = {}  ## your asking price per Standard unit, recipe key -> cr; no entry = market price, saved
 var dealers: Array = []  ## hired street dealers [{id, loc, stock, cash, sold, jail}] (see dealers.gd), saved
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
+var influence: Dictionary = {}  ## location -> {you, none, cartel id: share}, shares add up to 1 (see cartels.gd), saved
 var quests: Dictionary = {"active": [], "done": [], "step": {}, "count": {}, "tracked": ""}  ## quest log (see quests.gd), saved
 
 
@@ -121,6 +123,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	recipes = {}
 	prices = {}
 	dealers = []
+	influence = Cartels.init_state(self)
 	quests = Quests.empty_state()  # the opening quests start in GameState.new_game (tests and sims run without)
 	_add_starter_estates()
 	demand = {}
@@ -268,7 +271,7 @@ func _maybe_referral(from_id: String) -> void:
 ## Price per unit for selling `product_key` here, to a contact (id) or the fence ("").
 func sell_price(product_key: String, contact_id: String = "", loc: String = location) -> int:
 	var p := Mixing.parse_key(product_key)
-	var v := Mixing.value(data, product_key) * float(demand.get(loc, {}).get(p.base, 0.0))
+	var v := Mixing.value(data, product_key) * float(demand.get(loc, {}).get(p.base, 0.0)) * Cartels.sell_mult(self, loc)
 	if contact_id == "":
 		return int(round(v * float(data.market.fence_ratio)))
 	var c := contact(contact_id)
@@ -369,6 +372,7 @@ func _new_day() -> void:
 	People.new_day(self)
 	Corruption.new_day(self)
 	Workers.new_day(self)
+	Cartels.new_day(self)
 	_emit("new_day", {"day": day})
 	if debt > 0 and day > debt_due_day:
 		state = "lost"
@@ -454,9 +458,9 @@ func buy_price(item: String, loc: String = location) -> int:
 	if ld.is_empty():
 		return -1
 	if ld.sells_raw.has(item):
-		return int(ld.sells_raw[item])
+		return int(round(float(ld.sells_raw[item]) * Cartels.buy_mult(self, loc)))
 	if ld.get("sells_additives", false) and data.additives.has(item):
-		return int(data.additives[item].price)
+		return int(round(float(data.additives[item].price) * Cartels.buy_mult(self, loc)))
 	return -1
 
 
@@ -797,7 +801,7 @@ func to_dict() -> Dictionary:
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
 		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
-		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "quests": Quests.to_save(self),
+		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "quests": Quests.to_save(self), "influence": Cartels.to_save(self),
 	}
 
 
@@ -867,6 +871,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Bench.from_save(self, d)
 	Products.from_save(self, d.get("products", {}))
 	Dealers.from_save(self, d.get("dealers", []))
+	Cartels.from_save(self, d.get("influence", {}))
 	Quests.from_save(self, d.get("quests", {}), d.has("quests"))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
@@ -909,6 +914,7 @@ static func _add(dict: Dictionary, k: String, n: int) -> void:
 
 func _emit(kind: String, payload: Dictionary) -> void:
 	event.emit(kind, payload)
+	Cartels.on_event(self, kind, payload)
 	Quests.on_event(self, kind, payload)
 
 

@@ -21,6 +21,7 @@ const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
+const Cartels = preload("res://scripts/core/cartels.gd")
 
 var data: Dictionary
 var failures := 0
@@ -31,6 +32,13 @@ func _init() -> void:
 	data = Data.load_all()
 	for t in [
 		"test_data_references",
+		"test_cartels_data",
+		"test_cartels_start_neutral",
+		"test_cartels_movement",
+		"test_cartels_effects",
+		"test_cartels_events",
+		"test_cartels_robbery",
+		"test_cartels_save",
 		"test_surface_layouts",
 		"test_art_registry",
 		"test_police_on_foot",
@@ -145,6 +153,201 @@ func test_data_references() -> void:
 	for loc in data.locations:
 		for item in data.locations[loc].sells_raw:
 			check(data.raws.has(item), "%s sells known raw %s" % [loc, item])
+
+
+## Cartels (I1): data is consistent.
+func test_cartels_data() -> void:
+	var list: Array = Cartels.list(new_game())
+	check(list.size() == 3, "three cartels")
+	var homes := {}
+	for c in list:
+		check(data.locations.has(c.home) and not data.locations[c.home].demand.is_empty(), "%s home is a trading location" % c.id)
+		check(str(c.boss) != "" and str(c.color).begins_with("#") and str(c.name) != "", "%s has boss and colour" % c.id)
+		check(not homes.has(c.home), "%s has its own home" % c.id)
+		homes[c.home] = true
+		check(float(c.presence.get(c.home, 0.0)) >= float(data.cartels.home_floor), "%s starts above the home floor" % c.id)
+		for loc in c.presence:
+			check(data.locations.has(loc), "%s presence location %s exists" % [c.id, loc])
+	check(Cartels.find(new_game(), str(data.cartels.pirate_cartel)).size() > 0, "pirate cartel exists")
+	var systems := {}
+	for c in list:
+		systems[data.locations[c.home].system] = true
+	check(systems.size() >= 2, "home systems spread over the galaxy")
+
+
+func _row_sum(g, loc: String) -> float:
+	var s := 0.0
+	for k in Cartels.holders(g):
+		s += Cartels.share(g, loc, k)
+	return s
+
+
+## A fresh game changes nothing: you sit at the neutral share everywhere, prices and pirates as before.
+func test_cartels_start_neutral() -> void:
+	var g := new_game()
+	for loc in Cartels.tracked(g):
+		check(is_equal_approx(_row_sum(g, loc), 1.0), "%s shares add up to 1" % loc)
+		check(is_equal_approx(Cartels.share(g, loc), float(data.cartels.neutral)), "%s starts at the neutral share" % loc)
+		check(Cartels.sell_mult(g, loc) == 1.0 and Cartels.buy_mult(g, loc) == 1.0, "%s prices untouched at the start" % loc)
+		check(Cartels.tier(g, loc) == "mid", "%s starts contested" % loc)
+	check(Cartels.pirate_mult(g, "halvane") == 1.0 and Cartels.pirate_mult(g, "kovar") == 1.0, "pirate pressure untouched at the start")
+	check(g.buy_price("cannabis", "cinder") == int(data.locations.cinder.sells_raw.cannabis), "raw prices as in the data")
+	check(Cartels.leader(g, "cinder") == "black_comets" and Cartels.leader(g, "glacis") == "ouroboros" and Cartels.leader(g, "varrow") == "dust_kings", "each cartel leads at home")
+	check(Cartels.system_leader(g, "kovar") == "dust_kings" or Cartels.system_leader(g, "kovar") == "ouroboros", "Kovar is run by a cartel")
+	check(g.influence.has("mireth") and not g.influence.has("halvane_gate") and not g.influence.has("beacon"), "gates and the patrol base have no influence")
+
+
+func test_cartels_movement() -> void:
+	var g := new_game()
+	var before := Cartels.share(g, "mireth")
+	Cartels.gain(g, "mireth", 0.2)
+	check(is_equal_approx(Cartels.share(g, "mireth"), before + 0.2) and is_equal_approx(_row_sum(g, "mireth"), 1.0), "gain takes from the others, row stays at 1")
+	var oc := Cartels.share(g, "mireth", "ouroboros")
+	var nn := Cartels.share(g, "mireth", "none")
+	Cartels.gain(g, "mireth", 0.1)
+	check(Cartels.share(g, "mireth", "ouroboros") < oc and Cartels.share(g, "mireth", "none") < nn, "every rival and nobody give up ground")
+	Cartels.gain(g, "mireth", 5.0)
+	check(Cartels.share(g, "mireth") <= 1.0 + 0.0001 and is_equal_approx(_row_sum(g, "mireth"), 1.0), "gain is capped by what the others hold")
+	# a cartel keeps its home floor
+	Cartels.gain(g, "cinder", 5.0)
+	check(Cartels.share(g, "cinder", "black_comets") >= float(data.cartels.home_floor) - 0.0001, "Black Comets keep the floor at home")
+	check(is_equal_approx(_row_sum(g, "cinder"), 1.0), "row still adds up at the floor")
+	# losses go to the strongest rival
+	var g2 := new_game()
+	var comets := Cartels.share(g2, "bazaar", "black_comets")
+	Cartels.lose(g2, "bazaar", 0.05)
+	check(is_equal_approx(Cartels.share(g2, "bazaar", "black_comets"), comets + 0.05), "the strongest rival takes the loss")
+	Cartels.lose(g2, "bazaar", 5.0, "none")
+	check(Cartels.share(g2, "bazaar") == 0.0 and Cartels.tier(g2, "bazaar") == "low", "share cannot go below zero, tier low")
+	check(is_equal_approx(_row_sum(g2, "bazaar"), 1.0), "row adds up after a big loss")
+	check(Cartels.move(g2, "nowhere", "you", "none", 0.1) == 0.0 and Cartels.move(g2, "bazaar", "you", "none", -1.0) == 0.0, "bad moves do nothing")
+	# the daily bleed
+	var g3 := new_game()
+	Cartels.gain(g3, "mireth", 0.4)
+	var hi := Cartels.share(g3, "mireth")
+	Cartels.new_day(g3)
+	check(is_equal_approx(Cartels.share(g3, "mireth"), hi - float(data.cartels.decay_per_day)), "a lead bleeds back by decay_per_day")
+	Cartels.new_day(g3)
+	check(Cartels.share(g3, "cinder") == float(data.cartels.neutral), "nothing bleeds at the neutral share")
+
+
+func test_cartels_effects() -> void:
+	var g := new_game()
+	var price0 := g.sell_price("weed:overclock@standard", "", "bazaar")
+	var buy0 := g.buy_price("cannabis", "cinder")
+	var pir0 := SpaceCombat.spawn_interval(g)
+	Cartels.gain(g, "bazaar", 0.4)
+	Cartels.gain(g, "cinder", 0.4)
+	check(g.sell_price("weed:overclock@standard", "", "bazaar") > price0, "high influence pays better")
+	check(g.buy_price("cannabis", "cinder") < buy0, "high influence makes raws cheaper")
+	check(Cartels.tier(g, "bazaar") == "high", "tier high")
+	for loc in ["mireth", "bazaar", "cinder"]:
+		Cartels.gain(g, loc, 0.5)
+	check(Cartels.pirate_mult(g, "halvane") < 1.0 and SpaceCombat.spawn_interval(g) > pir0, "strong in Halvane: pirates come less often")
+	var w := new_game()
+	for loc in ["mireth", "bazaar", "cinder"]:
+		Cartels.lose(w, loc, 5.0)
+	check(Cartels.pirate_mult(w, "halvane") > 1.0 and SpaceCombat.spawn_interval(w) < pir0, "weak in Halvane: more pirates")
+	check(Cartels.pirate_mult(w, "halvane") <= float(data.cartels.pirate_max) and Cartels.pirate_mult(g, "halvane") >= float(data.cartels.pirate_min), "pirate factor stays bounded")
+	check(Deaddrops.theft_chance(w, "deal", "bazaar") > Deaddrops.theft_chance(w, "deal", "") and Deaddrops.theft_chance(g, "deal", "bazaar") == Deaddrops.theft_chance(g, "deal", ""), "weak spots get drops stolen")
+	check(w.sell_price("weed:overclock@standard", "", "bazaar") < price0, "low influence pays worse")
+
+
+func test_cartels_events() -> void:
+	var g := new_game()
+	g.cargo["weed:overclock@standard"] = 20
+	g.dock("bazaar")
+	var s0 := Cartels.share(g, "bazaar")
+	check(g.sell("weed:overclock@standard", 10).ok, "fence sale")
+	check(is_equal_approx(Cartels.share(g, "bazaar"), s0 + 10.0 * float(data.cartels.sale_per_unit)), "selling raises your share at that place")
+	var tiers: Array = []
+	g.event.connect(func(kind, p): if kind == "influence_tier": tiers.append(p))
+	Cartels.gain(g, "bazaar", 0.3)
+	check(tiers.size() == 1 and tiers[0].tier == "high" and tiers[0].loc == "bazaar", "crossing into high emits influence_tier once")
+	# raiders
+	var k := new_game()
+	k.system = "halvane"
+	var comets := Cartels.share(k, "bazaar", "black_comets")
+	var rng := RandomNumberGenerator.new()
+	SpaceCombat.collect_bounty(k, rng)
+	check(Cartels.share(k, "bazaar", "black_comets") < comets and Cartels.share(k, "bazaar") > float(data.cartels.neutral), "downing a raider costs the Black Comets and helps you in that system")
+	check(Cartels.share(k, "varrow") == float(data.cartels.neutral), "other systems unaffected")
+	var w := new_game()
+	w.system = "halvane"
+	SpaceCombat.defeat(w)
+	check(Cartels.share(w, "bazaar") < float(data.cartels.neutral) and Cartels.share(w, "bazaar", "black_comets") > Cartels.share(new_game(), "bazaar", "black_comets"), "a wreck hands ground to the raiders")
+	# drops
+	var d := new_game()
+	d.undock()
+	d.dock("bazaar")
+	var di := d.influence["bazaar"].duplicate()
+	d.drops.append({"id": 1, "loc": "bazaar", "spot": "", "expires_at": 9999.0, "job": {}})
+	d._emit("drop_pickup", {"drop": 1, "kind": "courier", "item": "cannabis", "qty": 1})
+	check(Cartels.share(d, "bazaar") > float(di.you), "a delivered drop raises influence")
+	var after := Cartels.share(d, "bazaar")
+	d._emit("drop_stolen", {"drop": 1, "kind": "courier", "qty": 1})
+	check(Cartels.share(d, "bazaar") < after, "a stolen drop lowers it")
+	# knocked out
+	var ko := new_game()
+	ko.dock("bazaar")
+	ko.credits = 100
+	Combat.knock_out(ko)
+	check(Cartels.share(ko, "bazaar") < float(data.cartels.neutral), "a knock-out costs standing")
+	# dealers sell for you
+	var dl := new_game()
+	dl.dock("bazaar")
+	var n0 := Cartels.share(dl, "bazaar")
+	dl.dealers.append({"id": "x", "loc": "bazaar", "stock": {}, "cash": 0, "sold": 0, "jail": 0.0})
+	dl._emit("dealer_sold", {"dealer": "x", "product": "weed", "qty": 5, "credits": 100})
+	check(Cartels.share(dl, "bazaar") > n0, "dealer sales raise influence in their district")
+
+
+func test_cartels_robbery() -> void:
+	var g := new_game()
+	g.dealers.append({"id": "robbed", "loc": "bazaar", "stock": {"weed:overclock@standard": 10}, "cash": 400, "sold": 0, "jail": 0.0})
+	var robbed: Array = []
+	g.event.connect(func(kind, p): if kind == "robbed": robbed.append(p))
+	for i in 10:
+		Cartels.new_day(g)
+	check(robbed.is_empty() and int(g.dealers[0].cash) == 400, "no robberies at a healthy share")
+	Cartels.lose(g, "bazaar", 5.0)
+	var saved: float = data.cartels.rob_chance
+	data.cartels.rob_chance = 1.0
+	Cartels.new_day(g)
+	check(robbed.size() == 1 and robbed[0].cartel == "black_comets" and robbed[0].credits == 200 and robbed[0].units == 5, "weak share: the strongest rival robs the dealer (%s)" % str(robbed))
+	check(int(g.dealers[0].cash) == 200 and Dealers.units(g.dealers[0]) == 5, "half the cash and stock are gone")
+	g.dealers[0].jail = 30.0
+	Cartels.new_day(g)
+	check(robbed.size() == 1, "jailed dealers have nothing to rob")
+	data.cartels.rob_chance = saved
+
+
+func test_cartels_save() -> void:
+	var g := new_game()
+	Cartels.gain(g, "mireth", 0.3)
+	Cartels.lose(g, "varrow", 0.1)
+	var d := g.to_dict()
+	check(d.has("influence"), "influence is saved")
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(d)))
+	for loc in Cartels.tracked(g):
+		for k in Cartels.holders(g):
+			check(absf(Cartels.share(h, loc, k) - Cartels.share(g, loc, k)) < 0.001, "%s/%s survives save and load" % [loc, k])
+	# old save without the key
+	d.erase("influence")
+	var o := Game.new()
+	o.from_dict(data, d)
+	check(is_equal_approx(Cartels.share(o, "mireth"), float(data.cartels.neutral)), "old save: fresh influence")
+	# garbage: unknown places and holders, bad rows, non-dict
+	var junk := {"mireth": {"you": 0.5, "ghost": 9.0, "ouroboros": 0.5}, "mars": {"you": 1.0}, "cinder": 3}
+	d.influence = junk
+	var j := Game.new()
+	j.from_dict(data, d)
+	check(is_equal_approx(_row_sum(j, "mireth"), 1.0) and not j.influence.has("mars") and is_equal_approx(Cartels.share(j, "cinder"), float(data.cartels.neutral)), "garbage rows are repaired")
+	d.influence = "nope"
+	var n := Game.new()
+	n.from_dict(data, d)
+	check(is_equal_approx(_row_sum(n, "mireth"), 1.0), "non-dict influence is ignored")
 
 
 ## Every surface, character look and prop has art in assets/gfx (see scripts/core/art.gd).
