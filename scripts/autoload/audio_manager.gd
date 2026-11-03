@@ -33,6 +33,8 @@ func _ready() -> void:
 		"hit": _sweep(260.0, 90.0, 0.18, 0.5, "square"),
 		"boom": _sweep(220.0, 40.0, 0.45, 0.55, "square"),
 		"boost": _sweep(300.0, 900.0, 0.22, 0.4),
+		"shot": _sweep(900.0, 120.0, 0.09, 0.45, "square"),
+		"hurt": _sweep(260.0, 90.0, 0.2, 0.5, "square"),
 	}
 	for i in POOL:
 		var p := AudioStreamPlayer.new()
@@ -94,7 +96,8 @@ func _on_game_event(kind: String, _payload: Dictionary) -> void:
 		"sold": play("sell")
 		"docked": play("dock")
 		"undocked": play("undock")
-		"busted": play("bust")
+		"busted", "knocked_out": play("bust")
+		"shot": play("shot")
 		"lab_done", "order_delivered": play("lab_done")
 		"upgraded": play("upgrade")
 

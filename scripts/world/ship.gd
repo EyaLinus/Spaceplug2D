@@ -68,7 +68,7 @@ func boost(backwards := false) -> bool:
 	var g = GameState.game
 	if g == null or frozen or _boost_t > 0.0 or not SpaceCombat.try_boost(g):
 		return false
-	var b: Dictionary = g.data.combat.boost
+	var b: Dictionary = g.data.space_combat.boost
 	_boost_t = float(b.seconds)
 	_invuln_t = float(b.invuln)
 	_boost_dir = Vector2.UP.rotated(rotation) * (-1.0 if backwards else 1.0)
@@ -86,7 +86,7 @@ func invulnerable() -> bool:
 
 func _boost_speed() -> float:
 	var g = GameState.game
-	return float(g.data.combat.boost.speed) * (0.8 + 0.2 * engine_mult) if g != null else 0.0
+	return float(g.data.space_combat.boost.speed) * (0.8 + 0.2 * engine_mult) if g != null else 0.0
 
 
 func stop() -> void:

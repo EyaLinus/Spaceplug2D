@@ -31,6 +31,10 @@ shows "Windows protected your PC" → *More info* → *Run anyway*).
 | W A S D / arrows | Walk |
 | E / Enter | Use door, talk to a person, take off at the launch pad |
 | Esc | Close the open panel / pause menu |
+| Mouse | Aim; left button fires (hold for the SMG) |
+| Q (hold) | Weapon wheel: move the mouse to a weapon, release to equip; locked weapons are bought here |
+| 1 2 3 / mouse wheel | Pistol, SMG, shotgun / cycle owned weapons |
+| R | Reload |
 
 ## Core loop (prototype v0.1)
 1. **Buy** precursors plus additives. Drug ladder (tier: raw → where):
@@ -58,6 +62,7 @@ shows "Windows protected your PC" → *More info* → *Run anyway*).
 ## Architecture
 ```
 scripts/core/       headless simulation, no Node dependencies (testable)
+  combat.gd         ground combat rules: health, weapons, officer draw, bullet and cover geometry
   game.gd           state + actions (buy, cook, sell, upgrade, bribe, bust, debt), tick(), save/load
   mixing.gd         recipe → traits → product key/value
   spacecombat.gd    space combat: hull/shield damage, boost, missiles, pirate pressure, defeat, mechanic repairs

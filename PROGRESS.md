@@ -25,6 +25,18 @@
 - Gaps: no human playtest, pirate numbers are eyeballed (the unit "balance" test is an abstract duel, not the live game); the
   sim bot does not fight or buy modules; the parked ship on the landing pad shows the new modules automatically (it draws
   Game.upgrades) but surface.gd is untouched; no ramming/collisions; D3 Interdiction can reuse `combat_layer.spawn_pirate`.
+## A4: DeadDrop Logistics (2026-11-02)
+- **Core:** `scripts/core/deaddrops.gd`, rules in content.json `deaddrops`, state `Game.drops` (+ `next_drop_id`, saved;
+  old saves load without). Request a drop (60 cr, max 3, one per planet/station/outpost) from the phone; while docked
+  there it takes one job at a time: an accepted Deal-O-Matic deal (offer state `dropped`, customer collects after 25 s
+  and pays) or a courier run to the hub stash (4 cr/unit, min 20). Drop heat is 30 % of the in-person hand-over; every
+  pickup/courier can be stolen (7 % + up to 15 % at max heat, courier +5 %): no goods, no pay (offer state `stolen`).
+  Idle drops close after 600 s. `Deals._trim` keeps `dropped` deals.
+- **UI:** `apps/deaddrop_app.gd` + one line in `registry.gd` (icon `app_deaddrop`), toasts on pickup/theft in `main.gd`.
+- Verified: 1857 unit checks (rules, heat vs hand-over, pay, theft, courier, expiry, caps, trimming, save round-trip,
+  old save), UI smoke (request, leave deal, collect and pay), menu smoke, sim 5/5 won (avg day 6.2), screenshot of the app.
+- Gaps: no map marker for drops on the surface; the customer collects instantly in the sim (no walking NPC);
+  A5 (dealers) can reuse `Deaddrops.at()` / jobs; courier only goes drop -> hub stash.
 
 ## B1: NPC schedules on foot (2026-11-02)
 - Surfaces have `spots` (schedule place name → tile, `surfaces.json`). `People.spot(c, spots, hour, slot)` picks the
@@ -328,3 +340,27 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
 
 ## History
 - v0.1 (2026-10-30): repo skeleton, architecture, vertical slice, CI with Windows export.
+
+## E1: Ground combat (2026-11-02)
+- **Core** `scripts/core/combat.gd` (static functions over `Game`), rules in `content.json` -> `combat` (player hp/regen/knock-out,
+  3 weapons, officer stats and draw heat, cover pieces per planet). State on `Game`: `hp`, `weapons`, `weapon`, `ammo` (saved under
+  `combat`; old saves load full health + pistol), runtime `cooldown`/`reload_left`/`since_hit`; `stats.kills/knockouts`.
+  Pure geometry (`segment_rect_t`, `segment_circle_t`, `step_bullet`) so bullets, cover and line of fire are unit-testable.
+- **Weapons:** pistol (free, 12 rounds), SMG (600 cr, auto), shotgun (900 cr, 7 pellets). Magazine + reload, fire rate, spread.
+  Shots add a little heat only if an officer is within earshot (`witness_range`).
+- **Player:** 100 HP, regenerates 4/s after 6 s without a hit. Knock-out (0 HP): product confiscated, fine 20 % (min 80), heat -20,
+  wakes up at the launch pad with 50 % HP. Not a game over.
+- **Officers:** at heat >= 55 (`officer.draw_heat`) or once shot at, they draw weapons, stop within 280 px if the line is clear and
+  shoot every 1.0 s (9 dmg, spread). They hunt a visible player even without cargo while hostile (4 s memory). 40 HP; a kill gives
+  +12 heat, a hit +4; killed officers respawn after 25 s.
+- **Cover:** 5-7 pieces per planet beside the streets (`combat.cover`), solid for walking (also in the nav grid) and bullets, not for
+  sight. Test: inside the map, off buildings/roads/plazas/pad, every spot, NPC, door and pad stays reachable.
+- **UI** (`surface.gd`, `planet/combat_hud.gd`): crosshair, HP bar, weapon + magazine, reload ring, hurt vignette, weapon wheel,
+  bullets, sparks, gun in hand; officer gun, hp bar and hit flash. Foot help line lists the new keys.
+- Verified: 2185 unit checks (weapons, fire rate, reload, shop, damage/regen/knock-out, geometry incl. tunnelling, officer rules, cover
+  layout on all 5 planets, save/old save/garbage save), UI smoke (cover stops a bullet, clear shot hurts + provokes, real mouse click and
+  R key, armed officer shoots back, knock-out at the pad, officer kill, wheel buy + equip, key 1), menu smoke, sim 5/5 won.
+- Deviations/gaps: civilians and named NPCs cannot be shot (bullets pass them); new keys (Q, R, 1-3) are not in the rebinding screen
+  and the weapon actions are keyboard/mouse only; no ammo economy (unlimited reloads); cover is a static ground layer (no y-sort,
+  walkers on the roads can brush past it); no screenshot of the HUD/wheel (Xvfb rendering hung in this container), so the layout is
+  unseen; numbers are eyeballed; the balance bot does not fight. Officer AI is simple (no flanking, they do not seek cover).

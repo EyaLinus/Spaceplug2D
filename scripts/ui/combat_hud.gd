@@ -69,7 +69,7 @@ func _process(_delta: float) -> void:
 	_shield_row.visible = ms > 0.0
 	_shield.max_value = maxf(ms, 1.0)
 	_shield.value = g.combat.shield
-	_boost.max_value = float(g.data.combat.boost.max)
+	_boost.max_value = float(g.data.space_combat.boost.max)
 	_boost.value = g.combat.boost
 	_missiles.visible = SpaceCombat.has_missiles(g)
 	_missiles.text = "Missiles %d / %d" % [int(g.combat.missiles), SpaceCombat.missile_cap(g)]

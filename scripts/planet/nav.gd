@@ -8,9 +8,14 @@ static func build(surface_cfg: Dictionary) -> AStarGrid2D:
 	g.cell_size = Vector2.ONE * float(surface_cfg.get("tile", 32))
 	g.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
 	g.update()
+	var solids: Array = []
 	for b in surface_cfg.buildings:
-		for y in range(int(b.rect[1]), int(b.rect[1]) + int(b.rect[3])):
-			for x in range(int(b.rect[0]), int(b.rect[0]) + int(b.rect[2])):
+		solids.append(b.rect)
+	for c in surface_cfg.get("cover", []):  # cover pieces block walking too (but not sight)
+		solids.append(c)
+	for r in solids:
+		for y in range(int(r[1]), int(r[1]) + int(r[3])):
+			for x in range(int(r[0]), int(r[0]) + int(r[2])):
 				g.set_point_solid(Vector2i(x, y))
 	return g
 

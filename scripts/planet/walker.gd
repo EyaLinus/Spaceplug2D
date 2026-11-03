@@ -8,6 +8,8 @@ const RADIUS := 9.0
 
 var frozen := false  ## true while a panel is open or the game is paused
 var facing := Vector2.DOWN
+var aim_dir := Vector2.ZERO  ## set while shooting: the sprite looks at the mouse instead of the walking direction
+var flash := 0.0  ## hurt flash (seconds)
 var _step := 0.0
 var _moving := false
 
@@ -23,6 +25,7 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	flash = maxf(0.0, flash - delta)
 	if frozen:
 		_moving = false
 		velocity = Vector2.ZERO
@@ -44,7 +47,10 @@ func walk(delta: float, dir: Vector2) -> void:
 
 func _draw() -> void:
 	draw_circle(Vector2(0, 12), 9.0, Color(0, 0, 0, 0.3))
-	if Art.draw_character(self, "player", facing, int(_step * 4.0 / TAU) if _moving else 0):
+	var look := aim_dir if aim_dir != Vector2.ZERO else facing
+	if flash > 0.0:
+		draw_circle(Vector2(0, 0), 13.0, Color(1, 0.2, 0.2, minf(0.5, flash * 2.0)))
+	if Art.draw_character(self, "player", look, int(_step * 4.0 / TAU) if _moving else 0):
 		return
 	var swing := sin(_step) * 4.0 if _moving else 0.0
 	var leg := Color("#2a2f45")

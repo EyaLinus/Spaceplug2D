@@ -12,6 +12,8 @@ const People = preload("res://scripts/core/people.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Orders = preload("res://scripts/core/orders.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
+const Combat = preload("res://scripts/core/combat.gd")
+const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -47,6 +49,16 @@ var order_seq: int = 0
 var estate_stock: Dictionary = {}  ## estate id -> item -> qty delivered there, unloaded by collect_stash() inside
 var kits: Dictionary = {}  ## station id -> flat-packed kits delivered by phone order, placed for free in build mode
 var orders_unseen: int = 0  ## deliveries since the Orders app was last opened (runtime only)
+var hp: float = 100.0  ## player health on foot (see combat.gd), saved
+var weapons: Array = []  ## owned weapon ids, saved
+var weapon: String = ""  ## equipped weapon id, saved
+var ammo: Dictionary = {}  ## weapon id -> rounds in the magazine, saved
+var cooldown: float = 0.0  ## seconds until the next shot (runtime only)
+var reload_left: float = 0.0  ## seconds until the reload finishes, 0 = not reloading (runtime only)
+var since_hit: float = 999.0  ## seconds since the player was last hurt; health regenerates after a pause (runtime only)
+var drops: Array = []  ## dead drops you requested (see deaddrops.gd)
+var next_drop_id: int = 0
+var drops_unseen: int = 0  ## finished drop jobs since the DeadDrop app was opened (runtime only)
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 
 
@@ -74,13 +86,17 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "shield": 0, "hull": 0}
 	SpaceCombat.reset(self)
 	state = "playing"
-	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
+	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0}
 	estates = {SHIP_BAY: {"buildings": []}}
 	orders = []
 	order_seq = 0
 	estate_stock = {}
 	kits = {}
 	orders_unseen = 0
+	Combat.init(self)
+	drops = []
+	next_drop_id = 0
+	drops_unseen = 0
 	demand = {}
 	for loc in data.locations:
 		demand[loc] = {}
@@ -256,6 +272,8 @@ func tick(dt: float) -> void:
 	Deals.tick(self, dt)
 	Orders.tick(self)
 	SpaceCombat.tick(self, dt)
+	Combat.tick(self, dt)
+	Deaddrops.tick(self)
 	while day_time >= day_seconds():
 		day_time -= day_seconds()
 		_new_day()
@@ -690,7 +708,7 @@ func to_dict() -> Dictionary:
 		"next_offer_id": next_offer_id, "offer_clock": snappedf(offer_clock, 0.01), "upgrades": upgrades.duplicate(),
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
-		"kits": kits.duplicate(), "combat": SpaceCombat.to_save(self),
+		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id,
 	}
 
 
@@ -746,6 +764,8 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 		estates[SHIP_BAY] = {"buildings": []}
 	Orders.from_save(self, d)
 	SpaceCombat.from_save(self, d)
+	Combat.from_save(self, d)
+	Deaddrops.from_save(self, d)
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

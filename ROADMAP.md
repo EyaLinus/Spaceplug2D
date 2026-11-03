@@ -107,7 +107,7 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
 - → **Release v0.1.6**.
 
 ### Wave 3 – logistics & automation (needs wave 2)
-- **A4 DeadDrop Logistics.** Request anonymous drop points on planets/stations; customers or couriers pick up from
+- [x] **A4 DeadDrop Logistics.** Request anonymous drop points on planets/stations; customers or couriers pick up from
   them (less heat than hand-to-hand, small chance of theft). Needs A2 + A3.
 - **B3 Workers & HR app** [P5]. Hire lab hands and stockers in the HR app (wage per day, skill, loyalty); assigned
   workers run stations in an estate and move items storage → station → storage. Needs #14, A1.
@@ -118,7 +118,7 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
 - → **Release v0.1.7**.
 
 ### Wave 4 – combat & factions (mostly needs wave 1 only, but large)
-- **E1 Ground combat.** Player health, twin-stick aiming (mouse), 2–3 weapons (pistol, SMG, shotgun), weapon wheel,
+- [x] **E1 Ground combat.** Player health, twin-stick aiming (mouse), 2–3 weapons (pistol, SMG, shotgun), weapon wheel,
   cover objects on surfaces, officers can draw weapons at high heat. Not parallel with B1 (surface.gd).
 - [x] **E2 Space combat.** Hull + shield, lasers and missiles, dodge (boost), pirate ships that attack in deep space,
   weapon/shield modules at the mechanic (visible via E3). Not parallel with A6 (world.gd).

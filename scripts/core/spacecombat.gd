@@ -1,7 +1,7 @@
 extends RefCounted
 ## Space combat rules, headless: hull + shield, damage, boost (dodge) energy, missiles, pirate pressure, defeat,
 ## repairs at the mechanic. Static helpers over a Game; the state lives in `Game.combat` (hull, shield, missiles,
-## kills are saved, boost/idle are runtime only). Numbers: content.json -> "combat" and the upgrades laser, missile,
+## kills are saved, boost/idle are runtime only). Numbers: content.json -> "space_combat" and the upgrades laser, missile,
 ## shield, hull (each upgrade level is one module the E3 layered ship art draws). The world scripts (combat_layer.gd,
 ## pirate.gd) own the geometry and call back into these rules.
 
@@ -9,7 +9,7 @@ const Mixing = preload("res://scripts/core/mixing.gd")
 
 
 static func cfg(g) -> Dictionary:
-	return g.data.combat
+	return g.data.space_combat
 
 
 static func fresh(g) -> Dictionary:
@@ -224,10 +224,10 @@ static func to_save(g) -> Dictionary:
 	return {"hull": snappedf(float(c.hull), 0.1), "shield": snappedf(float(c.shield), 0.1), "missiles": int(c.missiles), "kills": int(c.kills)}
 
 
-## Old saves have no "combat": the ship starts undamaged.
+## Old saves have no "space": the ship starts undamaged.
 static func from_save(g, d: Dictionary) -> void:
 	reset(g)
-	var s: Dictionary = d.get("combat", {})
+	var s: Dictionary = d.get("space", {})
 	if s.is_empty():
 		return
 	g.combat.hull = clampf(float(s.get("hull", max_hull(g))), 1.0, max_hull(g))

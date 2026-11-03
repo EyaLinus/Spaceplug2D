@@ -47,7 +47,7 @@ func clear() -> void:
 
 ## Seconds-based update. `g` is the core Game; the ship must be flying (world.active).
 func step(delta: float, g) -> void:
-	var cc: Dictionary = g.data.combat
+	var cc: Dictionary = g.data.space_combat
 	_laser_cd = maxf(0.0, _laser_cd - delta)
 	_missile_cd = maxf(0.0, _missile_cd - delta)
 	shake = maxf(0.0, shake - delta * 14.0)
@@ -84,7 +84,7 @@ func step(delta: float, g) -> void:
 func fire_laser(g) -> bool:
 	if _laser_cd > 0.0 or ship.frozen:
 		return false
-	var cc: Dictionary = g.data.combat
+	var cc: Dictionary = g.data.space_combat
 	_laser_cd = float(cc.laser.cooldown)
 	var dir := Vector2.UP.rotated(ship.rotation)
 	var lvl: int = g.upgrades.laser
@@ -103,7 +103,7 @@ func fire_missile(g) -> bool:
 	if not SpaceCombat.take_missile(g):
 		EventBus.toast.emit("Out of missiles. Restock at the mechanic.", false)
 		return false
-	var cc: Dictionary = g.data.combat
+	var cc: Dictionary = g.data.space_combat
 	_missile_cd = float(cc.missile.cooldown)
 	var dir := Vector2.UP.rotated(ship.rotation)
 	var b := _add_bolt(ship.position + dir * 20.0, dir * float(cc.missile.speed) + ship.velocity * 0.5,
@@ -148,7 +148,7 @@ func _spawn(delta: float, g) -> void:
 
 ## Brings one raider in from beyond the screen (also used by the smoke test with `at`).
 func spawn_pirate(g, at = null) -> Node2D:
-	var s: Dictionary = g.data.combat.spawn
+	var s: Dictionary = g.data.space_combat.spawn
 	var pos: Vector2
 	if at != null:
 		pos = at
@@ -158,7 +158,7 @@ func spawn_pirate(g, at = null) -> Node2D:
 		pos = pos.clamp(Vector2(-lim, -lim), Vector2(lim, lim))
 	var p := PirateScript.new()
 	_seed += 1
-	p.setup(g.data.combat.pirate, pos, _seed)
+	p.setup(g.data.space_combat.pirate, pos, _seed)
 	add_child(p)
 	pirates.append(p)
 	return p
@@ -173,7 +173,7 @@ func _add_bolt(pos: Vector2, vel: Vector2, life: float, dmg: float, mine: bool) 
 
 
 func _step_bolts(delta: float, g) -> void:
-	var cc: Dictionary = g.data.combat
+	var cc: Dictionary = g.data.space_combat
 	for b in bolts.duplicate():
 		b.life -= delta
 		if b.missile:
