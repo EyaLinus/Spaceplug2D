@@ -482,6 +482,18 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		EventBus.toast.emit(str(p.text), true)
 	elif kind == "notice":
 		EventBus.toast.emit(p.text, p.good)
+	elif kind == "turf_changed":
+		var gm = GameState.game
+		var where: String = gm.loc_data(p.loc).get("name", p.loc)
+		if p.by == "you":
+			EventBus.toast.emit("%s is your turf now: better prices, fewer raiders." % where, true)
+		elif p.was == "you":
+			EventBus.toast.emit("You lost your grip on %s." % where, false)
+		elif p.by != "":
+			EventBus.toast.emit("The %s took over %s." % [gm.data.cartels.gangs[p.by].name, where], false)
+	elif kind == "dealer_robbed":
+		var gm = GameState.game
+		EventBus.toast.emit("%s robbed %s on %s: %d cr and %d units gone." % [gm.data.cartels.gangs.get(p.cartel, {}).get("name", "A cartel"), Dealers.candidate(gm, p.dealer).name, gm.loc_data(p.loc).get("name", ""), p.credits, p.units], false)
 	elif kind == "jump_ready":
 		_engage_drive.call_deferred()  # not inside Game.tick: the jump ticks the game itself
 	elif kind == "jump_cancelled":

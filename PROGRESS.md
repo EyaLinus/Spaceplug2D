@@ -1,5 +1,25 @@
 # Progress log
 
+## I1: enemy cartels + sector influence (phase 3 wave 9, 2026-11-03)
+- **Core** `scripts/core/cartels.gd`, data `content.json` "cartels" (3 gangs: Black Comets/halvane, Saltglass
+  Tide/kovar, Ninth Veil/kovar, with boss, colour, home, base id for E4, start hostility; start shares per trade
+  location). State `Game.cartels` {influence {loc: {you, <cartel>: share}}, gangs {hostility, weakened, kills, raids},
+  owner} (saved; old saves start from the defaults). Unclaimed street = 1 - sum.
+- Ground moves: `gain()` (half from the street, the rest from the others in proportion), sales via the `sold` /
+  `dealer_sold` events (Cartels.on_event in Game._emit), `on_kill` (cartel ship down in the current system),
+  `on_raid` (base destroyed → weakened for N days). Daily: cartels push at home and where they already are (capped),
+  your share erodes where you have no active dealer, hostility cools, dealers on cartel turf may be robbed
+  (`dealer_robbed`). Owner = actor with ≥ 50 %, `turf_changed` event.
+- Effects: `price_mult(loc)` = 1 ± 15 % by your share minus the top cartel's (in Game.sell_price, so contacts,
+  fence and dealers all see it); `pressure_mult(sys)` scales the pirate spawn pressure (1.2 with no ground, 0.5 when
+  you hold everything).
+- **UI**: Map app third overlay "Influence" (system glow in the leading actor's colour, your system share bar,
+  per-location turf / price / robbery line and a stacked share bar with tooltip), "Cartels" screen (boss, home, mood,
+  hostility bar, ships downed, rebuilding). Toasts for turf changes and robberies.
+- Verified: 10056 unit checks, UI smoke (influence overlay + cartel screen), screenshots. Sim 8/8 won, avg win day
+  4.9 → 4.6 (the bot's sales build ground at Mireth/Bazaar → slightly better prices).
+- Gaps: hostility does nothing visible yet (E4 wings, D3 interdictions use it); numbers eyeballed.
+
 ## Release v0.1.10 (2026-11-03)
 - Phase 3 wave 8: D4 bigger planet maps with districts and landmarks (#55), B4 every person a named customer (#56).
   Changelog folded, version 0.1.10. Next: wave 9 (I1 cartels + sector influence, E4 space combat II, D3 interdiction)

@@ -294,6 +294,16 @@ func _run() -> void:
 	await _save(out, "phone_map_prices")
 	m.phone.home()
 	m.phone.open_app("map")
+	m.phone.find_child("MapMode_influence", true, false).pressed.emit()
+	for i in 4:
+		await physics_frame
+	await _save(out, "phone_map_influence")
+	m.phone.push("Cartels", func(gg): return m.phone.app_by_id("map")._cartels(gg))
+	for i in 4:
+		await physics_frame
+	await _save(out, "phone_cartels")
+	m.phone.home()
+	m.phone.open_app("map")
 	m.phone.find_child("MapMode_heat", true, false).pressed.emit()
 	m.phone.find_child("MapJump", true, false).pressed.emit()
 	g.tick(g.jump_plan.need * 0.6)
