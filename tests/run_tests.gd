@@ -2157,10 +2157,12 @@ func test_space_combat_pirates() -> void:
 	var bounty := SpaceCombat.collect_bounty(g, rng)
 	var br: Array = data.space_combat.pirate.bounty
 	check(bounty >= int(br[0]) and bounty <= int(br[1]) and g.credits == credits + bounty and g.combat.kills == 1, "bounty pays and counts the kill")
-	var base_interval := SpaceCombat.spawn_interval(g)
+	# the kill above already moved influence (I1), so the base interval is read on a fresh game
+	var base_interval := SpaceCombat.spawn_interval(fly_game())
 	check(base_interval == float(data.space_combat.spawn.interval), "empty hold in Halvane: base spawn interval")
-	g.cargo = {"weed:overclock@standard": 30}
-	check(SpaceCombat.spawn_interval(g) < base_interval and SpaceCombat.max_pirates(g) >= int(data.space_combat.spawn.max), "hauling product attracts pirates")
+	var h := fly_game()
+	h.cargo = {"weed:overclock@standard": 30}
+	check(SpaceCombat.spawn_interval(h) < base_interval and SpaceCombat.max_pirates(h) >= int(data.space_combat.spawn.max), "hauling product attracts pirates")
 	var k := fly_game()
 	k.system = "kovar"
 	check(SpaceCombat.spawn_interval(k) < base_interval, "lawless Kovar has more pirates than Halvane")
