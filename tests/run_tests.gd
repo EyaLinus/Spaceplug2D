@@ -7,8 +7,10 @@ const Data = preload("res://scripts/core/data.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const Workers = preload("res://scripts/core/workers.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Orders = preload("res://scripts/core/orders.gd")
+const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const ArtReg = preload("res://scripts/core/art.gd")
@@ -33,10 +35,15 @@ func _init() -> void:
 		"test_combat_cover_layout",
 		"test_combat_save",
 		"test_estates",
+		"test_workers",
 		"test_ship_bay",
 		"test_orders",
 		"test_order_kits",
 		"test_orders_save",
+		"test_galaxy_routes",
+		"test_galaxy_overlays",
+		"test_jump_drive",
+		"test_jump_drive_multi_hop",
 		"test_mixing_rules",
 		"test_buy_and_cargo_limit",
 		"test_lab_batch",
@@ -512,6 +519,126 @@ func test_estates() -> void:
 	check(not g.lab_here(), "outside the estate no lab")
 
 
+## A shack on Cinder with a complete weed line, credits and the player standing inside.
+func worker_game() -> Game:
+	var g := new_game()
+	g.credits = 20000
+	g.location = "cinder"
+	g.buy_estate("shaft_shack")
+	g.inside_estate = "shaft_shack"
+	g.place_building("shaft_shack", "trim_table", 0, 0)
+	g.place_building("shaft_shack", "cook_stove", 2, 0)
+	g.place_building("shaft_shack", "pack_table", 4, 0)
+	g.place_building("shaft_shack", "extractor", 6, 0)
+	return g
+
+
+## Cooks `batches` auto batches with the given crew; returns {qty, grade_sum, products}.
+func run_crew(lab_hand: String, stocker: String, batches: int) -> Dictionary:
+	var g := worker_game()
+	Workers.hire(g, lab_hand)
+	Workers.assign(g, lab_hand, "shaft_shack")
+	if stocker != "":
+		Workers.hire(g, stocker)
+		Workers.assign(g, stocker, "shaft_shack")
+	Workers.set_recipe(g, "shaft_shack", "weed", [], 5)
+	g.cargo = {"cannabis": 5 * batches}
+	check(Workers.deposit(g, "shaft_shack", "cannabis", 5 * batches).ok, "stock the shelf")
+	var t := 0.0
+	while t < 900.0 and int(g.stats.worker_batches) < batches:
+		g.tick(0.5)
+		t += 0.5
+	var qty := 0
+	var grades := 0
+	var e: Dictionary = g.estates.shaft_shack
+	for src in [e.out, e.storage]:
+		for k in src:
+			if Mixing.is_product(k):
+				qty += int(src[k])
+				grades += Mixing.parse_key(k).grade * int(src[k])
+	return {"qty": qty, "grades": grades, "t": t, "g": g, "batches": int(g.stats.worker_batches)}
+
+
+func test_workers() -> void:
+	for c in data.workers.candidates:
+		check(data.workers.roles.has(c.role) and float(c.skill) > 0.0 and float(c.skill) <= 1.0 and int(c.wage) > 0, "candidate %s valid" % c.id)
+	var g := worker_game()
+	check(Workers.available(g).size() == data.workers.candidates.size(), "everybody is for hire at the start")
+	g.credits = 10
+	check(not Workers.hire(g, "hollis").ok, "can't afford the signing fee")
+	g.credits = 5000
+	var before: int = g.credits
+	check(Workers.hire(g, "hollis").ok and g.credits == before - 2 * int(Workers.candidate(g, "hollis").wage), "hire pays the signing fee")
+	check(not Workers.hire(g, "hollis").ok, "can't hire twice")
+	check(not Workers.assign(g, "hollis", "cannery_annex").ok, "assign needs an owned estate")
+	check(Workers.assign(g, "hollis", "shaft_shack").ok, "assign lab hand")
+	Workers.hire(g, "pia")
+	check(not Workers.assign(g, "pia", "shaft_shack").ok, "one lab hand per estate")
+	check(Workers.fire(g, "pia").ok and Workers.hired(g, "hollis") and not Workers.hired(g, "pia"), "fire")
+	# nothing happens without a recipe, then the lab hand cooks from the shelf (no stocker: slower)
+	g.tick(30.0)
+	check(g.estates.shaft_shack.job.is_empty() and Workers.blocker(g, "shaft_shack") == "No recipe set.", "idle without recipe")
+	Workers.set_recipe(g, "shaft_shack", "weed", [], 5)
+	check(not Workers.deposit(g, "shaft_shack", "cannabis", 5).ok, "no cargo to store")
+	g.cargo = {"cannabis": 5}
+	g.inside_estate = ""
+	check(not Workers.deposit(g, "shaft_shack", "cannabis", 5).ok, "must be inside to store")
+	g.inside_estate = "shaft_shack"
+	check(Workers.deposit(g, "shaft_shack", "cannabis", 5).ok and g.cargo.is_empty(), "store raws")
+	g.tick(1.0)
+	check(not g.estates.shaft_shack.job.is_empty(), "lab hand starts the batch")
+	var heat_before := g.heat
+	check(heat_before > 0.0, "auto batches add heat")
+	g.tick(60.0)
+	check(g.estates.shaft_shack.job.is_empty() and g.stats.worker_batches == 1, "batch done")
+	check(Workers.take_products(g, "shaft_shack").ok and g.has_contraband(), "take products")
+	# an unbuilt recipe names the missing station
+	Workers.set_recipe(g, "shaft_shack", "meth", [], 5)
+	check("Refiner" in Workers.blocker(g, "shaft_shack") or "Precursor" in Workers.blocker(g, "shaft_shack"), "missing station named: %s" % Workers.blocker(g, "shaft_shack"))
+	# skill matters: a pro beats a rookie on yield and grade, a stocker makes the line faster
+	var rookie := run_crew("dax", "moss", 6)
+	var pro := run_crew("hollis", "reva", 6)
+	check(rookie.batches == 6 and pro.batches == 6, "both crews finish 6 batches (%d/%d)" % [rookie.batches, pro.batches])
+	check(pro.grades > rookie.grades, "skilled hand cooks better grades (%d vs %d)" % [pro.grades, rookie.grades])
+	check(pro.qty >= rookie.qty and pro.t < rookie.t, "skilled hand is faster (%.0fs vs %.0fs) with >= yield (%d vs %d)" % [pro.t, rookie.t, pro.qty, rookie.qty])
+	var alone := run_crew("hollis", "", 6)
+	check(alone.batches == 6 and alone.t > pro.t, "no stocker is slower (%.0fs vs %.0fs)" % [alone.t, pro.t])
+	# the stocker moves finished goods from the tray into storage and tops up the bench
+	var ps: Dictionary = pro.g.estates.shaft_shack
+	check(ps.out.is_empty() or pro.g.estates.shaft_shack.storage.size() > 0, "stocker delivered output to storage")
+	# wages
+	var w := worker_game()
+	Workers.hire(w, "hollis")
+	Workers.hire(w, "moss")
+	var wages := Workers.wage_total(w)
+	check(wages == int(Workers.candidate(w, "hollis").wage) + int(Workers.candidate(w, "moss").wage), "wage total")
+	var c0: int = w.credits
+	w.tick(w.day_seconds())
+	check(w.credits == c0 - wages and w.stats.wages == wages, "daily wages charged (%d)" % (c0 - w.credits))
+	var loyal: float = w.workers[0].loyalty
+	w.credits = 0
+	w.tick(w.day_seconds())
+	check(w.workers[0].loyalty < loyal, "unpaid wages cost loyalty")
+	for i in 3:
+		w.tick(w.day_seconds())
+	check(w.workers.is_empty(), "unpaid workers quit")
+	# save round trip incl. mid-job state, and old saves without any worker data
+	var s: Game = run_crew("pia", "jun", 1).g
+	s.estates.shaft_shack.job = {"product": "weed", "qty": 5, "remaining": 3.0, "total": 9.0}
+	var json := JSON.stringify(s.to_dict())
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(json))
+	check(JSON.stringify(h.to_dict()) == json, "worker save round-trip is stable")
+	check(h.workers.size() == 2 and h.estates.shaft_shack.job.remaining == 3.0, "workers and job restored")
+	var old: Dictionary = JSON.parse_string(json)
+	old.erase("workers")
+	for k in ["storage", "bench", "out", "recipe", "job", "haul_t"]:
+		old.estates.shaft_shack.erase(k)
+	var o := Game.new()
+	o.from_dict(data, old)
+	check(o.workers.is_empty() and o.estates.shaft_shack.storage.is_empty() and o.estates.shaft_shack.job.is_empty(), "old saves load without workers")
+	o.tick(30.0)
+	check(o.estates.shaft_shack.buildings.size() == 4, "old save estate still ticks")
 func test_ship_bay() -> void:
 	var sb: String = Game.SHIP_BAY
 	check(data.estates.has(sb) and data.estates[sb].get("ship", false), "ship estate is defined")
@@ -646,6 +773,7 @@ func test_orders_save() -> void:
 	g.credits = 5000
 	Orders.place(g, "cannabis", 6, "stash", false)
 	g.estates["cannery_annex"] = {"buildings": []}
+	Workers.ensure(g.estates["cannery_annex"])
 	g.estate_stock = {"cannery_annex": {"nanoflux": 3}}
 	var json := JSON.stringify(g.to_dict())
 	var h := Game.new()
@@ -668,6 +796,135 @@ func test_orders_save() -> void:
 	h2.from_dict(data, d2)
 	h2.tick(10.0)
 	check(h2.stash.get("cannabis", 0) == 2, "unknown destination falls back to the stash")
+
+
+## Lanes and route planning over the jump gates (A6).
+func test_galaxy_routes() -> void:
+	var g := new_game()
+	check(Galaxy.neighbours(g, "halvane") == ["kovar"] and Galaxy.neighbours(g, "kovar") == ["halvane"], "the two systems are neighbours")
+	check(Galaxy.lanes(g).size() == 1, "one lane (gate pairs count once)")
+	check(Galaxy.gates(g, "halvane", "kovar") == ["halvane_gate"] and Galaxy.gates(g, "kovar").size() == 1, "gate lookup")
+	check(Galaxy.route(g, "halvane", "kovar") == ["halvane", "kovar"] and Galaxy.route(g, "kovar", "kovar") == ["kovar"], "route over the lane")
+	check(Galaxy.route(g, "halvane", "nowhere").is_empty(), "unknown system has no route")
+	var pl := Galaxy.plan(g, "kovar")
+	check(pl.ok and pl.hops == 1 and pl.fee == int(data.jump.fee) and pl.charge > 0.0, "plan: one hop, toll, charge time")
+	check(is_equal_approx(pl.total_seconds, pl.charge + float(data.jump.seconds)), "plan total = charge + travel")
+	check(not Galaxy.plan(g, "halvane").ok, "no plan to the current system")
+	g.upgrades.engine = 3
+	check(Galaxy.charge_seconds(g) < pl.charge and Galaxy.charge_seconds(g) >= float(data.jump.min_charge), "engine upgrades shorten the charge, never below the minimum")
+
+
+## Heat overlay and price comparison data (A6).
+func test_galaxy_overlays() -> void:
+	var g := new_game()
+	check(Galaxy.heat_level(g, "halvane") == 0.0, "cold map at zero heat")
+	g.add_heat(80)
+	check(is_equal_approx(Galaxy.heat_level(g, "halvane"), 0.8), "Halvane heat level follows heat")
+	check(Galaxy.heat_level(g, "kovar") < Galaxy.heat_level(g, "halvane"), "frontier system reads cooler")
+	g.system = "kovar"
+	check(Galaxy.patrols_in(g, "kovar") == g.patrol_count() and Galaxy.patrols_in(g, "halvane") > Galaxy.patrols_in(g, "kovar"), "patrols_in matches patrol_count and Halvane has more")
+	var risk := Galaxy.location_risk(g, "glacis")
+	check(risk.sale_heat > Galaxy.location_risk(g, "bazaar").sale_heat and risk.security > Galaxy.location_risk(g, "varrow").security, "Glacis is risky, Bazaar and Varrow are not")
+	check(Galaxy.location_risk(g, "beacon").security < 0.0, "no surface = security -1")
+	var seen_items := 0
+	for row in Galaxy.buy_table(g):
+		seen_items += 1
+		for i in range(1, row.offers.size()):
+			check(row.offers[i - 1].price <= row.offers[i].price, "%s offers sorted cheapest first" % row.item)
+		check(row.offers[0].price == g.buy_price(row.item, row.offers[0].loc), "%s best offer matches buy_price" % row.item)
+	check(seen_items == data.raws.size() + data.additives.size(), "every raw and additive is listed")
+	var cannabis: Dictionary = Galaxy.buy_table(g).filter(func(r): return r.item == "cannabis")[0]
+	check(cannabis.offers[0].loc == "cinder" and cannabis.offers.size() >= 3, "cannabis is cheapest at Cinder and sold in three places")
+	var sells := Galaxy.sell_table(g)
+	check(sells.size() == data.bases.size(), "every drug in the sell table")
+	for row in sells:
+		for i in range(1, row.offers.size()):
+			check(row.offers[i - 1].price >= row.offers[i].price, "%s demand sorted best first" % row.base)
+	var coke: Dictionary = sells.filter(func(r): return r.base == "cocaine")[0]
+	check(coke.offers[0].loc == "glacis", "Glacis pays the most for cocaine")
+	g.demand["glacis"]["cocaine"] = 0.2
+	var coke2: Dictionary = Galaxy.sell_table(g).filter(func(r): return r.base == "cocaine")[0]
+	check(coke2.offers[0].loc != "glacis", "saturated demand drops the location in the ranking")
+
+
+## Jump drive: charge-up, cancel rules, engage (A6).
+func test_jump_drive() -> void:
+	var g := new_game()
+	check(not Galaxy.start(g, "kovar").ok, "no charge while docked")
+	g.undock()
+	check(not Galaxy.start(g, "halvane").ok and not Galaxy.start(g, "nowhere").ok, "bad targets refused")
+	g.credits = 10
+	check(not Galaxy.start(g, "kovar").ok and g.jump_plan.is_empty(), "the toll must be affordable")
+	g.credits = 500
+	check(Galaxy.start(g, "kovar").ok and Galaxy.charging(g) and not Galaxy.ready(g), "charging starts in flight")
+	check(not Galaxy.engage(g).ok, "cannot engage an uncharged drive")
+	var need := float(g.jump_plan.need)
+	g.tick(need * 0.5)
+	check(is_equal_approx(Galaxy.progress(g), 0.5) and g.system == "halvane", "half charged, still home")
+	g.tick(need)
+	check(Galaxy.ready(g) and Galaxy.progress(g) == 1.0 and g.system == "halvane", "charged but the jump waits for the engage")
+	var credits := g.credits
+	var t := g.total_time
+	var r := Galaxy.engage(g)
+	check(r.ok and r.gate == "halvane_gate" and g.system == "kovar" and not r.more, "engage jumps through the Halvane gate")
+	check(g.credits == credits - int(data.jump.fee) and g.total_time >= t + float(data.jump.seconds), "toll and travel time paid")
+	check(g.jump_plan.is_empty(), "plan cleared after the last hop")
+	# cancel rules
+	check(Galaxy.start(g, "halvane").ok, "charge back home")
+	Galaxy.cancel(g)
+	check(g.jump_plan.is_empty(), "cancel clears the plan")
+	Galaxy.start(g, "halvane")
+	g.stats.busts += 1
+	g.tick(0.1)
+	check(g.jump_plan.is_empty(), "a bust interrupts the charge")
+	Galaxy.start(g, "halvane")
+	g.dock("glacis")
+	g.tick(0.1)
+	check(g.jump_plan.is_empty(), "docking cancels the charge")
+	g.undock()
+	Galaxy.start(g, "halvane")
+	check(g.jump("kovar_gate").ok, "manual gate jump while charging")
+	check(g.jump_plan.is_empty(), "a manual jump cancels the plan")
+	var events: Array = []
+	g.event.connect(func(k, _p): events.append(k))
+	Galaxy.start(g, "kovar")
+	g.tick(100.0)
+	Galaxy.cancel(g)
+	check(events.has("jump_charging") and events.has("jump_ready") and events.has("jump_cancelled"), "charge events are emitted")
+	# not part of the save
+	Galaxy.start(g, "halvane")
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(h.jump_plan.is_empty() and h.system == g.system, "an unfinished charge is not saved")
+
+
+## A third system makes multi-hop routes: the drive recharges for every hop (A6).
+func test_jump_drive_multi_hop() -> void:
+	var d: Dictionary = data.duplicate(true)
+	d.systems["zeta"] = {"name": "Zeta", "galaxy_pos": [9, 1], "security": "low", "patrol_mult": 0.5, "star": "#ffffff", "nebula": ["#222222"], "desc": ""}
+	var gate_a: Dictionary = d.locations.kovar_gate.duplicate(true)
+	gate_a.merge({"name": "Zeta Gate", "jump_to": "zeta", "arrive": "zeta_gate"}, true)
+	var gate_b: Dictionary = d.locations.kovar_gate.duplicate(true)
+	gate_b.merge({"name": "Kovar Gate B", "system": "zeta", "jump_to": "kovar", "arrive": "kovar_gate_z"}, true)
+	d.locations["kovar_gate_z"] = gate_a
+	d.locations["zeta_gate"] = gate_b
+	var g := Game.new()
+	g.new_game(d, 3)
+	g.undock()
+	var pl := Galaxy.plan(g, "zeta")
+	check(pl.ok and pl.route == ["halvane", "kovar", "zeta"] and pl.hops == 2 and pl.fee == 2 * int(d.jump.fee), "two hops via Kovar")
+	g.credits = 100
+	check(not Galaxy.start(g, "zeta").ok, "two tolls must be affordable up front")
+	g.credits = 1000
+	Galaxy.start(g, "zeta")
+	g.tick(100.0)
+	var r1 := Galaxy.engage(g)
+	check(r1.ok and r1.more and g.system == "kovar" and Galaxy.charging(g), "first hop done, second hop already charging")
+	g.tick(100.0)
+	var r2 := Galaxy.engage(g)
+	check(r2.ok and not r2.more and g.system == "zeta" and g.jump_plan.is_empty(), "second hop arrives in Zeta")
+	check(Galaxy.route(g, "zeta", "halvane") == ["zeta", "kovar", "halvane"], "route back")
+	check(Galaxy.lanes(g).size() == 2, "two lanes")
 
 
 func test_mixing_rules() -> void:

@@ -9,8 +9,10 @@ signal event(kind: String, payload: Dictionary)
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const Workers = preload("res://scripts/core/workers.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Orders = preload("res://scripts/core/orders.gd")
+const Galaxy = preload("res://scripts/core/galaxy.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
@@ -40,7 +42,7 @@ var people: Dictionary = {}  ## contact id -> addiction, affinity, spent today, 
 var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "shield": 0, "hull": 0}
 var combat: Dictionary = {}  ## space combat state: hull, shield, missiles, kills (saved), boost, idle (runtime); see spacecombat.gd
 var state: String = "playing"  ## playing | won | lost
-var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
+var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0}
 const SHIP_BAY := "ship_bay"  ## id of the ship's own estate (content.json "estates", flagged "ship"): always owned
 
 var estates: Dictionary = {}  ## owned estate id -> {"buildings": [{"id": station id, "x": int, "y": int}]}
@@ -49,6 +51,7 @@ var order_seq: int = 0
 var estate_stock: Dictionary = {}  ## estate id -> item -> qty delivered there, unloaded by collect_stash() inside
 var kits: Dictionary = {}  ## station id -> flat-packed kits delivered by phone order, placed for free in build mode
 var orders_unseen: int = 0  ## deliveries since the Orders app was last opened (runtime only)
+var jump_plan: Dictionary = {}  ## jump drive charge in progress (runtime only, see galaxy.gd)
 var hp: float = 100.0  ## player health on foot (see combat.gd), saved
 var weapons: Array = []  ## owned weapon ids, saved
 var weapon: String = ""  ## equipped weapon id, saved
@@ -59,6 +62,7 @@ var since_hit: float = 999.0  ## seconds since the player was last hurt; health 
 var drops: Array = []  ## dead drops you requested (see deaddrops.gd)
 var next_drop_id: int = 0
 var drops_unseen: int = 0  ## finished drop jobs since the DeadDrop app was opened (runtime only)
+var workers: Array = []  ## hired staff [{id, loyalty, estate, hired_day}] (see workers.gd)
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 
 
@@ -86,17 +90,20 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "shield": 0, "hull": 0}
 	SpaceCombat.reset(self)
 	state = "playing"
-	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0}
+	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0}
 	estates = {SHIP_BAY: {"buildings": []}}
 	orders = []
 	order_seq = 0
 	estate_stock = {}
 	kits = {}
 	orders_unseen = 0
+	jump_plan = {}
 	Combat.init(self)
 	drops = []
 	next_drop_id = 0
 	drops_unseen = 0
+	workers = []
+	Workers.ensure(estates[SHIP_BAY])
 	demand = {}
 	for loc in data.locations:
 		demand[loc] = {}
@@ -268,9 +275,11 @@ func tick(dt: float) -> void:
 		decay *= float(data.heat.decay_docked_factor)
 	_set_heat(heat - decay)
 	_tick_lab(dt)
+	Workers.tick(self, dt)
 	_tick_demand(dt)
 	Deals.tick(self, dt)
 	Orders.tick(self)
+	Galaxy.tick(self, dt)
 	SpaceCombat.tick(self, dt)
 	Combat.tick(self, dt)
 	Deaddrops.tick(self)
@@ -315,6 +324,7 @@ func _new_day() -> void:
 		demand[loc][b] = clampf(demand[loc][b] + rng.randf_range(-0.15, 0.25), float(data.market.min_demand), m)
 		_emit("rumour", {"location": loc, "base": b, "demand": demand[loc][b]})
 	People.new_day(self)
+	Workers.new_day(self)
 	_emit("new_day", {"day": day})
 	if debt > 0 and day > debt_due_day:
 		state = "lost"
@@ -622,6 +632,7 @@ func buy_estate(id: String) -> Dictionary:
 		return _fail("%s costs %d cr." % [e.name, int(e.price)])
 	credits -= int(e.price)
 	estates[id] = {"buildings": []}
+	Workers.ensure(estates[id])
 	_emit("estate_bought", {"estate": id})
 	return _ok("You own %s now. Go inside and set up production." % e.name)
 
@@ -708,7 +719,7 @@ func to_dict() -> Dictionary:
 		"next_offer_id": next_offer_id, "offer_clock": snappedf(offer_clock, 0.01), "upgrades": upgrades.duplicate(),
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
-		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id,
+		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers),
 	}
 
 
@@ -760,12 +771,15 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 			for b in d.estates[e].get("buildings", []):
 				list.append({"id": str(b.id), "x": int(b.x), "y": int(b.y)})
 			estates[e] = {"buildings": list}
+		Workers.load_estate(d.estates[e], estates[e])
 	if not estates.has(SHIP_BAY):
 		estates[SHIP_BAY] = {"buildings": []}
+		Workers.ensure(estates[SHIP_BAY])
 	Orders.from_save(self, d)
 	SpaceCombat.from_save(self, d)
 	Combat.from_save(self, d)
 	Deaddrops.from_save(self, d)
+	workers = Workers.from_save(self, d.get("workers", []))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

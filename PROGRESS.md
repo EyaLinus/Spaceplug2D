@@ -1,5 +1,50 @@
 # Progress log
 
+## B3: Workers & HR app (2026-10-30)
+- **Core** `scripts/core/workers.gd` (state: `Game.workers` [{id, loyalty, estate, hired_day}] + per-estate `storage`,
+  `bench`, `out`, `recipe`, `job`, all saved; old saves get empty defaults). Candidates and tuning are data in
+  `content.json` -> `workers` (6 candidates: 3 lab hands, 3 stockers; max crew 6; signing fee = 2 days of wages).
+- **Lab hand** cooks the estate's auto recipe when the stations for it stand: station scores = skill +/- noise through
+  `Production.outcome` (same yield/grade/heat rules as the player), time = batch time x (1.3 - 0.5 skill), adds heat like a
+  hand batch. **Stocker** trips every 8 s / (0.5 + skill) move up to 4 + 8 skill units: output tray -> shelf, shelf -> bench.
+  Without a stocker the lab hand fetches from the shelf himself, 1.6x slower. One lab hand + one stocker per estate.
+- **Wages** charged in `_new_day` (stats `wages`); can't pay = -0.3 loyalty and a missed-wage event, quits at 0; paid = +0.02.
+- **HR app** (`scripts/ui/phone/apps/hr_app.gd`): crew, estates, candidates; worker profile (skill, loyalty, hire/fire,
+  assign); estate screen (crew, recipe picker, batch size, job bar, shelf/bench/tray, stock raws / take products, only
+  while standing inside). Badge = workers close to quitting.
+- Verified: 1022 unit checks (new `test_workers`: hire/fire/assign rules, skill beats rookie on grade and speed, stocker
+  speeds the line, wages, quitting, save round trip incl. mid-job, old save without worker data), UI smoke (hire, assign,
+  recipe, stock, cook, take, wages through the real phone), menu smoke, sim 5/5 won avg day 6.2 (unchanged);
+  screenshots `phone_hr*` in `tools/shot.gd` reviewed.
+- Gaps: workers are invisible (no sprites walking the estate); auto recipe is plain (no additives picker, core supports
+  them); loyalty has no gameplay beyond quitting (no theft/strikes, no raises); no skill growth or training; auto cooking
+  ignores the shared lab queue and lab-level capacity of the hub; worker-cooked batches are not wired into the sim bot;
+  estates cannot be sold, so assignment cleanup on removal is not needed yet; wage balance (15-110 cr/day) is eyeballed.
+## A6: Galaxy Map app + Jump Drive (2026-11-02)
+- **Core** `scripts/core/galaxy.gd`, one runtime field `Game.jump_plan` (not saved), one `Galaxy.tick` line in `Game.tick`.
+  Lanes come from the gates of D1 (`jump_to`), `route()` is a breadth-first search (multi-hop works for any number of
+  systems; tested with a synthetic third system). Overlays: `system_heat`/`heat_level`/`patrols_in` (one global heat scaled
+  by the system's `patrol_mult`; F1 should replace `system_heat` with a per-system value), `location_risk` (sale heat,
+  police density), `buy_table` (cheapest raws/additives per location), `sell_table` (plain-batch value per drug at
+  today's saturated demand).
+- **Jump drive:** jumps from anywhere in flight (the gate stays the instant, free-flying way). `Galaxy.start` plans the
+  route and charges `jump.charge_seconds` (6 s, -10% per engine level, min 2.5 s) per hop; docking, a bust, a manual gate
+  jump or the player cancel it. When charged, `jump_ready` makes main.gd call `Galaxy.engage`, which pays the toll for the
+  hop and uses `Game.jump`; further hops start charging automatically. `content.json` -> `jump` got the new numbers.
+- **UI:** phone app `apps/map_app.gd` (one line in `registry.gd`): map canvas with heat or price glow, tap a system for
+  its locations (heat or goods), planned route with tolls/charge/travel, Charge/Cancel with a live bar, "Price comparison"
+  screen (raws and additives cheapest first, drug demand best first). `scripts/ui/hyperspace.gd` is the VFX layer:
+  streaks and a charge bar while charging, tunnel + loading card ("Hyperspace / Kovar Expanse") and fade after every
+  jump (gate jumps use it too, replacing the old white flash). Two synth sounds (`jump_charge`, `jump`).
+  `main.gd`: `jump()` split into `jump`/`_engage_drive`/`_arrive`.
+- Verified: 1124 unit checks (new `test_galaxy_routes`, `test_galaxy_overlays`, `test_jump_drive`,
+  `test_jump_drive_multi_hop`), UI smoke (overlays, route plan, price screens, charge, cancel, drive to Kovar and home with
+  transition), menu smoke, sim 5/5 won (unchanged, 6.2 avg day), screenshots of map, price overlay, price comparison,
+  charging and hyperspace reviewed.
+- Gaps: map shows every system and price from the start (no exploration or stale prices), no price history; only two
+  systems exist so multi-hop is only tested with synthetic data; the transition is cosmetic (state changes instantly
+  under it); ship keeps flying while charging; world.gd/ship.gd untouched; bot/sim does not use the drive.
+
 ## Release v0.1.6 (2026-11-02)
 - Phase 2 wave 2 complete: A2 Deal-O-Matic, A3 Market & Orders, B2 ship cargo bay, B1 NPC schedules + day/night.
   Changelog folded, version 0.1.6 in project.godot and export_presets.cfg. Next: wave 3 (A4 DeadDrops, B3 workers

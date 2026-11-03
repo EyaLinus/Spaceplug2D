@@ -5,6 +5,8 @@ extends SceneTree
 ## pauses, saves/loads and reaches both end screens. Any GDScript error shows up as "SCRIPT ERROR" (CI greps for it).
 ## godot --headless --path . -s res://tools/ui_smoke.gd
 
+const Workers = preload("res://scripts/core/workers.gd")
+const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 
 var steps := 0
@@ -129,6 +131,61 @@ func _run() -> void:
 	_assert(not m.phone.visible and not gs.paused, "Esc from home closes the phone without pausing")
 	step("com-phone contacts")
 
+	# HR app: hire through the phone, assign, set the auto recipe, a day passes and wages are paid
+	var hr_saved: Dictionary = g.to_dict()
+	g.credits += 5000
+	g.buy_estate("cannery_annex")
+	_assert(g.estate_owned("cannery_annex"), "annex bought for the HR test")
+	g.place_building("cannery_annex", "trim_table", 0, 0)
+	g.place_building("cannery_annex", "cook_stove", 2, 0)
+	g.place_building("cannery_annex", "pack_table", 4, 0)
+	g.place_building("cannery_annex", "extractor", 6, 0)
+	m.toggle_phone()
+	await frames(2)
+	m.phone.open_app("hr")
+	await frames(2)
+	_assert(m.phone.current_title() == "HR" and m.phone.find_child("Hire_pia", true, false) != null, "HR app lists candidates")
+	m.phone.find_child("Hire_pia", true, false).pressed.emit()
+	await frames(2)
+	var hr_credits_before: int = g.credits
+	m.phone.find_child("HireBtn", true, false).pressed.emit()
+	await frames(2)
+	_assert(Workers.hired(g, "pia") and g.credits < hr_credits_before, "hire button hires and charges")
+	m.phone.find_child("Assign_pia_cannery_annex", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.workers[0].estate == "cannery_annex", "assign button assigns")
+	await key(KEY_ESCAPE)
+	m.phone.find_child("EstateRow_cannery_annex", true, false).pressed.emit()
+	await frames(2)
+	var opt: OptionButton = m.phone.find_child("Recipe_cannery_annex", true, false)
+	opt.select(1)
+	opt.item_selected.emit(1)
+	await frames(2)
+	_assert(g.estates.cannery_annex.recipe.base == g.data.bases.keys()[0], "recipe picker sets the auto recipe")
+	g.cargo["cannabis"] = 5
+	g.inside_estate = "cannery_annex"
+	g._emit("storage_changed", {})  # the screen rebuilds and enables the buttons
+	await frames(2)
+	m.phone.find_child("StoreRaws", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.cargo.is_empty() and not g.estates.cannery_annex.job.is_empty(), "stock button moves raws to storage and the lab hand starts cooking")
+	g.tick(60.0)
+	await frames(2)
+	_assert(g.stats.worker_batches >= 1, "the lab hand cooked a batch")
+	m.phone.find_child("TakeProducts", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.has_contraband(), "take button loads the products")
+	g.inside_estate = ""
+	var c1: int = g.credits
+	g.tick(g.day_seconds())
+	await frames(2)
+	_assert(g.credits == c1 - Workers.wage_total(g), "wages are charged on a new day")
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	_assert(not m.phone.visible, "phone closed again")
+	g.from_dict(g.data, hr_saved)  # later steps expect the annex to be unowned
+	step("hr app")
 	# Deal-O-Matic: a text arrives, accept it in the phone, hand it over in person
 	var Deals = load("res://scripts/core/deals.gd")
 	g.contact_ready_at.erase("okka")
@@ -185,7 +242,7 @@ func _run() -> void:
 	var target_px: Vector2 = sf._px(sf._spot_of.okka)
 	_assert(People.whereabouts(okka_cfg, People.hour(g)).place != place0, "okka's schedule moves on")
 	_assert(not sf.npcs.okka.path.is_empty() or sf.npcs.okka.position.distance_to(target_px) < 4.0, "okka walks to her next place")
-	_assert(sf.interactable("okka").pos == sf.npcs.okka.position, "okka's interaction point follows her")
+	_assert(sf.interactable("okka").pos.distance_to(sf.npcs.okka.position) < 3.0, "okka's interaction point follows her")  # updated once per frame, she may be one step ahead
 	_assert(sf._daylight.color != light0, "daylight changes with the hour")
 	step("npc schedules")
 
@@ -630,6 +687,9 @@ func _run() -> void:
 		_assert(ls.interact() and m.surface == null and m.world.active, "took off from %s" % loc)
 		await frames(1)
 
+	# Galaxy map app + jump drive: plan a route, charge, jump with the hyperspace transition, cancel, come back
+	await _map_and_drive(m, g)
+
 	# patrol bust: park a patrol on top of the ship while carrying product
 	g.cargo["weed:glow"] = 3
 	g.add_heat(60)
@@ -675,6 +735,72 @@ func _run() -> void:
 		gs.delete_slot(i)
 	print("SMOKE DONE %d steps" % steps)
 	quit(0)
+
+
+## Com-Phone Map app: overlays, route planning, price comparison and the jump drive charge -> hyperspace -> arrival.
+func _map_and_drive(m, g) -> void:
+	g.credits = 5000
+	g.heat = 50.0
+	_assert(g.location == "" and g.system == "halvane" and m.world.active, "flying in Halvane before the map test")
+	m.toggle_phone()
+	m.phone.open_app("map")
+	await frames(3)
+	_assert(m.phone.current_title() == "Map", "map app opens")
+	for n in ["MapCanvas", "MapSys_halvane", "MapSys_kovar", "MapSystem", "MapDrive", "MapPrices", "MapHeatBar"]:
+		_assert(m.phone.find_child(n, true, false) != null, "map shows " + n)
+	_assert(m.phone.find_child("MapLoc_mireth", true, false) != null, "selected system lists its locations")
+	_assert(m.phone.find_child("MapJump", true, false) == null, "no jump button for the system you are in")
+	m.phone.find_child("MapMode_price", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.find_child("MapHeatBar", true, false) != null, "price overlay keeps the system panel")
+	m.phone.find_child("MapMode_heat", true, false).pressed.emit()
+	m.phone.find_child("MapSys_kovar", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.find_child("MapLoc_varrow", true, false) != null and m.phone.find_child("MapLoc_mireth", true, false) == null, "Kovar locations shown")
+	_assert(m.phone.find_child("MapRoute", true, false).text.contains("Kovar Expanse"), "route planned to Kovar")
+	_assert(m.phone.find_child("MapCost", true, false).text.contains("80 cr"), "tolls shown")
+	step("map app overlays and route")
+	# price comparison screen
+	m.phone.find_child("MapPrices", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.current_title() == "Prices" and m.phone.find_child("Price_cannabis", true, false) != null, "price comparison lists raws")
+	m.phone.find_child("MapTab_sell", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.find_child("Price_cocaine", true, false) != null, "price comparison lists product demand")
+	m.phone.back()
+	await frames(3)
+	step("map price comparison")
+	# charge the drive from the phone
+	var credits: int = g.credits
+	m.phone.find_child("MapJump", true, false).pressed.emit()
+	await frames(3)
+	_assert(Galaxy.charging(g) and m.phone.find_child("MapCharge", true, false) != null and m.phone.find_child("MapCancel", true, false) != null, "drive charging, bar and cancel button shown")
+	m.phone.find_child("MapCancel", true, false).pressed.emit()
+	await frames(3)
+	_assert(g.jump_plan.is_empty() and m.phone.find_child("MapJump", true, false) != null, "cancel from the phone")
+	m.phone.find_child("MapJump", true, false).pressed.emit()
+	await frames(2)
+	g.tick(Galaxy.charge_seconds(g) * 0.5)
+	await frames(2)
+	_assert(m.hyper.charge > 0.3 and m.hyper.visible, "charge streaks shown while charging")
+	g.tick(30.0)
+	await frames(3)
+	_assert(g.system == "kovar" and m.world.system == "kovar" and g.credits == credits - int(g.data.jump.fee), "drive jumped to Kovar and paid the toll")
+	_assert(m.hyper.burst > 0.0 and m.hyper.card.contains("Kovar Expanse"), "hyperspace transition plays")
+	_assert(g.jump_plan.is_empty() and m.world.active, "plan done, flying")
+	step("jump drive to kovar")
+	await create_timer(2.0).timeout  # real time: the tween fades over ~1.5 s
+	_assert(m.hyper.burst < 0.5 or not m.hyper.visible, "transition fades out")
+	# back home; docking would cancel, so just check that and return
+	m.phone.find_child("MapSys_halvane", true, false).pressed.emit()
+	await frames(3)
+	m.phone.find_child("MapJump", true, false).pressed.emit()
+	g.tick(30.0)
+	await frames(3)
+	_assert(g.system == "halvane" and m.world.system == "halvane", "drive jumped home")
+	m.phone.close()
+	m.hyper.burst = 0.0
+	step("jump drive home")
 
 
 ## Flies into a jump gate and checks that the next system is built around the ship.

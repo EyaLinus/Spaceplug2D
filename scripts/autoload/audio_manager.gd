@@ -18,6 +18,8 @@ var _ambient: AudioStreamPlayer
 func _ready() -> void:
 	sounds = {
 		"click": _tone(880.0, 0.05, 0.4, "square"),
+		"jump_charge": _sweep(120.0, 700.0, 0.9, 0.4),
+		"jump": _sweep(1200.0, 90.0, 0.9, 0.55),
 		"buy": _sweep(500.0, 900.0, 0.12, 0.5),
 		"sell": _chord([660.0, 990.0, 1320.0], 0.35, 0.45),
 		"dock": _sweep(300.0, 150.0, 0.4, 0.5),
@@ -100,6 +102,9 @@ func _on_game_event(kind: String, _payload: Dictionary) -> void:
 		"shot": play("shot")
 		"lab_done", "order_delivered": play("lab_done")
 		"upgraded": play("upgrade")
+		"jump_charging": play("jump_charge")
+		"jumped": play("jump")
+		"jump_cancelled": play("error")
 
 
 # ---------------------------------------------------------------- synthesis

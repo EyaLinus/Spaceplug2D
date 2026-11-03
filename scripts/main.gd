@@ -14,6 +14,8 @@ const PauseMenuScript = preload("res://scripts/ui/menu/pause_menu.gd")
 const SlotPanelScript = preload("res://scripts/ui/menu/slot_panel.gd")
 const SettingsPanelScript = preload("res://scripts/ui/menu/settings_panel.gd")
 const PhoneScript = preload("res://scripts/ui/phone/phone.gd")
+const HyperspaceScript = preload("res://scripts/ui/hyperspace.gd")
+const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 
 ## Which station tab a surface interaction opens.
@@ -37,6 +39,7 @@ var world: Node2D
 var surface: Node2D  ## current planet surface instance, null in space
 var hud: Control
 var station: Control
+var hyper: Control  ## jump-drive charge streaks and the hyperspace transition
 var phone: Control  ## Com-Phone overlay (scripts/ui/phone), usable in flight and on foot
 var menu: Control
 var pause_menu: Control
@@ -69,6 +72,8 @@ func _ready() -> void:
 	station.close_requested.connect(station.close)
 	phone = PhoneScript.new()
 	root.add_child(phone)
+	hyper = HyperspaceScript.new()
+	root.add_child(hyper)
 	station.estate_enter_requested.connect(func(eid: String): enter_estate(eid))
 	station.place_requested.connect(func(st: String):
 		station.close()
@@ -181,6 +186,8 @@ func _process(_delta: float) -> void:
 	if surface != null:
 		surface.player.frozen = GameState.paused or station.visible or end_screen.visible or phone.visible
 	world.input_blocked = phone.visible
+	var gm = GameState.game
+	hyper.charge = Galaxy.progress(gm) if gm != null and Galaxy.charging(gm) else 0.0
 
 
 func _enter_game() -> void:
@@ -235,31 +242,30 @@ func dock(loc: String) -> void:
 		station.open()
 
 
-## Jumps through a gate: toll + travel time in the core, a short hyperspace flash, then the next system is built
-## around the ship at the arrival gate.
+## Jumps through a gate: toll + travel time in the core, then the arrival (see _arrive).
 func jump(gate: String) -> void:
 	var g = GameState.game
 	var r: Dictionary = GameState.act(g.jump(gate))
-	if not r.ok:
-		return
-	AudioManager.play("dock")
+	if r.ok:
+		_arrive(gate)
+
+
+## The charged jump drive fires: the core pays the next hop's toll and jumps through the gate on that lane.
+func _engage_drive() -> void:
+	var r: Dictionary = GameState.act(Galaxy.engage(GameState.game))
+	if r.ok:
+		_arrive(r.gate)
+
+
+## Builds the next system around the ship at the arrival gate and plays the hyperspace transition.
+func _arrive(gate: String) -> void:
+	var g = GameState.game
 	var arrive: String = GameState.data.locations[gate].get("arrive", "")
 	world.show_system(g.system)
 	world.place_ship_at(arrive if world.locations.has(arrive) else g.patrol_home(g.system))
 	world.ship.velocity = Vector2.DOWN * 220.0
-	_flash()
+	hyper.play_jump(str(g.system_data().get("name", g.system)))
 	GameState.save_game()
-
-
-func _flash() -> void:
-	var f := ColorRect.new()
-	f.color = Color(0.75, 0.95, 1.0, 0.9)
-	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_ui_layer.add_child(f)
-	f.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var tw := f.create_tween()
-	tw.tween_property(f, "color:a", 0.0, 0.8)
-	tw.tween_callback(f.queue_free)
 
 
 ## Loads the planet surface instance for `loc` and hands the camera to the player on foot.
@@ -444,6 +450,10 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		EventBus.toast.emit("A drop was cleaned out: %d units stolen." % p.qty, false)
 	elif kind == "met":
 		EventBus.toast.emit("New contact: %s. Open the Com-Phone [%s]." % [GameState.game.contact(p.contact).name, Settings.key_label("phone")], true)
+	elif kind == "jump_ready":
+		_engage_drive.call_deferred()  # not inside Game.tick: the jump ticks the game itself
+	elif kind == "jump_cancelled":
+		EventBus.toast.emit(str(p.why), false)
 	elif kind == "busted":
 		EventBus.toast.emit("BUSTED: lost %d units, fined %d cr." % [p.lost, p.fine], false)
 
