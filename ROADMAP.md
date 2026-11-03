@@ -147,13 +147,13 @@ combat with enemy cartels and sector influence, more content, customization, act
 Same rules as phase 2: one milestone = one PR with green CI, patch versions only (0.1.x), a release closes each wave,
 price balance stays eyeballed. Phase-2 milestones still open are folded in where they fit (marked "was X").
 
-### Wave 3 – finish phase 2 logistics (v0.1.7)
+### Wave 3 – finish phase 2 logistics (v0.1.7, released together with G1–G3)
 Finished work from earlier sessions that only had to be merged on top of each other.
 - [x] **A4 DeadDrops** (#36) · [x] **E1 Ground combat** (#37) · [x] **E2 Space combat** (#38)
 - [x] **A6 Galaxy Map + Jump Drive** (#33) · [x] **B3 Workers & HR** (#30) · [x] **F1 Heat II + corruption** (#29)
 - → **Release v0.1.7**.
 
-### Wave 5 – no more prototype menus (v0.1.8)
+### Wave 5 – no more prototype menus (G1–G3 shipped in v0.1.7)
 - [x] **G1 UI skin.** One new look for every panel, button, tab, list and bar (`ui_theme.gd`): pixel-art frames from the
   art pipeline, warm "contraband ledger" palette instead of the default blue, item cards with icons and rarity/grade
   colours, shared tooltip style. Every existing menu and the phone change at once.

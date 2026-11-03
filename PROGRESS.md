@@ -1,5 +1,10 @@
 # Progress log
 
+## Release v0.1.7 (2026-11-03)
+- Phase 2 leftovers merged (A4 DeadDrops, E1 ground combat, E2 space combat, A6 galaxy map + jump drive, B3 workers,
+  F1 heat II + corruption) plus phase 3 wave 5: G1 UI skin, G2 production on foot, G3 shop screens. Changelog folded,
+  version 0.1.7. Next: wave 6 (H1 products app, H2 deal appointments, A5 dealers).
+
 ## G3: shop screens (phase 3, 2026-11-03)
 - **Market:** item cards (icon, price, owned, tooltip with what the raw/additive is for via `UI.item_tip`), click +1 /
   Shift+click +5 into a basket (`station_ui._basket`, capped by credits and hold space), basket panel with −/+, total,
