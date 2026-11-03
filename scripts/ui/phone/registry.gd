@@ -2,6 +2,7 @@ extends RefCounted
 ## Com-Phone apps in home-screen order. Adding an app = one script in apps/ plus one line here.
 
 const APPS := [
+	preload("res://scripts/ui/phone/apps/quests_app.gd"),
 	preload("res://scripts/ui/phone/apps/contacts_app.gd"),
 	preload("res://scripts/ui/phone/apps/officials_app.gd"),
 	preload("res://scripts/ui/phone/apps/hr_app.gd"),

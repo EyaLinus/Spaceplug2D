@@ -20,6 +20,7 @@ const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
+const Quests = preload("res://scripts/core/quests.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -73,6 +74,7 @@ var recipes: Dictionary = {}  ## recipe book: recipe key -> {base, additives, ma
 var prices: Dictionary = {}  ## your asking price per Standard unit, recipe key -> cr; no entry = market price, saved
 var dealers: Array = []  ## hired street dealers [{id, loc, stock, cash, sold, jail}] (see dealers.gd), saved
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
+var quests: Dictionary = {"active": [], "done": [], "step": {}, "count": {}, "tracked": ""}  ## quest log (see quests.gd), saved
 
 
 func new_game(content: Dictionary, seed_value: int = 1) -> void:
@@ -119,6 +121,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	recipes = {}
 	prices = {}
 	dealers = []
+	quests = Quests.empty_state()  # the opening quests start in GameState.new_game (tests and sims run without)
 	_add_starter_estates()
 	demand = {}
 	for loc in data.locations:
@@ -516,7 +519,7 @@ func queue_batch(base: String, additives: Array, qty: int, scores: Dictionary = 
 	Products.discover(self, base, additives, res.grade, out_qty)
 	lab_queue.append({"product": product, "qty": out_qty, "remaining": t, "total": t})
 	add_heat(float(data.heat.per_lab_unit) * qty * heat_mult(base) * res.heat_mult)
-	_emit("lab_started", {"product": product, "qty": out_qty, "grade": res.grade})
+	_emit("lab_started", {"product": product, "base": base, "qty": out_qty, "grade": res.grade, "additives": additives.size()})
 	var extra := ""
 	if out_qty != qty:
 		extra = " (%+d from prep work)" % (out_qty - qty)
@@ -776,7 +779,7 @@ func to_dict() -> Dictionary:
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
 		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
-		"products": Products.to_save(self), "dealers": Dealers.to_save(self),
+		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "quests": Quests.to_save(self),
 	}
 
 
@@ -846,6 +849,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Bench.from_save(self, d)
 	Products.from_save(self, d.get("products", {}))
 	Dealers.from_save(self, d.get("dealers", []))
+	Quests.from_save(self, d.get("quests", {}), d.has("quests"))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 
@@ -887,6 +891,13 @@ static func _add(dict: Dictionary, k: String, n: int) -> void:
 
 func _emit(kind: String, payload: Dictionary) -> void:
 	event.emit(kind, payload)
+	Quests.on_event(self, kind, payload)
+
+
+## Things that happen outside the core (landing, entering an estate, opening a phone app) as events, so quests can
+## react to them: note("app_opened", {"app": "products"}).
+func note(kind: String, payload: Dictionary = {}) -> void:
+	_emit(kind, payload)
 
 
 func _ok(msg: String) -> Dictionary:

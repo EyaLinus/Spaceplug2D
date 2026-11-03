@@ -37,6 +37,7 @@ var volumes := {"Master": 0.8, "Music": 0.6, "SFX": 0.8}  ## linear 0..1
 var window_mode := 0  ## index into WINDOW_MODES
 var resolution := 0  ## index into RESOLUTIONS (windowed only)
 var vsync := true
+var tutorial := true  ## new games start with the tutorial quests (off = straight to the main quest)
 var bindings: Dictionary = {}  ## action -> physical keycode overriding the default primary key
 var _defaults: Dictionary = {}  ## action -> default primary physical keycode, captured on first apply_input()
 
@@ -59,6 +60,7 @@ func load_settings() -> void:
 	window_mode = clampi(int(cf.get_value("display", "window_mode", window_mode)), 0, WINDOW_MODES.size() - 1)
 	resolution = clampi(int(cf.get_value("display", "resolution", resolution)), 0, RESOLUTIONS.size() - 1)
 	vsync = bool(cf.get_value("display", "vsync", vsync))
+	tutorial = bool(cf.get_value("game", "tutorial", tutorial))
 	bindings = {}
 	if cf.has_section("keys"):
 		for action in cf.get_section_keys("keys"):
@@ -72,6 +74,7 @@ func save_settings() -> bool:
 	cf.set_value("display", "window_mode", window_mode)
 	cf.set_value("display", "resolution", resolution)
 	cf.set_value("display", "vsync", vsync)
+	cf.set_value("game", "tutorial", tutorial)
 	for action in bindings:
 		cf.set_value("keys", action, bindings[action])
 	return cf.save(config_path) == OK
@@ -115,6 +118,11 @@ func set_window_mode(i: int) -> void:
 func set_resolution(i: int) -> void:
 	resolution = clampi(i, 0, RESOLUTIONS.size() - 1)
 	apply_display()
+	changed.emit()
+
+
+func set_tutorial(on: bool) -> void:
+	tutorial = on
 	changed.emit()
 
 

@@ -109,6 +109,8 @@ func open_app(app_or_id) -> void:
 		return
 	_stack = [{"title": app.title, "build": func(g): return app.home(g, self)}]
 	refresh()
+	if GameState.game != null:
+		GameState.game.note("app_opened", {"app": app.id})
 
 
 ## Pushes a deeper screen; build is Callable(g) -> Control and is called again on every refresh.

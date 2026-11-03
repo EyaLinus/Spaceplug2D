@@ -1,9 +1,11 @@
 extends RefCounted
 ## Loads static game content (data/content.json) plus the planet surface layouts (data/surfaces.json,
-## merged in as `surfaces`, keyed by location id). No scene dependencies.
+## merged in as `surfaces`, keyed by location id) and the quests (data/quests.json, merged in as `quests`).
+## No scene dependencies.
 
 const CONTENT_PATH := "res://data/content.json"
 const SURFACES_PATH := "res://data/surfaces.json"
+const QUESTS_PATH := "res://data/quests.json"
 
 
 static func load_all(path: String = CONTENT_PATH) -> Dictionary:
@@ -12,6 +14,8 @@ static func load_all(path: String = CONTENT_PATH) -> Dictionary:
 		return {}
 	if not parsed.has("surfaces"):
 		parsed["surfaces"] = _load_json(SURFACES_PATH) if FileAccess.file_exists(SURFACES_PATH) else {}
+	if not parsed.has("quests"):
+		parsed["quests"] = _load_json(QUESTS_PATH) if FileAccess.file_exists(QUESTS_PATH) else {}
 	return parsed
 
 

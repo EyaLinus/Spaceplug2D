@@ -83,6 +83,12 @@ func _display_tab() -> Control:
 	vs.button_pressed = Settings.vsync
 	vs.toggled.connect(func(on: bool): Settings.set_vsync(on))
 	v.add_child(_row("VSync", vs))
+	var tut := CheckButton.new()
+	tut.name = "TutorialToggle"
+	tut.button_pressed = Settings.tutorial
+	tut.tooltip_text = "New games start with Okka's tutorial quests. Off = straight to the main quest."
+	tut.toggled.connect(func(on: bool): Settings.set_tutorial(on))
+	v.add_child(_row("Tutorial (new games)", tut))
 	var hint := UI.label("The game scales to any window size; the size only matters in windowed mode.", 14, UI.MUTED)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(hint)

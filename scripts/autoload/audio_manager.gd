@@ -37,6 +37,8 @@ func _ready() -> void:
 		"boost": _sweep(300.0, 900.0, 0.22, 0.4),
 		"shot": _sweep(900.0, 120.0, 0.09, 0.45, "square"),
 		"hurt": _sweep(260.0, 90.0, 0.2, 0.5, "square"),
+		"quest_step": _chord([660.0, 880.0], 0.25, 0.35),
+		"quest_done": _chord([523.0, 659.0, 784.0, 1047.0], 0.7, 0.4),
 	}
 	for i in POOL:
 		var p := AudioStreamPlayer.new()
@@ -102,6 +104,8 @@ func _on_game_event(kind: String, _payload: Dictionary) -> void:
 		"shot": play("shot")
 		"lab_done", "order_delivered": play("lab_done")
 		"upgraded": play("upgrade")
+		"quest_step": play("quest_step")
+		"quest_done": play("quest_done")
 		"jump_charging": play("jump_charge")
 		"jumped": play("jump")
 		"jump_cancelled": play("error")

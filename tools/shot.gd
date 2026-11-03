@@ -48,6 +48,12 @@ func _run() -> void:
 	for i in 20:
 		await physics_frame
 	await _save(out, "surface_pad")
+	m.phone.open()
+	m.phone.open_app("quests")
+	for i in 3:
+		await process_frame
+	await _save(out, "phone_quests")
+	m.phone.close()
 	sf.place_player_at("okka")
 	for i in 40:
 		await physics_frame

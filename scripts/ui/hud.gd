@@ -4,6 +4,8 @@ extends Control
 
 const UI = preload("res://scripts/ui/ui_theme.gd")
 const Art = preload("res://scripts/core/art.gd")
+const Quests = preload("res://scripts/core/quests.gd")
+const Bench = preload("res://scripts/core/bench.gd")
 
 var world: Node2D
 var surface: Node2D  ## set by main while on foot, null in space
@@ -24,6 +26,15 @@ var _scan_label: Label
 var _toasts: VBoxContainer
 var _minimap: Control
 var _nav: Control  ## edge arrows pointing at off-screen locations
+var _quest_box: PanelContainer  ## tracker of the followed quest (top left)
+var _quest_title: Label
+var _quest_step: Label
+var _quest_hint: Label
+var _card: PanelContainer  ## quest message from the quest giver (intro / outro), fades after a while
+var _card_from: Label
+var _card_text: Label
+var _card_queue: Array = []  ## [[from, text]] waiting to be shown
+var _card_left := 0.0
 
 
 func _ready() -> void:
@@ -91,6 +102,8 @@ func _ready() -> void:
 	_nav.draw.connect(_draw_nav)
 	move_child(_nav, 0)
 
+	_build_quest_ui()
+
 	_minimap = Control.new()
 	_minimap.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	_minimap.offset_left = -200
@@ -156,6 +169,7 @@ func _process(_delta: float) -> void:
 		_prompt.text = ""
 	_minimap.queue_redraw()
 	_nav.queue_redraw()
+	_update_quest_ui(g, _delta)
 
 
 func show_toast(text: String, good: bool = true) -> void:
@@ -188,6 +202,13 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		"heat_level":
 			if p.heat >= float(g.data.heat.chase_heat):
 				show_toast("Heat %d: patrols will hunt you." % int(p.heat), false)
+		"quest_started":
+			var q: Dictionary = Quests.defs(g).get(p.quest, {})
+			show_card(str(q.get("giver", "")), str(q.get("intro", "")))
+		"quest_done":
+			var qd: Dictionary = Quests.defs(g).get(p.quest, {})
+			if qd.has("outro"):
+				show_card(str(qd.get("giver", "")), str(qd.outro))
 
 
 func _draw_minimap() -> void:
@@ -207,9 +228,13 @@ func _draw_minimap() -> void:
 	for p in world.patrols:
 		_minimap.draw_circle(to_map.call(p.position), 2.5, Color(0.4, 0.6, 1.0))
 	_minimap.draw_circle(to_map.call(world.ship.position), 3.5, UI.GOLD)
+	var qp = quest_point()
+	if qp != null:
+		_minimap.draw_arc(to_map.call(qp), 6.0, 0, TAU, 16, UI.GOLD, 2.0)
 
 
 func _draw_nav() -> void:
+	_draw_quest_marker()
 	if world == null or not world.active:
 		return
 	var view := _nav.size
@@ -252,6 +277,9 @@ func _draw_surface_map() -> void:
 	for o in surface.officers:
 		_minimap.draw_circle(off + o.position * scale, 2.5, Color(0.4, 0.6, 1.0))
 	_minimap.draw_circle(off + surface.player.position * scale, 3.5, UI.GOLD)
+	var qp = quest_point()
+	if qp != null:
+		_minimap.draw_arc(off + (qp as Vector2) * scale, 6.0, 0, TAU, 16, UI.GOLD, 2.0)
 	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(0.3, 0.8, 0.6, 0.6), false, 1.5)
 
 
@@ -262,3 +290,171 @@ func _refresh_help() -> void:
 		k.call("ship_reverse"), k.call("ship_left"), k.call("ship_right"), k.call("ship_brake"), k.call("ship_dock"), k.call("phone"), k.call("ui_menu")]
 	_foot_help.text = "%s%s%s%s/arrows walk   %s use / talk   mouse aim + fire   %s weapons   %s reload   %s phone   %s menu" % [k.call("move_up"),
 		k.call("move_left"), k.call("move_down"), k.call("move_right"), k.call("interact"), k.call("weapon_wheel"), k.call("reload"), k.call("phone"), k.call("ui_menu")]
+
+
+# ---------------------------------------------------------------- quests
+
+func _build_quest_ui() -> void:
+	_quest_box = PanelContainer.new()
+	_quest_box.name = "QuestTracker"
+	_quest_box.theme_type_variation = "Card"
+	_quest_box.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	_quest_box.offset_left = 12
+	_quest_box.offset_top = 64
+	_quest_box.custom_minimum_size = Vector2(320, 0)
+	_quest_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	_quest_box.add_child(v)
+	_quest_title = UI.label("", 14, UI.GOLD)
+	_quest_step = UI.label("", 16)
+	_quest_hint = UI.label("", 13, UI.MUTED)
+	for l in [_quest_title, _quest_step, _quest_hint]:
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size.x = 300
+		v.add_child(l)
+	_quest_box.visible = false
+	add_child(_quest_box)
+
+	_card = PanelContainer.new()
+	_card.name = "QuestCard"
+	_card.theme_type_variation = "Card"
+	_card.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_card.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_card.offset_left = -270
+	_card.offset_right = 270
+	_card.offset_top = -120
+	_card.offset_bottom = -120
+	_card.mouse_filter = Control.MOUSE_FILTER_STOP
+	_card.tooltip_text = "Click to dismiss"
+	_card.gui_input.connect(func(e: InputEvent):
+		if e is InputEventMouseButton and e.pressed:
+			_card_left = 0.0)
+	var cv := VBoxContainer.new()
+	cv.add_theme_constant_override("separation", 4)
+	_card.add_child(cv)
+	_card_from = UI.label("", 14, UI.ACCENT)
+	cv.add_child(_card_from)
+	_card_text = UI.label("", 17)
+	_card_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_card_text.custom_minimum_size.x = 520
+	cv.add_child(_card_text)
+	_card.visible = false
+	add_child(_card)
+
+
+## Shows a message from a quest character; queued while another one is on screen.
+func show_card(from: String, text: String) -> void:
+	if text == "":
+		return
+	_card_queue.append([from, text])
+
+
+func _update_quest_ui(g, delta: float) -> void:
+	var qid := Quests.tracked(g)
+	_quest_box.visible = qid != ""
+	if qid != "":
+		var q: Dictionary = Quests.defs(g)[qid]
+		var s: Dictionary = Quests.current(g, qid)
+		var tag := "TUTORIAL" if q.get("tutorial", false) else ("MAIN QUEST" if q.get("main", false) else "QUEST")
+		_quest_title.text = "%s · %s" % [tag, q.get("title", qid)]
+		var prog := Quests.progress_text(g, qid)
+		_quest_step.text = "▸ " + str(s.get("text", "")) + ("  (%s)" % prog if prog != "" else "")
+		var hint := str(s.get("hint", ""))
+		if s.get("target", {}).has("app"):
+			hint = ("[%s] Com-Phone. " % Settings.key_label("phone")) + hint
+		_quest_hint.text = hint
+	if _card_left > 0.0:
+		_card_left -= delta
+		_card.modulate.a = clampf(_card_left / 0.6, 0.0, 1.0)
+		if _card_left <= 0.0:
+			_card.visible = false
+	elif not _card_queue.is_empty():
+		var m: Array = _card_queue.pop_front()
+		_card_from.text = str(m[0]).to_upper() if m[0] != "" else "MESSAGE"
+		_card_text.text = str(m[1])
+		_card.visible = true
+		_card.modulate.a = 1.0
+		_card_left = clampf(4.0 + str(m[1]).length() / 22.0, 6.0, 14.0)
+
+
+## World position the tracked quest points at right now, or null (no target, target is a phone app, docked menu).
+func quest_point():
+	var g = GameState.game
+	if g == null:
+		return null
+	var t: Dictionary = Quests.target(g)
+	if t.is_empty() or t.has("app"):
+		return null
+	if surface != null:
+		return _surface_point(g, t)
+	if world == null or not world.active:
+		return null
+	var goal := Quests.space_goal(g, t)
+	if goal == "" or not world.locations.has(goal):
+		return null
+	return world.locations[goal].position
+
+
+func _surface_point(g, t: Dictionary):
+	var cfg: Dictionary = surface.cfg
+	if cfg.has("estate"):
+		var here := str(cfg.estate)
+		if str(t.get("estate", "")) != here:
+			return _interactable_pos("exit")
+		if t.get("stash", false):
+			return _interactable_pos("stash")
+		var st := str(t.get("station", ""))
+		if st == "@next":
+			var tray: Dictionary = Bench.tray(g, here)
+			st = Bench.next_station(g, tray) if not tray.is_empty() else ""
+		for b in cfg.buildings:
+			if st != "" and b.get("station", "") == st:
+				var r: Array = b.rect
+				return (Vector2(r[0], r[1]) + Vector2(r[2], r[3]) / 2.0) * surface.tile
+		return null
+	if str(t.get("loc", "")) != g.location:
+		return _interactable_pos("pad")
+	if t.has("contact"):
+		for n in cfg.get("npcs", []):
+			if n.get("contact", "") == t.contact and surface.npcs.has(n.id):
+				return surface.npcs[n.id].position
+		return null
+	if t.has("estate"):
+		for b in cfg.buildings:
+			if b.get("estate", "") == t.estate:
+				return _interactable_pos(b.id)
+	if t.has("building"):
+		return _interactable_pos(str(t.building))
+	return null
+
+
+func _interactable_pos(id: String):
+	var it: Dictionary = surface.interactable(id)
+	return it.pos if not it.is_empty() else null
+
+
+## Gold diamond over the quest target, or an edge arrow when it is off screen.
+func _draw_quest_marker() -> void:
+	var wp = quest_point()
+	if wp == null:
+		return
+	var view := _nav.size
+	var p: Vector2 = get_viewport().get_canvas_transform() * (wp as Vector2)
+	var bob := sin(Time.get_ticks_msec() / 220.0) * 4.0
+	var col := UI.GOLD
+	var margin := 48.0
+	if Rect2(Vector2(margin, margin), view - Vector2(margin, margin) * 2.0).has_point(p):
+		var c := p + Vector2(0, -34 + bob)
+		_nav.draw_colored_polygon(PackedVector2Array([c + Vector2(0, -10), c + Vector2(8, 0), c + Vector2(0, 10), c + Vector2(-8, 0)]), col)
+		_nav.draw_polyline(PackedVector2Array([c + Vector2(0, -10), c + Vector2(8, 0), c + Vector2(0, 10), c + Vector2(-8, 0), c + Vector2(0, -10)]), Color(0, 0, 0, 0.6), 1.5)
+		return
+	var dir := (p - view / 2.0).normalized()
+	var half := view / 2.0 - Vector2(margin, margin)
+	var t := minf(half.x / maxf(absf(dir.x), 0.001), half.y / maxf(absf(dir.y), 0.001))
+	var e := view / 2.0 + dir * t
+	var tip := e + dir * (18.0 + bob)
+	_nav.draw_colored_polygon(PackedVector2Array([tip, e + dir.orthogonal() * 11.0, e - dir.orthogonal() * 11.0]), col)
+	var font := ThemeDB.fallback_font
+	var w := font.get_string_size("QUEST", HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	_nav.draw_string(font, e - dir * 20.0 - Vector2(w / 2.0, -5.0), "QUEST", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
