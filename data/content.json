@@ -8,7 +8,9 @@
     "cargo": {}
   },
   "time": {
-    "day_seconds": 180
+    "day_seconds": 180,
+    "day_start_hour": 6,
+    "daylight": [[0, "#6a78b8"], [5, "#6a78b8"], [7, "#f0c8a8"], [9, "#ffffff"], [17, "#ffffff"], [19.5, "#f0b090"], [21.5, "#6a78b8"]]
   },
   "heat": {
     "max": 100,
@@ -81,7 +83,7 @@
       "desc": "Frontier system one jump out. Lawless dust towns, one rich corporate ice colony."
     }
   },
-  "jump": {"fee": 80, "seconds": 20},
+  "jump": {"fee": 80, "seconds": 20, "charge_seconds": 6, "charge_engine_cut": 0.1, "min_charge": 2.5},
   "locations": {
     "mireth": {
       "name": "Mireth", "system": "halvane", "kind": "planet", "pos": [0, 0], "radius": 170, "color": "#3d7a6a",
@@ -161,11 +163,30 @@
     "preferred_bonus": 0.1,
     "history_len": 8
   },
+  "deals": {
+    "interval": 40, "chance": 0.3, "max_open": 3, "answer_seconds": 90, "meet_seconds": 150, "premium": 0.15,
+    "accept_base": 0.8, "accept_per_raise": 2.6, "accept_affinity": 0.4, "accept_addiction": 0.4,
+    "affinity_decline": -0.02, "affinity_counter_fail": -0.03, "affinity_noshow": -0.08, "heat_mult": 0.8, "history": 12
+  },
+  "deaddrops": {
+    "kinds": ["planet", "station", "asteroid"], "fee": 60, "max_open": 3, "ttl": 600, "pickup_seconds": 25,
+    "heat_mult": 0.3, "theft_chance": 0.07, "theft_heat": 0.15, "courier_extra_theft": 0.05,
+    "courier_seconds": 40, "courier_fee_unit": 4, "courier_fee_min": 20,
+    "spots": {
+      "planet": ["a loose brick behind the cannery", "a hollow lamp post on the ring road", "a rusted locker under the pier"],
+      "station": ["a cargo crate in bay C", "a vent grille on the lower deck", "a hollow stanchion by the docks"],
+      "asteroid": ["a drill casing at the east shaft", "a sealed ore bin", "a cracked survey marker"]
+    }
+  },
   "upgrades": {
     "cargo": {"name": "Cargo Hold", "levels": [20, 35, 55, 80], "costs": [600, 1500, 3500]},
     "engine": {"name": "Ion Engine", "levels": [1.0, 1.25, 1.5, 1.8], "costs": [500, 1400, 3000]},
     "stealth": {"name": "Stealth Plating", "levels": [0.0, 0.15, 0.3, 0.45], "costs": [700, 1800, 4000]},
-    "lab": {"name": "Hydro Rig", "levels": [5, 10, 20, 35], "costs": [800, 2000, 4500]}
+    "lab": {"name": "Hydro Rig", "levels": [5, 10, 20, 35], "costs": [800, 2000, 4500]},
+    "laser": {"name": "Laser Cannons", "levels": [8, 11, 15, 20], "costs": [500, 1300, 2800]},
+    "missile": {"name": "Missile Pods", "levels": [0, 4, 8, 14], "costs": [700, 1500, 3200]},
+    "shield": {"name": "Shield Generator", "levels": [0, 40, 80, 140], "costs": [800, 1800, 3800]},
+    "hull": {"name": "Hull Armour", "levels": [100, 130, 170, 220], "costs": [600, 1400, 3000]}
   },
   "lab": {
     "base_seconds": 3.0,
@@ -234,6 +255,18 @@
     "chase_speed": 470,
     "wander_radius": 2200
   },
+  "space_combat": {
+    "laser": {"cooldown": 0.28, "speed": 1000, "range": 760},
+    "missile": {"damage": 55, "speed": 540, "turn": 4.5, "range": 1200, "cooldown": 1.0, "blast": 75, "price": 35},
+    "shield": {"regen": 12.0, "delay": 3.0},
+    "boost": {"max": 100.0, "cost": 35.0, "regen": 18.0, "speed": 1250, "seconds": 0.32, "invuln": 0.45},
+    "repair_per_hull": 1.5,
+    "pirate": {"hull": 40, "speed": 330, "turn": 2.6, "orbit": 300, "detect": 1300, "fire_cooldown": 1.5, "damage": 8,
+      "bolt_speed": 600, "bolt_range": 900, "spread_degrees": 7, "bounty": [35, 65], "radius": 18},
+    "spawn": {"interval": 30.0, "max": 3, "min_dist": 1000, "max_dist": 1300, "despawn_dist": 2800, "safe_radius": 750,
+      "cargo_units": 20, "cargo_pressure": 0.8, "system_mult": {"halvane": 1.0, "kovar": 1.6}},
+    "defeat": {"cargo_lost": 0.5, "fine_ratio": 0.1, "fine_min": 40, "respawn_hull": 0.5}
+  },
   "police": {
     "base": 1,
     "per_heat": 20,
@@ -247,6 +280,7 @@
     "give_up_range": 480
   },
   "estates": {
+    "ship_bay": {"name": "Cargo Bay", "ship": true, "size": [7, 4], "desc": "The hold of your own ship, fitted out as a cramped workshop. Only usable while docked."},
     "cannery_annex": {"name": "Cannery Annex", "location": "mireth", "price": 1500, "size": [9, 6], "desc": "Damp storage hall behind the cannery. Room for a small line."},
     "ridge_glasshouse": {"name": "Ridge Glasshouse", "location": "mireth", "price": 4500, "size": [13, 8], "desc": "Old hydro glasshouse on the ridge. Big, bright, discreet."},
     "shaft_shack": {"name": "Shaft 9 Shack", "location": "cinder", "price": 1200, "size": [8, 5], "desc": "Abandoned miners' shack next to a dry shaft."},
@@ -263,5 +297,32 @@
     "refiner": {"cost": 550, "size": [2, 2]},
     "pack_table": {"cost": 250, "size": [2, 1]}
   },
-  "estate_refund": 0.5
+  "orders": {
+    "markup": 0.35, "fee_pct": 0.06, "fee_min": 12, "express_fee_mult": 2.0,
+    "seconds": {"standard": 90, "express": 30}, "far_seconds": 60,
+    "max_qty": 40, "max_open": 6, "cancel_refund": 0.8, "kit_price": 0.85
+  },
+  "estate_refund": 0.5,
+  "combat": {
+    "player": {"hp": 100, "regen_per_second": 4.0, "regen_delay": 6.0, "radius": 10, "ko_hp_ratio": 0.5,
+      "ko_fine_ratio": 0.2, "ko_fine_min": 80, "ko_heat_drop": 20},
+    "weapons": {
+      "pistol": {"name": "Pistol", "price": 0, "damage": 14, "pellets": 1, "spread_deg": 2.0, "interval": 0.35, "auto": false,
+        "mag": 12, "reload": 1.1, "bullet_speed": 720, "range": 520, "noise_heat": 0.3},
+      "smg": {"name": "SMG", "price": 600, "damage": 6, "pellets": 1, "spread_deg": 6.0, "interval": 0.09, "auto": true,
+        "mag": 30, "reload": 1.7, "bullet_speed": 680, "range": 420, "noise_heat": 0.15},
+      "shotgun": {"name": "Shotgun", "price": 900, "damage": 7, "pellets": 7, "spread_deg": 16.0, "interval": 0.85, "auto": false,
+        "mag": 6, "reload": 2.3, "bullet_speed": 620, "range": 300, "noise_heat": 0.9}
+    },
+    "start_weapons": ["pistol"],
+    "officer": {"hp": 40, "draw_heat": 55, "damage": 9, "interval": 1.0, "spread_deg": 7.0, "bullet_speed": 460,
+      "range": 280, "radius": 10, "alert_seconds": 4.0, "kill_heat": 12, "hit_heat": 4, "respawn_seconds": 25, "witness_range": 340},
+    "cover": {
+      "mireth": [[36, 18, 2, 1, "barrier"], [25, 9, 1, 2, "crates"], [16, 18, 2, 1, "barrier"], [42, 14, 2, 1, "crates"], [4, 18, 2, 1, "barrier"], [25, 22, 1, 2, "crates"], [25, 30, 1, 2, "barrier"]],
+      "cinder": [[19, 7, 1, 2, "barrier"], [3, 11, 2, 1, "crates"], [10, 11, 2, 1, "barrier"], [29, 11, 2, 1, "crates"], [19, 18, 1, 2, "barrier"]],
+      "bazaar": [[12, 14, 2, 1, "barrier"], [4, 14, 2, 1, "crates"], [16, 6, 1, 2, "barrier"], [23, 14, 2, 1, "crates"], [20, 20, 1, 2, "barrier"]],
+      "varrow": [[12, 17, 2, 1, "barrier"], [28, 17, 2, 1, "crates"], [24, 4, 1, 2, "barrier"], [3, 17, 2, 1, "crates"], [24, 22, 1, 2, "barrier"]],
+      "glacis": [[13, 14, 2, 1, "barrier"], [21, 25, 1, 2, "crates"], [25, 7, 1, 2, "barrier"], [5, 14, 2, 1, "crates"], [40, 14, 2, 1, "barrier"], [29, 18, 2, 1, "crates"]]
+    }
+  }
 }

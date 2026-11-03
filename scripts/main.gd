@@ -14,6 +14,9 @@ const PauseMenuScript = preload("res://scripts/ui/menu/pause_menu.gd")
 const SlotPanelScript = preload("res://scripts/ui/menu/slot_panel.gd")
 const SettingsPanelScript = preload("res://scripts/ui/menu/settings_panel.gd")
 const PhoneScript = preload("res://scripts/ui/phone/phone.gd")
+const HyperspaceScript = preload("res://scripts/ui/hyperspace.gd")
+const Galaxy = preload("res://scripts/core/galaxy.gd")
+const Deals = preload("res://scripts/core/deals.gd")
 
 ## Which station tab a surface interaction opens.
 const SURFACE_TABS := {"market": "Market", "lab": "Lab", "shipyard": "Shipyard", "office": "Office", "deal": "Deals", "fence": "Deals"}
@@ -25,6 +28,9 @@ const ACTIONS := {
 	"ship_left": [KEY_A, KEY_LEFT],
 	"ship_right": [KEY_D, KEY_RIGHT],
 	"ship_dock": [KEY_E],
+	"ship_fire": [KEY_J],
+	"ship_missile": [KEY_K],
+	"ship_boost": [KEY_SHIFT],
 	"ui_menu": [KEY_ESCAPE, KEY_P],
 	"phone": [KEY_TAB],
 }
@@ -33,6 +39,7 @@ var world: Node2D
 var surface: Node2D  ## current planet surface instance, null in space
 var hud: Control
 var station: Control
+var hyper: Control  ## jump-drive charge streaks and the hyperspace transition
 var phone: Control  ## Com-Phone overlay (scripts/ui/phone), usable in flight and on foot
 var menu: Control
 var pause_menu: Control
@@ -64,6 +71,8 @@ func _ready() -> void:
 	station.close_requested.connect(station.close)
 	phone = PhoneScript.new()
 	root.add_child(phone)
+	hyper = HyperspaceScript.new()
+	root.add_child(hyper)
 	station.estate_enter_requested.connect(func(eid: String): enter_estate(eid))
 	station.place_requested.connect(func(st: String):
 		station.close()
@@ -176,6 +185,8 @@ func _process(_delta: float) -> void:
 	if surface != null:
 		surface.player.frozen = GameState.paused or station.visible or end_screen.visible or phone.visible
 	world.input_blocked = phone.visible
+	var gm = GameState.game
+	hyper.charge = Galaxy.progress(gm) if gm != null and Galaxy.charging(gm) else 0.0
 
 
 func _enter_game() -> void:
@@ -230,38 +241,37 @@ func dock(loc: String) -> void:
 		station.open()
 
 
-## Jumps through a gate: toll + travel time in the core, a short hyperspace flash, then the next system is built
-## around the ship at the arrival gate.
+## Jumps through a gate: toll + travel time in the core, then the arrival (see _arrive).
 func jump(gate: String) -> void:
 	var g = GameState.game
 	var r: Dictionary = GameState.act(g.jump(gate))
-	if not r.ok:
-		return
-	AudioManager.play("dock")
+	if r.ok:
+		_arrive(gate)
+
+
+## The charged jump drive fires: the core pays the next hop's toll and jumps through the gate on that lane.
+func _engage_drive() -> void:
+	var r: Dictionary = GameState.act(Galaxy.engage(GameState.game))
+	if r.ok:
+		_arrive(r.gate)
+
+
+## Builds the next system around the ship at the arrival gate and plays the hyperspace transition.
+func _arrive(gate: String) -> void:
+	var g = GameState.game
 	var arrive: String = GameState.data.locations[gate].get("arrive", "")
 	world.show_system(g.system)
 	world.place_ship_at(arrive if world.locations.has(arrive) else g.patrol_home(g.system))
 	world.ship.velocity = Vector2.DOWN * 220.0
-	_flash()
+	hyper.play_jump(str(g.system_data().get("name", g.system)))
 	GameState.save_game()
-
-
-func _flash() -> void:
-	var f := ColorRect.new()
-	f.color = Color(0.75, 0.95, 1.0, 0.9)
-	f.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_ui_layer.add_child(f)
-	f.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var tw := f.create_tween()
-	tw.tween_property(f, "color:a", 0.0, 0.8)
-	tw.tween_callback(f.queue_free)
 
 
 ## Loads the planet surface instance for `loc` and hands the camera to the player on foot.
 func _land(loc: String, announce := true) -> void:
 	_leave_surface()
 	surface = SurfaceScript.new()
-	surface.setup(loc, GameState.data.surfaces[loc])
+	surface.setup(loc, _with_ship_ramp(GameState.data.surfaces[loc]))
 	surface.interacted.connect(_on_surface_action)
 	add_child(surface)
 	move_child(surface, world.get_index() + 1)
@@ -270,6 +280,23 @@ func _land(loc: String, announce := true) -> void:
 	surface.place_player_at("pad")
 	if announce:
 		EventBus.toast.emit("Landed on %s. Walk to a building or person and press E." % GameState.data.locations[loc].name, true)
+
+
+## The planet layout plus a ramp beside the landing pad that leads into the ship's cargo bay.
+func _with_ship_ramp(cfg: Dictionary) -> Dictionary:
+	var c: Dictionary = cfg.duplicate()
+	if c.has("pad"):
+		var pp: Array = c.pad.pos
+		var exits: Array = c.get("exits", []).duplicate()
+		exits.append({"id": "ship_bay", "pos": [float(pp[0]) + 2.4, float(pp[1])], "label": "Cargo bay (your ship)", "action": "enter_ship_bay"})
+		c.exits = exits
+	return c
+
+
+func enter_ship_bay() -> void:
+	var g = GameState.game
+	if GameState.act(g.enter_ship_bay()).ok:
+		enter_estate(g.SHIP_BAY)
 
 
 func _leave_surface() -> void:
@@ -301,6 +328,9 @@ func _on_surface_action(action: String, p: Dictionary) -> void:
 			return
 		"exit_estate":
 			leave_estate()
+			return
+		"enter_ship_bay":
+			enter_ship_bay()
 			return
 		"station":
 			var bd: Dictionary = surface.cfg.buildings.filter(func(b): return b.id == p.id)[0]
@@ -343,6 +373,10 @@ func enter_estate(eid: String, at = null) -> void:
 func leave_estate() -> void:
 	var eid: String = surface.cfg.estate
 	var loc: String = GameState.game.location
+	if eid == GameState.game.SHIP_BAY and not GameState.data.get("surfaces", {}).has(loc):
+		_leave_surface()  # stations without a surface: back to the docked menu
+		station.open()
+		return
 	_land(loc, false)
 	for b in GameState.data.surfaces[loc].buildings:
 		if b.get("estate", "") == eid:
@@ -404,8 +438,21 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 			_end_label.text = "THE CONSORTIUM CAME TO COLLECT\n\nYou still owed %d cr on day %d.\nEarned %d cr, moved %d units, busted %d×." % [g.debt, g.day, g.stats.earned, g.stats.units_sold, g.stats.busts]
 		end_screen.visible = true
 		GameState.save_game()
+	elif kind == "offer_new":
+		var o: Dictionary = Deals.find(GameState.game, p.offer)
+		EventBus.toast.emit("%s wants %d %s. [%s] Deal-O-Matic" % [GameState.game.contact(p.contact).name, o.qty, GameState.data.bases[o.base].name, Settings.key_label("phone")], true)
+	elif kind == "offer_expired" and p.was == "accepted":
+		EventBus.toast.emit("You missed the meet with %s." % GameState.game.contact(p.contact).name, false)
+	elif kind == "drop_pickup":
+		EventBus.toast.emit(("Drop cleared: %s paid %d cr." % [GameState.game.contact(p.contact).name, p.credits]) if p.kind == "deal" else "Courier delivered %d × %s to your stash." % [p.qty, GameState.game.item_name(p.item)], true)
+	elif kind == "drop_stolen":
+		EventBus.toast.emit("A drop was cleaned out: %d units stolen." % p.qty, false)
 	elif kind == "met":
 		EventBus.toast.emit("New contact: %s. Open the Com-Phone [%s]." % [GameState.game.contact(p.contact).name, Settings.key_label("phone")], true)
+	elif kind == "jump_ready":
+		_engage_drive.call_deferred()  # not inside Game.tick: the jump ticks the game itself
+	elif kind == "jump_cancelled":
+		EventBus.toast.emit(str(p.why), false)
 	elif kind == "busted":
 		EventBus.toast.emit("BUSTED: lost %d units, fined %d cr." % [p.lost, p.fine], false)
 

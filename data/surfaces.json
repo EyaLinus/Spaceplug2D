@@ -41,6 +41,7 @@
       {"id": "teo", "name": "Teo Brack", "pos": [27.5, 13.5], "action": "deal", "contact": "teo", "color": "#5fb6c9"},
       {"id": "vesna", "name": "Dr. Vesna Holt", "pos": [45.5, 19.5], "action": "deal", "contact": "vesna", "color": "#4fe3c1"}
     ],
+    "spots": {"Shipyard": [10.5, 13.8], "Night Market": [35.5, 13.5], "Home": [29.5, 22.4], "Plaza": [21.5, 19.5], "Dock club": [4.5, 11.5], "Cannery roof": [13.5, 19.5], "Clinic": [45.5, 19.5]},
     "walkers": 6,
     "security": 1.0,
     "props": [
@@ -73,6 +74,7 @@
       {"id": "dax", "name": "Foreman Dax", "pos": [20.5, 16.2], "action": "deal", "contact": "dax", "color": "#ffb347"},
       {"id": "marta", "name": "Marta Kell", "pos": [31.5, 15.6], "action": "deal", "contact": "marta", "color": "#ff6b5f"}
     ],
+    "spots": {"Drill tower": [33.5, 15.6], "Canteen": [25.5, 16.4], "Bunkhouse": [14.0, 19.5]},
     "walkers": 4,
     "security": 0.5,
     "props": [["rock", 2, 2], ["rock", 13, 3], ["rock", 14.5, 8], ["rock", 34, 2], ["rock", 1, 24], ["rock", 14, 24], ["rock", 34, 25], ["barrel", 21, 10.5], ["barrel", 21.7, 11], ["barrel", 33.5, 11], ["crate", 13, 16], ["crate", 13.8, 16.5], ["crate", 19.6, 22], ["lamp", 15.5, 11.5], ["lamp", 19.5, 11.5], ["lamp", 15.5, 15.5], ["lamp", 19.5, 15.5]]
@@ -100,6 +102,7 @@
       {"id": "grub", "name": "Old Grub", "pos": [16, 15.5], "action": "deal", "contact": "grub", "color": "#8fd18f"},
       {"id": "ozzy", "name": "Ozzy Fenn", "pos": [10.5, 9.5], "action": "deal", "contact": "ozzy", "color": "#8a8b9c"}
     ],
+    "spots": {"Cantina": [26.5, 15.4], "Hull Market": [29.5, 10.5], "Cargo hold": [16, 15.5], "Docking bay": [11.5, 6.5], "Vents": [33.5, 19.5]},
     "walkers": 7,
     "security": 0.0,
     "props": [["vent", 2, 2], ["vent", 14, 2], ["vent", 34, 12], ["vent", 2, 22], ["crate", 20.6, 3], ["crate", 21.3, 3.6], ["crate", 34, 22], ["barrel", 33, 15], ["barrel", 33.6, 15.5], ["lamp", 16.5, 10.5], ["lamp", 20.5, 10.5], ["lamp", 16.5, 14.5], ["lamp", 20.5, 14.5], ["stall", 25, 10.4], ["stall", 31, 10.4]]
@@ -128,6 +131,7 @@
       {"id": "rhea", "name": "Rhea Dunmore", "pos": [36.5, 17.5], "action": "deal", "contact": "rhea", "color": "#c27447"},
       {"id": "kip", "name": "Kip Sallow", "pos": [24.5, 12.5], "action": "deal", "contact": "kip", "color": "#5f9a5e"}
     ],
+    "spots": {"Caravan yard": [40.5, 18.0], "Saltpan Market": [33.5, 12.5], "Home": [15.5, 9.0], "Condenser field": [15.5, 27.0], "Dust Cantina": [32.5, 18.0]},
     "walkers": 4,
     "security": 0.3,
     "props": [["cactus", 2, 2], ["cactus", 19.5, 4], ["cactus", 42, 3], ["cactus", 2, 28], ["cactus", 24, 27], ["cactus", 41, 28], ["cactus", 14, 27.5],
@@ -158,6 +162,7 @@
       {"id": "halden", "name": "Ivo Halden", "pos": [34.5, 20.5], "action": "deal", "contact": "halden", "color": "#5fb6c9"},
       {"id": "nadia", "name": "Nadia Frost", "pos": [26.5, 21.5], "action": "deal", "contact": "nadia", "color": "#4fe3c1"}
     ],
+    "spots": {"Kessel Tower": [13.8, 22.5], "Dome Lounge": [35.5, 20.5], "Cryo labs": [17.5, 21.5], "Habitat ring": [15.5, 8.5]},
     "walkers": 6,
     "security": 1.6,
     "props": [["ice_rock", 2, 2], ["ice_rock", 20, 3], ["ice_rock", 44, 12], ["ice_rock", 2, 30], ["ice_rock", 24, 30], ["ice_rock", 44, 30], ["ice_rock", 13, 30],
