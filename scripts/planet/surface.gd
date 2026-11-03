@@ -10,6 +10,7 @@ const NpcScript = preload("res://scripts/planet/npc.gd")
 const OfficerScript = preload("res://scripts/planet/officer.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Nav = preload("res://scripts/planet/nav.gd")
+const FloatText = preload("res://scripts/world/float_text.gd")
 const People = preload("res://scripts/core/people.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Combat = preload("res://scripts/core/combat.gd")
@@ -64,6 +65,7 @@ var covers: Array = []  ## cover pieces as pixel rects: block walking and bullet
 var wheel_open := false
 var wheel_sel := -1  ## wheel sector under the mouse, -1 = none
 var hurt := 0.0  ## red flash after a hit (seconds)
+var shake := 0.0  ## K1: camera shake strength (hits, busts, EventBus.shake)
 var _trigger := false
 var _trigger_fresh := false
 var _aim_t := 0.0  ## player shows the gun for a moment after shooting
@@ -229,6 +231,7 @@ func _ready() -> void:
 		camera.limit_bottom = int(map_size.y / 2.0 + view.y / 2.0)
 	player.add_child(camera)
 	camera.make_current()
+	EventBus.shake.connect(func(st: float): shake = maxf(shake, st))
 	if not cfg.has("estate"):  # interiors keep their own lighting
 		_daylight = CanvasModulate.new()
 		add_child(_daylight)
@@ -539,6 +542,8 @@ func _update_combat(delta: float) -> void:
 	if g == null or GameState.paused:
 		return
 	hurt = maxf(0.0, hurt - delta)
+	shake = maxf(0.0, shake - delta * 18.0)
+	camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * shake * Settings.screen_shake / camera.zoom.x
 	_flash_t = maxf(0.0, _flash_t - delta)
 	for i in range(_impacts.size() - 1, -1, -1):
 		_impacts[i].t -= delta
@@ -596,9 +601,20 @@ func _step_bullets(g, delta: float) -> void:
 					_knocked_out(g)
 				else:
 					hurt = 0.4
+					shake = maxf(shake, 4.0)
+					_float(player.position + Vector2(0, -26), "-%d" % int(b.damage), Color("#ff6b5f"))
 					player.flash = 0.25
 					AudioManager.play("hurt")
 	bullets = alive
+
+
+## K1: a floating number / word over something on the surface (damage, "+90 cr" over a buyer).
+func _float(at: Vector2, text: String, c: Color, size := 15) -> void:
+	if not Settings.damage_numbers and text.is_valid_int():
+		return
+	var f: Node2D = FloatText.new().setup(text, c, size)
+	f.position = at
+	add_child(f)
 
 
 func map_rect() -> Rect2:
@@ -611,6 +627,7 @@ func _hit_officer(g, o: Node2D, damage: float) -> void:
 		Combat.officer_hit(g)
 	o.hp -= damage
 	o.flash = 0.12
+	_float(o.position + Vector2(0, -26), "%d" % int(damage), Color("#ffd166"))
 	if o.hp <= 0.0:
 		officers.erase(o)
 		o.queue_free()

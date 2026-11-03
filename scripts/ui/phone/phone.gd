@@ -14,6 +14,20 @@ const SIZE := Vector2(420, 640)
 const BEZEL := Color("#0c0a12")
 const SCREEN := Color("#191626")
 
+## K1: hover help for the home-screen tiles.
+const APP_TIPS := {
+	"quests": "Quests: your tutorial and main quest steps; track one to get a waypoint.",
+	"contacts": "Contacts: everyone who buys from you, what they like, their budget and schedule.",
+	"fixers": "Fixers: officials you can pay to clear heat or divert patrols.",
+	"hr": "HR: hire lab hands, stockers and dealers, assign them to estates and districts.",
+	"deals": "Deal-O-Matic: buyers text you offers. Accept, haggle or decline; meet on time.",
+	"products": "Products: every mix you have made, its recipe, and your asking price.",
+	"orders": "Orders: have raws, additives and station kits delivered to your stash or an estate.",
+	"map": "Map: systems, heat, prices and cartel influence; charge the jump drive here.",
+	"deaddrop": "DeadDrop: anonymous drop points where buyers and couriers pick up product.",
+	"style": "Style: your look, your ship's paint and decals.",
+}
+
 var apps: Array = []
 var _stack: Array = []  ## [{title, build: Callable(g) -> Control}], empty = home screen
 var _clock: Label
@@ -218,6 +232,7 @@ func _calendar(g) -> Control:
 func _app_tile(g, app) -> Control:
 	var b := Button.new()
 	b.name = "App_" + app.id
+	b.tooltip_text = APP_TIPS.get(app.id, str(app.title))
 	b.custom_minimum_size = Vector2(108, 108)
 	b.add_theme_stylebox_override("normal", _box(app.tint.darkened(0.7), app.tint.darkened(0.35), 2, 16, 6))
 	b.add_theme_stylebox_override("hover", _box(app.tint.darkened(0.55), app.tint, 2, 16, 6))

@@ -4,6 +4,7 @@ extends Node2D
 ## Geometry and timing only; every damage/ammo/bounty/loot rule is in scripts/core/spacecombat.gd.
 ## World calls step() once per physics frame while the ship is flying.
 
+const FloatText = preload("res://scripts/world/float_text.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const PirateScript = preload("res://scripts/world/pirate.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
@@ -201,6 +202,10 @@ func _ion_hit(g, p: Vector2, struck: Node2D, dmg: float) -> void:
 func _damage_pirate(g, p: Node2D, dmg: float) -> void:
 	if not pirates.has(p):
 		return
+	if Settings.damage_numbers:
+		var f: Node2D = FloatText.new().setup("%d" % int(round(dmg)), Color("#ffd166"), 15)
+		f.position = p.position + Vector2(0, -22)
+		add_child(f)
 	if p.hit(dmg):
 		pirates.erase(p)
 		var r := SpaceCombat.enemy_down(g, p.kind, p.cartel, rng)
@@ -319,6 +324,10 @@ func damage_base(g, id: String, dmg: float) -> void:
 	var b := base_state(id)
 	b.hull = float(b.hull) - dmg
 	var n: Node2D = world.locations[id]
+	if Settings.damage_numbers:
+		var f: Node2D = FloatText.new().setup("%d" % int(round(dmg)), Color("#ffd166"), 17)
+		f.position = n.position + Vector2(rng.randf_range(-30.0, 30.0), -float(n.radius) * 0.7)
+		add_child(f)
 	if float(b.hull) > 0.0:
 		_burst(n.position + Vector2.from_angle(rng.randf() * TAU) * float(n.radius) * 0.6, 3, Color(1.0, 0.8, 0.5), 80.0, 0.3)
 		return
@@ -453,6 +462,10 @@ func _home(b: Dictionary, delta: float, turn: float, speed: float) -> void:
 func hurt_player(g, amount: float) -> void:
 	var res := SpaceCombat.damage(g, amount)
 	shake = maxf(shake, 6.0 if float(res.hull) > 0.0 else 3.0)
+	if Settings.damage_numbers:
+		var f: Node2D = FloatText.new().setup("-%d" % int(round(amount)), Color("#ff6b5f") if float(res.hull) > 0.0 else Color("#7fd3ff"), 15)
+		f.position = ship.position + Vector2(0, -26)
+		add_child(f)
 	if float(res.hull) > 0.0:
 		hit_flash = 1.0
 		AudioManager.play("hit")

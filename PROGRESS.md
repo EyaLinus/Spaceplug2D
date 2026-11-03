@@ -1,5 +1,22 @@
 # Progress log
 
+## K1: action feedback + tooltips (phase 3 wave 10, 2026-11-03)
+- **Feedback layer** `scripts/ui/fx.gd` (HUD child, drawn last): watches credits/heat and pops the delta under the HUD
+  stat, floats text over the player on game events (sold, loot, discoveries, referrals, batches), full-screen flashes
+  (bust, wreck, interdiction, raid, upgrades, quest done), coin jingle for sales ≥ 400 cr. `scripts/world/float_text.gd`
+  = world-space rising text (damage numbers in `combat_layer.gd` and `surface.gd`).
+- **Shake**: new `EventBus.shake(strength)`; world and surface cameras both shake (surface had none), scaled by
+  `Settings.screen_shake` (0..1, Display tab); `Settings.damage_numbers` toggle. Saved under [feel] in settings.cfg.
+- **Toasts**: card per message (stripe colour = good/bad), max 5, same text again → "×n" on the last card.
+- **Tooltips**: top bar stats (live text), phone tiles (`phone.gd APP_TIPS`), list rows in contacts/HR/fixers/deals,
+  map modes/systems, settings rows; `UI.button` fills hover help from `UI.BUTTON_TIPS` (prefix match) unless the call
+  site sets its own. `tools/tip_audit.gd` opens the main screens and lists visible buttons without a tooltip; CI fails
+  unless it prints "TIPS DONE 0".
+- Verified: 10559 unit checks, UI smoke +1 step (credit pop, toast stacking, surface shake, float text), menu smoke,
+  tip audit 0 missing over 21 screens, screenshots.
+- Gaps: deeper screens the audit does not open (product detail, HR worker detail, interdiction card) are only covered
+  by the BUTTON_TIPS table; not played by a human.
+
 ## Release v0.1.11 (2026-11-03)
 - Phase 3 wave 9: I1 cartels + sector influence (#59), E4 space combat II (#60), D3 interdiction + main quest
   chapter 2 (#61). Changelog folded, version 0.1.11. Next: wave 10 (K1 feedback & tooltips, K2 customization,

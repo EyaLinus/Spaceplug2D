@@ -43,6 +43,7 @@ func _row(g, phone, o: Dictionary) -> Control:
 	var c: Dictionary = g.contact(o.contact)
 	var b := Button.new()
 	b.name = "Offer_%d" % int(o.id)
+	b.tooltip_text = "Open the chat with %s: accept, haggle or decline." % c.name
 	b.custom_minimum_size = Vector2(0, 58)
 	b.pressed.connect(func():
 		AudioManager.play("click")

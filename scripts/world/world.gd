@@ -22,6 +22,7 @@ var patrols: Array = []
 var nearby: String = ""  ## dockable location in range, "" if none
 var scan := 0.0  ## 0..1, busted at 1
 var active := false  ## false while docked / in menus
+var shake := 0.0  ## K1: extra camera shake from EventBus.shake (busts, interdictions), decays fast
 var input_blocked := false  ## the ship holds position (no steering) while the phone is open
 var _stars: Array = []
 var _nebulae: Array = []  ## [pos, radius, colour]
@@ -122,7 +123,8 @@ func _physics_process(delta: float) -> void:
 	_update_nearby()
 	_update_scan(g, delta)
 	combat.step(delta, g)
-	camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * combat.shake
+	shake = maxf(0.0, shake - delta * 18.0)
+	camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * maxf(combat.shake, shake) * Settings.screen_shake
 
 
 ## Distance from the ship to the edge of the nearest location (INF if the system has none).

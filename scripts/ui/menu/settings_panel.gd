@@ -68,11 +68,13 @@ func _display_tab() -> Control:
 	for m in Settings.WINDOW_MODES:
 		mode.add_item(m)
 	mode.select(Settings.window_mode)
+	mode.tooltip_text = "Play in a window or fullscreen."
 	v.add_child(_row("Window", mode))
 	_res = OptionButton.new()
 	for r in Settings.RESOLUTIONS:
 		_res.add_item("%d × %d" % [r.x, r.y])
 	_res.select(Settings.resolution)
+	_res.tooltip_text = "Window size in windowed mode. The game scales to any size."
 	_res.disabled = Settings.window_mode == 1
 	_res.item_selected.connect(func(i: int): Settings.set_resolution(i))
 	v.add_child(_row("Window size", _res))
@@ -81,6 +83,7 @@ func _display_tab() -> Control:
 		_res.disabled = i == 1)
 	var vs := CheckButton.new()
 	vs.button_pressed = Settings.vsync
+	vs.tooltip_text = "Sync frames to the monitor: no tearing, slightly more input delay."
 	vs.toggled.connect(func(on: bool): Settings.set_vsync(on))
 	v.add_child(_row("VSync", vs))
 	var tut := CheckButton.new()
@@ -89,6 +92,23 @@ func _display_tab() -> Control:
 	tut.tooltip_text = "New games start with Okka's tutorial quests. Off = straight to the main quest."
 	tut.toggled.connect(func(on: bool): Settings.set_tutorial(on))
 	v.add_child(_row("Tutorial (new games)", tut))
+	var sh := HSlider.new()
+	sh.name = "ShakeSlider"
+	sh.min_value = 0.0
+	sh.max_value = 1.0
+	sh.step = 0.25
+	sh.value = Settings.screen_shake
+	sh.custom_minimum_size.x = 200
+	sh.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	sh.tooltip_text = "How hard the camera shakes on hits, explosions and busts. Left = off."
+	sh.value_changed.connect(func(x: float): Settings.set_screen_shake(x))
+	v.add_child(_row("Screen shake", sh))
+	var dn := CheckButton.new()
+	dn.name = "DamageNumbers"
+	dn.button_pressed = Settings.damage_numbers
+	dn.tooltip_text = "Show floating damage numbers over ships, officers and you."
+	dn.toggled.connect(func(on: bool): Settings.set_damage_numbers(on))
+	v.add_child(_row("Damage numbers", dn))
 	var hint := UI.label("The game scales to any window size; the size only matters in windowed mode.", 14, UI.MUTED)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(hint)
@@ -113,6 +133,7 @@ func _controls_tab() -> Control:
 		var action: String = b.action
 		var btn := UI.button("", func(): _start_rebind(action), 150)
 		btn.name = action
+		btn.tooltip_text = "Click, then press the new key for \"%s\". Esc cancels." % b.label
 		_key_buttons[action] = btn
 		grid.add_child(btn)
 	v.add_child(grid)
