@@ -7,7 +7,7 @@ const Deals = preload("res://scripts/core/deals.gd")
 const ContactsApp = preload("res://scripts/ui/phone/apps/contacts_app.gd")
 
 const RAISES := [0.1, 0.25]
-const STATE_LABEL := {"new": "New request", "accepted": "Meet them", "done": "Done", "declined": "Declined", "expired": "Expired"}
+const STATE_LABEL := {"new": "New request", "accepted": "Meet them", "dropped": "At the drop", "stolen": "Stolen", "done": "Done", "declined": "Declined", "expired": "Expired"}
 
 
 func _init() -> void:

@@ -10,6 +10,7 @@ const People = preload("res://scripts/core/people.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Orders = preload("res://scripts/core/orders.gd")
 const Combat = preload("res://scripts/core/combat.gd")
+const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const ArtReg = preload("res://scripts/core/art.gd")
 
 var data: Dictionary
@@ -50,6 +51,8 @@ func _init() -> void:
 		"test_deal_requests",
 		"test_deal_answers",
 		"test_deal_fulfill",
+		"test_deaddrops",
+		"test_deaddrops_save",
 		"test_market_saturation_recovers",
 		"test_heat_and_patrols",
 		"test_galaxy_and_jump",
@@ -1039,6 +1042,116 @@ func test_sell_contact_and_fence() -> void:
 	g.tick(float(data.market.contact_cooldown) + 1.0)
 	check(g.sell(p, 1, "okka").ok, "okka buys again after cooldown")
 	check(not g.sell(p, 5, "okka").ok, "contact max units")
+
+
+func test_deaddrops() -> void:
+	var rl: Dictionary = data.deaddrops
+	for k in ["kinds", "fee", "max_open", "ttl", "pickup_seconds", "heat_mult", "theft_chance", "theft_heat", "courier_seconds", "courier_fee_unit", "spots"]:
+		check(rl.has(k), "deaddrops rule %s exists" % k)
+	for kind in rl.kinds:
+		check(rl.spots.has(kind) and not rl.spots[kind].is_empty(), "spot names for %s" % kind)
+	var g := new_game()
+	check(Deaddrops.eligible(g, "mireth") and Deaddrops.eligible(g, "cinder"), "planets and outposts take drops")
+	check(not Deaddrops.eligible(g, "kovar_gate") or data.locations.kovar_gate.kind != "gate", "gates don't")
+	check(not Deaddrops.request(g, "nope").ok, "unknown place refused")
+	var credits0 := g.credits
+	var r: Dictionary = Deaddrops.request(g, "mireth")
+	check(r.ok and g.drops.size() == 1 and g.credits == credits0 - int(rl.fee), "request costs the fee")
+	check(not Deaddrops.request(g, "mireth").ok, "one drop per place")
+	var d: Dictionary = g.drops[0]
+	# a deal at the drop
+	var o: Dictionary = Deals.request(g, "okka")
+	check(not Deaddrops.assign_deal(g, d.id, o.id, "x").ok, "deal must be agreed first")
+	Deals.accept(g, o.id)
+	var key := Mixing.key(o.base, [data.bases[o.base].innate])
+	check(not Deaddrops.assign_deal(g, d.id, o.id, key).ok, "need the units")
+	g.cargo[key] = int(o.qty) + 1
+	g.location = "cinder"
+	check(not Deaddrops.assign_deal(g, d.id, o.id, key).ok, "must be docked at the drop")
+	g.location = "mireth"
+	g.heat = 0.0
+	var heat_before := g.heat
+	r = Deaddrops.assign_deal(g, d.id, o.id, key)
+	check(r.ok, "left at the drop: %s" % r.msg)
+	check(o.state == "dropped" and int(g.cargo[key]) == 1 and not Deaddrops.is_free(d), "goods in the drop")
+	var in_person := float(g.loc_data().heat_per_unit) * int(o.qty) * g.heat_mult(o.base) * float(data.deals.heat_mult)
+	check(g.heat > heat_before and g.heat < in_person * 0.5, "drop heat (%.2f) well below hand-over heat (%.2f)" % [g.heat, in_person])
+	check(not Deaddrops.send_courier(g, d.id, key, 1).ok, "drop holds one job")
+	# customer picks up (theft off, then on)
+	data.deaddrops.theft_chance = 0.0
+	data.deaddrops.theft_heat = 0.0
+	var c1 := g.credits
+	g.tick(float(rl.pickup_seconds) + 1.0)
+	check(o.state == "done" and g.credits == c1 + int(o.price) * int(o.qty), "customer collected and paid")
+	check(Deaddrops.is_free(d) and g.drops_unseen == 1, "drop free again, pickup counted")
+	var o2: Dictionary = Deals.request(g, "okka")
+	Deals.accept(g, o2.id)
+	g.cargo[key] = int(o2.qty)
+	data.deaddrops.theft_chance = 1.0
+	check(Deaddrops.assign_deal(g, d.id, o2.id, key).ok, "second deal dropped")
+	var c2 := g.credits
+	g.tick(float(rl.pickup_seconds) + 1.0)
+	check(o2.state == "stolen" and g.credits == c2 and not g.cargo.has(key), "theft: no goods, no pay")
+	# courier
+	g.cargo["cannabis"] = 10
+	var fee := Deaddrops.courier_fee(g, 10)
+	var c3 := g.credits
+	check(Deaddrops.send_courier(g, d.id, "cannabis", 10).ok and g.credits == c3 - fee and not g.cargo.has("cannabis"), "courier takes goods and fee")
+	g.tick(float(rl.courier_seconds) + 1.0)
+	check(not g.stash.has("cannabis"), "stolen courier run delivers nothing")
+	data.deaddrops.theft_chance = 0.0
+	g.cargo["cannabis"] = 10
+	Deaddrops.send_courier(g, d.id, "cannabis", 10)
+	g.tick(float(rl.courier_seconds) + 1.0)
+	check(int(g.stash.get("cannabis", 0)) == 10, "courier delivers to the hub stash")
+	# idle drops expire, abandoning works
+	g.tick(float(rl.ttl) + 1.0)
+	check(g.drops.is_empty(), "idle drop expires")
+	check(Deaddrops.request(g, "mireth").ok and Deaddrops.release(g, g.drops[0].id).ok and g.drops.is_empty(), "abandon a drop")
+	for loc in ["mireth", "cinder", "drift_bazaar", "varrow"]:
+		Deaddrops.request(g, loc)
+	check(g.drops.size() <= int(rl.max_open), "open drop cap")
+	# many deals in a row never trim a deal waiting at a drop
+	var g2 := new_game()
+	Deaddrops.request(g2, "mireth")
+	var w: Dictionary = Deals.request(g2, "okka")
+	Deals.accept(g2, w.id)
+	var k2 := Mixing.key(w.base, [data.bases[w.base].innate])
+	g2.cargo[k2] = int(w.qty)
+	Deaddrops.assign_deal(g2, g2.drops[0].id, w.id, k2)
+	for i in 30:
+		var x: Dictionary = Deals.request(g2, "sen")
+		if x.is_empty():
+			break
+		Deals.decline(g2, x.id)
+	Deals.tick(g2, 0.1)
+	check(not Deals.find(g2, w.id).is_empty(), "dropped deal survives history trimming")
+	data.deaddrops.theft_chance = 0.07  # restore: data is shared between tests
+	data.deaddrops.theft_heat = 0.15
+
+
+func test_deaddrops_save() -> void:
+	var g := new_game()
+	Deaddrops.request(g, "mireth")
+	var o: Dictionary = Deals.request(g, "okka")
+	Deals.accept(g, o.id)
+	var key := Mixing.key(o.base, [data.bases[o.base].innate])
+	g.cargo[key] = int(o.qty)
+	Deaddrops.assign_deal(g, g.drops[0].id, o.id, key)
+	var json := JSON.stringify(g.to_dict())
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(json))
+	check(h.drops.size() == 1 and not Deaddrops.is_free(h.drops[0]), "drop with a job survives save/load")
+	check(Deals.find(h, o.id).state == "dropped", "dropped deal survives save/load")
+	check(JSON.stringify(h.to_dict()) == json, "save with drops is stable")
+	h.next_drop_id = 0
+	h.rng.seed = 3
+	var d := new_game().to_dict()
+	d.erase("drops")
+	d.erase("next_drop_id")
+	var old := Game.new()
+	old.from_dict(data, d)
+	check(old.drops.is_empty() and old.next_drop_id == 0, "old saves load without drops")
 
 
 func test_market_saturation_recovers() -> void:

@@ -5,6 +5,19 @@
   Changelog folded, version 0.1.6 in project.godot and export_presets.cfg. Next: wave 3 (A4 DeadDrops, B3 workers
   (open PR #30), A5 dealers, A6 galaxy map + jump).
 
+## A4: DeadDrop Logistics (2026-11-02)
+- **Core:** `scripts/core/deaddrops.gd`, rules in content.json `deaddrops`, state `Game.drops` (+ `next_drop_id`, saved;
+  old saves load without). Request a drop (60 cr, max 3, one per planet/station/outpost) from the phone; while docked
+  there it takes one job at a time: an accepted Deal-O-Matic deal (offer state `dropped`, customer collects after 25 s
+  and pays) or a courier run to the hub stash (4 cr/unit, min 20). Drop heat is 30 % of the in-person hand-over; every
+  pickup/courier can be stolen (7 % + up to 15 % at max heat, courier +5 %): no goods, no pay (offer state `stolen`).
+  Idle drops close after 600 s. `Deals._trim` keeps `dropped` deals.
+- **UI:** `apps/deaddrop_app.gd` + one line in `registry.gd` (icon `app_deaddrop`), toasts on pickup/theft in `main.gd`.
+- Verified: 1857 unit checks (rules, heat vs hand-over, pay, theft, courier, expiry, caps, trimming, save round-trip,
+  old save), UI smoke (request, leave deal, collect and pay), menu smoke, sim 5/5 won (avg day 6.2), screenshot of the app.
+- Gaps: no map marker for drops on the surface; the customer collects instantly in the sim (no walking NPC);
+  A5 (dealers) can reuse `Deaddrops.at()` / jobs; courier only goes drop -> hub stash.
+
 ## B1: NPC schedules on foot (2026-11-02)
 - Surfaces have `spots` (schedule place name → tile, `surfaces.json`). `People.spot(c, spots, hour, slot)` picks the
   spot of the current schedule place, nudged by the person's index on the surface so people sharing a place stand

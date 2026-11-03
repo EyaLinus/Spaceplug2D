@@ -168,6 +168,16 @@
     "accept_base": 0.8, "accept_per_raise": 2.6, "accept_affinity": 0.4, "accept_addiction": 0.4,
     "affinity_decline": -0.02, "affinity_counter_fail": -0.03, "affinity_noshow": -0.08, "heat_mult": 0.8, "history": 12
   },
+  "deaddrops": {
+    "kinds": ["planet", "station", "asteroid"], "fee": 60, "max_open": 3, "ttl": 600, "pickup_seconds": 25,
+    "heat_mult": 0.3, "theft_chance": 0.07, "theft_heat": 0.15, "courier_extra_theft": 0.05,
+    "courier_seconds": 40, "courier_fee_unit": 4, "courier_fee_min": 20,
+    "spots": {
+      "planet": ["a loose brick behind the cannery", "a hollow lamp post on the ring road", "a rusted locker under the pier"],
+      "station": ["a cargo crate in bay C", "a vent grille on the lower deck", "a hollow stanchion by the docks"],
+      "asteroid": ["a drill casing at the east shaft", "a sealed ore bin", "a cracked survey marker"]
+    }
+  },
   "upgrades": {
     "cargo": {"name": "Cargo Hold", "levels": [20, 35, 55, 80], "costs": [600, 1500, 3500]},
     "engine": {"name": "Ion Engine", "levels": [1.0, 1.25, 1.5, 1.8], "costs": [500, 1400, 3000]},
