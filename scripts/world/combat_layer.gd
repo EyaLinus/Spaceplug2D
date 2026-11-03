@@ -5,6 +5,7 @@ extends Node2D
 
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const PirateScript = preload("res://scripts/world/pirate.gd")
+const Interdiction = preload("res://scripts/core/interdiction.gd")
 
 const SHIP_RADIUS := 16.0
 
@@ -68,6 +69,8 @@ func step(delta: float, g) -> void:
 		if p.position.distance_to(ship.position) > float(cc.spawn.despawn_dist):
 			pirates.erase(p)
 			p.queue_free()
+			if p.has_meta("interdictor"):
+				Interdiction.ship_down(g, false)
 	_step_bolts(delta, g)
 	_step_fx(delta)
 	if ship.boosting():
@@ -124,11 +127,18 @@ func _blast(g, p: Vector2, dmg: float, r: float) -> void:
 func _damage_pirate(g, p: Node2D, dmg: float) -> void:
 	if p.hit(dmg):
 		pirates.erase(p)
-		var bounty := SpaceCombat.collect_bounty(g, rng)
 		_burst(p.position, 22, Color(1.0, 0.55, 0.25), 220.0, 0.8)
 		AudioManager.play("boom")
-		EventBus.toast.emit("Pirate down: +%d cr bounty." % bounty, true)
+		if p.get_meta("interdictor", "") == "authority":
+			g.combat.kills = int(g.combat.kills) + 1
+			EventBus.toast.emit("Authority cutter down.", true)
+		else:
+			var bounty := SpaceCombat.collect_bounty(g, rng)
+			EventBus.toast.emit("Pirate down: +%d cr bounty." % bounty, true)
+		var was_interdictor: bool = p.has_meta("interdictor")
 		p.queue_free()
+		if was_interdictor:
+			Interdiction.ship_down(g, true)
 	else:
 		_burst(p.position, 4, Color(1.0, 0.9, 0.6), 90.0, 0.25)
 
@@ -162,6 +172,24 @@ func spawn_pirate(g, at = null) -> Node2D:
 	add_child(p)
 	pirates.append(p)
 	return p
+
+
+## The ships of a jump interdiction (D3) close in around the gate; `kind` is "pirates" or "authority" (tougher hulls,
+## no bounty). The core counts them down (Interdiction.ship_down) and ends the encounter.
+func spawn_interdictors(g, kind: String, n: int) -> void:
+	var ic: Dictionary = g.data.interdiction.fight
+	var s: Dictionary = g.data.space_combat.pirate.duplicate()
+	s.hull = float(s.hull) * Interdiction.hull_mult(g, kind)
+	var lim: float = world.SECTOR_HALF - 300.0
+	for i in n:
+		var ang := (TAU * float(i) / float(maxi(n, 1))) + rng.randf() * 0.8
+		var pos: Vector2 = (ship.position + Vector2.from_angle(ang) * rng.randf_range(float(ic.spawn_min), float(ic.spawn_max))).clamp(Vector2(-lim, -lim), Vector2(lim, lim))
+		var p := PirateScript.new()
+		_seed += 1
+		p.setup(s, pos, _seed)
+		p.set_meta("interdictor", kind)
+		add_child(p)
+		pirates.append(p)
 
 
 # ---------------------------------------------------------------- bolts, hits

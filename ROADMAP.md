@@ -125,7 +125,7 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
 - **F1 Heat II + corruption.** Heat per system and personal "wanted" level; corrupt inspectors, customs officers and
   patrol captains as named NPCs (people.gd) you recruit with bribes: tip-offs before raids, cargo passes scanners.
   Replaces the office fixer bribe. Needs A1, D1.
-- **D3 Interdiction.** Jumps can be intercepted by pirates or the Authority: fight (E2), pay, dump cargo or flee.
+- [x] **D3 Interdiction.** Jumps can be intercepted by pirates or the Authority: fight (E2), pay, dump cargo or flee.
   Needs A6, E2.
 - **F2 Rival gangs.** Cartels with territory per planet, robbing your dealers, demanding protection money, gang
   members as ground enemies. Needs E1, A5.

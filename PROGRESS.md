@@ -389,3 +389,27 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
   and the weapon actions are keyboard/mouse only; no ammo economy (unlimited reloads); cover is a static ground layer (no y-sort,
   walkers on the roads can brush past it); no screenshot of the HUD/wheel (Xvfb rendering hung in this container), so the layout is
   unseen; numbers are eyeballed; the balance bot does not fight. Officer AI is simple (no flanking, they do not seek cover).
+
+## D3: Jump interdiction (2026-11-03)
+- **Core** `scripts/core/interdiction.gd` (static functions over `Game`), numbers in `content.json` -> `interdiction`. Runtime state on
+  `Game.interdiction` (pending encounter) and `Game.interdict_ready_at` (cooldown); nothing is saved. Gate jump and drive jump both roll
+  in `main.gd` before the toll is paid (`jump()` / `_engage_drive()`); the core `Game.jump` / `Galaxy.engage` are unchanged, so every
+  older test and the balance bot are untouched.
+- **Odds:** pirates per lane = security of the worse end (`low` 22 %, `medium` 8 %, `high` 3 %) x (1 + 0.8 x product share of a 20-unit
+  hold); Authority = base 8 % + 60 % x heat share, only above heat 15, x0.3 with a clean hold. Cap 70 %, cooldown 150 s of game time.
+  Monte Carlo (test): clean Halvane -> Kovar trip 22 % hit (pirates only); heat 70 + 25 product units 69 % (mostly Authority).
+- **Choices:** fight (1-3 ships spawn around the gate via `combat_layer.spawn_interdictors`, tougher hulls for cutters, no bounty from
+  them; gate is jammed while it lasts; all down -> the jump goes through, a ship that drifts away -> called off), pay (pirate toll
+  25 % of credits, min 60; Authority fine 14 cr per heat, min 60, halved with a clean hold), dump (pirates take the whole hold, Authority
+  only product, +6 heat), flee (40 % + 8 %/engine level + 20 % with boost energy; success = through the gate, +12 heat vs Authority;
+  failure = volley that cannot wreck the ship, then the fight). Docking, a wreck, a bust or game over abort an encounter (a held
+  drive charge is cancelled).
+- **UI** `scripts/ui/interdiction_ui.gd`: modal panel over the frozen flight view, four buttons with hints and keys 1-4, disabled
+  choices explain why. Phone and E-dock are blocked while it is open.
+- Verified: unit tests 2501 checks, 0 failures (new `test_interdiction_*`: data, odds, roll, cooldown, pay, dump, flee success/failure,
+  fight, abort, not-saved, Monte Carlo rates); UI smoke (pay at the gate, fight + jam + victory jump, held drive + key 3 dump,
+  Authority + wreck ends it, flee) 0 script errors; menu smoke; sim 5/5 won (the bot never flies, so it is unaffected).
+- Gaps: no screenshot of the panel (Xvfb rendering is not available here), so the layout is unseen; the Authority fight uses the pirate
+  ship sprite and AI (just tougher), no distinct cutter art; the Map app does not show interdiction odds yet; flee/odds numbers are
+  eyeballed; dumped cargo is simply gone (no floating pods to pick up again); pay is all-or-nothing (no haggling); F1 will replace
+  `Galaxy.system_heat` with per-system heat, which the Authority odds read.

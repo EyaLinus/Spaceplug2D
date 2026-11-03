@@ -7,6 +7,7 @@ extends SceneTree
 
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Combat = preload("res://scripts/core/combat.gd")
+const Interdiction = preload("res://scripts/core/interdiction.gd")
 
 var steps := 0
 
@@ -59,6 +60,7 @@ func _run() -> void:
 	m.start_new_game(99)
 	await frames(3)
 	var g = gs.game
+	g.interdict_ready_at = 1e12  # no random interdictions in the older sections; _interdiction() switches them on
 	var sf = m.surface
 	_assert(sf != null and not m.station.visible and not m.world.visible, "starts on foot on the Mireth surface")
 	_assert(m.get_viewport().get_camera_2d() == sf.camera, "surface camera is current")
@@ -652,6 +654,9 @@ func _run() -> void:
 	await _space_combat(m, g)
 	step("space combat")
 
+	await _interdiction(m, g)
+	step("jump interdiction")
+
 	m.toggle_pause()
 	await frames(2)
 	_assert(gs.paused and m.pause_menu.visible, "paused")
@@ -854,3 +859,137 @@ func _space_combat(m, g) -> void:
 	w.active = true
 	await frames(2)
 
+
+
+## D3: jumps get interdicted. Forces the roll (chance 1) and plays the choices through the real UI and world.
+func _interdiction(m, g) -> void:
+	var w = m.world
+	var ui = m.interdict_ui
+	var cfg: Dictionary = g.data.interdiction
+	var saved := cfg.duplicate(true)
+	cfg.max_chance = 1.0
+	cfg.pirate_chance = {"high": 1.0, "medium": 1.0, "low": 1.0}
+	w.clear_patrols()
+	g.heat = 0.0
+	g.cargo.clear()
+	g.credits = 3000
+	_assert(g.system == "halvane" and g.location == "" and w.active, "flying in Halvane before the interdiction test")
+	_assert(not ui.visible, "no interdiction panel yet")
+	# 1) gate jump -> pay
+	g.interdict_ready_at = 0.0
+	_to_gate(w, "halvane_gate")
+	await frames(2)
+	var credits: int = g.credits
+	m.dock("halvane_gate")
+	await frames(3)
+	_assert(ui.visible and Interdiction.active(g) and g.system == "halvane" and g.credits == credits, "gate jump is interdicted before the toll is paid")
+	_assert(w.ship.frozen and w.input_blocked, "flight freezes under the panel")
+	for id in ["fight", "pay", "dump", "flee"]:
+		_assert(ui.find_child("Inter_" + id, true, false) != null, "button " + id)
+	_assert(ui.find_child("Inter_dump", true, false).disabled, "dump disabled with an empty hold")
+	_assert(ui.find_child("InterTitle", true, false).text.contains("PIRATE"), "panel names the pirates")
+	var demand: int = g.interdiction.demand
+	ui.find_child("Inter_pay", true, false).pressed.emit()
+	await frames(4)
+	_assert(not ui.visible and g.system == "kovar" and m.world.system == "kovar", "paying lets the jump through")
+	_assert(g.credits == credits - demand - int(g.data.jump.fee), "toll and gate fee paid (%d)" % g.credits)
+	_assert(not w.input_blocked and w.active, "flight unfrozen after the jump")
+	step("interdiction: pay")
+	# 2) fight: the ships appear, the gate is jammed, killing them lets the jump go on
+	g.interdict_ready_at = 0.0
+	_to_gate(w, "kovar_gate")
+	await frames(2)
+	m.dock("kovar_gate")
+	await frames(3)
+	_assert(ui.visible and g.system == "kovar", "return jump interdicted")
+	var n: int = g.interdiction.ships
+	ui.find_child("Inter_fight", true, false).pressed.emit()
+	await frames(3)
+	_assert(not ui.visible and Interdiction.fighting(g), "fight starts, panel closes")
+	var hostile: Array = w.combat.pirates.filter(func(p): return p.has_meta("interdictor"))
+	_assert(hostile.size() == n and n >= 1, "%d interdictors spawned" % n)
+	_assert(hostile.all(func(p): return p.position.distance_to(w.ship.position) > 500.0), "they arrive from a distance")
+	m.dock("kovar_gate")
+	await frames(2)
+	_assert(g.system == "kovar" and not ui.visible, "the gate is jammed while the fight lasts")
+	var kills: int = g.combat.kills
+	for p in hostile:
+		w.combat._damage_pirate(g, p, 9999.0)
+	await frames(4)
+	_assert(g.combat.kills == kills + n and not Interdiction.active(g), "all interdictors shot down")
+	_assert(g.system == "halvane" and m.world.system == "halvane", "victory: the interrupted jump goes through")
+	step("interdiction: fight")
+	# 3) the jump drive: the charged drive waits for the answer; keys choose; dump gets rid of the cargo
+	g.interdict_ready_at = 0.0
+	g.cargo["weed:glow"] = 4
+	m.toggle_phone()
+	m.phone.open_app("map")
+	await frames(3)
+	m.phone.find_child("MapSys_kovar", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.find_child("MapJump", true, false) != null, "map offers the jump")
+	m.phone.find_child("MapJump", true, false).pressed.emit()
+	await frames(2)
+	g.tick(Galaxy.charge_seconds(g) + 1.0)
+	await frames(4)
+	_assert(ui.visible and Interdiction.active(g) and g.interdiction.via == "drive" and Galaxy.ready(g), "the charged drive is held by the interdiction")
+	_assert(g.system == "halvane" and not m.phone.visible, "still home, phone closed")
+	_assert(not ui.find_child("Inter_dump", true, false).disabled, "dump is open with cargo")
+	await key(KEY_3)
+	await frames(4)
+	_assert(not ui.visible and g.cargo.get("weed:glow", 0) == 0 and g.system == "kovar", "key 3 dumps the cargo and the drive fires")
+	step("interdiction: drive + dump")
+	# 4) wreck during a fight ends the encounter; Authority interdiction when hot and loaded
+	g.interdict_ready_at = 0.0
+	g.heat = 80.0
+	g.cargo["weed:glow"] = 3
+	cfg.authority.base = 1.0
+	_to_gate(w, "kovar_gate")
+	await frames(2)
+	m.dock("kovar_gate")
+	await frames(3)
+	_assert(ui.visible and g.interdiction.get("kind", "") == "authority", "Authority interdicts a hot, loaded ship")
+	_assert(ui.find_child("InterTitle", true, false).text.contains("AUTHORITY"), "panel names the Authority")
+	var heat: float = g.heat
+	ui.find_child("Inter_fight", true, false).pressed.emit()
+	await frames(3)
+	_assert(g.heat > heat and w.combat.pirates.size() == g.interdiction.ships, "fighting the Authority adds heat and spawns cutters")
+	w.combat.hurt_player(g, 99999.0)
+	await frames(3)
+	_assert(not Interdiction.active(g) and w.combat.pirates.is_empty() and not ui.visible, "a wreck ends the encounter")
+	# 5) flee: forced both ways through the rng
+	g.heat = 0.0
+	g.cargo.clear()
+	g.system = "kovar"
+	w.show_system("kovar")
+	g.interdict_ready_at = 0.0
+	_to_gate(w, "kovar_gate")
+	await frames(2)
+	m.dock("kovar_gate")
+	await frames(3)
+	_assert(ui.visible, "interdicted again after the wreck")
+	g.rng.seed = 1
+	var fled := false
+	for i in 1:
+		ui.find_child("Inter_flee", true, false).pressed.emit()
+	await frames(4)
+	fled = g.system == "halvane"
+	_assert(fled or Interdiction.fighting(g), "flee either burns through or starts the fight")
+	if Interdiction.fighting(g):
+		for p in w.combat.pirates.duplicate():
+			w.combat._damage_pirate(g, p, 9999.0)
+		await frames(4)
+	_assert(g.system == "halvane" and not Interdiction.active(g), "back in Halvane after the encounters")
+	# restore the real numbers and disable further random interdictions for the rest of the run
+	for k in saved:
+		cfg[k] = saved[k]
+	g.interdict_ready_at = 1e12
+	m.hyper.burst = 0.0
+	g.combat.hull = g.data.upgrades.hull.levels[g.upgrades.hull]
+	w.clear_patrols()
+	w.place_ship_at("halvane_gate")
+
+
+func _to_gate(w, gate: String) -> void:
+	w.ship.position = w.locations[gate].position + Vector2(0, w.locations[gate].radius + 20)
+	w.ship.stop()

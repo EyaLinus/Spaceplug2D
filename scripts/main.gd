@@ -15,7 +15,9 @@ const SlotPanelScript = preload("res://scripts/ui/menu/slot_panel.gd")
 const SettingsPanelScript = preload("res://scripts/ui/menu/settings_panel.gd")
 const PhoneScript = preload("res://scripts/ui/phone/phone.gd")
 const HyperspaceScript = preload("res://scripts/ui/hyperspace.gd")
+const InterdictionScript = preload("res://scripts/ui/interdiction_ui.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
+const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 
 ## Which station tab a surface interaction opens.
@@ -40,6 +42,7 @@ var surface: Node2D  ## current planet surface instance, null in space
 var hud: Control
 var station: Control
 var hyper: Control  ## jump-drive charge streaks and the hyperspace transition
+var interdict_ui: Control  ## "Interdicted!" choice panel (fight / pay / dump / flee)
 var phone: Control  ## Com-Phone overlay (scripts/ui/phone), usable in flight and on foot
 var menu: Control
 var pause_menu: Control
@@ -73,6 +76,9 @@ func _ready() -> void:
 	root.add_child(phone)
 	hyper = HyperspaceScript.new()
 	root.add_child(hyper)
+	interdict_ui = InterdictionScript.new()
+	interdict_ui.chosen.connect(_on_interdiction_choice)
+	root.add_child(interdict_ui)
 	station.estate_enter_requested.connect(func(eid: String): enter_estate(eid))
 	station.place_requested.connect(func(st: String):
 		station.close()
@@ -115,7 +121,7 @@ func _in_game() -> bool:
 
 ## The phone key is read here, before the GUI, so Tab never ends up as focus navigation.
 func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("phone") and _in_game() and not GameState.paused:
+	if event.is_action_pressed("phone") and _in_game() and not GameState.paused and not interdict_ui.visible:
 		toggle_phone()
 		get_viewport().set_input_as_handled()
 
@@ -129,7 +135,7 @@ func toggle_phone() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not _in_game():
+	if not _in_game() or interdict_ui.visible:
 		return
 	if phone.visible and event.is_action_pressed("ui_menu") and not GameState.paused:
 		phone.back()
@@ -184,7 +190,7 @@ func load_slot(i: int) -> void:
 func _process(_delta: float) -> void:
 	if surface != null:
 		surface.player.frozen = GameState.paused or station.visible or end_screen.visible or phone.visible
-	world.input_blocked = phone.visible
+	world.input_blocked = phone.visible or interdict_ui.visible
 	var gm = GameState.game
 	hyper.charge = Galaxy.progress(gm) if gm != null and Galaxy.charging(gm) else 0.0
 
@@ -197,6 +203,8 @@ func _enter_game() -> void:
 	slot_panel.close()
 	settings_panel.close()
 	phone.close()
+	interdict_ui.close()
+	world.input_blocked = false
 	hud.visible = true
 	world.clear_patrols()
 	var g = GameState.game
@@ -226,6 +234,7 @@ func dock(loc: String) -> void:
 	if GameState.data.locations.get(loc, {}).has("jump_to"):
 		jump(loc)
 		return
+	Interdiction.abort(g)  # docking breaks off any interdiction fight
 	if g.location != loc:
 		var r: Dictionary = g.dock(loc)
 		if not r.ok:
@@ -244,16 +253,82 @@ func dock(loc: String) -> void:
 ## Jumps through a gate: toll + travel time in the core, then the arrival (see _arrive).
 func jump(gate: String) -> void:
 	var g = GameState.game
-	var r: Dictionary = GameState.act(g.jump(gate))
+	if Interdiction.fighting(g):
+		EventBus.toast.emit("The interdictors jam the gate. Finish the fight or dock.", false)
+		return
+	if g.credits >= int(GameState.data.jump.fee) and _interdict(gate, "gate"):
+		return
+	_do_jump(gate)
+
+
+func _do_jump(gate: String) -> void:
+	var r: Dictionary = GameState.act(GameState.game.jump(gate))
 	if r.ok:
 		_arrive(gate)
 
 
 ## The charged jump drive fires: the core pays the next hop's toll and jumps through the gate on that lane.
 func _engage_drive() -> void:
+	var g = GameState.game
+	if Galaxy.ready(g):
+		var rt: Array = g.jump_plan.route
+		var lane: Array = Galaxy.gates(g, str(rt[0]), str(rt[1]))
+		if not lane.is_empty() and g.credits >= int(GameState.data.jump.fee) and _interdict(lane[0], "drive"):
+			return  # the charged drive waits while the player answers the interdictors
+	_fire_drive()
+
+
+func _fire_drive() -> void:
 	var r: Dictionary = GameState.act(Galaxy.engage(GameState.game))
 	if r.ok:
 		_arrive(r.gate)
+
+
+## Rolls a jump interception (D3). On a hit the flight freezes and the choice panel opens; false = jump as usual.
+func _interdict(gate: String, via: String) -> bool:
+	var g = GameState.game
+	if Interdiction.check(g, gate, via).is_empty():
+		return false
+	world.ship.stop()
+	world.input_blocked = true
+	phone.close()
+	AudioManager.play("alarm")
+	interdict_ui.open(g)
+	return true
+
+
+func _on_interdiction_choice(id: String) -> void:
+	var g = GameState.game
+	var kind: String = str(g.interdiction.get("kind", ""))
+	var r: Dictionary = GameState.act(Interdiction.choose(g, id))
+	if r.fight:
+		interdict_ui.close()
+		world.input_blocked = false
+		world.combat.spawn_interdictors(g, kind, int(g.interdiction.ships))
+	elif not r.ok and Interdiction.active(g):
+		interdict_ui.open(g)  # refresh (e.g. cannot afford it)
+
+
+## The interdiction ended: the jump goes through (paid, dumped, fled or won) or is called off.
+func _on_interdiction_resolved(p: Dictionary) -> void:
+	var g = GameState.game
+	interdict_ui.close()
+	world.input_blocked = false
+	if p.how == "won":
+		EventBus.toast.emit("The interdictors are down. Jumping on.", true)
+	elif p.how == "escaped":
+		EventBus.toast.emit("They broke off. The jump is cancelled.", false)
+	if p.proceed:
+		_proceed_jump.call_deferred(str(p.gate), str(p.via))
+	elif p.via == "drive" and Galaxy.ready(g):
+		Galaxy.cancel(g, "The jump drive charge was lost.")
+
+
+func _proceed_jump(gate: String, via: String) -> void:
+	if via == "drive" and Galaxy.ready(GameState.game):
+		_fire_drive()
+	elif via == "gate":
+		_do_jump(gate)
 
 
 ## Builds the next system around the ship at the arrival gate and plays the hyperspace transition.
@@ -427,6 +502,7 @@ func show_main_menu() -> void:
 
 func _on_game_event(kind: String, p: Dictionary) -> void:
 	if kind == "game_over":
+		Interdiction.abort(GameState.game)
 		GameState.paused = true
 		world.active = false
 		station.close()
@@ -453,7 +529,14 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		_engage_drive.call_deferred()  # not inside Game.tick: the jump ticks the game itself
 	elif kind == "jump_cancelled":
 		EventBus.toast.emit(str(p.why), false)
+	elif kind == "interdicted":
+		EventBus.toast.emit("INTERDICTED by %s!" % Interdiction.kind_name(p.kind).to_lower(), false)
+	elif kind == "interdiction_resolved":
+		_on_interdiction_resolved(p)
+	elif kind == "ship_destroyed":
+		Interdiction.abort(GameState.game)
 	elif kind == "busted":
+		Interdiction.abort(GameState.game)
 		EventBus.toast.emit("BUSTED: lost %d units, fined %d cr." % [p.lost, p.fine], false)
 
 

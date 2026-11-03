@@ -14,6 +14,7 @@ const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const ArtReg = preload("res://scripts/core/art.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
+const Interdiction = preload("res://scripts/core/interdiction.gd")
 
 var data: Dictionary
 var failures := 0
@@ -70,6 +71,15 @@ func _init() -> void:
 		"test_space_combat_mechanic",
 		"test_space_combat_save",
 		"test_space_combat_balance",
+		"test_interdiction_data",
+		"test_interdiction_chances",
+		"test_interdiction_roll",
+		"test_interdiction_pay",
+		"test_interdiction_dump",
+		"test_interdiction_flee",
+		"test_interdiction_fight",
+		"test_interdiction_abort",
+		"test_interdiction_rates",
 		"test_bribe",
 		"test_debt_win_and_loss",
 		"test_save_roundtrip",
@@ -1556,6 +1566,278 @@ func test_space_combat_balance() -> void:
 	var f3 := SpaceCombat.seconds_to_die(full, 3, 0.5)
 	check(f3 > 2.5 * d3, "armour + shield roughly triple the survival time (%.0fs vs %.0fs)" % [f3, d3])
 	check(f3 > 3.0 * ttk3 * 4.0, "a full kit clears three pirates with room to spare")
+
+
+func inter_game(kind := "pirates") -> Game:
+	var g := fly_game()
+	g.credits = 1000
+	g.cargo.clear()
+	g.heat = 0.0
+	Interdiction.begin(g, kind, "halvane_gate")
+	return g
+
+
+func test_interdiction_data() -> void:
+	var c: Dictionary = data.interdiction
+	for k in ["cooldown", "max_chance", "pirate_chance", "cargo_units", "authority", "pirates", "flee", "fight"]:
+		check(c.has(k), "interdiction config %s" % k)
+	for sec in ["high", "medium", "low"]:
+		check(c.pirate_chance.has(sec), "pirate chance for %s security" % sec)
+	for s in data.systems:
+		check(c.pirate_chance.has(str(data.systems[s].security)), "system %s security has a chance" % s)
+	check(float(c.pirate_chance.low) > float(c.pirate_chance.medium) and float(c.pirate_chance.medium) > float(c.pirate_chance.high), "lawless lanes are the most dangerous")
+
+
+func test_interdiction_chances() -> void:
+	var g := fly_game()
+	check(Interdiction.lane_security(g, "halvane", "kovar") == "low", "a lane is as safe as its worse end")
+	check(Interdiction.lane_security(g, "halvane", "halvane") == "medium", "home lane security")
+	var low := Interdiction.pirate_chance(g, "halvane", "kovar")
+	check(low > Interdiction.pirate_chance(g, "halvane", "halvane"), "frontier lane draws more pirates")
+	g.cargo["weed:glow"] = 25
+	check(Interdiction.pirate_chance(g, "halvane", "kovar") > low, "product in the hold attracts pirates")
+	check(Interdiction.pirate_chance(g, "halvane", "kovar") <= float(data.interdiction.max_chance), "chance is capped")
+	g.cargo.clear()
+	g.heat = 0.0
+	check(Interdiction.authority_chance(g, "halvane") == 0.0, "no heat, no Authority interdiction")
+	g.heat = 14.0
+	check(Interdiction.authority_chance(g, "halvane") == 0.0, "below the minimum heat the Authority leaves you alone")
+	g.heat = 60.0
+	var clean := Interdiction.authority_chance(g, "halvane")
+	check(clean > 0.0, "high heat draws the Authority")
+	g.cargo["weed:glow"] = 2
+	var dirty := Interdiction.authority_chance(g, "halvane")
+	check(dirty > clean * 2.0, "contraband makes interdiction far likelier (%.2f vs %.2f)" % [dirty, clean])
+	check(Interdiction.authority_chance(g, "kovar") < dirty, "thinner patrols in the frontier system")
+	g.heat = 100.0
+	check(Interdiction.authority_chance(g, "halvane") <= float(data.interdiction.max_chance), "authority chance capped")
+
+
+func test_interdiction_roll() -> void:
+	var g := fly_game()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	g.interdict_ready_at = 0.0
+	check(Interdiction.check(g, "mireth", "gate", rng).is_empty(), "only jump gates can be interdicted")
+	var docked := new_game()
+	check(Interdiction.check(docked, "halvane_gate", "gate", rng).is_empty(), "no interdiction while docked")
+	# force a pirate hit: max out the chance so the roll always succeeds
+	data.interdiction.max_chance = 1.0
+	data.interdiction.pirate_chance.low = 1.0
+	var e := Interdiction.check(g, "halvane_gate", "gate", rng)
+	check(e.get("kind", "") == "pirates" and e.ships >= 1 and e.state == "offer", "forced pirate interdiction: %s" % [e])
+	check(e.gate == "halvane_gate" and e.to == "kovar" and e.via == "gate", "encounter remembers lane and way")
+	check(Interdiction.active(g), "encounter is stored on the game")
+	check(Interdiction.check(g, "halvane_gate", "gate", rng).is_empty(), "no second encounter while one is pending")
+	check(g.interdict_ready_at > g.total_time, "cooldown starts")
+	g.interdiction = {}
+	check(Interdiction.check(g, "halvane_gate", "gate", rng).is_empty(), "cooldown blocks the next ambush")
+	g.total_time = g.interdict_ready_at + 1.0
+	check(not Interdiction.check(g, "halvane_gate", "gate", rng).is_empty(), "ambush possible again after the cooldown")
+	# authority wins the first roll when the heat is high
+	g.interdiction = {}
+	g.interdict_ready_at = 0.0
+	g.heat = 100.0
+	g.cargo["weed:glow"] = 3
+	data.interdiction.authority.base = 1.0
+	e = Interdiction.check(g, "halvane_gate", "drive", rng)
+	check(e.get("kind", "") == "authority" and e.via == "drive", "authority interdiction on the drive")
+	check(e.ships >= 2, "more heat, more cutters (%d)" % e.ships)
+	check(e.demand >= int(data.interdiction.authority.fine_min), "fine at least the minimum")
+	var ev := []
+	g.interdiction = {}
+	g.event.connect(func(k, p): ev.append(k))
+	Interdiction.begin(g, "pirates", "kovar_gate")
+	check(ev.has("interdicted"), "interdicted event")
+	reload_data()
+
+
+func reload_data() -> void:
+	data = Data.load_all()
+
+
+func test_interdiction_pay() -> void:
+	var g := inter_game("pirates")
+	var demand: int = g.interdiction.demand
+	check(demand >= int(data.interdiction.pirates.toll_min), "toll at least the minimum")
+	var o: Array = Interdiction.options(g)
+	check(o.size() == 4 and o[0].id == "fight" and o[1].id == "pay" and o[2].id == "dump" and o[3].id == "flee", "four choices in order")
+	check(o[1].enabled and not o[2].enabled, "pay open, dump disabled with an empty hold")
+	var resolved := []
+	g.event.connect(func(k, p): if k == "interdiction_resolved": resolved.append(p))
+	var credits := g.credits
+	var r := Interdiction.choose(g, "pay")
+	check(r.ok and r.proceed and not r.fight and g.credits == credits - demand, "paying the toll clears the lane")
+	check(not Interdiction.active(g) and resolved.size() == 1 and resolved[0].proceed and resolved[0].how == "pay", "resolved event")
+	check(not Interdiction.choose(g, "pay").ok, "nothing to answer afterwards")
+	# too poor
+	g = inter_game("pirates")
+	g.credits = 10
+	check(not Interdiction.options(g)[1].enabled, "pay disabled when poor")
+	r = Interdiction.choose(g, "pay")
+	check(not r.ok and g.credits == 10 and Interdiction.active(g), "cannot pay without credits, encounter stays open")
+	# authority fine scales with heat and shrinks with a clean hold
+	g = fly_game()
+	g.credits = 5000
+	g.heat = 60.0
+	g.cargo["weed:glow"] = 2
+	var dirty: int = Interdiction.begin(g, "authority", "halvane_gate").demand
+	g.interdiction = {}
+	g.cargo.clear()
+	var clean: int = Interdiction.begin(g, "authority", "halvane_gate").demand
+	check(dirty == int(round(60.0 * float(data.interdiction.authority.fine_per_heat))) and clean < dirty, "fine: heat based, halved when clean (%d/%d)" % [dirty, clean])
+	var heat := g.heat
+	check(Interdiction.choose(g, "pay").proceed and is_equal_approx(g.heat, heat), "paying the Authority does not change heat")
+
+
+func test_interdiction_dump() -> void:
+	var g := inter_game("pirates")
+	g.cargo = {"cannabis": 4, "weed:glow": 3}
+	check(Interdiction.options(g)[2].enabled, "dump enabled with cargo")
+	var r := Interdiction.choose(g, "dump")
+	check(r.ok and r.proceed and g.cargo.is_empty(), "pirates take the whole hold")
+	g = inter_game("authority")
+	g.heat = 40.0
+	g.cargo = {"cannabis": 4}
+	check(not Interdiction.options(g)[2].enabled, "no product, nothing to dump for the Authority")
+	check(not Interdiction.choose(g, "dump").ok, "dump refused without product")
+	g.cargo = {"cannabis": 4, "weed:glow": 3, "cocaine:crisp": 2}
+	var heat := g.heat
+	r = Interdiction.choose(g, "dump")
+	check(r.ok and r.proceed and g.cargo == {"cannabis": 4}, "only product is jettisoned for the Authority: %s" % [g.cargo])
+	check(g.heat > heat, "dumping leaves evidence (heat)")
+
+
+func test_interdiction_flee() -> void:
+	var g := inter_game("authority")
+	g.heat = 30.0
+	var base := Interdiction.flee_chance(g)
+	g.upgrades.engine = 2
+	check(Interdiction.flee_chance(g) > base, "engine upgrades help fleeing")
+	g.combat.boost = 0.0
+	check(Interdiction.flee_chance(g) < base + 0.17, "no boost energy, no boost bonus")
+	check(Interdiction.flee_chance(g) <= 0.95 and Interdiction.flee_chance(g) >= 0.05, "chance within bounds")
+	# success
+	var rng := RandomNumberGenerator.new()
+	g.combat.boost = 100.0
+	var heat := g.heat
+	var found := false
+	for seed_value in 200:
+		g = inter_game("authority")
+		g.heat = 30.0
+		rng.seed = seed_value
+		var boost: float = g.combat.boost
+		var hull: float = g.combat.hull
+		var r := Interdiction.choose(g, "flee", rng)
+		check(g.combat.boost < boost, "fleeing burns boost")
+		if r.proceed:
+			found = true
+			check(r.ok and not r.fight and g.heat > 30.0 and g.combat.hull == hull, "successful flee: no damage, wanted for running")
+			break
+	check(found, "some seeds escape")
+	# failure: forced fight, damage but never a wreck
+	found = false
+	for seed_value in 200:
+		g = inter_game("pirates")
+		g.combat.hull = 5.0
+		rng.seed = seed_value
+		var r := Interdiction.choose(g, "flee", rng)
+		if r.fight:
+			found = true
+			check(r.ok and not r.proceed and Interdiction.fighting(g), "failed flee starts the fight")
+			check(g.combat.hull >= 1.0 and g.combat.hull < 5.0, "volley hurts but cannot wreck (%.1f)" % g.combat.hull)
+			break
+	check(found, "some seeds fail the dash")
+
+
+func test_interdiction_fight() -> void:
+	var g := inter_game("pirates")
+	var ships: int = g.interdiction.ships
+	var r := Interdiction.choose(g, "fight")
+	check(r.ok and r.fight and Interdiction.fighting(g) and Interdiction.options(g).is_empty(), "fight starts, choices closed")
+	check(not Interdiction.choose(g, "pay").ok, "no talking during the fight")
+	var resolved := []
+	g.event.connect(func(k, p): if k == "interdiction_resolved": resolved.append(p))
+	for i in ships - 1:
+		Interdiction.ship_down(g, true)
+	check(Interdiction.fighting(g) and resolved.is_empty(), "fight goes on until the last hostile falls")
+	Interdiction.ship_down(g, true)
+	check(not Interdiction.active(g) and resolved.size() == 1 and resolved[0].proceed and resolved[0].how == "won", "all down: the jump goes through")
+	# one drifts away: the jump is called off
+	g = inter_game("pirates")
+	Interdiction.choose(g, "fight")
+	var n: int = g.interdiction.ships
+	Interdiction.ship_down(g, false)
+	for i in n - 1:
+		Interdiction.ship_down(g, true)
+	check(not Interdiction.active(g), "encounter over")
+	# authority: tougher, heat on start and on a win
+	g = inter_game("authority")
+	var heat := g.heat
+	Interdiction.choose(g, "fight")
+	check(g.heat == heat + float(data.interdiction.authority.fight_heat), "shooting at the Authority adds heat")
+	check(Interdiction.hull_mult(g, "authority") > Interdiction.hull_mult(g, "pirates"), "cutters are tougher than raiders")
+	heat = g.heat
+	for i in g.interdiction.ships:
+		Interdiction.ship_down(g, true)
+	check(g.heat > heat and not Interdiction.active(g), "winning against the Authority adds more heat")
+	Interdiction.ship_down(g, true)  # stray report after the end must not crash
+	check(true, "late ship_down is ignored")
+
+
+func test_interdiction_abort() -> void:
+	var g := inter_game("pirates")
+	g.interdiction.via = "drive"
+	g.jump_plan = {"route": ["halvane", "kovar"], "to": "kovar", "charge": 6.0, "need": 6.0, "ready": true, "busts": 0}
+	var resolved := []
+	g.event.connect(func(k, p): if k == "interdiction_resolved": resolved.append(p))
+	Interdiction.abort(g)
+	check(not Interdiction.active(g) and g.jump_plan.is_empty(), "abort clears the encounter and the held drive")
+	check(resolved.size() == 1 and not resolved[0].proceed and resolved[0].how == "abort", "abort event")
+	Interdiction.abort(g)
+	check(resolved.size() == 1, "abort without an encounter is a no-op")
+	# a wreck during the fight is handled by main via abort; the core stays consistent
+	g = inter_game("pirates")
+	Interdiction.choose(g, "fight")
+	SpaceCombat.defeat(g)
+	Interdiction.abort(g)
+	check(not Interdiction.active(g), "wreck ends the encounter")
+	# runtime only: never saved
+	g = inter_game("pirates")
+	check(not g.to_dict().has("interdiction"), "interdiction is not part of the save")
+
+
+func test_interdiction_rates() -> void:
+	# Monte Carlo over the two gate lanes: frequency by situation (the balance bot never flies, so this is the sim)
+	var g := fly_game()
+	g.credits = 1000
+	var n := 2000
+	var quiet := Interdiction.simulate(g, "halvane_gate", n, 3)
+	var q := 1.0 - float(quiet.none) / n
+	g.cargo["weed:glow"] = 25
+	g.heat = 70.0
+	var hot := Interdiction.simulate(g, "halvane_gate", n, 3)
+	var h := 1.0 - float(hot.none) / n
+	print("  interdiction rate halvane->kovar: clean %.0f%% (pirates %d), hot with 25 units %.0f%% (authority %d, pirates %d)" % [q * 100.0, quiet.pirates, h * 100.0, hot.authority, hot.pirates])
+	check(quiet.authority == 0 and quiet.pirates > 0, "a clean cool trip only meets pirates")
+	check(q > 0.1 and q < 0.4, "clean frontier lane: roughly one trip in five is hit (%.2f)" % q)
+	check(h > q and h < 0.9, "hot and loaded is worse but not certain (%.2f)" % h)
+	check(hot.authority > hot.pirates * 0.5, "hot trips mostly meet the Authority")
+	g.cargo.clear()
+	g.heat = 0.0
+	g.system = "kovar"
+	var home := Interdiction.simulate(g, "kovar_gate", n, 4)
+	check(1.0 - float(home.none) / n > 0.1, "the way back is just as lawless")
+	# cooldown keeps chains of ambushes away
+	g.interdict_ready_at = 0.0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9
+	var hits := 0
+	for i in 200:
+		if not Interdiction.check(g, "halvane_gate", "gate", rng).is_empty():
+			hits += 1
+			g.interdiction = {}
+	check(hits <= 1, "cooldown allows at most one ambush without game time passing (%d)" % hits)
 
 
 func test_bribe() -> void:

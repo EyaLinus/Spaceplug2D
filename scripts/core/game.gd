@@ -51,6 +51,8 @@ var estate_stock: Dictionary = {}  ## estate id -> item -> qty delivered there, 
 var kits: Dictionary = {}  ## station id -> flat-packed kits delivered by phone order, placed for free in build mode
 var orders_unseen: int = 0  ## deliveries since the Orders app was last opened (runtime only)
 var jump_plan: Dictionary = {}  ## jump drive charge in progress (runtime only, see galaxy.gd)
+var interdiction: Dictionary = {}  ## pending jump interception (runtime only, see interdiction.gd)
+var interdict_ready_at: float = 0.0  ## total_time before which no new interception happens (runtime only)
 var hp: float = 100.0  ## player health on foot (see combat.gd), saved
 var weapons: Array = []  ## owned weapon ids, saved
 var weapon: String = ""  ## equipped weapon id, saved
@@ -96,6 +98,8 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	kits = {}
 	orders_unseen = 0
 	jump_plan = {}
+	interdiction = {}
+	interdict_ready_at = 0.0
 	Combat.init(self)
 	drops = []
 	next_drop_id = 0

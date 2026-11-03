@@ -84,6 +84,25 @@
     }
   },
   "jump": {"fee": 80, "seconds": 20, "charge_seconds": 6, "charge_engine_cut": 0.1, "min_charge": 2.5},
+  "interdiction": {
+    "cooldown": 150.0,
+    "max_chance": 0.7,
+    "pirate_chance": {"high": 0.03, "medium": 0.08, "low": 0.22},
+    "cargo_units": 20,
+    "cargo_pressure": 0.8,
+    "authority": {
+      "min_heat": 15, "base": 0.08, "heat_scale": 0.6, "clean_mult": 0.3,
+      "ships_per_heat": 40, "max_ships": 3,
+      "fine_per_heat": 14, "fine_min": 60, "clean_fine_mult": 0.5,
+      "dump_heat": 6, "flee_heat": 12, "fight_heat": 25, "win_heat": 10, "hull_mult": 1.3
+    },
+    "pirates": {
+      "cargo_ships": 1, "extra_ship_chance": 0.3, "max_ships": 3,
+      "toll_ratio": 0.25, "toll_min": 60, "toll_per_ship": 40, "hull_mult": 1.0
+    },
+    "flee": {"base": 0.4, "per_engine": 0.08, "boost_bonus": 0.2, "volley_shots": 3},
+    "fight": {"spawn_min": 650, "spawn_max": 850}
+  },
   "locations": {
     "mireth": {
       "name": "Mireth", "system": "halvane", "kind": "planet", "pos": [0, 0], "radius": 170, "color": "#3d7a6a",

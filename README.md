@@ -67,6 +67,7 @@ scripts/core/       headless simulation, no Node dependencies (testable)
   game.gd           state + actions (buy, cook, sell, upgrade, bribe, bust, debt), tick(), save/load
   mixing.gd         recipe → traits → product key/value
   spacecombat.gd    space combat: hull/shield damage, boost, missiles, pirate pressure, defeat, mechanic repairs
+  interdiction.gd   jump interdiction: pirates/Authority pull a jump out of the lane; fight, pay, dump cargo or flee
   data.gd           loads data/content.json
 scripts/autoload/   EventBus (signals), GameState (owns Game, relays events, save files), AudioManager (synth SFX)
 scripts/world/      sector, ship physics, locations, patrols, pirates + bolts (spatial rules → core actions)
