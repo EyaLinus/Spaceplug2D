@@ -21,6 +21,7 @@ const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
+const Cartels = preload("res://scripts/core/cartels.gd")
 
 var data: Dictionary
 var failures := 0
@@ -94,6 +95,10 @@ func _init() -> void:
 		"test_space_combat_mechanic",
 		"test_space_combat_save",
 		"test_space_combat_balance",
+		"test_cartels_data",
+		"test_cartels_influence",
+		"test_cartels_daily_and_robbery",
+		"test_cartels_save",
 		"test_bribe",
 		"test_corruption_data",
 		"test_heat_per_system",
@@ -1955,7 +1960,7 @@ func test_space_combat_pirates() -> void:
 	var br: Array = data.space_combat.pirate.bounty
 	check(bounty >= int(br[0]) and bounty <= int(br[1]) and g.credits == credits + bounty and g.combat.kills == 1, "bounty pays and counts the kill")
 	var base_interval := SpaceCombat.spawn_interval(g)
-	check(base_interval == float(data.space_combat.spawn.interval), "empty hold in Halvane: base spawn interval")
+	check(is_equal_approx(base_interval, float(data.space_combat.spawn.interval) / Cartels.pressure_mult(g, "halvane")), "empty hold in Halvane: base spawn interval (scaled by your influence)")
 	g.cargo = {"weed:overclock@standard": 30}
 	check(SpaceCombat.spawn_interval(g) < base_interval and SpaceCombat.max_pirates(g) >= int(data.space_combat.spawn.max), "hauling product attracts pirates")
 	var k := fly_game()
@@ -2610,3 +2615,135 @@ func test_quest_main_chapter1() -> void:
 	g.pay_debt(g.debt)
 	check(Quests.is_done(g, "main_clear") and g.state == "won", "debt paid: chapter 1 done")
 	check(g.quests.active.is_empty(), "nothing left in chapter 1")
+
+
+# ---------------------------------------------------------------- cartels and influence (I1)
+
+func test_cartels_data() -> void:
+	var cd: Dictionary = data.cartels
+	check(cd.gangs.size() == 3, "three rival cartels")
+	for c in cd.gangs:
+		var gd: Dictionary = cd.gangs[c]
+		check(data.systems.has(gd.home), "cartel %s home system exists" % c)
+		check(str(gd.name) != "" and str(gd.boss) != "" and str(gd.color).begins_with("#"), "cartel %s has a name, boss and colour" % c)
+	for loc in cd.start:
+		check(data.locations.has(loc) and not (data.locations[loc].demand as Dictionary).is_empty(), "influence start %s is a trade location" % loc)
+		var t := 0.0
+		for a in cd.start[loc]:
+			check(a == "you" or cd.gangs.has(a), "influence start %s actor %s known" % [loc, a])
+			t += float(cd.start[loc][a])
+		check(t <= 1.0, "influence start %s sums to at most 1" % loc)
+	var g := new_game()
+	for loc in data.locations:
+		check(g.cartels.influence.has(loc) == not (data.locations[loc].demand as Dictionary).is_empty(), "influence only on trade locations (%s)" % loc)
+	check(is_equal_approx(Cartels.share(g, "mireth"), 0.25) and is_equal_approx(Cartels.share(g, "glacis", "tide"), 0.55), "start shares from content")
+	check(Cartels.owner(g, "glacis") == "tide" and Cartels.owner(g, "mireth") == "", "Glacis starts as Tide turf, Mireth contested")
+	check(Cartels.present(g, "kovar")[0].id == "tide" or Cartels.present(g, "kovar")[0].id == "veil", "Kovar cartels listed strongest first")
+
+
+func test_cartels_influence() -> void:
+	var g := new_game()
+	var events: Array = []
+	g.event.connect(func(k, p): events.append([k, p]))
+	# a sale takes ground at that location, partly from the cartel there
+	var before := Cartels.share(g, "mireth")
+	var comets := Cartels.share(g, "mireth", "comets")
+	var host := Cartels.hostility(g, "comets")
+	g.cargo["weed:glow"] = 20
+	var r := g.sell("weed:glow", 10, "")
+	check(not r.ok, "Mireth has no fence")
+	var taken := Cartels.gain(g, "mireth", "you", 0.1)
+	check(is_equal_approx(Cartels.share(g, "mireth"), before + 0.1), "gain adds the share")
+	check(Cartels.share(g, "mireth", "comets") < comets and taken.has("comets") and taken.has("free"), "ground comes from the street and the cartel: %s" % taken)
+	check(Cartels.hostility(g, "comets") > host, "taking ground angers the cartel")
+	var sum := Cartels.free_share(g, "mireth")
+	for a in g.cartels.influence.mireth:
+		sum += float(g.cartels.influence.mireth[a])
+	check(is_equal_approx(sum, 1.0), "shares plus street stay 1")
+	# the fence sale at the bazaar uses the hook
+	g.location = "bazaar"
+	g.system = "halvane"
+	var bz := Cartels.share(g, "bazaar")
+	check(g.sell("weed:glow", 10, "").ok, "fence sale works")
+	check(is_equal_approx(Cartels.share(g, "bazaar"), bz + 10 * float(data.cartels.sale_per_unit)), "every unit sold takes ground")
+	# price follows the balance of power
+	var p1 := g.sell_price("weed:glow", "", "bazaar")
+	Cartels.gain(g, "bazaar", "you", 0.5)
+	check(g.sell_price("weed:glow", "", "bazaar") > p1, "holding the streets pays better")
+	check(Cartels.price_mult(g, "beacon") == 1.0, "no influence, no price change")
+	# turf flips are announced
+	check(Cartels.owner(g, "bazaar") == "you", "over half = your turf")
+	var flips := events.filter(func(e): return e[0] == "turf_changed" and e[1].loc == "bazaar")
+	check(flips.size() == 1 and flips[0][1].by == "you", "turf change event")
+	check(Cartels.turf_label(g, "bazaar") == "Your turf" and Cartels.turf_label(g, "glacis").begins_with("Saltglass"), "turf labels")
+	# pressure: more ground, fewer raiders
+	var p_lo := Cartels.pressure_mult(g, "halvane")
+	Cartels.gain_system(g, "halvane", "you", 0.4)
+	check(Cartels.pressure_mult(g, "halvane") < p_lo, "your ground lowers raider pressure")
+	# kills and raids hit the cartel where it is
+	g.system = "kovar"
+	var veil := Cartels.share(g, "varrow", "veil")
+	Cartels.on_kill(g, "veil")
+	check(Cartels.share(g, "varrow", "veil") < veil and int(Cartels.state(g, "veil").kills) == 1, "a kill costs the cartel ground in that system")
+	Cartels.on_raid(g, "tide")
+	check(Cartels.weakened(g, "tide") and int(Cartels.state(g, "tide").raids) == 1, "a raid weakens the cartel")
+	check(Cartels.hostility(g, "tide") >= float(data.cartels.hostility_per_raid), "a raid makes it furious")
+	check(Cartels.mood(g, "tide") != "ignoring you", "mood text follows hostility")
+
+
+func test_cartels_daily_and_robbery() -> void:
+	var g := new_game()
+	var gl := Cartels.share(g, "glacis", "tide")
+	var vr := Cartels.share(g, "varrow", "veil")
+	var mi := Cartels.share(g, "mireth")
+	var host := Cartels.hostility(g, "comets")
+	g._new_day()
+	check(Cartels.share(g, "glacis", "tide") > gl, "the Tide pushes at home")
+	check(Cartels.share(g, "varrow", "veil") > vr, "the Veil pushes at home")
+	check(Cartels.share(g, "mireth") < mi, "unattended ground erodes")
+	check(Cartels.hostility(g, "comets") < host, "hostility cools off")
+	# cap: a cartel stops pushing at push_cap
+	for i in 40:
+		g._new_day()
+	check(Cartels.share(g, "glacis", "tide") <= float(data.cartels.push_cap) + 0.001, "cartels stop at the push cap")
+	g.state = "playing"
+	# a weakened cartel does not push
+	Cartels.state(g, "veil").weakened = g.day + 5
+	var v2 := Cartels.share(g, "varrow", "veil")
+	g._new_day()
+	check(is_equal_approx(Cartels.share(g, "varrow", "veil"), v2) or Cartels.share(g, "varrow", "veil") < v2, "a weakened cartel holds still")
+	# robbery: a dealer on cartel turf
+	var h := new_game()
+	h.dealers.append({"id": "x", "loc": "glacis", "stock": {"weed:glow": 10}, "cash": 400, "sold": 0, "jail": 0.0})
+	check(Cartels.rob_chance(h, "glacis") > 0.0, "dealer on Tide turf can be robbed")
+	check(Cartels.rob_chance(h, "mireth") == 0.0, "no robbery where no cartel holds turf")
+	data.cartels.rob_chance = 99.0
+	var events: Array = []
+	h.event.connect(func(k, p): if k == "dealer_robbed": events.append(p))
+	h._new_day()
+	data.cartels.rob_chance = 0.6
+	check(events.size() == 1 and int(h.dealers[0].cash) == 200 and int(h.dealers[0].stock["weed:glow"]) == 7, "robbery takes half the cash and a share of the stock: %s" % [h.dealers[0]])
+	check(events[0].cartel == "tide", "robbery names the cartel")
+
+
+func test_cartels_save() -> void:
+	var g := new_game()
+	Cartels.gain(g, "mireth", "you", 0.4)
+	Cartels.on_raid(g, "comets")
+	var d := g.to_dict()
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(d)))
+	check(is_equal_approx(snappedf(Cartels.share(h, "mireth"), 0.001), snappedf(Cartels.share(g, "mireth"), 0.001)), "influence survives a save")
+	check(Cartels.owner(h, "mireth") == Cartels.owner(g, "mireth"), "turf owner rebuilt on load")
+	check(Cartels.weakened(h, "comets") and int(Cartels.state(h, "comets").raids) == 1, "cartel state survives a save")
+	var old := g.to_dict()
+	old.erase("cartels")
+	var o := Game.new()
+	o.from_dict(data, old)
+	check(is_equal_approx(Cartels.share(o, "mireth"), 0.25), "old saves start from the content defaults")
+	var bad := g.to_dict()
+	bad.cartels = {"influence": {"mireth": {"you": 5.0, "comets": 5.0, "ghost": 1.0}, "nowhere": {}}, "gangs": {"ghost": {}}}
+	var b := Game.new()
+	b.from_dict(data, bad)
+	check(Cartels.share(b, "mireth") + Cartels.share(b, "mireth", "comets") <= 1.0001, "garbage shares are normalised")
+

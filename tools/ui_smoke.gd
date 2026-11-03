@@ -1007,6 +1007,18 @@ func _map_and_drive(m, g) -> void:
 	m.phone.back()
 	await frames(3)
 	step("map price comparison")
+	# influence overlay and the cartel screen
+	m.phone.find_child("MapMode_influence", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.find_child("MapInfluenceBar", true, false) != null and m.phone.find_child("Share_varrow", true, false) != null, "influence overlay shows the system share and per-location bars")
+	m.phone.find_child("MapCartels", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.current_title() == "Cartels" and m.phone.find_child("Cartel_comets", true, false) != null and m.phone.find_child("Cartel_veil", true, false) != null, "cartel screen lists the cartels")
+	m.phone.back()
+	await frames(3)
+	m.phone.find_child("MapMode_heat", true, false).pressed.emit()
+	await frames(3)
+	step("map influence overlay and cartels")
 	# charge the drive from the phone
 	var credits: int = g.credits
 	m.phone.find_child("MapJump", true, false).pressed.emit()

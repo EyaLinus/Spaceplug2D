@@ -6,6 +6,7 @@ extends RefCounted
 ## pirate.gd) own the geometry and call back into these rules.
 
 const Mixing = preload("res://scripts/core/mixing.gd")
+const Cartels = preload("res://scripts/core/cartels.gd")
 
 
 static func cfg(g) -> Dictionary:
@@ -139,7 +140,7 @@ static func pressure(g) -> float:
 		if Mixing.is_product(k):
 			units += int(g.cargo[k])
 	var hauler := minf(1.0, float(units) / float(s.cargo_units))
-	return float(s.system_mult.get(g.system, 1.0)) * (1.0 + float(s.cargo_pressure) * hauler)
+	return float(s.system_mult.get(g.system, 1.0)) * (1.0 + float(s.cargo_pressure) * hauler) * Cartels.pressure_mult(g, g.system)
 
 
 ## Seconds between pirate arrivals (while in deep space) and how many may be alive at once.
