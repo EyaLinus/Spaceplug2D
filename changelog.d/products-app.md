@@ -1,0 +1,2 @@
+- **Products app:** a recipe book on the Com-Phone. Every product you've cooked once, grouped by drug, with its recipe in mixing order, traits, best grade and the estates that can make it; drugs you never cooked show as "???".
+- **Your own prices:** set an asking price per product (grades scale it) or leave it on Market. Customers pay your price if it is within what they'd pay (loyal and hooked customers tolerate more), refuse if it is too steep, and like you a bit more for a bargain. The product screen lists every buyer you know with their offer and limit.

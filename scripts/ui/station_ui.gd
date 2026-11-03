@@ -10,6 +10,7 @@ const Art = preload("res://scripts/core/art.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const Deals = preload("res://scripts/core/deals.gd")
+const Products = preload("res://scripts/core/products.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const ShipPreview = preload("res://scripts/ui/ship_preview.gd")
 const OfficialsApp = preload("res://scripts/ui/phone/apps/officials_app.gd")
@@ -387,9 +388,12 @@ func _build_deals(g) -> Control:
 				continue
 			var h := HBoxContainer.new()
 			h.add_theme_constant_override("separation", 10)
-			var price: int = g.sell_price(k, c.id)
+			var price: int = g.unit_price(k, c.id)
 			h.add_child(Art.with_icon(k, UI.label("%d × %s" % [g.cargo[k], g.item_name(k)], 16)))
-			h.add_child(UI.label("%d cr/unit" % price, 16, UI.GOLD))
+			var pl := UI.label("%d cr/unit" % price if price > 0 else "won't pay %d" % Products.asking(g, k), 16, UI.GOLD if price > 0 else UI.WARN)
+			if c.id != "":
+				pl.tooltip_text = "Your price: %s · they offer %d, pay up to %d" % ["market" if Products.asking(g, k) < 0 else "%d cr" % Products.asking(g, k), g.sell_price(k, c.id), Products.ceiling(g, k, c.id)]
+			h.add_child(pl)
 			var n: int = mini(int(g.cargo[k]), int(c.max_units) if c.id == "" else People.units_wanted(g, c.id, k))
 			var b := UI.accent_button("Sell %d" % n if n > 0 else "Too pricey", func(): GameState.act(g.sell(k, n, c.id)), 110)
 			b.tooltip_text = "%d × %d cr = %d cr" % [n, price, n * price]

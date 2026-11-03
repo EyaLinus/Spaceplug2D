@@ -163,6 +163,10 @@
     "preferred_bonus": 0.1,
     "history_len": 8
   },
+  "products": {
+    "tolerance_base": 0.05, "tolerance_affinity": 0.15, "tolerance_addiction": 0.3,
+    "bargain_ratio": 0.9, "affinity_bargain": 0.02, "max_price_mult": 4.0, "price_steps": [1, 5, 25]
+  },
   "deals": {
     "interval": 40, "chance": 0.3, "max_open": 3, "answer_seconds": 90, "meet_seconds": 150, "premium": 0.15,
     "accept_base": 0.8, "accept_per_raise": 2.6, "accept_affinity": 0.4, "accept_addiction": 0.4,

@@ -81,7 +81,7 @@ static func price_mult(g, id: String, base: String) -> float:
 
 ## How many units of `product_key` the person takes right now (deal size and remaining budget), 0 if none.
 static func units_wanted(g, id: String, product_key: String) -> int:
-	var price: int = g.sell_price(product_key, id)
+	var price: int = g.unit_price(product_key, id)
 	if price <= 0:
 		return 0
 	return mini(max_units(g, id), budget_left(g, id) / price)

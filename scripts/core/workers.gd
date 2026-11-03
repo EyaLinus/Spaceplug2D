@@ -11,6 +11,7 @@ extends RefCounted
 
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
+const Products = preload("res://scripts/core/products.gd")
 
 
 static func cfg(g) -> Dictionary:
@@ -231,6 +232,7 @@ static func _tick_cook(g, id: String, e: Dictionary, hand: Dictionary, stocked: 
 		scores[st] = clampf(skill + g.rng.randf_range(-noise, noise), 0.0, 1.0)
 	var res := Production.outcome(g.data, scores)
 	var product := Mixing.key(r.base, Mixing.traits_for(g.data, r.base, r.additives), res.grade)
+	Products.discover(g, r.base, r.additives, res.grade, Production.output_qty(qty, res.yield_mult))
 	var t: float = g.batch_seconds(qty) * (float(cfg(g).time_base) - float(cfg(g).time_skill) * skill)
 	if not stocked:
 		t *= float(cfg(g).unstocked_time_mult)

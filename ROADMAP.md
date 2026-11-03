@@ -167,7 +167,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
 - → **Release v0.1.8**.
 
 ### Wave 6 – your business on the phone (v0.1.9)
-- **H1 Products app (recipe book).** Every product you have made once: its recipe (base + additives in order), traits,
+- **H1 Products app (recipe book).** ✅ done (H1 PR). Every product you have made once: its recipe (base + additives in order), traits,
   grade range, which estate can make it, and **your asking price** per product (default = suggested value). Unknown
   mixes show as "?" until discovered. Walk-up buyers and the fence compare against your price.
 - **H2 Contacts set up deals.** Deal-O-Matic texts become concrete appointments: product, amount, price (based on your
