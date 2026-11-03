@@ -1,3 +1,0 @@
-- **Style app:** new Com-Phone app to change your look (8 hair colours, 3 skin tones, 8 jackets, 4 trousers), your ship's paint (8 schemes) and decal (stripes, chevron, stars, flames, skull). Owned items switch for free, new ones are bought on the spot.
-- **Your look everywhere:** the walker on every planet, the ship in flight, on the landing pad and in the shipyard preview all show your colours.
-- **Estate decor:** potted plant, standing lamp, rug, sofa, neon sign, aquarium and a gold trophy (new pixel art). Switched-on decor shows in every estate you own, placed along the walls so it never blocks a station, the door or the stash.
