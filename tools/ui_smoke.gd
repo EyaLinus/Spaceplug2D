@@ -242,7 +242,7 @@ func _run() -> void:
 	var target_px: Vector2 = sf._px(sf._spot_of.okka)
 	_assert(People.whereabouts(okka_cfg, People.hour(g)).place != place0, "okka's schedule moves on")
 	_assert(not sf.npcs.okka.path.is_empty() or sf.npcs.okka.position.distance_to(target_px) < 4.0, "okka walks to her next place")
-	_assert(sf.interactable("okka").pos == sf.npcs.okka.position, "okka's interaction point follows her")
+	_assert(sf.interactable("okka").pos.distance_to(sf.npcs.okka.position) < 3.0, "okka's interaction point follows her")  # updated once per frame, she may be one step ahead
 	_assert(sf._daylight.color != light0, "daylight changes with the hour")
 	step("npc schedules")
 
