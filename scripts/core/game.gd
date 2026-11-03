@@ -11,6 +11,7 @@ const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Orders = preload("res://scripts/core/orders.gd")
+const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -34,7 +35,8 @@ var offers: Array = []  ## Deal-O-Matic requests and agreed deals (see deals.gd)
 var next_offer_id: int = 0
 var offer_clock: float = 0.0  ## seconds since the last round of customer texts
 var people: Dictionary = {}  ## contact id -> addiction, affinity, spent today, known, history (see people.gd)
-var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0}
+var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "shield": 0, "hull": 0}
+var combat: Dictionary = {}  ## space combat state: hull, shield, missiles, kills (saved), boost, idle (runtime); see spacecombat.gd
 var state: String = "playing"  ## playing | won | lost
 var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
 const SHIP_BAY := "ship_bay"  ## id of the ship's own estate (content.json "estates", flagged "ship"): always owned
@@ -69,7 +71,8 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	offers = []
 	next_offer_id = 0
 	offer_clock = 0.0
-	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0}
+	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "shield": 0, "hull": 0}
+	SpaceCombat.reset(self)
 	state = "playing"
 	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0}
 	estates = {SHIP_BAY: {"buildings": []}}
@@ -252,6 +255,7 @@ func tick(dt: float) -> void:
 	_tick_demand(dt)
 	Deals.tick(self, dt)
 	Orders.tick(self)
+	SpaceCombat.tick(self, dt)
 	while day_time >= day_seconds():
 		day_time -= day_seconds()
 		_new_day()
@@ -318,6 +322,7 @@ func dock(loc: String) -> Dictionary:
 		return _fail("Cannot dock there.")
 	location = loc
 	system = loc_system(loc)
+	SpaceCombat.on_dock(self)
 	_emit("docked", {"location": loc})
 	return _ok("Docked at %s." % ld.name)
 
@@ -525,6 +530,7 @@ func buy_upgrade(key: String) -> Dictionary:
 		return _fail("Not enough credits.")
 	credits -= cost
 	upgrades[key] += 1
+	SpaceCombat.after_upgrade(self, key, upgrades[key] - 1)
 	_emit("upgraded", {"key": key, "level": upgrades[key]})
 	return _ok("%s upgraded to Mk %d." % [data.upgrades[key].name, upgrades[key] + 1])
 
@@ -684,7 +690,7 @@ func to_dict() -> Dictionary:
 		"next_offer_id": next_offer_id, "offer_clock": snappedf(offer_clock, 0.01), "upgrades": upgrades.duplicate(),
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
-		"kits": kits.duplicate(),
+		"kits": kits.duplicate(), "combat": SpaceCombat.to_save(self),
 	}
 
 
@@ -739,6 +745,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	if not estates.has(SHIP_BAY):
 		estates[SHIP_BAY] = {"buildings": []}
 	Orders.from_save(self, d)
+	SpaceCombat.from_save(self, d)
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 
