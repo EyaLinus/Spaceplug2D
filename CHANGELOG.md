@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.1.12 – 2026-11-03
+- **Autopilot:** press T in flight to fly to the quest waypoint on its own; any flight key takes back control, it brakes and switches off on arrival.
+- **Quick-save / quick-load:** F5 saves the run to its slot, F9 loads it back.
+- **Hold to repeat:** every +/− quantity and price button keeps counting while you hold it.
+- **Contacts filter:** All, Here, Buying (free and still has cash today), Fans, Hooked.
+- **Price compare:** market cards list the three cheapest other places you know in the tooltip.
+- **Text & UI size:** Normal, Large (110 %) or Larger (125 %) in Settings → Display.
+- **Rebind everything:** weapon wheel, reload, autopilot, quick-save and quick-load are now in the key list.
+- **Map app:** the last navy prototype colours are gone; the galaxy map uses the ink/brass palette.
+- **Style app:** new Com-Phone app to change your look (8 hair colours, 3 skin tones, 8 jackets, 4 trousers), your ship's paint (8 schemes) and decal (stripes, chevron, stars, flames, skull). Owned items switch for free, new ones are bought on the spot.
+- **Your look everywhere:** the walker on every planet, the ship in flight, on the landing pad and in the shipyard preview all show your colours.
+- **Estate decor:** potted plant, standing lamp, rug, sofa, neon sign, aquarium and a gold trophy (new pixel art). Switched-on decor shows in every estate you own, placed along the walls so it never blocks a station, the door or the stash.
+- **Action feedback:** money and heat changes pop up next to the HUD, sales float "+cr" over you, fights show damage numbers on ships, officers and you, busts/wrecks/interdictions flash the screen and shake the camera (also on foot), big sales play a coin jingle, every finished station step chimes.
+- **Notifications:** toasts are now small cards with a green or red stripe; the same message twice stacks into one card with a counter instead of flooding the screen.
+- **Tooltips everywhere:** every stat in the top bar, every phone app tile, every list row and every button on the main screens explains itself on hover. A new CI check fails when a visible button has no hover help.
+- **Settings:** screen-shake strength slider and a damage-numbers toggle (Settings → Display).
+- **Look:** the minimaps lost their last blue prototype frame and use the brass/ink palette.
+
 ## v0.1.11 – 2026-11-03
 - **Interdiction (D3):** jumps between systems can now be intercepted. Angry cartels pull you out of hyperspace where they hold ground, and from day 2 onward they target haulers carrying product more often. Reach Authority interceptors stop you when you carry product and your heat is high. A card gives you four options: pay the toll or a bribe (a bribe also lowers your heat), dump your product (the cartel gains ground from it), run for it (the chance depends on your engine and hull class, and failing costs hull) or fight. Fighting the Authority raises your heat, and shooting down an interceptor pays nothing.
 - **Main quest chapter 2:** four new missions after the debt is paid. Turf War: own a location. Toll Road: get through an interdiction. Smoke the Nest: raid the Black Comets' base. Cold Front: raid the Saltglass Tide's rig in Kovar.

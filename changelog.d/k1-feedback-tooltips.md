@@ -1,5 +1,0 @@
-- **Action feedback:** money and heat changes pop up next to the HUD, sales float "+cr" over you, fights show damage numbers on ships, officers and you, busts/wrecks/interdictions flash the screen and shake the camera (also on foot), big sales play a coin jingle, every finished station step chimes.
-- **Notifications:** toasts are now small cards with a green or red stripe; the same message twice stacks into one card with a counter instead of flooding the screen.
-- **Tooltips everywhere:** every stat in the top bar, every phone app tile, every list row and every button on the main screens explains itself on hover. A new CI check fails when a visible button has no hover help.
-- **Settings:** screen-shake strength slider and a damage-numbers toggle (Settings → Display).
-- **Look:** the minimaps lost their last blue prototype frame and use the brass/ink palette.
