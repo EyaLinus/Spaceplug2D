@@ -16,6 +16,7 @@ const Galaxy = preload("res://scripts/core/galaxy.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
+const Dealers = preload("res://scripts/core/dealers.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -62,6 +63,7 @@ var since_hit: float = 999.0  ## seconds since the player was last hurt; health 
 var drops: Array = []  ## dead drops you requested (see deaddrops.gd)
 var next_drop_id: int = 0
 var drops_unseen: int = 0  ## finished drop jobs since the DeadDrop app was opened (runtime only)
+var dealers: Dictionary = {}  ## dealer/courier routes, timers, stats (see dealers.gd)
 var workers: Array = []  ## hired staff [{id, loyalty, estate, hired_day}] (see workers.gd)
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 
@@ -103,6 +105,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	next_drop_id = 0
 	drops_unseen = 0
 	workers = []
+	dealers = Dealers.fresh()
 	Workers.ensure(estates[SHIP_BAY])
 	demand = {}
 	for loc in data.locations:
@@ -283,6 +286,7 @@ func tick(dt: float) -> void:
 	SpaceCombat.tick(self, dt)
 	Combat.tick(self, dt)
 	Deaddrops.tick(self)
+	Dealers.tick(self, dt)
 	while day_time >= day_seconds():
 		day_time -= day_seconds()
 		_new_day()
@@ -719,7 +723,7 @@ func to_dict() -> Dictionary:
 		"next_offer_id": next_offer_id, "offer_clock": snappedf(offer_clock, 0.01), "upgrades": upgrades.duplicate(),
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
-		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers),
+		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "dealers": Dealers.to_save(self),
 	}
 
 
@@ -780,6 +784,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Combat.from_save(self, d)
 	Deaddrops.from_save(self, d)
 	workers = Workers.from_save(self, d.get("workers", []))
+	Dealers.from_save(self, d)
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

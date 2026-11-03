@@ -1,5 +1,32 @@
 # Progress log
 
+## A5: Dealers & couriers (2026-11-03)
+- **Core** `scripts/core/dealers.gd`, rules in `content.json` -> `dealers`, state `Game.dealers` {routes, timers, last, stats}
+  (saved; old saves load empty, routes to unowned estates are dropped). Dealers and couriers are plain workers: two new roles
+  and four candidates in `workers.candidates` (Vik, Nell, Cass, Ines), so hire/fire/wages/loyalty/assign/save are B3's; max crew
+  6 -> 8. `Dealers.tick` is one line in `Game.tick`.
+- **Dealer** trip every 14 s / (0.5 + skill): best price among KNOWN, ready customers of the estate's system who prefer a product
+  on the shelf/tray; sells min(stock, 2 + 4 skill, customer max_units) at that customer's price (saturates demand, records the
+  deal, starts the contact cooldown). Dealer keeps 15 % + 20 % x skill. Heat = 60 % of an in-person sale. Bust chance
+  6 % + 25 % x heat share - 5 % x skill (1-80 %): goods of the trip lost, heat +2.5/unit, dealer lost for good 35 % of the time
+  else -0.1 loyalty.
+- **Courier** per-estate route (`set_route`): to_hub, from_hub (product + the raws the auto recipe lacks), to_estate; carries
+  4 + 10 x skill per trip every 12 s / (0.5 + skill); bust chance is half the dealer's. A courier on the payroll also scales
+  the A4 drop courier fee (-60 % x skill) and theft chance (-80 % x skill) via two lines in `deaddrops.gd`.
+- **UI** `hr_app.gd`: estate screen lists dealer and courier, cut/bust line, route picker, last trip text; crew summary on the
+  home screen. No registry change.
+- Verified: 2585 unit checks (new `test_dealers_rules/_sales/_busts`, `test_couriers`, `test_couriers_drops`,
+  `test_dealers_save`: cut maths, known-customer/preference filter, cooldowns, pinned-dice busts plus frequency over 400 trips,
+  routes incl. estate to estate, drop discounts, save round trip, old save, bad routes), UI smoke 36 steps (route picker, dealer
+  and courier work on their own), menu smoke, sim 5/5 won avg day 6.2 (unchanged, the bot hires nobody).
+  Measured with a throwaway script: a dealer with 400 weed on the shelf brings ~350-530 cr/day for you (Vik 1058 cr over 2 days,
+  Nell 715 with one bust) against 20-50 cr wage.
+- Gaps: dealers/couriers are invisible (no walking sprites, no toast on bust/sale - only the HR estate screen text); sales are
+  abstract (no travel time or location, the customer just has to be in the same system); no player-chosen customers/price
+  floor; couriers do not pull from or deliver to dead drops (only the fee/theft bonus); dealer income looks strong next to the
+  wage and is limited only by shelf stock and the 60 s customer cooldown - needs a human playtest; bust numbers eyeballed;
+  F2 (gang) can reuse `_bust`; the sim bot does not use dealers.
+
 ## B3: Workers & HR app (2026-10-30)
 - **Core** `scripts/core/workers.gd` (state: `Game.workers` [{id, loyalty, estate, hired_day}] + per-estate `storage`,
   `bench`, `out`, `recipe`, `job`, all saved; old saves get empty defaults). Candidates and tuning are data in

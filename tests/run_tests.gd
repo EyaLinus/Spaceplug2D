@@ -13,6 +13,7 @@ const Orders = preload("res://scripts/core/orders.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
+const Dealers = preload("res://scripts/core/dealers.gd")
 const ArtReg = preload("res://scripts/core/art.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 
@@ -37,6 +38,12 @@ func _init() -> void:
 		"test_estates",
 		"test_workers",
 		"test_ship_bay",
+		"test_dealers_rules",
+		"test_dealers_sales",
+		"test_dealers_busts",
+		"test_couriers",
+		"test_couriers_drops",
+		"test_dealers_save",
 		"test_orders",
 		"test_order_kits",
 		"test_orders_save",
@@ -1416,6 +1423,277 @@ func test_deaddrops_save() -> void:
 	var old := Game.new()
 	old.from_dict(data, d)
 	check(old.drops.is_empty() and old.next_drop_id == 0, "old saves load without drops")
+
+
+## Game with its own copy of the data so a test can pin the dealer dice (bust 0 or 1) without leaking into other tests.
+## Ticks in half-second steps so customer cooldowns (total_time) behave as in the live game.
+func step(g: Game, secs: float) -> void:
+	for i in int(secs * 2.0):
+		g.tick(0.5)
+
+
+func dealer_game(bust: float) -> Game:
+	var d: Dictionary = data.duplicate(true)
+	d.dealers.bust_min = bust
+	d.dealers.bust_max = bust
+	var g := Game.new()
+	g.new_game(d, 7)
+	g.credits = 20000
+	g.location = "cinder"
+	g.buy_estate("shaft_shack")
+	g.estates.shaft_shack.storage["weed:glow"] = 40
+	return g
+
+
+func test_dealers_rules() -> void:
+	var r: Dictionary = data.dealers
+	for k in ["sell_seconds", "cap_base", "cap_skill", "cut_base", "cut_skill", "heat_mult", "bust_base", "bust_heat", "bust_skill", "bust_max", "lose_dealer", "courier_seconds", "courier_cap_base", "drop_fee_discount", "drop_theft_cut"]:
+		check(r.has(k), "dealers rule %s exists" % k)
+	check(data.workers.roles.has("dealer") and data.workers.roles.has("courier"), "dealer and courier roles exist")
+	var n := {"dealer": 0, "courier": 0}
+	for c in data.workers.candidates:
+		if n.has(c.role):
+			n[c.role] += 1
+	check(n.dealer >= 2 and n.courier >= 2, "at least two dealers and two couriers for hire")
+	var g := new_game()
+	check(g.dealers.routes.is_empty() and g.dealers.stats.sales == 0, "fresh game has empty dealer state")
+	check(Dealers.cut(g, "nell") > Dealers.cut(g, "vik"), "better dealers keep a bigger cut")
+	check(Dealers.cut(g, "nell") < 0.5, "cut stays below half")
+	check(Dealers.bust_chance(g, "nell") < Dealers.bust_chance(g, "vik"), "better dealers get busted less")
+	var cold: float = Dealers.bust_chance(g, "vik")
+	g.add_heat(80)
+	check(Dealers.bust_chance(g, "vik") > cold, "heat raises the bust chance")
+	g.add_heat(500)
+	check(Dealers.bust_chance(g, "vik") <= float(r.bust_max), "bust chance is capped")
+	var h := dealer_game(0.0)
+	check(not Dealers.set_route(h, "cannery_annex", "to_hub", "").ok, "route needs an owned estate")
+	check(not Dealers.set_route(h, "shaft_shack", "sideways", "").ok, "unknown route direction refused")
+	check(not Dealers.set_route(h, "shaft_shack", "to_estate", "shaft_shack").ok, "estate route needs another owned estate")
+	check(Dealers.set_route(h, "shaft_shack", "to_hub", "").ok and h.dealers.routes.shaft_shack.dir == "to_hub", "route set")
+	check(Dealers.set_route(h, "shaft_shack", "off", "").ok and not h.dealers.routes.has("shaft_shack"), "route cleared")
+
+
+func test_dealers_sales() -> void:
+	var g := dealer_game(0.0)
+	Workers.hire(g, "nell")
+	check(Workers.assign(g, "nell", "shaft_shack").ok, "dealer assigned to an estate")
+	Workers.hire(g, "vik")
+	check(not Workers.assign(g, "vik", "shaft_shack").ok, "one dealer per estate")
+	Workers.fire(g, "vik")
+	var cash: int = g.credits
+	g.tick(2.0)
+	check(g.credits == cash and g.dealers.stats.sales == 0, "nothing sold before the first trip")
+	var stock0: int = g.estates.shaft_shack.storage["weed:glow"]
+	step(g, 30.0)
+	check(g.dealers.stats.sales >= 1, "the dealer sold something (%d sales)" % g.dealers.stats.sales)
+	check(g.estates.shaft_shack.storage["weed:glow"] < stock0, "stock leaves the shelf")
+	check(g.credits > cash, "the sale pays")
+	check(g.heat > 0.0, "selling adds heat")
+	check(g.dealers.stats.cut > 0 and g.dealers.stats.units == stock0 - g.estates.shaft_shack.storage.get("weed:glow", 0), "cut and units tracked")
+	check(g.stats.earned > 0 and g.stats.units_sold == g.dealers.stats.units, "sale counts in the global stats")
+	check(not str(g.dealers.last.get("shaft_shack", "")).is_empty(), "last trip is described for the UI")
+	# the cut is exactly the share of the sold value: dealer takes cut, player gets the rest
+	var h := dealer_game(0.0)
+	Workers.hire(h, "nell")
+	Workers.assign(h, "nell", "shaft_shack")
+	var c0: int = h.credits
+	h.tick(float(h.data.dealers.sell_seconds) / (0.5 + 0.65) + 0.01)
+	var total: int = h.dealers.stats.gross
+	check(total > 0 and h.credits - c0 == total - int(h.dealers.stats.cut), "player gets gross minus the cut")
+	check(int(h.dealers.stats.cut) == int(round(total * Dealers.cut(h, "nell"))), "cut matches the formula")
+	# only known customers in the estate's system, who prefer the product
+	var k := dealer_game(0.0)
+	Workers.hire(k, "nell")
+	Workers.assign(k, "nell", "shaft_shack")
+	k.estates.shaft_shack.storage = {"meth:glow": 10}
+	for cid in ["dax", "grub", "marta"]:
+		k.people[cid].known = false
+	step(k, 60.0)
+	check(k.dealers.stats.sales == 0, "no known customer wants it, nothing sold")
+	k.people.dax.known = true
+	step(k, 60.0)
+	check(k.dealers.stats.sales >= 1, "a known customer who prefers it buys")
+	var m := dealer_game(0.0)
+	Workers.hire(m, "nell")
+	Workers.assign(m, "nell", "shaft_shack")
+	m.estates.shaft_shack.storage = {"cannabis": 10}
+	step(m, 60.0)
+	check(m.dealers.stats.sales == 0 and m.estates.shaft_shack.storage.cannabis == 10, "raws are never sold")
+	# customers cool down between purchases, trips are paced
+	var q := dealer_game(0.0)
+	Workers.hire(q, "nell")
+	Workers.assign(q, "nell", "shaft_shack")
+	step(q, 300.0)
+	check(q.dealers.stats.sales > 1, "several sales over time (%d)" % q.dealers.stats.sales)
+	check(q.dealers.stats.sales <= 300.0 / 14.0 * 1.5 + 1, "sales are paced (%d)" % q.dealers.stats.sales)
+
+
+func test_dealers_busts() -> void:
+	var g := dealer_game(1.0)
+	Workers.hire(g, "vik")
+	Workers.assign(g, "vik", "shaft_shack")
+	var stock0: int = g.estates.shaft_shack.storage["weed:glow"]
+	var cash: int = g.credits
+	g.tick(float(g.data.dealers.sell_seconds) / 0.8 + 0.01)
+	check(g.dealers.stats.busts == 1, "the trip ends in a bust")
+	check(g.credits == cash and g.dealers.stats.sales == 0, "a bust pays nothing")
+	check(g.estates.shaft_shack.storage.get("weed:glow", 0) < stock0, "a bust loses the goods carried")
+	check(g.heat > 0.0, "a bust raises heat")
+	check(g.dealers.stats.lost_units == stock0 - g.estates.shaft_shack.storage.get("weed:glow", 0), "lost goods tracked")
+	# dealers are sometimes lost for good, otherwise they lose loyalty
+	var lost := 0
+	var kept := 0
+	for i in 60:
+		var h := dealer_game(1.0)
+		h.rng.seed = 100 + i
+		Workers.hire(h, "vik")
+		Workers.assign(h, "vik", "shaft_shack")
+		var loyal: float = h.workers[0].loyalty
+		h.tick(float(h.data.dealers.sell_seconds) / 0.8 + 0.01)
+		if Workers.hired(h, "vik"):
+			kept += 1
+			check(h.workers[0].loyalty < loyal, "a dealer who got away lost loyalty")
+		else:
+			lost += 1
+	check(lost > 5 and kept > 5, "busted dealers are lost sometimes, not always (%d lost, %d kept)" % [lost, kept])
+	# no dealer, no trips
+	var l := dealer_game(1.0)
+	Workers.hire(l, "vik")
+	Workers.assign(l, "vik", "shaft_shack")
+	Workers.fire(l, "vik")
+	step(l, 60.0)
+	check(l.dealers.stats.busts == 0 and l.dealers.stats.sales == 0, "no dealer, no trips")
+	# bust rate over many trips follows the configured chance
+	var busts := 0
+	var n := 400
+	for i in n:
+		var w := dealer_game(0.0)
+		w.data.dealers.bust_min = 0.01
+		w.data.dealers.bust_max = 0.8
+		w.rng.seed = 5000 + i
+		Workers.hire(w, "vik")
+		Workers.assign(w, "vik", "shaft_shack")
+		w.tick(float(w.data.dealers.sell_seconds) / 0.8 + 0.01)
+		busts += int(w.dealers.stats.busts)
+	var want: float = Dealers.bust_chance(new_game(), "vik") * n
+	check(absf(busts - want) < 0.35 * want + 6, "bust frequency matches the chance (%d vs %.1f)" % [busts, want])
+
+
+func test_couriers() -> void:
+	var g := dealer_game(0.0)
+	g.location = "mireth"
+	g.buy_estate("cannery_annex")
+	g.location = "cinder"
+	Workers.hire(g, "ines")
+	Workers.hire(g, "cass")
+	check(Workers.assign(g, "ines", "shaft_shack").ok, "courier assigned")
+	check(Workers.assign(g, "cass", "cannery_annex").ok, "second courier on another estate")
+	# no route, no movement
+	step(g, 60.0)
+	check(g.stash.is_empty() and g.estates.shaft_shack.storage["weed:glow"] == 40, "no route set, nothing moves")
+	check(Dealers.set_route(g, "shaft_shack", "to_hub", "").ok, "route to hub")
+	g.tick(float(g.data.dealers.courier_seconds) / 1.25 + 0.01)
+	var cap: int = Dealers.courier_cap(g, "ines")
+	check(cap > Dealers.courier_cap(g, "cass"), "better courier carries more")
+	check(g.stash.get("weed:glow", 0) == cap and g.estates.shaft_shack.storage["weed:glow"] == 40 - cap, "one trip moves a carry load to the hub stash (%d)" % cap)
+	step(g, 300.0)
+	check(g.estates.shaft_shack.storage.get("weed:glow", 0) == 0 and g.stash["weed:glow"] == 40, "everything ends in the stash")
+	check(g.dealers.stats.trips >= 2, "trips are counted")
+	# product in the output tray too, raws stay
+	var h := dealer_game(0.0)
+	Workers.hire(h, "ines")
+	Workers.assign(h, "ines", "shaft_shack")
+	Dealers.set_route(h, "shaft_shack", "to_hub", "")
+	h.estates.shaft_shack.storage = {"cannabis": 5}
+	h.estates.shaft_shack.out["weed:glow"] = 3
+	step(h, 100.0)
+	check(h.stash.get("weed:glow", 0) == 3 and h.stash.get("cannabis", 0) == 0, "to_hub moves product, not raws")
+	# from hub: product and the raws a recipe needs go to the estate shelf
+	var f := dealer_game(0.0)
+	f.estates.shaft_shack.storage = {}
+	Workers.hire(f, "ines")
+	Workers.assign(f, "ines", "shaft_shack")
+	Dealers.set_route(f, "shaft_shack", "from_hub", "")
+	f.stash = {"weed:glow": 6, "cannabis": 20, "pseudo": 3}
+	Workers.set_recipe(f, "shaft_shack", "weed", [], 5)
+	step(f, 120.0)
+	check(f.estates.shaft_shack.storage.get("weed:glow", 0) == 6, "from_hub brings product")
+	var need: Dictionary = f.batch_needs("weed", [], 5)
+	check(f.estates.shaft_shack.storage.get("cannabis", 0) >= int(need.get("cannabis", 5)), "from_hub brings what the recipe needs")
+	check(f.estates.shaft_shack.storage.get("pseudo", 0) == 0, "from_hub leaves unrelated raws")
+	# between estates
+	var b := dealer_game(0.0)
+	b.location = "mireth"
+	b.buy_estate("cannery_annex")
+	b.location = "cinder"
+	Workers.hire(b, "ines")
+	Workers.assign(b, "ines", "shaft_shack")
+	Dealers.set_route(b, "shaft_shack", "to_estate", "cannery_annex")
+	step(b, 300.0)
+	check(b.estates.cannery_annex.storage.get("weed:glow", 0) == 40 and b.estates.shaft_shack.storage.get("weed:glow", 0) == 0, "estate to estate")
+	# a courier busted on the road loses the load
+	var x := dealer_game(1.0)
+	Workers.hire(x, "cass")
+	Workers.assign(x, "cass", "shaft_shack")
+	Dealers.set_route(x, "shaft_shack", "to_hub", "")
+	x.data.dealers.courier_bust_mult = 1.0
+	x.tick(float(x.data.dealers.courier_seconds) / 0.85 + 0.01)
+	check(x.dealers.stats.busts == 1 and x.stash.is_empty() and x.estates.shaft_shack.storage["weed:glow"] < 40, "busted courier loses the load")
+	check(x.heat > 0.0, "courier bust adds heat")
+
+
+func test_couriers_drops() -> void:
+	var g := new_game()
+	g.credits = 5000
+	var fee0 := Deaddrops.courier_fee(g, 20)
+	var theft0 := Deaddrops.theft_chance(g, "courier")
+	check(is_equal_approx(Dealers.drop_fee_mult(g), 1.0) and is_equal_approx(Dealers.drop_theft_mult(g), 1.0), "no courier hired, no change")
+	var g2 := new_game()
+	g2.credits = 5000
+	Workers.hire(g2, "cass")
+	Workers.hire(g, "ines")
+	check(Deaddrops.courier_fee(g, 20) < fee0, "a hired courier makes drop runs cheaper (%d vs %d)" % [Deaddrops.courier_fee(g, 20), fee0])
+	check(Deaddrops.theft_chance(g, "courier") < theft0, "and safer")
+	check(is_equal_approx(Deaddrops.theft_chance(g, "deal"), Deaddrops.theft_chance(new_game(), "deal")), "deal pickups are unaffected")
+	check(Deaddrops.courier_fee(g2, 20) > Deaddrops.courier_fee(g, 20), "a better courier saves more")
+	check(Deaddrops.courier_fee(g, 1) >= 1, "fee never reaches zero")
+	Deaddrops.request(g, "mireth")
+	g.location = "mireth"
+	g.cargo = {"weed:glow": 20}
+	var c0: int = g.credits
+	var fee: int = Deaddrops.courier_fee(g, 20)
+	check(Deaddrops.send_courier(g, g.drops[0].id, "weed:glow", 20).ok and c0 - g.credits == fee, "send_courier charges the discounted fee")
+
+
+func test_dealers_save() -> void:
+	var g := dealer_game(0.0)
+	g.location = "mireth"
+	g.buy_estate("cannery_annex")
+	g.location = "cinder"
+	Workers.hire(g, "nell")
+	Workers.assign(g, "nell", "shaft_shack")
+	Workers.hire(g, "ines")
+	Workers.assign(g, "ines", "cannery_annex")
+	Dealers.set_route(g, "cannery_annex", "to_estate", "shaft_shack")
+	step(g, 40.0)
+	var json := JSON.stringify(g.to_dict())
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(json))
+	check(h.dealers.routes.cannery_annex.dir == "to_estate" and h.dealers.routes.cannery_annex.target == "shaft_shack", "route survives save/load")
+	check(h.dealers.stats.sales == g.dealers.stats.sales and h.dealers.stats.gross == g.dealers.stats.gross, "stats survive save/load")
+	check(JSON.stringify(h.to_dict()) == json, "save with dealers is stable")
+	var d := new_game().to_dict()
+	d.erase("dealers")
+	var old := Game.new()
+	old.from_dict(data, d)
+	check(old.dealers.routes.is_empty() and old.dealers.stats.sales == 0 and old.dealers.stats.gross == 0, "old saves load with empty dealer state")
+	var bad := new_game().to_dict()
+	bad.dealers = {"routes": {"nowhere": {"dir": "to_hub", "target": ""}, "shaft_shack": {"dir": "weird", "target": ""}}}
+	var b2 := Game.new()
+	b2.from_dict(data, bad)
+	check(b2.dealers.routes.is_empty(), "routes to unowned estates or bad directions are dropped on load")
+	g.new_game(data, 3)
+	check(g.dealers.routes.is_empty() and g.dealers.stats.trips == 0, "new game resets dealer state")
 
 
 func test_market_saturation_recovers() -> void:

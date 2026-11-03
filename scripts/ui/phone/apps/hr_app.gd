@@ -3,6 +3,7 @@ extends "res://scripts/ui/phone/phone_app.gd"
 ## look after the estate storage. All rules live in scripts/core/workers.gd; this is only the view.
 
 const Workers = preload("res://scripts/core/workers.gd")
+const Dealers = preload("res://scripts/core/dealers.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 
 
@@ -27,6 +28,9 @@ func home(g, phone) -> Control:
 	v.add_theme_constant_override("separation", 6)
 	var c: Dictionary = Workers.cfg(g)
 	v.add_child(UI.label("Crew %d/%d · wages %d cr/day" % [g.workers.size(), int(c.max_staff), Workers.wage_total(g)], 15, UI.GOLD))
+	var ds: Dictionary = g.dealers.stats
+	if int(ds.sales) + int(ds.trips) + int(ds.busts) > 0:
+		v.add_child(_wrap("Dealers: %d sales, %d cr for you, %d cr in cuts, %d busts. Couriers: %d trips." % [ds.sales, int(ds.gross) - int(ds.cut), ds.cut, ds.busts, ds.trips], 13, UI.MUTED))
 	v.add_child(UI.label("CREW", 13, UI.MUTED))
 	if g.workers.is_empty():
 		v.add_child(UI.label("Nobody on the payroll.", 14, UI.MUTED))
@@ -129,10 +133,11 @@ func estate(g, _phone, eid: String) -> Control:
 	if not g.estates.has(eid):
 		return v
 	var e: Dictionary = g.estates[eid]
-	for role in ["lab_hand", "stocker"]:
+	for role in ["lab_hand", "stocker", "dealer", "courier"]:
 		var w := Workers.at(g, eid, role)
 		var txt: String = Workers.candidate(g, w.id).name if not w.is_empty() else "nobody"
 		v.add_child(_pair(str(Workers.cfg(g).roles[role].name), txt))
+	_logistics(g, v, eid)
 	v.add_child(UI.label("AUTO RECIPE", 13, UI.MUTED))
 	var opt := OptionButton.new()
 	opt.name = "Recipe_" + eid
@@ -190,6 +195,37 @@ func estate(g, _phone, eid: String) -> Control:
 	if not inside:
 		v.add_child(UI.label("Stand inside the estate to move goods.", 13, UI.MUTED))
 	return v
+
+
+## Dealer line (cut, bust risk, last sale) and the courier route picker of one estate.
+func _logistics(g, v: VBoxContainer, eid: String) -> void:
+	var dealer := Workers.at(g, eid, "dealer")
+	var courier := Workers.at(g, eid, "courier")
+	if dealer.is_empty() and courier.is_empty():
+		return
+	if not dealer.is_empty():
+		v.add_child(_wrap("Dealer keeps %d%% of each sale, %d%% bust risk per trip at current heat." % [int(round(Dealers.cut(g, dealer.id) * 100.0)), int(round(Dealers.bust_chance(g, dealer.id) * 100.0))], 13, UI.MUTED))
+	if not courier.is_empty():
+		v.add_child(UI.label("COURIER ROUTE", 13, UI.MUTED))
+		var opt := OptionButton.new()
+		opt.name = "Route_" + eid
+		var choices: Array = [["off", ""], ["to_hub", ""], ["from_hub", ""]]
+		for other in g.estates:
+			if other != eid:
+				choices.append(["to_estate", other])
+		var cur_r := Dealers.route(g, eid)
+		var cur := 0
+		for k in choices.size():
+			var ch: Array = choices[k]
+			opt.add_item("No route" if ch[0] == "off" else ("Estate -> hub stash" if ch[0] == "to_hub" else ("Hub stash -> estate" if ch[0] == "from_hub" else "Estate -> %s" % g.data.estates[ch[1]].name)))
+			if str(cur_r.get("dir", "off")) == ch[0] and str(cur_r.get("target", "")) == ch[1]:
+				cur = k
+		opt.select(cur)
+		opt.item_selected.connect(func(idx: int): Dealers.set_route(g, eid, choices[idx][0], choices[idx][1]))
+		v.add_child(opt)
+	var last := str(g.dealers.last.get(eid, ""))
+	if last != "":
+		v.add_child(_wrap(last, 13, UI.ACCENT))
 
 
 func _items(g, v: VBoxContainer, label: String, items: Dictionary) -> void:

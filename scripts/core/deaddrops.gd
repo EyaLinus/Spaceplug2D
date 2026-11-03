@@ -9,6 +9,7 @@ extends RefCounted
 ##
 ## drop = {id, loc, spot, expires_at (total_time), job: {} or {kind: "deal"|"courier", key, qty, due, offer?, pay?, fee?}}
 
+const Dealers = preload("res://scripts/core/dealers.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const People = preload("res://scripts/core/people.gd")
@@ -101,7 +102,7 @@ static func theft_chance(g, kind: String) -> float:
 	var r := rules(g)
 	var p := float(r.get("theft_chance", 0.0)) + float(g.heat) / float(g.data.heat.max) * float(r.get("theft_heat", 0.0))
 	if kind == "courier":
-		p += float(r.get("courier_extra_theft", 0.0))
+		p = (p + float(r.get("courier_extra_theft", 0.0))) * Dealers.drop_theft_mult(g)  # hired couriers (A5)
 	return clampf(p, 0.0, 0.9)
 
 
@@ -141,7 +142,8 @@ static func assign_deal(g, drop_id: int, offer_id: int, product_key: String) -> 
 
 
 static func courier_fee(g, qty: int) -> int:
-	return maxi(int(rules(g).get("courier_fee_min", 0)), int(rules(g).get("courier_fee_unit", 0)) * qty)
+	var fee := maxi(int(rules(g).get("courier_fee_min", 0)), int(rules(g).get("courier_fee_unit", 0)) * qty)
+	return maxi(1, int(round(fee * Dealers.drop_fee_mult(g))))  # hired couriers (A5)
 
 
 ## Courier run: the goods travel from this drop to your hub stash.

@@ -111,7 +111,7 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
   them (less heat than hand-to-hand, small chance of theft). Needs A2 + A3.
 - **B3 Workers & HR app** [P5]. Hire lab hands and stockers in the HR app (wage per day, skill, loyalty); assigned
   workers run stations in an estate and move items storage → station → storage. Needs #14, A1.
-- **A5 Dealers & couriers** (HR app part 2) [P5]. Dealers sell to your customers on their own (cut, bust risk), couriers
+- [x] **A5 Dealers & couriers** (HR app part 2) [P5]. Dealers sell to your customers on their own (cut, bust risk), couriers
   move goods between estates and drops. Needs A2, A4, B3.
 - [x] **A6 Galaxy Map app + Jump Drive.** Map app with heat overlay, price comparison per location and route planning;
   interstellar jump with charge-up, hyperspace VFX and loading transition. Needs D1, A1. Not parallel with E2 (world.gd).
