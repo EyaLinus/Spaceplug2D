@@ -181,3 +181,24 @@ static func card(content: Control, inset := false) -> PanelContainer:
 ## Section heading: gold caps text with a short brass rule under it.
 static func heading(text: String, size := 18) -> Label:
 	return label(text.to_upper(), size, GOLD)
+
+
+## Tooltip text for an item key: what a raw is for, what an additive does to a mix, what a product is worth.
+static func item_tip(g, key: String) -> String:
+	var d: Dictionary = g.data
+	if d.raws.has(key):
+		var uses: Array = []
+		for b in d.bases:
+			if d.bases[b].raw == key:
+				uses.append("%s (T%d)" % [d.bases[b].name, int(d.bases[b].get("tier", 1))])
+		return "%s – raw for %s. Start a batch at the prep station of your estate." % [g.item_name(key), ", ".join(PackedStringArray(uses))]
+	if d.additives.has(key):
+		var ad: Dictionary = d.additives[key]
+		var parts: Array = []
+		if ad.has("adds"):
+			parts.append("adds %s" % d.traits[ad.adds].name)
+		if ad.has("transforms"):
+			for k in ad.transforms:
+				parts.append("turns %s into %s" % [d.traits[k].name, d.traits[ad.transforms[k]].name])
+		return "%s – additive for the Mixing Station: %s." % [ad.name, ", ".join(PackedStringArray(parts))]
+	return g.item_name(key)

@@ -161,7 +161,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
   a batch is a tray you carry from station to station on foot: put raws in at the prep station, choose additives at
   the Mixing Station (ingredient shelf with live trait/value preview), play each station's minigame, finished product
   lands in the estate stash. Quick batch survives only as the workers' automation (B3). Core: `scripts/core/bench.gd`.
-- **G3 Shop screens.** Market, fence, shipyard, mechanic and weapon dealer as shop screens: item cards (icon, price,
+- [x] **G3 Shop screens.** Market, fence, shipyard, mechanic and weapon dealer as shop screens: item cards (icon, price,
   owned, tooltip with what it is for), basket with quantity slider and total, one checkout; ship upgrades as cards
   with the module preview. Replaces the row/button grids of `station_ui.gd`.
 - → **Release v0.1.8**.

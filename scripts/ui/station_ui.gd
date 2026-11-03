@@ -19,6 +19,7 @@ var tabs: TabContainer
 var _title: Label
 var _desc: Label
 var _dirty := false
+var _basket: Dictionary = {}  ## market shopping basket: item -> units (cleared when the panel opens)
 var _filter: Dictionary = {}  ## {} = full docked menu; else {tabs: [names], title, contact}
 var _leave_btn: Button
 
@@ -69,6 +70,7 @@ func _ready() -> void:
 ## "fence_only": true limits Deals to the fence.
 func open(filter: Dictionary = {}) -> void:
 	_filter = filter
+	_basket.clear()
 	# undock goes through ship_dock, leaving a surface counter through interact (see main.gd)
 	_leave_btn.text = "Undock [%s]" % Settings.key_label("ship_dock") if filter.is_empty() else "Leave [%s]" % Settings.key_label("interact")
 	visible = true
@@ -150,38 +152,138 @@ func _grid(cols: int) -> GridContainer:
 # ---------------------------------------------------------------- market
 
 func _build_market(g) -> Control:
-	var v := VBoxContainer.new()
-	v.add_child(UI.label("Cargo %d/%d · %d cr" % [g.cargo_used(), g.cargo_capacity(), g.credits], 16, UI.MUTED))
-	var gr := _grid(6)
-	for h in ["Item", "Price", "Owned", "", "", ""]:
-		gr.add_child(UI.label(h, 15, UI.MUTED))
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	var left := VBoxContainer.new()
+	left.add_theme_constant_override("separation", 8)
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(left)
+	left.add_child(UI.heading("For sale"))
+	left.add_child(UI.label("Click adds 1 to the basket, Shift+click 5. Hover for what it is good for.", 14, UI.MUTED))
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	left.add_child(grid)
 	var items: Array = []
 	for r in g.data.raws:
 		items.append(r)
 	for a in g.data.additives:
 		items.append(a)
-	var any := false
 	for item in items:
 		var price: int = g.buy_price(item)
 		if price < 0:
 			continue
-		any = true
-		gr.add_child(Art.with_icon(item, UI.label(g.item_name(item))))
-		gr.add_child(UI.label("%d cr" % price, 17, UI.GOLD))
-		gr.add_child(UI.label(str(g.cargo.get(item, 0))))
-		gr.add_child(UI.button("+1", func(): GameState.act(g.buy(item, 1)), 50))
-		gr.add_child(UI.button("+5", func(): GameState.act(g.buy(item, mini(5, g.cargo_free()))), 50))
-		gr.add_child(UI.button("Max", func():
-			var n: int = mini(g.cargo_free(), g.credits / price)
-			GameState.act(g.buy(item, n)), 60))
-	v.add_child(gr if any else UI.label("Nothing for sale here.", 17, UI.MUTED))
+		var card := Button.new()
+		card.name = "Item_" + item
+		card.theme_type_variation = "CardButton"
+		card.custom_minimum_size = Vector2(250, 62)
+		card.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		card.icon = Art.icon_for(item)
+		card.text = "%s\n%d cr  ·  have %d" % [g.item_name(item), price, int(g.cargo.get(item, 0))]
+		card.tooltip_text = UI.item_tip(g, item)
+		card.pressed.connect(func():
+			AudioManager.play("click")
+			_basket_add(g, item, 5 if Input.is_key_pressed(KEY_SHIFT) else 1))
+		grid.add_child(card)
+	if grid.get_child_count() == 0:
+		left.add_child(UI.label("Nothing for sale here.", 17, UI.MUTED))
+	left.add_child(UI.heading("Your hold %d/%d" % [g.cargo_used(), g.cargo_capacity()], 16))
+	left.add_child(_hold_chips(g))
+	h.add_child(_basket_panel(g))
+	return h
+
+
+## Adds up to `n` of `item` to the shopping basket, as far as credits and hold space allow.
+func _basket_add(g, item: String, n: int) -> void:
+	var total := _basket_total(g)
+	var units := 0
+	for k in _basket:
+		units += int(_basket[k])
+	var price: int = g.buy_price(item)
+	var can := mini(n, mini(g.cargo_free() - units, (g.credits - total) / maxi(price, 1)))
+	if can <= 0:
+		AudioManager.play("error")
+		EventBus.toast.emit("No room in the hold." if g.cargo_free() - units <= 0 else "Not enough credits.", false)
+		return
+	_basket[item] = int(_basket.get(item, 0)) + can
+	refresh()
+
+
+func _basket_total(g) -> int:
+	var t := 0
+	for k in _basket:
+		t += int(_basket[k]) * maxi(g.buy_price(k), 0)
+	return t
+
+
+func _basket_panel(g) -> Control:
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	v.custom_minimum_size.x = 300
+	v.add_child(UI.heading("Basket"))
+	var units := 0
+	if _basket.is_empty():
+		v.add_child(UI.label("Empty. Click the goods on the left.", 15, UI.MUTED))
+	for k in _basket.keys():
+		units += int(_basket[k])
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		var l := Art.with_icon(k, UI.label("%d × %s" % [_basket[k], g.item_name(k)], 15))
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(l)
+		row.add_child(UI.label("%d cr" % (int(_basket[k]) * g.buy_price(k)), 15, UI.GOLD))
+		row.add_child(UI.button("−", func():
+			_basket[k] = int(_basket[k]) - 1
+			if int(_basket[k]) <= 0:
+				_basket.erase(k)
+			refresh(), 34))
+		row.add_child(UI.button("+", func(): _basket_add(g, k, 1), 34))
+		v.add_child(row)
 	v.add_child(HSeparator.new())
-	v.add_child(UI.label("Your hold", 18, UI.ACCENT))
+	var total := _basket_total(g)
+	v.add_child(UI.label("Total  %d cr" % total, 19, UI.GOLD))
+	v.add_child(UI.label("Credits after: %d cr" % (g.credits - total), 14, UI.MUTED))
+	v.add_child(UI.label("Hold after: %d / %d" % [g.cargo_used() + units, g.cargo_capacity()], 14, UI.MUTED))
+	var buy := UI.accent_button("Buy  (%d cr)" % total, func(): _checkout(g))
+	buy.name = "Checkout"
+	buy.disabled = _basket.is_empty() or total > g.credits or units > g.cargo_free()
+	v.add_child(buy)
+	var clear := UI.button("Clear basket", func():
+		_basket.clear()
+		refresh())
+	clear.disabled = _basket.is_empty()
+	v.add_child(clear)
+	return UI.card(v, true)
+
+
+func _checkout(g) -> void:
+	var bought := 0
+	for k in _basket.keys():
+		var r: Dictionary = g.buy(k, int(_basket[k]))
+		if not r.ok:
+			GameState.act(r)
+			break
+		bought += int(_basket[k])
+		_basket.erase(k)
+	if bought > 0:
+		AudioManager.play("buy")
+		EventBus.toast.emit("Bought %d units." % bought, true)
+	refresh()
+
+
+## Small icon chips of everything in the hold (products in red: they are what the police look for).
+func _hold_chips(g) -> Control:
+	var f := HFlowContainer.new()
+	f.add_theme_constant_override("h_separation", 6)
+	f.add_theme_constant_override("v_separation", 6)
 	if g.cargo.is_empty():
-		v.add_child(UI.label("Empty.", 16, UI.MUTED))
+		f.add_child(UI.label("Empty.", 15, UI.MUTED))
 	for k in g.cargo:
-		v.add_child(Art.with_icon(k, UI.label("%d × %s" % [g.cargo[k], g.item_name(k)], 16, UI.WARN if Mixing.is_product(k) else UI.TEXT)))
-	return v
+		var c := UI.card(Art.with_icon(k, UI.label("%d %s" % [g.cargo[k], g.item_name(k)], 14, UI.WARN if Mixing.is_product(k) else UI.TEXT)))
+		c.tooltip_text = UI.item_tip(g, k)
+		f.add_child(c)
+	return f
 
 
 # ---------------------------------------------------------------- lab
@@ -276,7 +378,7 @@ func _build_deals(g) -> Control:
 		var ready: bool = c.id == "" or g.contact_ready(c.id)
 		if not ready:
 			head += "  · back in %ds" % int(float(g.contact_ready_at[c.id]) - g.total_time)
-		box.add_child(UI.label(head, 17, UI.ACCENT if ready else UI.MUTED))
+		box.add_child(UI.label(head, 17, UI.GOLD if ready else UI.MUTED))
 		if c.id != "":
 			_add_agreed_deal(g, box, c)
 		for k in products:
@@ -289,12 +391,12 @@ func _build_deals(g) -> Control:
 			h.add_child(Art.with_icon(k, UI.label("%d × %s" % [g.cargo[k], g.item_name(k)], 16)))
 			h.add_child(UI.label("%d cr/unit" % price, 16, UI.GOLD))
 			var n: int = mini(int(g.cargo[k]), int(c.max_units) if c.id == "" else People.units_wanted(g, c.id, k))
-			var b := UI.button("Sell %d" % n if n > 0 else "Too pricey", func(): GameState.act(g.sell(k, n, c.id)), 90)
+			var b := UI.accent_button("Sell %d" % n if n > 0 else "Too pricey", func(): GameState.act(g.sell(k, n, c.id)), 110)
+			b.tooltip_text = "%d × %d cr = %d cr" % [n, price, n * price]
 			b.disabled = not ready or n <= 0
 			h.add_child(b)
 			box.add_child(h)
-		v.add_child(box)
-		v.add_child(HSeparator.new())
+		v.add_child(UI.card(box))
 	var dem: Array = []
 	for b in g.demand.get(g.location, {}):
 		dem.append("%s %d%%" % [g.data.bases[b].name, int(g.demand[g.location][b] * 100.0)])
@@ -325,23 +427,34 @@ func _build_estate(g) -> Control:
 
 
 func _build_build_menu(g) -> Control:
-	var gr := _grid(4)
-	for h in ["Station", "Cost", "Size", ""]:
-		gr.add_child(UI.label(h, 15, UI.MUTED))
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
 	for k in g.data.buildables:
 		var bd: Dictionary = g.data.buildables[k]
 		var st: Dictionary = g.data.stations[k]
-		var name_l := UI.label(st.name, 17)
-		name_l.tooltip_text = st.get("hint", "")
-		gr.add_child(name_l)
 		var kit_n := int(g.kits.get(k, 0))
-		gr.add_child(UI.label(("Kit ×%d" % kit_n) if kit_n > 0 else "%d cr" % int(bd.cost), 16, UI.ACCENT if kit_n > 0 else UI.GOLD))
-		gr.add_child(UI.label("%d × %d · %s" % [int(bd.size[0]), int(bd.size[1]), st.affects], 15, UI.MUTED))
-		var b := UI.button("Place", func(): place_requested.emit(k), 80)
-		b.disabled = g.credits < int(bd.cost) and kit_n <= 0
-		gr.add_child(b)
+		var card := Button.new()
+		card.name = "Build_" + k
+		card.theme_type_variation = "CardButton"
+		card.custom_minimum_size = Vector2(270, 74)
+		card.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		card.icon = Art.tex("stations/%s.png" % k)
+		card.add_theme_constant_override("icon_max_width", 64)
+		card.text = "%s\n%s · %d×%d · %s" % [st.name, ("kit ×%d" % kit_n) if kit_n > 0 else "%d cr" % int(bd.cost),
+			int(bd.size[0]), int(bd.size[1]), st.affects]
+		card.tooltip_text = "%s\nImproves %s. %s" % [st.get("hint", ""), st.affects,
+			"Lines: " + ", ".join(PackedStringArray(st.get("bases", g.data.bases.keys()).map(func(b): return g.data.bases[b].name)))]
+		card.disabled = g.credits < int(bd.cost) and kit_n <= 0
+		card.pressed.connect(func():
+			AudioManager.play("click")
+			place_requested.emit(k))
+		grid.add_child(card)
 	var v := VBoxContainer.new()
-	v.add_child(gr)
+	v.add_theme_constant_override("separation", 8)
+	v.add_child(UI.heading("Stations"))
+	v.add_child(grid)
 	v.add_child(UI.label("Pick a station, then walk to a free spot: it goes on the cells in front of you. Station kits ordered in the phone's Orders app are placed for free.", 14, UI.MUTED))
 	return v
 
@@ -349,38 +462,62 @@ func _build_build_menu(g) -> Control:
 # ---------------------------------------------------------------- shipyard / office
 
 func _build_shipyard(g) -> Control:
-	var gr := _grid(4)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
 	for k in g.data.upgrades:
 		var u: Dictionary = g.data.upgrades[k]
 		var lvl: int = g.upgrades[k]
-		gr.add_child(Art.with_icon("up_" + k, UI.label("%s Mk %d" % [u.name, lvl + 1], 17)))
-		gr.add_child(UI.label(_upgrade_value(k, u.levels[lvl]), 16, UI.MUTED))
 		var cost: int = g.upgrade_cost(k)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 2)
+		v.custom_minimum_size.x = 270
+		v.add_child(Art.with_icon("up_" + k, UI.label("%s  Mk %d" % [u.name, lvl + 1], 16, UI.GOLD)))
+		var now := _upgrade_value(k, u.levels[lvl])
 		if cost < 0:
-			gr.add_child(UI.label("max", 16, UI.MUTED))
-			gr.add_child(Control.new())
+			v.add_child(UI.label("%s · fully upgraded" % now, 14, UI.MUTED))
 		else:
-			gr.add_child(UI.label("→ %s for %d cr" % [_upgrade_value(k, u.levels[lvl + 1]), cost], 16, UI.GOLD))
-			var b := UI.button("Buy", func(): GameState.act(g.buy_upgrade(k)), 70)
+			v.add_child(UI.label("%s  →  %s" % [now, _upgrade_value(k, u.levels[lvl + 1])], 14, UI.ACCENT))
+			var b := UI.accent_button("Upgrade · %d cr" % cost, func(): GameState.act(g.buy_upgrade(k)))
+			b.name = "Up_" + k
 			b.disabled = cost > g.credits
-			gr.add_child(b)
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 24)
-	h.add_child(ShipPreview.new(g.upgrades))
-	var right := VBoxContainer.new()
+			v.add_child(b)
+		var card := UI.card(v)
+		card.tooltip_text = UPGRADE_TIPS.get(k, "")
+		grid.add_child(card)
+	var right := VBoxContainer.new()  # the tab itself scrolls
 	right.add_theme_constant_override("separation", 10)
-	right.add_child(gr)
-	right.add_child(HSeparator.new())
+	right.add_child(grid)
 	right.add_child(_build_mechanic(g))
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 16)
+	var lv := VBoxContainer.new()
+	lv.add_child(UI.heading("Your ship", 16))
+	lv.add_child(ShipPreview.new(g.upgrades))
+	lv.add_child(UI.label("Credits %d cr" % g.credits, 15, UI.GOLD))
+	h.add_child(lv)
 	h.add_child(right)
 	return h
+
+
+const UPGRADE_TIPS := {
+	"cargo": "More hold slots: carry bigger hauls per trip.",
+	"engine": "More thrust: outrun patrols and pirates, shorter jump drive charge.",
+	"stealth": "Smaller patrol scan radius in space.",
+	"lab": "More units per batch at every station line.",
+	"laser": "Damage per laser bolt in space combat [J].",
+	"missile": "Homing missile pods [K]; restock at the mechanic.",
+	"shield": "Regenerating shield that soaks hits before the hull.",
+	"hull": "More hull points before the ship is crippled.",
+}
 
 
 ## Mechanic: hull repairs and missile restocks (the weapon, shield and armour modules are in the grid above).
 func _build_mechanic(g) -> Control:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
-	v.add_child(UI.label("Mechanic", 19, UI.ACCENT))
+	v.add_child(UI.heading("Mechanic", 16))
 	v.add_child(UI.label("Hull %d / %d · shield %d · missiles %d / %d · pirates downed %d" % [int(g.combat.hull), int(SpaceCombat.max_hull(g)),
 		int(SpaceCombat.max_shield(g)), int(g.combat.missiles), SpaceCombat.missile_cap(g), int(g.combat.kills)], 15, UI.MUTED))
 	var row := HBoxContainer.new()

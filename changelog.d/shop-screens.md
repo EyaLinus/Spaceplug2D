@@ -1,0 +1,1 @@
+- **Shop screens:** markets now work with item cards and a shopping basket (one checkout, totals and hold space shown up front), the mechanic shows every ship upgrade as a card with what it changes, the build menu shows the station machines, and buyers in the Deals panel get their own cards. Hover anything for a tooltip.

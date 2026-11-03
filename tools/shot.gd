@@ -66,6 +66,8 @@ func _run() -> void:
 	for i in 5:
 		await physics_frame
 	sf.interact()
+	m.station._basket = {"cannabis": 4, "nanoflux": 2}
+	m.station.refresh()
 	await _save(out, "market")
 	m.station.close()
 	g.buy("cannabis", 5)
@@ -174,6 +176,9 @@ func _run() -> void:
 	for i in 10:
 		await physics_frame
 	await _save(out, "estate")
+	m.open_build_menu()
+	await _save(out, "build_menu")
+	m.station.close()
 	m.leave_estate()
 	for i in 5:
 		await physics_frame
