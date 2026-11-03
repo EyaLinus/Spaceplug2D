@@ -280,7 +280,7 @@ func test_cartels_events() -> void:
 	var d := new_game()
 	d.undock()
 	d.dock("bazaar")
-	var di := d.influence["bazaar"].duplicate()
+	var di: Dictionary = d.influence["bazaar"].duplicate()
 	d.drops.append({"id": 1, "loc": "bazaar", "spot": "", "expires_at": 9999.0, "job": {}})
 	d._emit("drop_pickup", {"drop": 1, "kind": "courier", "item": "cannabis", "qty": 1})
 	check(Cartels.share(d, "bazaar") > float(di.you), "a delivered drop raises influence")

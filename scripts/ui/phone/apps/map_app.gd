@@ -288,7 +288,7 @@ func _influence_text(g, loc: String) -> String:
 		var v := Cartels.share(g, loc, k)
 		if v >= 0.01 and k != Cartels.NONE:
 			parts.append("%s %d%%" % [Cartels.who_name(g, k), int(round(v * 100.0))])
-	var note := {"high": "respected: better prices", "low": "weak: robbery risk", "mid": "contested"}[tier]
+	var note: String = {"high": "respected: better prices", "low": "weak: robbery risk", "mid": "contested"}[tier]
 	return "%s  (%s)" % [", ".join(PackedStringArray(parts)), note]
 
 
