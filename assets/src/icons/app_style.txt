@@ -1,0 +1,28 @@
+# Phone app: Style (a spray can next to a jacket on a hanger).
+legend:
+. = transparent
+k = ink
+s = slate_light
+S = slate
+p = pink
+P = purple
+y = gold
+c = gold_dark
+w = white
+---
+................
+..kkk.....k.....
+..kwk....kwk....
+.kkkkk....k.....
+.kpppk..kkkkk...
+.kpwpk.kycycyk..
+.kpwpk.kyyyyyk..
+.kpppk.kyycyyk..
+.kPPPk.kyyyyyk..
+.kpppk.kycyycyk.
+.kpppk.kyyyyyyk.
+.kpppk.kyycyyyk.
+.kPPPk.kyyyyyyk.
+.kkkkk.kkkkkkkk.
+................
+................

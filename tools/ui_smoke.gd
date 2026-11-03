@@ -91,6 +91,25 @@ func _run() -> void:
 	_assert(sf.get_children().any(func(c): return c.get_script() == load("res://scripts/world/float_text.gd")), "floating text over the player")
 	step("feedback layer")
 
+	# K2 Style app: buy a jacket by tapping its tile, the walker is recoloured, decor shows up in the estate layout
+	var plain_sheet = sf.player.sheet
+	g.credits += 500
+	m.toggle_phone()
+	m.phone.open_app("style")
+	await frames(2)
+	var jtile = m.phone.find_child("Style_jacket_teal", true, false)
+	_assert(jtile != null and not jtile.disabled, "Style app lists the teal jacket")
+	jtile.pressed.emit()
+	await frames(2)
+	_assert(g.style.jacket == "teal", "tapping the tile buys and wears the jacket")
+	_assert(sf.player.sheet != null and sf.player.sheet != plain_sheet, "the walker is recoloured")
+	m.phone.find_child("Style_decor_plant", true, false).pressed.emit()
+	await frames(1)
+	_assert(g.style.decor.has("plant"), "decor bought from the app")
+	m.phone.close()
+	g.credits -= 500 - int(g.data.style.jacket.teal.cost) - int(g.data.style.decor.plant.cost)
+	step("style app")
+
 	# quests: the tutorial starts with a tracker, a message from Okka, a waypoint and the Quests app
 	var Quests = load("res://scripts/core/quests.gd")
 	await frames(2)

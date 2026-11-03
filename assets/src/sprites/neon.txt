@@ -1,0 +1,25 @@
+# Decor: neon "OPEN" sign on a dark board, on a stand.
+legend:
+. = transparent
+k = ink
+n = night
+p = pink
+P = purple
+s = slate
+---
+................................
+................................
+..kkkkkkkkkkkkkkkkkkkkkkkkkkkk..
+..knnnnnnnnnnnnnnnnnnnnnnnnnnk..
+..knpppnnppppnnpppnnpnnnpnnnnk..
+..knpnpnnpnnpnnpnnnnppnnpnnnnk..
+..knpnpnnppppnnppnnnpnpnpnnnnk..
+..knpnpnnpnnnnnpnnnnpnnppnnnnk..
+..knpppnnpnnnnnpppnnpnnnpnnnnk..
+..knnnnnnnnnnnnnnnnnnnnnnnnnnk..
+..kkkkkkkkkkkkkkkkkkkkkkkkkkkk..
+.............kssk...............
+.............kssk...............
+.............kssk...............
+..........kkkkkkkkkk............
+..........kkkkkkkkkk............

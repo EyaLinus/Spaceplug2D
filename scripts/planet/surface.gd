@@ -11,6 +11,8 @@ const OfficerScript = preload("res://scripts/planet/officer.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Nav = preload("res://scripts/planet/nav.gd")
 const FloatText = preload("res://scripts/world/float_text.gd")
+const Style = preload("res://scripts/core/style.gd")
+const EstateLayout = preload("res://scripts/planet/estate_layout.gd")
 const People = preload("res://scripts/core/people.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Combat = preload("res://scripts/core/combat.gd")
@@ -232,6 +234,7 @@ func _ready() -> void:
 	player.add_child(camera)
 	camera.make_current()
 	EventBus.shake.connect(func(st: float): shake = maxf(shake, st))
+	EventBus.game_event.connect(_on_style_event)
 	if not cfg.has("estate"):  # interiors keep their own lighting
 		_daylight = CanvasModulate.new()
 		add_child(_daylight)
@@ -608,6 +611,17 @@ func _step_bullets(g, delta: float) -> void:
 	bullets = alive
 
 
+## K2: re-lay the decor when you switch an item on or off while standing in your estate.
+func _on_style_event(kind: String, _p: Dictionary) -> void:
+	var g = GameState.game
+	if kind != "style_changed" or g == null or not cfg.has("estate") or not g.estates.has(cfg.estate):
+		return
+	var props: Array = cfg.props.filter(func(p): return p.size() < 4 or p[3] != "decor")
+	props.append_array(EstateLayout.decor_props(GameState.data, cfg.estate, g.estates[cfg.estate].buildings, g.style.decor))
+	cfg.props = props
+	queue_redraw()
+
+
 ## K1: a floating number / word over something on the surface (damage, "+90 cr" over a buyer).
 func _float(at: Vector2, text: String, c: Color, size := 15) -> void:
 	if not Settings.damage_numbers and text.is_valid_int():
@@ -891,7 +905,9 @@ func _draw_pad() -> void:
 		draw_circle(c + d * (r - 8), 3.0, Color("#4fe3c1"))
 	# the parked ship, same sprite and upgrade modules as in flight but bigger
 	draw_set_transform(c, 0.0, Vector2(2.5, 2.5))
-	var drawn := Art.draw_ship(self, GameState.game.upgrades if GameState.game != null else {})
+	var gg = GameState.game
+	var drawn := Art.draw_ship(self, gg.upgrades if gg != null else {}, Vector2.ZERO,
+		Style.hull_swaps(gg.data, gg.style) if gg != null else {}, str(gg.style.get("decal", "")) if gg != null else "")
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if drawn:
 		return
@@ -1028,7 +1044,8 @@ func _machine_label(text: String, r: Rect2) -> void:
 
 
 func _draw_prop(kind: String, p: Vector2) -> void:
-	var bottoms := {"tree": 12.0, "lamp": 12.0, "crate": 12.0, "rock": 10.0, "barrel": 12.0, "vent": 16.0, "stall": 12.0}
+	var bottoms := {"tree": 12.0, "lamp": 12.0, "crate": 12.0, "rock": 10.0, "barrel": 12.0, "vent": 16.0, "stall": 12.0,
+		"plant": 12.0, "rug": 14.0, "sofa": 12.0, "neon": 12.0, "aquarium": 12.0, "trophy": 12.0}
 	if bottoms.has(kind):
 		var shadow := {"tree": 14.0, "rock": 13.0, "barrel": 9.0, "crate": 11.0}
 		if shadow.has(kind):

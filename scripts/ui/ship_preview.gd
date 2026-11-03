@@ -4,6 +4,8 @@ extends Control
 const Art = preload("res://scripts/core/art.gd")
 
 var levels: Dictionary = {}
+var paint: Dictionary = {}  ## K2 hull palette swaps
+var decal := ""
 var zoom := 3
 
 
@@ -16,4 +18,4 @@ func _init(upgrade_levels: Dictionary = {}) -> void:
 
 func _draw() -> void:
 	draw_set_transform(size / 2.0, 0.0, Vector2(zoom, zoom))
-	Art.draw_ship(self, levels)
+	Art.draw_ship(self, levels, Vector2.ZERO, paint, decal)

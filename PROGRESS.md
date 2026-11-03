@@ -1,5 +1,23 @@
 # Progress log
 
+## K2: customization (phase 3 wave 10, 2026-11-03)
+- **Core** `scripts/core/style.gd`, data `content.json` "style" (hair, skin, jacket, pants, paint, decal, decor; each
+  item has name/cost, colour items a palette `ramp`). State `Game.style` {slot ids, owned ["cat:id"], decor [ids]},
+  saved; old saves get the stock look. `buy` (pays, equips), `equip` (decor toggles), event `style_changed`.
+- **Recolour**: `Art.recolored(rel, {Color: Color})` swaps exact palette colours of a texture (cached).
+  `Style.player_swaps` maps the player sheet roles (hair_dark/hair, skin/skin_dark, gold ramp coat, blue_dark pants);
+  `Style.hull_swaps` maps the gold hull ramp. Walker (`sheet`), ship (`paint`, `decal`), parked ship on the pad and the
+  shipyard preview use them; `Art.draw_decal` draws decals between hull and top modules.
+- **Decor**: `Style.decor_spots` fills free cells along the bottom row (right to left) then the right column, never on
+  a station or the cell in front of it, the door or the stash. `EstateLayout.build_cfg(..., decor)` adds them as
+  props tagged "decor"; the surface re-lays them on `style_changed`. New sprites assets/src/sprites/{plant,rug,sofa,
+  neon,aquarium,trophy}.txt + icon app_style.
+- **UI** `scripts/ui/phone/apps/style_app.gd`: character + ship preview, colour-swatch tiles (✓ = worn, price when
+  not owned, disabled when too expensive), decor tiles with the prop sprite.
+- Verified: unit test `test_style` (buy/afford/equip/toggle, swaps, decor spots for every estate, save round trip,
+  junk ids, old saves), UI smoke +1 step (buy a jacket by tapping, walker recoloured, decor), tip audit 0, screenshots.
+- Gaps: cosmetic only (no gameplay effect); decor can't be placed by hand; NPCs don't react to your outfit.
+
 ## K1: action feedback + tooltips (phase 3 wave 10, 2026-11-03)
 - **Feedback layer** `scripts/ui/fx.gd` (HUD child, drawn last): watches credits/heat and pops the delta under the HUD
   stat, floats text over the player on game events (sold, loot, discoveries, referrals, batches), full-screen flashes

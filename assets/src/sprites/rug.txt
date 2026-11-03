@@ -1,0 +1,25 @@
+# Decor: woven rug, lies flat on the floor.
+legend:
+. = transparent
+k = ink
+r = red_dark
+R = red
+y = gold
+s = sand
+---
+................................
+................................
+................................
+................................
+................................
+..kkkkkkkkkkkkkkkkkkkkkkkkkkkk..
+..krrrrrrrrrrrrrrrrrrrrrrrrrrk..
+..krRRRRRRRRRRRRRRRRRRRRRRRRrk..
+..krRyyRRRRRRRyyRRRRRRRyyRRRrk..
+..krRRRRRRRRyyssyyRRRRRRRRRRrk..
+..krRRRRRRRRyyssyyRRRRRRRRRRrk..
+..krRyyRRRRRRRyyRRRRRRRyyRRRrk..
+..krRRRRRRRRRRRRRRRRRRRRRRRRrk..
+..krrrrrrrrrrrrrrrrrrrrrrrrrrk..
+..kkkkkkkkkkkkkkkkkkkkkkkkkkkk..
+................................

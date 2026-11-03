@@ -181,9 +181,17 @@ func _run() -> void:
 	for st in [["cook_stove", 0, 0], ["refiner", 2, 0], ["extractor", 4, 0], ["mixing_station", 6, 0], ["precursor_scale", 8, 0],
 			["trim_table", 4, 2], ["pack_table", 6, 2]]:
 		g.place_building("cannery_annex", st[0], st[1], st[2])
+	var StyleCore = load("res://scripts/core/style.gd")
+	g.credits += 5000
+	for it in [["decor", "plant"], ["decor", "sofa"], ["decor", "neon"], ["decor", "aquarium"], ["decor", "rug"], ["decor", "trophy"],
+			["jacket", "crimson"], ["hair", "neon_pink"], ["paint", "violet"], ["decal", "flames"]]:
+		StyleCore.buy(g, it[0], it[1])
 	m.enter_estate("cannery_annex")
 	for i in 10:
 		await physics_frame
+	m.hud._card.visible = false  # the quest message sits over the decor row
+	m.hud._card_queue.clear()
+	m.hud._card_left = 0.0
 	await _save(out, "estate")
 	m.open_build_menu()
 	await _save(out, "build_menu")
@@ -193,6 +201,8 @@ func _run() -> void:
 		await physics_frame
 	m.toggle_phone()
 	await _save(out, "phone_home")
+	m.phone.open_app("style")
+	await _save(out, "phone_style")
 	m.phone.open_app("contacts")
 	await _save(out, "phone_contacts")
 	m.phone.push(g.contact("okka").name, func(gg): return m.phone.app_by_id("contacts").detail(gg, "okka"))

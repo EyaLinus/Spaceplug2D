@@ -49,6 +49,40 @@ static func character(look: String) -> Texture2D:
 	return tex("chars/%s.png" % look) if look != "" else null
 
 
+## K2: `rel` with exact palette colours swapped ({Color: Color}); cached per swap set. Without swaps (or without the
+## art) it is the plain texture.
+static func recolored(rel: String, swaps: Dictionary) -> Texture2D:
+	var base := tex(rel)
+	if base == null or swaps.is_empty():
+		return base
+	var keys := swaps.keys()
+	keys.sort_custom(func(a, b): return a.to_rgba32() < b.to_rgba32())
+	var key := rel
+	for k in keys:
+		key += "|%s>%s" % [k.to_html(), (swaps[k] as Color).to_html()]
+	if _cache.has(key):
+		return _cache[key]
+	var img := base.get_image()
+	if img == null:
+		return base
+	img = img.duplicate()
+	if img.is_compressed():
+		img.decompress()
+	var lut := {}
+	for k in keys:
+		lut[(k as Color).to_rgba32()] = swaps[k]
+	for y in img.get_height():
+		for x in img.get_width():
+			var c := img.get_pixel(x, y)
+			if c.a > 0.0:
+				var hit = lut.get(Color(c.r, c.g, c.b, 1.0).to_rgba32())
+				if hit != null:
+					img.set_pixel(x, y, Color(hit, c.a))
+	var t := ImageTexture.create_from_image(img)
+	_cache[key] = t
+	return t
+
+
 static func look_for_color(c: Color) -> String:
 	var best := ""
 	var best_d := INF
@@ -63,8 +97,8 @@ static func look_for_color(c: Color) -> String:
 
 ## Draws one character frame with its feet at `feet`. Facing picks the row (down/up/side, left = mirrored side).
 ## Returns false (and draws nothing) if the sheet is missing.
-static func draw_character(ci: CanvasItem, look: String, facing: Vector2, step: int, feet := Vector2(0, 12)) -> bool:
-	var t := character(look)
+static func draw_character(ci: CanvasItem, look: String, facing: Vector2, step: int, feet := Vector2(0, 12), sheet: Texture2D = null) -> bool:
+	var t := sheet if sheet != null else character(look)
 	if t == null:
 		return false
 	var row := 0
@@ -120,16 +154,41 @@ static func ship_module(key: String, level: int) -> Texture2D:
 
 ## Draws the player ship centred on `p` with its upgrade modules (`levels`: upgrade key -> level, like Game.upgrades).
 ## Returns false (and draws nothing) without the hull sprite, so the caller can fall back to procedural drawing.
-static func draw_ship(ci: CanvasItem, levels: Dictionary, p := Vector2.ZERO) -> bool:
-	var hull := tex("ships/ship.png")
+static func draw_ship(ci: CanvasItem, levels: Dictionary, p := Vector2.ZERO, paint: Dictionary = {}, decal := "") -> bool:
+	var hull := recolored("ships/ship.png", paint)
 	if hull == null:
 		return false
 	for k in SHIP_UNDER:
 		_draw_centred(ci, ship_module(k, int(levels.get(k, 0))), p)
 	_draw_centred(ci, hull, p)
+	draw_decal(ci, decal, p)
 	for k in SHIP_OVER:
 		_draw_centred(ci, ship_module(k, int(levels.get(k, 0))), p)
 	return true
+
+
+## K2 ship decals, drawn on the hull in ship pixels (2 game px each; the 16 px hull spans -16..16, nose up).
+static func draw_decal(ci: CanvasItem, id: String, p := Vector2.ZERO) -> void:
+	var dark := Color("#14121c", 0.85)
+	match id:
+		"stripes":
+			ci.draw_rect(Rect2(p + Vector2(-3, -10), Vector2(2, 18)), dark)
+			ci.draw_rect(Rect2(p + Vector2(1, -10), Vector2(2, 18)), dark)
+		"chevron":
+			ci.draw_polyline(PackedVector2Array([p + Vector2(-11, 8), p + Vector2(0, 0), p + Vector2(11, 8)]), dark, 2.0)
+			ci.draw_polyline(PackedVector2Array([p + Vector2(-7, 2), p + Vector2(0, -4), p + Vector2(7, 2)]), dark, 2.0)
+		"flames":
+			for sx in [-1.0, 1.0]:
+				ci.draw_colored_polygon(PackedVector2Array([p + Vector2(sx * 4, 8), p + Vector2(sx * 12, 8), p + Vector2(sx * 6, -2)]), Color("#ff6b5f"))
+				ci.draw_colored_polygon(PackedVector2Array([p + Vector2(sx * 6, 8), p + Vector2(sx * 10, 8), p + Vector2(sx * 7, 2)]), Color("#ffeab0"))
+		"stars":
+			for s in [Vector2(-8, 4), Vector2(9, 6), Vector2(-3, 8), Vector2(5, 0), Vector2(-11, 8), Vector2(12, 9)]:
+				ci.draw_rect(Rect2(p + s, Vector2(2, 2)), Color("#eef0ff"))
+		"skull":
+			ci.draw_rect(Rect2(p + Vector2(-4, 0), Vector2(8, 6)), Color("#eef0ff"))
+			ci.draw_rect(Rect2(p + Vector2(-2, 6), Vector2(4, 2)), Color("#eef0ff"))
+			ci.draw_rect(Rect2(p + Vector2(-3, 2), Vector2(2, 2)), dark)
+			ci.draw_rect(Rect2(p + Vector2(1, 2), Vector2(2, 2)), dark)
 
 
 static func ship_nozzles(engine_level: int) -> Array:

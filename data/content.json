@@ -438,5 +438,66 @@
     "dump_influence": 0.03, "dump_heat_drop": 20,
     "flee_base": 0.35, "flee_engine": 0.12, "flee_speed": 0.3, "flee_fail_damage": 30,
     "fight_heat": 25, "authority_kill_heat": 15
+  },
+  "style": {
+    "_doc": "K2 customization (Style app on the phone). Ramps swap palette roles of the player sprite (hair H/h, skin S/s, jacket C/c/A, pants P) and of the ship hull (y/c/A). cost 0 = owned from the start. Decor is shown in the estates you switch it on for.",
+    "hair": {
+      "brown": {"name": "Brown", "ramp": ["#2a1d18", "#5a3a28"], "cost": 0},
+      "black": {"name": "Black", "ramp": ["#14121c", "#2a1d18"], "cost": 0},
+      "blond": {"name": "Sand blond", "ramp": ["#8a6a3e", "#d9a86c"], "cost": 40},
+      "ginger": {"name": "Ginger", "ramp": ["#8a4a32", "#c27447"], "cost": 40},
+      "silver": {"name": "Silver", "ramp": ["#8a8b9c", "#b4b6c4"], "cost": 60},
+      "violet": {"name": "Violet dye", "ramp": ["#2e2440", "#6a3a8a"], "cost": 90},
+      "neon_pink": {"name": "Neon pink", "ramp": ["#6a3a8a", "#ff9ad5"], "cost": 120},
+      "teal": {"name": "Teal dye", "ramp": ["#1e6e66", "#4fe3c1"], "cost": 120}
+    },
+    "skin": {
+      "medium": {"name": "Medium", "ramp": ["#c99b78", "#8d5a3e"], "cost": 0},
+      "light": {"name": "Light", "ramp": ["#ecc39c", "#c99b78"], "cost": 0},
+      "dark": {"name": "Dark", "ramp": ["#8d5a3e", "#563a2c"], "cost": 0}
+    },
+    "jacket": {
+      "gold": {"name": "Pilot gold", "ramp": ["#ffd166", "#9a6a12", "#ffeab0"], "cost": 0},
+      "slate": {"name": "Dock grey", "ramp": ["#8a8b9c", "#5a5b6a", "#b4b6c4"], "cost": 0},
+      "teal": {"name": "Lab teal", "ramp": ["#4fe3c1", "#1e6e66", "#eef0ff"], "cost": 80},
+      "rust": {"name": "Miner rust", "ramp": ["#c27447", "#8a4a32", "#d9a86c"], "cost": 80},
+      "leaf": {"name": "Grower green", "ramp": ["#5f9a5e", "#3d6a50", "#ffeab0"], "cost": 100},
+      "sky": {"name": "Glacis blue", "ramp": ["#5fb6c9", "#2b5f8a", "#eef0ff"], "cost": 120},
+      "crimson": {"name": "Cartel red", "ramp": ["#ff6b5f", "#6e2230", "#ff9ad5"], "cost": 160},
+      "violet": {"name": "Kingpin violet", "ramp": ["#6a3a8a", "#2e2440", "#ff9ad5"], "cost": 220}
+    },
+    "pants": {
+      "navy": {"name": "Navy", "ramp": ["#1a2a55"], "cost": 0},
+      "black": {"name": "Black", "ramp": ["#1e1b2e"], "cost": 0},
+      "brown": {"name": "Work brown", "ramp": ["#3e2a22"], "cost": 30},
+      "grey": {"name": "Grey", "ramp": ["#3a3a4a"], "cost": 30}
+    },
+    "paint": {
+      "stock": {"name": "Factory gold", "ramp": ["#ffd166", "#9a6a12", "#ffeab0"], "cost": 0},
+      "gunmetal": {"name": "Gunmetal", "ramp": ["#8a8b9c", "#5a5b6a", "#b4b6c4"], "cost": 250},
+      "rust": {"name": "Rustbucket", "ramp": ["#c27447", "#8a4a32", "#d9a86c"], "cost": 200},
+      "teal": {"name": "Ion teal", "ramp": ["#4fe3c1", "#1e6e66", "#eef0ff"], "cost": 300},
+      "snow": {"name": "Clean white", "ramp": ["#b4b6c4", "#8a8b9c", "#eef0ff"], "cost": 350},
+      "crimson": {"name": "Blood red", "ramp": ["#ff6b5f", "#6e2230", "#ff9ad5"], "cost": 400},
+      "ice": {"name": "Glacier", "ramp": ["#5fb6c9", "#2b5f8a", "#eef0ff"], "cost": 400},
+      "violet": {"name": "Nightshade", "ramp": ["#6a3a8a", "#2e2440", "#ff9ad5"], "cost": 450}
+    },
+    "decal": {
+      "none": {"name": "None", "cost": 0},
+      "stripes": {"name": "Racing stripes", "cost": 150},
+      "chevron": {"name": "Chevron", "cost": 150},
+      "stars": {"name": "Star field", "cost": 250},
+      "flames": {"name": "Flames", "cost": 300},
+      "skull": {"name": "Skull", "cost": 400}
+    },
+    "decor": {
+      "plant": {"name": "Potted plant", "cost": 60, "desc": "A leafy pot plant. Something alive that isn't for sale."},
+      "lamp": {"name": "Standing lamp", "cost": 80, "desc": "Warm light for the late shifts."},
+      "rug": {"name": "Woven rug", "cost": 120, "desc": "Covers the stains."},
+      "sofa": {"name": "Battered sofa", "cost": 180, "desc": "For the crew's breaks."},
+      "neon": {"name": "Neon sign", "cost": 250, "desc": "Pink neon that says OPEN, which is a lie."},
+      "aquarium": {"name": "Aquarium", "cost": 400, "desc": "Glowfish from the Glacis domes."},
+      "trophy": {"name": "Gold trophy", "cost": 900, "desc": "For the kingpin who has everything."}
+    }
   }
 }
