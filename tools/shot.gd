@@ -6,6 +6,19 @@ func _init() -> void:
 	_run()
 
 
+const Bench = preload("res://scripts/core/bench.gd")
+
+
+## Walks to building `bid` of the estate surface `cs` and presses E there (opens the station overlay).
+func _use(cs, bid: String) -> void:
+	cs.place_player_at(bid)
+	for i in 3:
+		await physics_frame
+	cs.interact()
+	for i in 3:
+		await process_frame
+
+
 func _save(out: String, name: String) -> void:
 	await process_frame
 	await process_frame
@@ -63,39 +76,81 @@ func _run() -> void:
 		await physics_frame
 	await _save(out, "surface_cannery")
 	sf.interact()
-	m.station._lab_adds = ["nanoflux", "ion_syrup", ""]
-	m.station.refresh()
+	for i in 10:
+		await physics_frame
+	var cs = m.surface
+	cs.place_player_at("b0")
+	for i in 10:
+		await physics_frame
+	await _save(out, "estate_cannery")
+	# production on foot: start overlay, ingredient shelf, one shot per station minigame mid-play
+	var bench = m.bench
+	await _use(cs, "b0")
 	await _save(out, "lab")
-	# one shot per station minigame, mid-play
-	var runner = m.station.runner
-	runner.autoplay = true
-	runner.start("weed", ["nanoflux", "ion_syrup"], 5)
-	var shot: Array = []
-	for i in 4000:
-		await process_frame
-		if runner.current != null and runner.current.elapsed > 1.2 and not runner.plan[runner.index] in shot:
-			shot.append(runner.plan[runner.index])
-			await _save(out, "station_" + runner.plan[runner.index])
-		if not runner.result.is_empty():
+	bench.autoplay = true
+	bench._confirm()
+	var order := {"trim_table": "b0", "extractor": "b2", "mixing_station": "b3", "cook_stove": "b4", "pack_table": "b6"}
+	for st in order:
+		if st != "trim_table":
+			await _use(cs, order[st])
+		if bench.mode == "mix":
+			bench._adds = ["nanoflux", "ion_syrup"]
+			bench._rebuild()
+			await _save(out, "bench_mix")
+			bench._confirm()
+		for i in 4000:
+			await process_frame
+			if bench.current != null and bench.current.elapsed > 1.2:
+				await _save(out, "station_" + st)
+				break
+		bench.autoplay = st != "pack_table"
+		for i in 4000:
+			await process_frame
+			if bench.mode == "result" or not bench.visible:
+				break
+		if st == "pack_table":
 			await _save(out, "station_summary")
-			break
-	runner.abort()
-	g.buy("cannabis", 5)
-	runner.autoplay = false
+		bench.autoplay = true
+		bench.close()
+	bench.autoplay = false
 	g.cargo["pseudo"] = 5
-	g.cargo["nanoflux"] = int(g.cargo.get("nanoflux", 0)) + 5
-	runner.start("meth", ["nanoflux"], 5)
+	await _use(cs, "b1")
+	bench._base = "meth"
+	bench._rebuild()
+	bench._confirm()
 	for i in 40:
 		await process_frame
 	await _save(out, "station_precursor_scale")
-	runner.autoplay = true
+	bench.autoplay = true
 	for i in 4000:
 		await process_frame
-		if runner.current != null and runner.plan[runner.index] == "refiner" and runner.current.elapsed > 3.0:
-			await _save(out, "station_refiner")
+		if not bench.visible:
 			break
-	runner.autoplay = false
-	runner.abort()
+	for st in [["cook_stove", "b4"], ["refiner", "b5"]]:
+		await _use(cs, st[1])
+		for i in 4000:
+			await process_frame
+			if st[0] == "refiner" and bench.current != null and bench.current.elapsed > 3.0:
+				await _save(out, "station_refiner")
+				break
+			if not bench.visible:
+				break
+	bench.autoplay = false
+	bench.close()
+	Bench.abandon(g)
+	cs.place_player_at("stash")
+	for i in 5:
+		await physics_frame
+	cs.interact()
+	await _save(out, "stash_crate")
+	m.station.close()
+	cs.place_player_at("exit")
+	for i in 5:
+		await physics_frame
+	cs.interact()
+	for i in 5:
+		await physics_frame
+	sf = m.surface
 	g.cargo.erase("pseudo")
 	g.start_batch("weed", ["nanoflux"], 5)
 	g.tick(30)

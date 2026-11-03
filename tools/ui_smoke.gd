@@ -6,6 +6,7 @@ extends SceneTree
 ## godot --headless --path . -s res://tools/ui_smoke.gd
 
 const Workers = preload("res://scripts/core/workers.gd")
+const Bench = preload("res://scripts/core/bench.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 
@@ -80,7 +81,7 @@ func _run() -> void:
 	step("walk and collide")
 
 	# every door and person opens exactly its own panel
-	var expect := {"spaceport": "Shipyard", "market": "Market", "cannery": "Lab", "office": "Office",
+	var expect := {"spaceport": "Shipyard", "market": "Market", "office": "Office",
 		"rusk": "Shipyard", "okka": "Deals", "sen": "Deals"}
 	for id in expect:
 		sf.place_player_at(id)
@@ -543,9 +544,10 @@ func _run() -> void:
 	await physics_frame
 	_assert(es.interact(), "use the placed stove")
 	await frames(2)
-	_assert(m.station.tab_names() == ["Lab", "Station"], "placed station opens lab + station (got %s)" % [m.station.tab_names()])
+	_assert(m.bench.visible and m.bench.mode == "wait" and not m.station.visible, "a station without a tray explains where batches start (mode %s)" % m.bench.mode)
+	_assert(m.bench.find_child("TakeDown", true, false) != null, "placed stations can be taken down from their overlay")
 	_assert(g.inside_estate == "cannery_annex" and g.lab_here(), "the estate counts as a lab")
-	m.station.close()
+	m.bench.close()
 	es.place_player_at("exit")
 	await physics_frame
 	await physics_frame
@@ -584,64 +586,100 @@ func _run() -> void:
 
 	gs.act(g.buy("cannabis", 5))
 	gs.act(g.buy("nanoflux", 5))
-	m.station._lab_adds = ["nanoflux", "", ""]
-	m.station._lab_qty = 5
-	m.station.refresh()
 	gs.act(g.start_batch("weed", ["nanoflux"], 5))
 	await frames(2)
 	g.tick(30.0)
 	gs.act(g.collect_stash())
 	await frames(2)
 	_assert(g.has_contraband(), "cooked product")
-	step("quick batch")
+	step("quick batch (core, used by workers and the bot)")
 
-	# hand-made batch: every station minigame through the real lab panel, played by the minigame bots
+	# hand-made batch on foot: the Old Cannery is a starter estate; carry the tray from station to station
 	sf.place_player_at("cannery")
 	await physics_frame
 	await physics_frame
-	sf.interact()
+	_assert(sf.interact(), "cannery door")
 	await frames(2)
+	var cs = m.surface
+	_assert(cs.cfg.get("estate", "") == "cannery_rig" and g.inside_estate == "cannery_rig", "inside the cannery rig")
 	gs.act(g.buy("cannabis", 5))
 	gs.act(g.buy("nanoflux", 5))
-	var runner = m.station.runner
-	runner.autoplay = true
+	var bench = m.bench
+	bench.autoplay = true
 	Engine.time_scale = 6.0
-	_assert(runner.start("weed", ["nanoflux"], 5).ok, "hand batch starts")
-	_assert(runner.plan == ["trim_table", "extractor", "mixing_station", "cook_stove", "pack_table"], "weed stations %s" % [runner.plan])
+	var line := {"trim_table": "b0", "extractor": "b2", "mixing_station": "b3", "cook_stove": "b4", "pack_table": "b6"}
 	var seen: Array = []
-	for i in 3000:
-		await process_frame
-		if runner.current != null and not runner.plan[runner.index] in seen:
-			seen.append(runner.plan[runner.index])
-		if not runner.visible:
-			break
+	for st in line:
+		cs.place_player_at(line[st])
+		await physics_frame
+		await physics_frame
+		_assert(cs.interact(), "use the %s" % st)
+		await frames(2)
+		_assert(bench.visible and bench.station_id == st, "%s overlay open" % st)
+		if bench.mode == "start":
+			_assert(bench.find_child("Base_weed", true, false) != null, "weed card on the trim table")
+			bench._qty = 5
+			bench.find_child("StartBatch", true, false).pressed.emit()
+		elif bench.mode == "mix":
+			bench.find_child("Add_nanoflux", true, false).pressed.emit()
+			await frames(1)
+			_assert("Overclock" in bench.find_child("Preview", true, false).text, "mix preview shows the new trait")
+			bench.find_child("MixGo", true, false).pressed.emit()
+		await frames(1)
+		_assert(bench.current != null, "%s minigame runs" % st)
+		seen.append(st)
+		for i in 3000:
+			await process_frame
+			if not bench.visible:
+				break
+		_assert(not bench.visible, "%s done and closed" % st)
 	Engine.time_scale = 1.0
-	_assert(seen == runner.plan, "every station minigame ran: %s" % [seen])
-	_assert(runner.scores.size() == 5 and not runner.visible, "hand batch finished: %s" % [runner.scores])
-	_assert(g.lab_queue.size() == 1 and g.lab_queue[0].product.begins_with("weed:overclock+radiant"), "hand batch queued: %s" % [g.lab_queue])
-	_assert(m.station.visible, "lab panel still open after the minigames")
-	step("hand batch %s -> %s" % [runner.scores, g.lab_queue[0]])
-	# Esc during a minigame skips the rest (neutral scores) and must not close the lab panel
+	_assert(seen == line.keys(), "every station minigame ran: %s" % [seen])
+	_assert(Bench.tray(g).is_empty() and g.lab_queue.size() == 1 and g.lab_queue[0].product.begins_with("weed:overclock+radiant"), "hand batch queued: %s" % [g.lab_queue])
+	step("hand batch on foot -> %s" % [g.lab_queue[0]])
+	# Esc during a minigame records nothing: the station stays next; scrapping returns the raws to the stash
+	bench.autoplay = false
 	gs.act(g.buy("cannabis", 2))
-	runner.autoplay = false
-	_assert(runner.start("weed", [], 2).ok, "second hand batch starts")
+	cs.place_player_at("b0")
+	await physics_frame
+	await physics_frame
+	cs.interact()
 	await frames(2)
-	var esc := InputEventKey.new()
-	esc.keycode = KEY_ESCAPE
-	esc.physical_keycode = KEY_ESCAPE
-	esc.pressed = true
-	m.get_viewport().push_input(esc)
+	bench._qty = 2
+	bench.find_child("StartBatch", true, false).pressed.emit()
 	await frames(2)
-	_assert(m.station.visible and runner.visible and not runner.result.is_empty(), "Esc skips to the summary, panel stays")
-	_assert(g.lab_queue.size() == 2 and g.lab_queue[1].qty == 2, "skipped batch is standard: %s" % [g.lab_queue])
-	m.get_viewport().push_input(esc)
+	await key(KEY_ESCAPE)
+	_assert(not bench.visible and Bench.next_station(g, Bench.tray(g)) == "trim_table", "Esc stops, trim table stays next")
+	cs.place_player_at("b4")
+	await physics_frame
+	await physics_frame
+	cs.interact()
 	await frames(2)
-	_assert(not runner.visible and m.station.visible, "second Esc closes the summary only")
+	_assert(bench.mode == "wait", "the stove waits for the tray")
+	bench.find_child("Scrap", true, false).pressed.emit()
+	await frames(2)
+	_assert(Bench.tray(g).is_empty() and int(g.stash.get("cannabis", 0)) >= 2, "scrapped tray, raws in the stash")
+	bench.close()
+	# stash crate: cook queue + loading the stash into the hold
 	g.tick(60.0)
-	gs.act(g.collect_stash())
+	cs.place_player_at("stash")
+	await physics_frame
+	await physics_frame
+	_assert(cs.interact(), "stash crate")
+	await frames(2)
+	_assert(m.station.visible and m.station.tab_names() == ["Stash"], "stash crate opens the stash")
+	m.station.find_child("LoadStash", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.cargo.keys().any(func(k): return k.begins_with("weed:overclock+radiant")), "product loaded into the hold")
 	m.station.close()
-	await frames(1)
-	step("minigame skip")
+	cs.place_player_at("exit")
+	await physics_frame
+	await physics_frame
+	cs.interact()
+	await frames(2)
+	sf = m.surface
+	_assert(g.inside_estate == "" and sf.loc_id == "mireth", "out of the cannery")
+	step("minigame stop, scrap, stash crate")
 
 	sf.place_player_at("okka")
 	await physics_frame

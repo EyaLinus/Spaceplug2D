@@ -10,7 +10,7 @@ const Art = preload("res://scripts/core/art.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const Deals = preload("res://scripts/core/deals.gd")
-const RunnerScript = preload("res://scripts/ui/minigames/minigame_runner.gd")
+const Bench = preload("res://scripts/core/bench.gd")
 const ShipPreview = preload("res://scripts/ui/ship_preview.gd")
 const OfficialsApp = preload("res://scripts/ui/phone/apps/officials_app.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
@@ -18,13 +18,9 @@ const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 var tabs: TabContainer
 var _title: Label
 var _desc: Label
-var _lab_base := "weed"
-var _lab_adds: Array = ["", "", ""]
-var _lab_qty := 5
 var _dirty := false
 var _filter: Dictionary = {}  ## {} = full docked menu; else {tabs: [names], title, contact}
 var _leave_btn: Button
-var runner: Control  ## station minigames overlay for hand-made batches
 
 signal close_requested  ## "Leave" pressed while filtered (on a planet surface)
 signal estate_enter_requested(estate_id: String)  ## "Go inside" on an estate you own
@@ -65,9 +61,6 @@ func _ready() -> void:
 	tabs = TabContainer.new()
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(tabs)
-	runner = RunnerScript.new()
-	add_child(runner)
-	runner.closed.connect(func(): refresh())
 	EventBus.game_event.connect(func(_k, _p): _dirty = true)
 	visible = false
 
@@ -79,12 +72,10 @@ func open(filter: Dictionary = {}) -> void:
 	# undock goes through ship_dock, leaving a surface counter through interact (see main.gd)
 	_leave_btn.text = "Undock [%s]" % Settings.key_label("ship_dock") if filter.is_empty() else "Leave [%s]" % Settings.key_label("interact")
 	visible = true
-	_lab_qty = mini(_lab_qty, GameState.game.lab_capacity())
 	refresh(true)
 
 
 func close() -> void:
-	runner.abort()
 	visible = false
 
 
@@ -108,8 +99,6 @@ func refresh(reset_tab := false) -> void:
 		c.queue_free()
 	if _wants("Market"):
 		_add_tab("Market", _build_market(g))
-	if g.lab_here() and _wants("Lab"):
-		_add_tab("Lab", _build_lab(g))
 	if _wants("Deals"):
 		_add_tab("Deals", _build_deals(g))
 	if ld.get("shipyard", false) and _wants("Shipyard"):
@@ -125,8 +114,8 @@ func refresh(reset_tab := false) -> void:
 			_add_tab("Estate", _build_estate(g))
 		if _wants("Build"):
 			_add_tab("Build", _build_build_menu(g))
-		if _wants("Station"):
-			_add_tab("Station", _build_station(g))
+		if _wants("Stash"):
+			_add_tab("Stash", _build_stash(g))
 	tabs.current_tab = clampi(current, 0, tabs.get_tab_count() - 1)
 
 
@@ -197,111 +186,49 @@ func _build_market(g) -> Control:
 
 # ---------------------------------------------------------------- lab
 
-func _build_lab(g) -> Control:
+## Stash crate inside an estate (G2): the cook queue, the stash and loading it into the hold. Production itself
+## happens at the stations (bench_ui.gd), there is no lab menu any more.
+func _build_stash(g) -> Control:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
-	v.add_child(UI.label("Hydro Rig Mk %d · %d units per batch · each unit needs 1 raw + 1 of every additive" % [g.upgrades.lab + 1, g.lab_capacity()], 15, UI.MUTED))
-	var missing: Array = g.missing_stations(_lab_base, _chosen_additives())
-	if not missing.is_empty():
-		var names: Array = []
-		for st in missing:
-			names.append(g.data.stations[st].name)
-		v.add_child(UI.label("This estate still needs: %s (build menu)." % ", ".join(PackedStringArray(names)), 15, UI.WARN))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	v.add_child(row)
-	var base_opt := OptionButton.new()
-	var bases: Array = g.data.bases.keys()
-	for b in bases:
-		base_opt.add_item("T%d %s (from %s)" % [int(g.data.bases[b].get("tier", 1)), g.data.bases[b].name, g.data.raws[g.data.bases[b].raw].name])
-	base_opt.selected = bases.find(_lab_base)
-	base_opt.item_selected.connect(func(i: int):
-		_lab_base = bases[i]
-		refresh())
-	row.add_child(base_opt)
-	var adds: Array = [""] + g.data.additives.keys()
-	for slot in 3:
-		var o := OptionButton.new()
-		for a in adds:
-			o.add_item("— none —" if a == "" else "+ " + g.data.additives[a].name)
-		o.selected = adds.find(_lab_adds[slot])
-		o.item_selected.connect(func(i: int):
-			_lab_adds[slot] = adds[i]
-			refresh())
-		row.add_child(o)
-	var additives := _chosen_additives()
-	var traits: Array = Mixing.traits_for(g.data, _lab_base, additives)
-	var product := Mixing.key(_lab_base, traits)
-	var preview := RichTextLabel.new()
-	preview.bbcode_enabled = true
-	preview.fit_content = true
-	preview.scroll_active = false
-	var parts: Array = []
-	for t in traits:
-		parts.append("[color=%s]%s[/color]" % [g.data.traits[t].color, g.data.traits[t].name])
-	preview.text = "Result: [b]%s[/b]  %s   ·  base value [color=#ffd166]%d cr[/color]/unit" % [
-		g.data.bases[_lab_base].name, ", ".join(PackedStringArray(parts)), int(Mixing.value(g.data, product))]
-	v.add_child(preview)
-	var q := HBoxContainer.new()
-	q.add_theme_constant_override("separation", 10)
-	v.add_child(q)
-	q.add_child(UI.label("Units:"))
-	var spin := SpinBox.new()
-	spin.min_value = 1
-	spin.max_value = g.lab_capacity()
-	spin.value = clampi(_lab_qty, 1, g.lab_capacity())
-	spin.value_changed.connect(func(x: float): _lab_qty = int(x))
-	q.add_child(spin)
-	var need: Array = ["%d %s (have %d)" % [_lab_qty, g.item_name(g.data.bases[_lab_base].raw), g.cargo.get(g.data.bases[_lab_base].raw, 0)]]
-	for a in additives:
-		need.append("%d %s (have %d)" % [_lab_qty, g.item_name(a), g.cargo.get(a, 0)])
-	q.add_child(UI.label("Needs: " + ", ".join(PackedStringArray(need)), 15, UI.MUTED))
-	var st_names: Array = []
-	for id in Production.stations_for(g.data, _lab_base, additives):
-		st_names.append(g.data.stations[id].name)
-	var st_label := UI.label("Stations: " + " → ".join(PackedStringArray(st_names)) + ". By hand you set yield, purity, quality grade and heat; a quick batch is always Standard.", 15, UI.MUTED)
-	st_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	st_label.custom_minimum_size.x = 400
-	v.add_child(st_label)
-	var b_row := HBoxContainer.new()
-	b_row.add_theme_constant_override("separation", 10)
-	v.add_child(b_row)
-	b_row.add_child(UI.button("Cook by hand", func():
-		var r: Dictionary = runner.start(_lab_base, additives, _lab_qty)
-		if not r.ok:
-			GameState.act(r), 160))
-	b_row.add_child(UI.button("Quick batch (Standard)", func(): GameState.act(g.start_batch(_lab_base, additives, _lab_qty)), 220))
-	v.add_child(HSeparator.new())
-	v.add_child(UI.label("Queue", 18, UI.ACCENT))
+	var t: Dictionary = Bench.tray(g)
+	if not t.is_empty():
+		var nxt: String = Bench.next_station(g, t)
+		v.add_child(UI.label("On your tray: %d × %s, next stop %s." % [t.qty, g.data.bases[t.base].name,
+			g.data.stations[nxt].name if nxt != "" else "done"], 16, UI.GOLD))
+	v.add_child(UI.heading("Cooking"))
 	if g.lab_queue.is_empty():
-		v.add_child(UI.label("Idle.", 16, UI.MUTED))
+		v.add_child(UI.label("Nothing in the cooker. Start a batch at the Trim Table or the Precursor Scale.", 15, UI.MUTED))
 	for job in g.lab_queue:
 		var h := HBoxContainer.new()
-		h.add_child(UI.label("%d × %s" % [job.qty, g.item_name(job.product)], 16))
+		h.add_theme_constant_override("separation", 10)
+		h.add_child(Art.with_icon(job.product, UI.label("%d × %s" % [job.qty, g.item_name(job.product)], 16)))
 		var b := UI.bar(UI.ACCENT)
 		b.value = (1.0 - job.remaining / job.total) * 100.0
+		b.tooltip_text = "%d s left" % int(ceil(job.remaining))
 		h.add_child(b)
 		v.add_child(h)
-	v.add_child(UI.label("Stash", 18, UI.ACCENT))
+	v.add_child(UI.heading("Stash"))
 	if g.stash.is_empty():
-		v.add_child(UI.label("Empty.", 16, UI.MUTED))
+		v.add_child(UI.label("Empty.", 15, UI.MUTED))
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	v.add_child(grid)
 	for k in g.stash:
-		v.add_child(UI.label("%d × %s" % [g.stash[k], g.item_name(k)], 16))
-	v.add_child(UI.button("Load stash into cargo", func(): GameState.act(g.collect_stash()), 220))
+		var c := UI.card(Art.with_icon(k, UI.label("%d × %s" % [g.stash[k], g.item_name(k)], 16, UI.WARN if Mixing.is_product(k) else UI.TEXT)))
+		c.custom_minimum_size.x = 250
+		c.tooltip_text = "Product: worth about %d cr per unit at Standard demand." % int(Mixing.value(g.data, k)) if Mixing.is_product(k) else g.item_name(k)
+		grid.add_child(c)
+	var load := UI.accent_button("Load stash into the hold", func(): GameState.act(g.collect_stash()), 260)
+	load.name = "LoadStash"
+	load.disabled = g.stash.is_empty() and g.estate_stock.get(g.inside_estate, {}).is_empty()
+	v.add_child(load)
+	v.add_child(UI.label("Hold %d/%d" % [g.cargo_used(), g.cargo_capacity()], 14, UI.MUTED))
 	return v
 
 
-func _chosen_additives() -> Array:
-	var r: Array = []
-	for a in _lab_adds:
-		if a != "":
-			r.append(a)
-	return r
-
-
-# ---------------------------------------------------------------- deals
-
-## The deal agreed over the Deal-O-Matic with this person: hand it over here.
 func _add_agreed_deal(g, box: VBoxContainer, c: Dictionary) -> void:
 	var o: Dictionary = Deals.open_for(g, c.id)
 	if o.is_empty() or o.state != "accepted":
@@ -416,24 +343,6 @@ func _build_build_menu(g) -> Control:
 	var v := VBoxContainer.new()
 	v.add_child(gr)
 	v.add_child(UI.label("Pick a station, then walk to a free spot: it goes on the cells in front of you. Station kits ordered in the phone's Orders app are placed for free.", 14, UI.MUTED))
-	return v
-
-
-func _build_station(g) -> Control:
-	var id: String = _filter.estate
-	var i: int = _filter.index
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
-	if i >= g.estates[id].buildings.size():
-		return v
-	var b: Dictionary = g.estates[id].buildings[i]
-	var st: Dictionary = g.data.stations[b.id]
-	v.add_child(UI.label("%s · improves %s" % [st.name, st.affects], 17, UI.ACCENT))
-	v.add_child(UI.label(st.get("hint", ""), 15, UI.MUTED))
-	var refund := int(round(int(g.data.buildables[b.id].cost) * float(g.data.estate_refund)))
-	v.add_child(UI.button("Take down (+%d cr)" % refund, func():
-		if GameState.act(g.remove_building(id, i)).ok:
-			estate_changed.emit(), 200))
 	return v
 
 
