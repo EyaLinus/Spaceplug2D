@@ -70,6 +70,7 @@ func _init() -> void:
 		"test_quest_tutorial_flow",
 		"test_quest_retry_and_skip",
 		"test_quest_save",
+		"test_quest_main_chapter1",
 		"test_people_profiles",
 		"test_people_deals",
 		"test_people_save",
@@ -2412,7 +2413,7 @@ func test_quest_tutorial_flow() -> void:
 	Dealers.assign(g, "rook", "mireth")
 	var gv: Dictionary = Dealers.give(g, "rook", key, 3)
 	check(gv.ok and Quests.is_done(g, "tut_dealer"), "dealer stocked: tutorial over (%s)" % gv.msg)
-	check(Quests.tracked(g) == "" or not Quests.in_tutorial(g), "no tutorial quest left")
+	check(not Quests.in_tutorial(g) and Quests.tracked(g) == "main_collector", "tutorial over, main quest tracked")
 	check(log.filter(func(e): return e[0] == "quest_done").size() == 4, "4 tutorial quests finished")
 
 
@@ -2460,8 +2461,59 @@ func test_quest_save() -> void:
 	var g3 := Game.new()
 	g3.from_dict(data, d)
 	check(not Quests.in_tutorial(g3) and Quests.is_done(g3, "tut_cook"), "old saves skip the tutorial")
+	check(Quests.is_active(g3, "main_collector"), "old saves start the main quest")
 	d["quests"] = {"active": ["nope", "tut_price"], "done": ["tut_cook", "bogus"], "step": {"tut_price": 99}, "count": {}, "tracked": "nope"}
 	var g4 := Game.new()
 	g4.from_dict(data, d)
 	check(g4.quests.active == ["tut_price"] and g4.quests.done == ["tut_cook"], "unknown quest ids dropped")
 	check(Quests.step_index(g4, "tut_price") == 1 and Quests.tracked(g4) == "tut_price", "step index clamped, tracking repaired")
+
+
+func test_quest_main_chapter1() -> void:
+	var g := new_game()
+	Quests.start(g, "main_collector")
+	g.location = "mireth"
+	g.credits = 20000
+	var due := g.debt_due_day
+	g.pay_debt(400)
+	check(Quests.is_active(g, "main_collector") and Quests.progress_text(g, "main_collector") == "400/1000", "installment counts up")
+	g.pay_debt(600)
+	check(Quests.is_done(g, "main_collector") and g.debt_due_day == due + 2, "first installment: two extra days")
+	check(Quests.is_active(g, "main_annex") and Quests.target(g).estate == "cannery_annex", "annex quest with its waypoint")
+	check(g.buy_estate("cannery_annex").ok and Quests.is_done(g, "main_annex"), "second estate bought")
+	g.cargo["coca_leaf"] = 4
+	Quests.refresh(g)
+	check(Quests.step_index(g, "main_heavier") == 1, "coca leaf in the hold")
+	g.inside_estate = "cannery_rig"
+	check(Bench.begin(g, "precursor_scale", "cocaine", 4).ok, "cocaine tray")
+	while not Bench.tray(g).is_empty():
+		Bench.record(g, Bench.next_station(g, Bench.tray(g)), 0.7)
+	check(Quests.is_done(g, "main_heavier") and People.state(g, "vesna").known, "cocaine cooked, Vesna met")
+	check(Quests.space_goal(g, Quests.target(g)) == "halvane_gate", "waypoint to Varrow goes through the gate")
+	g.inside_estate = ""
+	g.undock()
+	check(g.jump("halvane_gate").ok, "jumped")
+	check(Quests.step_index(g, "main_kovar") == 1 and Quests.space_goal(g, Quests.target(g)) == "varrow", "in Kovar, waypoint on Varrow")
+	g.dock("varrow")
+	g.note("landed", {"location": "varrow"})
+	check(Quests.is_active(g, "main_rhea"), "landed: Rhea's quest")
+	var key := "cocaine:" + str(data.bases.cocaine.innate)
+	g.cargo[key] = 30
+	var sold := 0
+	for i in 6:
+		g.contact_ready_at.erase("rhea")
+		People.state(g, "rhea").spent = 0
+		var r: Dictionary = g.sell(key, 4, "rhea")
+		if r.ok:
+			sold += 4
+		if Quests.is_done(g, "main_rhea"):
+			break
+	check(Quests.is_done(g, "main_rhea") and People.state(g, "kip").known, "10 units to Rhea (%d sold), Kip met" % sold)
+	for i in 3:
+		SpaceCombat.collect_bounty(g, g.rng)
+	check(Quests.is_done(g, "main_comets") and Quests.is_active(g, "main_clear"), "3 raiders down")
+	g.credits = 100000
+	g.location = "mireth"
+	g.pay_debt(g.debt)
+	check(Quests.is_done(g, "main_clear") and g.state == "won", "debt paid: chapter 1 done")
+	check(g.quests.active.is_empty(), "nothing left in chapter 1")

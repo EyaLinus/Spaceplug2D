@@ -127,7 +127,7 @@ static func collect_bounty(g, rng: RandomNumberGenerator) -> int:
 	var amount := rng.randi_range(int(r[0]), int(r[1]))
 	g.credits += amount
 	g.combat.kills = int(g.combat.kills) + 1
-	g.event.emit("pirate_down", {"bounty": amount})
+	g._emit("pirate_down", {"bounty": amount})
 	return amount
 
 
@@ -175,7 +175,7 @@ static func defeat(g) -> Dictionary:
 	g.combat.shield = 0.0
 	g.combat.idle = 0.0
 	g.combat.boost = float(cfg(g).boost.max)
-	g.event.emit("ship_destroyed", {"lost": lost, "fine": fine})
+	g._emit("ship_destroyed", {"lost": lost, "fine": fine})
 	return {"ok": false, "msg": "Your ship was shot to pieces. Pirates looted %d units, the tow cost %d cr." % [lost, fine], "lost": lost, "fine": fine}
 
 
