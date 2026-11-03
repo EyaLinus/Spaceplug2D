@@ -22,6 +22,7 @@ const Dealers = preload("res://scripts/core/dealers.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
+const Interdiction = preload("res://scripts/core/interdiction.gd")
 
 var data: Dictionary
 var failures := 0
@@ -104,6 +105,10 @@ func _init() -> void:
 		"test_space_wings",
 		"test_cartel_bases",
 		"test_ship_classes",
+		"test_interdiction_chances",
+		"test_interdiction_choices",
+		"test_interdiction_on_jump",
+		"test_quest_chapter2",
 		"test_bribe",
 		"test_corruption_data",
 		"test_heat_per_system",
@@ -2416,7 +2421,8 @@ func test_bench_save() -> void:
 const QUEST_EVENTS := ["bought", "sold", "tray_started", "tray_mixed", "tray_step", "lab_started", "lab_done", "collected",
 	"app_opened", "price_set", "offer_accepted", "dealer_hired", "dealer_stocked", "dealer_collected", "entered_estate", "landed",
 	"docked", "jumped", "met", "estate_bought", "debt_paid", "upgraded", "pirate_down", "building_placed", "worker_hired",
-	"drop_pickup", "weapon_bought", "bribed", "scan_passed", "officer_killed", "product_discovered"]
+	"drop_pickup", "weapon_bought", "bribed", "scan_passed", "officer_killed", "product_discovered",
+	"turf_changed", "base_raided", "interdiction_resolved", "loot"]
 const QUEST_APPS := ["quests", "contacts", "fixers", "hr", "deals", "products", "orders", "map", "deaddrop"]
 
 
@@ -2619,7 +2625,7 @@ func test_quest_main_chapter1() -> void:
 	g.location = "mireth"
 	g.pay_debt(g.debt)
 	check(Quests.is_done(g, "main_clear") and g.state == "won", "debt paid: chapter 1 done")
-	check(g.quests.active.is_empty(), "nothing left in chapter 1")
+	check(g.quests.active == ["main_turf"], "chapter 1 done, chapter 2 starts with Turf War")
 
 
 # ---------------------------------------------------------------- cartels and influence (I1)
@@ -2890,4 +2896,162 @@ func test_ship_classes() -> void:
 	var o := Game.new()
 	o.from_dict(data, old)
 	check(o.ship_class == "courier" and o.hulls == ["courier"], "old or broken saves fly the courier")
+
+
+# ---------------------------------------------------------------- interdiction (D3)
+
+func jump_game() -> Game:
+	var g := fly_game()
+	g.day = 3
+	g.location = ""
+	g.system = "halvane"
+	return g
+
+
+func test_interdiction_chances() -> void:
+	var g := jump_game()
+	for u in data.interdiction.authority_units:
+		check(data.space_combat.enemies.has(u), "authority unit %s known" % u)
+	check(Interdiction.authority_chance(g) == 0.0, "no product, no Authority interdiction")
+	g.cargo = {"weed:glow": 10}
+	g.heat = 10.0
+	check(Interdiction.authority_chance(g) == 0.0, "low heat, no Authority interdiction")
+	g.heat = 90.0
+	check(Interdiction.authority_chance(g) > 0.0 and Interdiction.authority_chance(g) <= float(data.interdiction.max_chance), "hot cargo draws the Authority")
+	Cartels.state(g, "comets").hostility = 0.0
+	var calm := Interdiction.cartel_chance(g, "comets", "halvane")
+	Cartels.state(g, "comets").hostility = 90.0
+	var angry := Interdiction.cartel_chance(g, "comets", "halvane")
+	check(angry > calm and angry <= float(data.interdiction.max_chance), "angry cartels interdict more")
+	g.cargo = {}
+	check(Interdiction.cartel_chance(g, "comets", "halvane") < angry, "an empty hold is less tempting")
+	check(Interdiction.cartel_chance(g, "tide", "halvane") == 0.0, "a cartel with no ground in the system stays home")
+	Cartels.state(g, "comets").weakened = g.day + 1
+	check(Interdiction.cartel_chance(g, "comets", "halvane") == 0.0, "a rebuilding cartel does not interdict")
+	var f := Interdiction.flee_chance(g)
+	g.upgrades.engine = 3
+	check(Interdiction.flee_chance(g) > f, "engines help to flee")
+
+
+func _pending(g: Game, kind: String, cartel := "comets") -> void:
+	g.interdiction = {}
+	Interdiction.begin(g, {"kind": kind, "cartel": cartel if kind == "cartel" else "", "units": ["fighter", "fighter"]})
+
+
+func test_interdiction_choices() -> void:
+	var g := jump_game()
+	var events: Array = []
+	g.event.connect(func(k, p): if k == "interdicted" or k == "interdiction_resolved": events.append(k))
+	check(not Interdiction.resolve(g, "pay").ok, "nothing to resolve")
+	# pay the cartel toll: base + per unit of product
+	g.cargo = {"weed:glow": 10}
+	_pending(g, "cartel")
+	var cost := Interdiction.pay_cost(g, g.interdiction)
+	check(cost == int(data.interdiction.toll_base) + 10 * int(data.interdiction.toll_per_unit), "toll scales with product")
+	g.credits = cost - 1
+	check(not Interdiction.resolve(g, "pay").ok and Interdiction.pending(g), "can't pay: encounter stays open")
+	g.credits = cost + 5
+	var r := Interdiction.resolve(g, "pay")
+	check(r.ok and not r.fight and g.credits == 5 and not Interdiction.pending(g), "toll paid")
+	check(events == ["interdicted", "interdicted", "interdiction_resolved"] or events.count("interdiction_resolved") == 1, "events: %s" % [events])
+	# dump to the cartel: product gone, they gain ground
+	_pending(g, "cartel")
+	g.cargo = {"weed:glow": 10, "cannabis": 4}
+	var sh := Cartels.system_share(g, "halvane", "comets")
+	r = Interdiction.resolve(g, "dump")
+	check(r.ok and not g.cargo.has("weed:glow") and g.cargo.get("cannabis", 0) == 4, "dump hands over product only")
+	check(Cartels.system_share(g, "halvane", "comets") > sh, "the cartel gains ground from the handover")
+	_pending(g, "cartel")
+	check(not Interdiction.resolve(g, "dump").ok, "nothing to dump")
+	# fight: units to spawn
+	r = Interdiction.resolve(g, "fight")
+	check(r.ok and r.fight and r.units.size() == 2 and r.cartel == "comets", "fight hands the wing to the world")
+	# Authority: bribe lowers heat, fighting raises it
+	g.heat = 80.0
+	g.cargo = {"weed:glow": 5}
+	_pending(g, "authority")
+	cost = Interdiction.pay_cost(g, g.interdiction)
+	g.credits = 5000
+	r = Interdiction.resolve(g, "pay")
+	check(r.ok and g.credits == 5000 - cost and g.heat < 80.0, "bribe paid, heat down")
+	_pending(g, "authority")
+	var h := g.heat
+	r = Interdiction.resolve(g, "fight")
+	check(r.fight and g.heat > h and r.cartel == "", "fighting the Authority raises heat")
+	_pending(g, "authority")
+	h = g.heat
+	r = Interdiction.resolve(g, "dump")
+	check(r.ok and not g.has_contraband() and g.heat < h, "dumping before the scan: clean, heat down")
+	# flee: success or a fight with damage
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+	var ok := 0
+	var fights := 0
+	for i in 40:
+		g.combat.hull = SpaceCombat.max_hull(g)
+		g.combat.shield = 0.0
+		_pending(g, "cartel")
+		r = Interdiction.resolve(g, "flee", rng)
+		if r.fight:
+			fights += 1
+			check(g.combat.hull < SpaceCombat.max_hull(g), "a failed escape costs hull")
+		else:
+			ok += 1
+	check(ok > 0 and fights > 0, "fleeing sometimes works (%d / %d)" % [ok, fights])
+	# interceptor kills are a crime, pay nothing
+	var cr := g.credits
+	h = g.heat
+	SpaceCombat.enemy_down(g, "interceptor", "", rng)
+	check(g.credits == cr and g.heat > h, "shooting down an interceptor pays nothing and adds heat")
+
+
+func test_interdiction_on_jump() -> void:
+	var g := jump_game()
+	g.credits = 100000
+	g.cargo = {"weed:glow": 20}
+	Cartels.state(g, "comets").hostility = 100.0
+	Cartels.state(g, "tide").hostility = 100.0
+	Cartels.state(g, "veil").hostility = 100.0
+	var hits := 0
+	var rng_state := g.rng.state
+	for i in 30:
+		g.interdiction = {}
+		var gate: String = Galaxy.gates(g, g.system)[0]
+		check(g.jump(gate).ok, "jump works")
+		if Interdiction.pending(g):
+			hits += 1
+			check(g.interdiction.kind in ["cartel", "authority"] and not (g.interdiction.units as Array).is_empty(), "encounter has a crew")
+	check(hits > 0 and hits < 30, "angry cartels interdict some jumps (%d of 30)" % hits)
+	var d := g.to_dict()
+	check(not d.has("interdiction"), "encounters are not saved")
+	var e := jump_game()
+	e.day = 1
+	e.cargo = {"weed:glow": 20}
+	Cartels.state(e, "comets").hostility = 100.0
+	for i in 10:
+		e.jump(Galaxy.gates(e, e.system)[0])
+	check(not Interdiction.pending(e), "no interdictions on day 1")
+
+
+func test_quest_chapter2() -> void:
+	var g := new_game()
+	var qs: Dictionary = Quests.defs(g)
+	for q in ["main_turf", "main_lanes", "main_nest", "main_rig"]:
+		check(qs.has(q) and int(qs[q].chapter) == 2 and qs[q].main, "chapter 2 quest %s" % q)
+	check((qs.main_clear.next as Array).has("main_turf"), "chapter 2 follows the debt")
+	Quests.start(g, "main_turf")
+	Cartels.gain(g, "mireth", "you", 0.4)
+	check(g.quests.done.has("main_turf") and g.quests.active.has("main_lanes"), "taking a street finishes Turf War")
+	g.day = 3
+	g.interdiction = {}
+	Interdiction.begin(g, {"kind": "cartel", "cartel": "comets", "units": ["fighter"]})
+	Interdiction.resolve(g, "fight")
+	check(g.quests.done.has("main_lanes") and g.quests.active.has("main_nest"), "surviving an interdiction finishes Toll Road")
+	g.system = "kovar"
+	SpaceCombat.raid_base(g, "tide_rig", g.rng)
+	check(g.quests.active.has("main_nest"), "the wrong base does not count")
+	g.system = "halvane"
+	SpaceCombat.raid_base(g, "comet_nest", g.rng)
+	check(g.quests.done.has("main_nest") and g.quests.active.has("main_rig"), "raiding the Nest finishes Smoke the Nest")
+	check(Quests.space_goal(g, {"loc": "tide_rig"}) == "halvane_gate", "the Rig waypoint routes through the gate")
 

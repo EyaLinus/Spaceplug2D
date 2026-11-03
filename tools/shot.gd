@@ -1,4 +1,6 @@
 extends SceneTree
+
+const Interdiction = preload("res://scripts/core/interdiction.gd")
 ## Screenshot tool (needs a display, e.g. xvfb-run): boots the game and saves PNGs of the planet surface, panels and flight.
 ## xvfb-run -s "-screen 0 1280x720x24" godot --path . -s res://tools/shot.gd -- --out /tmp/shots
 
@@ -44,6 +46,7 @@ func _run() -> void:
 	await _save(out, "menu")
 	m.start_new_game(3)
 	var g = gs.game
+	g.data.interdiction.min_day = 9999  # interdictions only where the script asks for one
 	var sf = m.surface
 	for i in 20:
 		await physics_frame
@@ -388,6 +391,14 @@ func _run() -> void:
 		await physics_frame
 	await _save(out, "space_base_raid")
 	w.combat.clear()
+	g.cargo["weed:glow"] = 12
+	Interdiction.begin(g, {"kind": "cartel", "cartel": "comets", "units": ["fighter", "fighter", "fighter", "gunship"]})
+	for i in 4:
+		await process_frame
+	await _save(out, "interdiction")
+	m.interdict.find_child("Interdict_fight", true, false).pressed.emit()
+	w.combat.clear()
+	g.cargo.erase("weed:glow")
 	g.combat.secondary = "missile"
 	g.upgrades = before
 	for loc in m.world.locations:

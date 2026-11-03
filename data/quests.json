@@ -454,6 +454,105 @@
 		"reward": {
 			"credits": 0
 		},
-		"outro": "Account closed. A word of advice: the Black Comets are not the only cartel out there, and they all want what you just built. Chapter 2 is coming."
+		"outro": "Account closed. A word of advice: the Black Comets are not the only cartel out there, and they all want what you just built.",
+		"next": [
+			"main_turf"
+		]
+	},
+	"main_turf": {
+		"title": "Turf War",
+		"giver": "Rhea Dunmore",
+		"main": true,
+		"chapter": 2,
+		"intro": "Debt's gone, so now the cartels see you as competition. Fine. Pick a street and own it: sell there, put a dealer on it, and hold more than half of it.",
+		"steps": [
+			{
+				"text": "Make one location your turf (over 50% influence)",
+				"on": "turf_changed",
+				"match": {
+					"by": "you"
+				},
+				"hint": "Com-Phone → Map → Influence shows who holds what. Sales and dealers take ground."
+			}
+		],
+		"reward": {
+			"credits": 500
+		},
+		"outro": "That's a flag in the ground. The Comets will come for it. Let them.",
+		"next": [
+			"main_lanes"
+		]
+	},
+	"main_lanes": {
+		"title": "Toll Road",
+		"giver": "Rhea Dunmore",
+		"main": true,
+		"chapter": 2,
+		"intro": "The cartels pull haulers out of hyperspace and call it a toll. Next time it happens to you, deal with it: pay, dump, run or shoot. Just live.",
+		"steps": [
+			{
+				"text": "Get through an interdiction on a jump",
+				"on": "interdiction_resolved",
+				"hint": "Jump between systems with product aboard. Angry cartels and high heat make it likelier."
+			}
+		],
+		"reward": {
+			"credits": 400
+		},
+		"outro": "Now you know how they work. Time to hit them where they sleep.",
+		"next": [
+			"main_nest"
+		]
+	},
+	"main_nest": {
+		"title": "Smoke the Nest",
+		"giver": "Rhea Dunmore",
+		"main": true,
+		"chapter": 2,
+		"intro": "Vash Orrin runs the Black Comets out of a gutted ore hauler in deep Halvane space. Four turrets, a hangar of fighters. Bring missiles, flak or ion, and a hull that can take it. Burn it.",
+		"steps": [
+			{
+				"text": "Destroy the Comet Nest",
+				"on": "base_raided",
+				"match": {
+					"cartel": "comets"
+				},
+				"target": {
+					"loc": "comet_nest"
+				},
+				"hint": "Ion bolts hit bases twice as hard. A Corvette from the shipyard helps."
+			}
+		],
+		"reward": {
+			"credits": 1200
+		},
+		"outro": "Halvane just got a lot quieter. Ilse Marrow called. She wasn't congratulating you.",
+		"next": [
+			"main_rig"
+		]
+	},
+	"main_rig": {
+		"title": "Cold Front",
+		"giver": "Rhea Dunmore",
+		"main": true,
+		"chapter": 2,
+		"intro": "The Saltglass Tide put a price on your head. Their rig sits in deep Kovar space with gunship escorts. Take it out before their wings take you out.",
+		"steps": [
+			{
+				"text": "Destroy the Saltglass Rig in Kovar",
+				"on": "base_raided",
+				"match": {
+					"cartel": "tide"
+				},
+				"target": {
+					"loc": "tide_rig"
+				},
+				"hint": "Gunships take double ion damage. Repair and restock at Mireth's mechanic first."
+			}
+		],
+		"reward": {
+			"credits": 2000
+		},
+		"outro": "Two cartels bleeding, one still watching from Varrow. That's the Ninth Veil's game, and it's a longer one. Chapter 3 is coming."
 	}
 }

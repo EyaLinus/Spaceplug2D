@@ -16,6 +16,8 @@ const SlotPanelScript = preload("res://scripts/ui/menu/slot_panel.gd")
 const SettingsPanelScript = preload("res://scripts/ui/menu/settings_panel.gd")
 const PhoneScript = preload("res://scripts/ui/phone/phone.gd")
 const HyperspaceScript = preload("res://scripts/ui/hyperspace.gd")
+const InterdictCardScript = preload("res://scripts/ui/interdict_card.gd")
+const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
@@ -45,6 +47,7 @@ var hud: Control
 var station: Control
 var bench: Control  ## station overlay on foot: start a tray, mix, play the station minigame (G2)
 var hyper: Control  ## jump-drive charge streaks and the hyperspace transition
+var interdict: Control  ## interdiction card after a jump (D3)
 var phone: Control  ## Com-Phone overlay (scripts/ui/phone), usable in flight and on foot
 var menu: Control
 var pause_menu: Control
@@ -84,6 +87,9 @@ func _ready() -> void:
 	root.add_child(phone)
 	hyper = HyperspaceScript.new()
 	root.add_child(hyper)
+	interdict = InterdictCardScript.new()
+	root.add_child(interdict)
+	interdict.resolved.connect(_on_interdiction_resolved)
 	station.estate_enter_requested.connect(func(eid: String): enter_estate(eid))
 	station.place_requested.connect(func(st: String):
 		station.close()
@@ -205,6 +211,7 @@ func _enter_game() -> void:
 	_leave_surface()
 	menu.close()
 	end_screen.visible = false
+	interdict.visible = false
 	pause_menu.close()
 	slot_panel.close()
 	settings_panel.close()
@@ -276,6 +283,28 @@ func _arrive(gate: String) -> void:
 	world.place_ship_at(arrive if world.locations.has(arrive) else g.patrol_home(g.system))
 	world.ship.velocity = Vector2.DOWN * 220.0
 	hyper.play_jump(str(g.system_data().get("name", g.system)))
+	GameState.save_game()
+
+
+## A jump was intercepted: freeze the flight and put the choice in front of the player.
+func _show_interdiction() -> void:
+	var g = GameState.game
+	if g == null or not Interdiction.pending(g):
+		return
+	phone.close()
+	world.ship.stop()
+	GameState.paused = true
+	interdict.open(g)
+
+
+func _on_interdiction_resolved(r: Dictionary) -> void:
+	GameState.paused = false
+	EventBus.toast.emit(str(r.msg), not r.fight)
+	if r.fight:
+		var g = GameState.game
+		var ahead: Vector2 = world.ship.position + Vector2.UP.rotated(world.ship.rotation) * 520.0
+		world.combat.spawn_wing(g, str(r.cartel), r.units, ahead)
+		world.combat.shake = 6.0
 	GameState.save_game()
 
 
@@ -418,6 +447,8 @@ func undock() -> void:
 
 
 func toggle_pause() -> void:
+	if interdict.visible:
+		return
 	GameState.paused = not GameState.paused
 	if GameState.paused:
 		pause_menu.open()
@@ -438,6 +469,7 @@ func show_main_menu() -> void:
 	slot_panel.close()
 	settings_panel.close()
 	end_screen.visible = false
+	interdict.visible = false
 	menu.open()
 	AudioManager.set_ambient(false)
 
@@ -452,7 +484,7 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		if p.won:
 			var left: int = (g.quests.active as Array).filter(func(q): return Quests.defs(g).get(q, {}).get("main", false)).size()
 			_end_label.text = "DEBT CLEARED · CHAPTER 1 COMPLETE\n\nThe Consortium closes your account. Day %d, %d cr earned, %d units moved, busted %d×.\n%s" % [g.day, g.stats.earned, g.stats.units_sold, g.stats.busts,
-				"Your main quest goes on: check the Quests app." if left > 0 else "Chapter 2, the cartel war, arrives in a later build. The Reach is yours to grow."]
+				"Your main quest goes on: check the Quests app." if left > 0 else "The cartel war is over for now. Chapter 3 arrives in a later build."]
 		else:
 			_end_label.text = "THE CONSORTIUM CAME TO COLLECT\n\nYou still owed %d cr on day %d.\nEarned %d cr, moved %d units, busted %d×." % [g.debt, g.day, g.stats.earned, g.stats.units_sold, g.stats.busts]
 		end_screen.visible = true
@@ -495,6 +527,8 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 	elif kind == "dealer_robbed":
 		var gm = GameState.game
 		EventBus.toast.emit("%s robbed %s on %s: %d cr and %d units gone." % [gm.data.cartels.gangs.get(p.cartel, {}).get("name", "A cartel"), Dealers.candidate(gm, p.dealer).name, gm.loc_data(p.loc).get("name", ""), p.credits, p.units], false)
+	elif kind == "interdicted":
+		_show_interdiction.call_deferred()  # after _arrive has built the new system
 	elif kind == "jump_ready":
 		_engage_drive.call_deferred()  # not inside Game.tick: the jump ticks the game itself
 	elif kind == "jump_cancelled":

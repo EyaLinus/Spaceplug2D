@@ -430,5 +430,13 @@
     "rob_chance": 0.6, "rob_cash": 0.5, "rob_stock": 0.3,
     "hostility_per_share": 150, "hostility_per_kill": 3, "hostility_per_raid": 30, "hostility_decay": 2,
     "weakened_days": 3, "pressure_min": 0.5, "pressure_max": 1.2
+  },
+  "interdiction": {
+    "min_day": 2, "cartel_base": 0.05, "cartel_hostility": 0.35, "cargo_bonus": 0.1, "max_chance": 0.5,
+    "authority_base": 0.1, "authority_heat": 0.4, "authority_units": ["interceptor", "interceptor"],
+    "toll_base": 120, "toll_per_unit": 6, "bribe_base": 150, "bribe_heat_drop": 30,
+    "dump_influence": 0.03, "dump_heat_drop": 20,
+    "flee_base": 0.35, "flee_engine": 0.12, "flee_speed": 0.3, "flee_fail_damage": 30,
+    "fight_heat": 25, "authority_kill_heat": 15
   }
 }
