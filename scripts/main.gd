@@ -450,6 +450,8 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		EventBus.toast.emit("A drop was cleaned out: %d units stolen." % p.qty, false)
 	elif kind == "met":
 		EventBus.toast.emit("New contact: %s. Open the Com-Phone [%s]." % [GameState.game.contact(p.contact).name, Settings.key_label("phone")], true)
+	elif kind == "notice":
+		EventBus.toast.emit(p.text, p.good)
 	elif kind == "jump_ready":
 		_engage_drive.call_deferred()  # not inside Game.tick: the jump ticks the game itself
 	elif kind == "jump_cancelled":

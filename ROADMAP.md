@@ -122,7 +122,7 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
   cover objects on surfaces, officers can draw weapons at high heat. Not parallel with B1 (surface.gd).
 - [x] **E2 Space combat.** Hull + shield, lasers and missiles, dodge (boost), pirate ships that attack in deep space,
   weapon/shield modules at the mechanic (visible via E3). Not parallel with A6 (world.gd).
-- **F1 Heat II + corruption** (PR #29). Heat per system and personal "wanted" level; corrupt inspectors, customs officers and
+- [x] **F1 Heat II + corruption.** Heat per system and personal "wanted" level; corrupt inspectors, customs officers and
   patrol captains as named NPCs (people.gd) you recruit with bribes: tip-offs before raids, cargo passes scanners.
   Replaces the office fixer bribe. Needs A1, D1.
 - **D3 Interdiction** → phase 3 wave 9. Jumps can be intercepted by pirates or the Authority: fight (E2), pay, dump cargo or flee.
@@ -150,7 +150,7 @@ price balance stays eyeballed. Phase-2 milestones still open are folded in where
 ### Wave 3 – finish phase 2 logistics (v0.1.7)
 Finished work from earlier sessions that only had to be merged on top of each other.
 - [x] **A4 DeadDrops** (#36) · [x] **E1 Ground combat** (#37) · [x] **E2 Space combat** (#38)
-- [x] **A6 Galaxy Map + Jump Drive** (#33) · [x] **B3 Workers & HR** (#30) · [ ] **F1 Heat II + corruption** (#29)
+- [x] **A6 Galaxy Map + Jump Drive** (#33) · [x] **B3 Workers & HR** (#30) · [x] **F1 Heat II + corruption** (#29)
 - → **Release v0.1.7**.
 
 ### Wave 5 – no more prototype menus (v0.1.8)

@@ -131,6 +131,37 @@ func _run() -> void:
 	_assert(not m.phone.visible and not gs.paused, "Esc from home closes the phone without pausing")
 	step("com-phone contacts")
 
+	# Fixers app: heat per system, wanted level, recruit the local inspector
+	await key(KEY_TAB)
+	var ftile: Button = m.phone.find_child("App_fixers", true, false)
+	_assert(ftile != null, "fixers app tile")
+	ftile.pressed.emit()
+	await frames(2)
+	_assert(m.phone.current_title() == "Fixers" and m.phone.find_child("Wanted", true, false) != null, "fixers app shows the wanted level")
+	var frow: Button = m.phone.find_child("Official_vell", true, false)
+	_assert(frow != null and m.phone.find_child("Official_roe", true, false) == null, "only met officials listed")
+	frow.pressed.emit()
+	await frames(2)
+	g.credits = 5000
+	g.add_heat(30)
+	var rbtn: Button = m.phone.find_child("Recruit_vell", true, false)
+	_assert(rbtn != null and not rbtn.disabled, "recruit button on the inspector profile")
+	rbtn.pressed.emit()
+	await frames(2)
+	_assert(g.corruption.officials.vell.hired, "inspector recruited from the phone")
+	var fix: Button = m.phone.find_child("Fix10_vell", true, false)
+	_assert(fix != null, "favour buttons after recruiting")
+	var heat_before: float = g.heat
+	fix.pressed.emit()
+	await frames(2)
+	_assert(g.heat < heat_before, "inspector clears heat from the phone")
+	g.tick(0.1)
+	await frames(2)
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	_assert(not m.phone.visible, "phone closes again")
+	step("com-phone fixers")
 	# HR app: hire through the phone, assign, set the auto recipe, a day passes and wages are paid
 	var hr_saved: Dictionary = g.to_dict()
 	g.credits += 5000
@@ -177,9 +208,10 @@ func _run() -> void:
 	_assert(g.has_contraband(), "take button loads the products")
 	g.inside_estate = ""
 	var c1: int = g.credits
+	var w1: int = int(g.stats.get("wages", 0))
 	g.tick(g.day_seconds())
 	await frames(2)
-	_assert(g.credits == c1 - Workers.wage_total(g), "wages are charged on a new day")
+	_assert(g.credits < c1 and int(g.stats.wages) - w1 == Workers.wage_total(g), "wages are charged on a new day")  # other daily costs (retainers) may apply too
 	await key(KEY_ESCAPE)
 	await key(KEY_ESCAPE)
 	await key(KEY_ESCAPE)
@@ -308,13 +340,13 @@ func _run() -> void:
 	await frames(3)
 	var ddeal: Button = m.phone.find_child("DropDeal_%d" % int(doffer.id), true, false)
 	_assert(ddeal != null and not ddeal.disabled, "drop-off button for the deal")
-	var dcredits: int = g.credits
+	var dearned: int = int(g.stats.earned)
 	ddeal.pressed.emit()
 	await frames(2)
 	_assert(doffer.state == "dropped", "goods left in the drop")
 	g.tick(40.0)
 	await frames(2)
-	_assert(doffer.state == "done" and g.credits >= dcredits + int(doffer.price) * int(doffer.qty), "customer collected and paid")
+	_assert(doffer.state == "done" and int(g.stats.earned) - dearned == int(doffer.price) * int(doffer.qty), "customer collected and paid")  # credits also move with retainers
 	await key(KEY_ESCAPE)
 	await key(KEY_ESCAPE)
 	_assert(not m.phone.visible, "phone closes after deaddrop")
