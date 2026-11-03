@@ -39,6 +39,9 @@ func _ready() -> void:
 		"hurt": _sweep(260.0, 90.0, 0.2, 0.5, "square"),
 		"quest_step": _chord([660.0, 880.0], 0.25, 0.35),
 		"quest_done": _chord([523.0, 659.0, 784.0, 1047.0], 0.7, 0.4),
+		"coin": _chord([988.0, 1319.0], 0.18, 0.35),
+		"flak": _sweep(500.0, 140.0, 0.12, 0.45, "square"),
+		"ion": _sweep(200.0, 1600.0, 0.25, 0.35),
 	}
 	for i in POOL:
 		var p := AudioStreamPlayer.new()

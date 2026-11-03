@@ -362,6 +362,33 @@ func _run() -> void:
 		await physics_frame
 	await _save(out, "space_combat")
 	w.combat.clear()
+	# space combat II: a Comet wing with a gunship, flak in the air, a loot crate; then the Comet Nest turrets
+	g.combat.secondary = "flak"
+	var wing: Array = []
+	for e in [["fighter", Vector2(-170, -250)], ["fighter", Vector2(190, -230)], ["gunship", Vector2(-10, -200)]]:
+		wing.append(w.combat.spawn_enemy(g, e[0], "comets", w.ship.position + e[1]))
+	w.combat.drop_loot(w.ship.position + Vector2(120, 80), [{"item": "credits", "qty": 10}])
+	w.combat._missile_cd = 0.0
+	w.combat.fire_flak(g)
+	for f in 4:
+		for en in wing:
+			en.velocity = Vector2.ZERO
+		await physics_frame
+	await _save(out, "space_wing")
+	w.combat.clear()
+	var nest: Node2D = w.locations["comet_nest"]
+	w.ship.position = nest.position + Vector2(90, 200)
+	w.ship.rotation = -0.4
+	w.ship.stop()
+	w.camera.reset_smoothing()
+	for i in 50:
+		await physics_frame
+	w.combat.damage_base(g, "comet_nest", 250.0)
+	for i in 4:
+		await physics_frame
+	await _save(out, "space_base_raid")
+	w.combat.clear()
+	g.combat.secondary = "missile"
 	g.upgrades = before
 	for loc in m.world.locations:
 		m.world.ship.position = m.world.locations[loc].position + Vector2(0, m.world.locations[loc].radius + 120)

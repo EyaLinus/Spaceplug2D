@@ -11,6 +11,8 @@ const Workers = preload("res://scripts/core/workers.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Combat = preload("res://scripts/core/combat.gd")
+const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
+const Cartels = preload("res://scripts/core/cartels.gd")
 
 var steps := 0
 
@@ -190,6 +192,8 @@ func _run() -> void:
 	sf.interact()
 	await frames(2)
 	_assert(m.station.find_child("Up_cargo", true, false) != null and m.station.find_child("Up_laser", true, false) != null, "upgrade cards")
+	_assert(m.station.find_child("Up_flak", true, false) != null and m.station.find_child("Up_ion", true, false) != null, "flak and ion cards")
+	_assert(m.station.find_child("Hull_hauler", true, false) != null and m.station.find_child("Hull_courier", true, false) == null, "hull cards (not for the one you fly)")
 	m.station.close_requested.emit()
 	await frames(1)
 	step("market basket + shipyard cards")
@@ -944,6 +948,8 @@ func _run() -> void:
 
 	await _space_combat(m, g)
 	step("space combat")
+	await _space_combat_2(m, g)
+	step("space combat II: wings, flak, ion, loot, cartel base")
 
 	m.toggle_pause()
 	await frames(2)
@@ -1157,5 +1163,91 @@ func _space_combat(m, g) -> void:
 	await frames(2)
 	_assert(cb.pirates.is_empty() and not w.combat_hud.visible, "no pirates or combat HUD while docked")
 	w.active = true
+	await frames(2)
+
+
+## E4: cartel wings, flak, ion stun, loot crates, a cartel base raid.
+func _space_combat_2(m, g) -> void:
+	var w = m.world
+	var cb = w.combat
+	w.clear_patrols()
+	g.heat = 0.0
+	g.combat.hull = SpaceCombat.max_hull(g)
+	for pos in [Vector2(-3000, 3000), Vector2(3000, 3000), Vector2(3000, -3000), Vector2.ZERO]:
+		w.ship.position = pos
+		if w.nearest_location_distance() > 1200.0:
+			break
+	w.ship.rotation = 0.0
+	w.ship.stop()
+	# a wing of tinted cartel ships
+	var ships: Array = cb.spawn_wing(g, "comets", ["fighter", "fighter", "gunship"], w.ship.position + Vector2(0, -900))
+	_assert(ships.size() == 3 and ships[2].kind == "gunship" and ships[0].cartel == "comets" and cb.pirates.size() == 3, "cartel wing spawns")
+	cb.clear()
+	# flak shreds a fighter up close
+	g.upgrades.flak = 2
+	g.upgrades.ion = 1
+	g.upgrades.missile = 1
+	g.combat.secondary = "flak"
+	var f = cb.spawn_enemy(g, "fighter", "comets", w.ship.position + Vector2(0, -150))
+	var kills: int = g.combat.kills
+	var host := Cartels.hostility(g, "comets")
+	for i in 120:
+		f.position = w.ship.position + Vector2(0, -150)
+		f.velocity = Vector2.ZERO
+		cb._missile_cd = 0.0
+		cb.fire_flak(g)
+		await physics_frame
+		if g.combat.kills > kills:
+			break
+	_assert(g.combat.kills == kills + 1 and Cartels.hostility(g, "comets") > host and int(Cartels.state(g, "comets").kills) >= 1, "flak downs a cartel fighter and angers the cartel")
+	# ion stuns a gunship
+	cb._missile_cd = 0.0
+	var gs = cb.spawn_enemy(g, "gunship", "tide", w.ship.position + Vector2(0, -350))
+	_assert(cb.fire_ion(g), "ion bolt fired")
+	for i in 60:
+		gs.position = w.ship.position + Vector2(0, -350)
+		await physics_frame
+		if gs.stun > 0.0:
+			break
+	_assert(gs.stun > 0.0 and gs.hull < float(g.data.space_combat.enemies.gunship.hull), "ion stuns and damages the gunship")
+	cb.clear()
+	# loot crate: fly over it
+	g.cargo.erase("pseudo")
+	var cr: int = g.credits
+	cb.drop_loot(w.ship.position + Vector2(0, -10), [{"item": "credits", "qty": 77}, {"item": "pseudo", "qty": 2}])
+	await frames(3)
+	_assert(cb.loot.is_empty() and g.credits == cr + 77 and int(g.cargo.get("pseudo", 0)) == 2, "loot crate picked up")
+	# the HUD shows the secondary weapon
+	g.combat.secondary = "ion"
+	await frames(2)
+	_assert(w.combat_hud._missiles.text.contains("Ion") and w.combat_hud._missiles.text.contains("switch"), "HUD shows the selected secondary")
+	# raid the Comet Nest: turrets wake up, defenders launch, the base dies to concentrated fire
+	var nest: Node2D = w.locations["comet_nest"]
+	w.ship.position = nest.position + Vector2(0, 600)
+	w.ship.rotation = 0.0
+	w.ship.stop()
+	await frames(3)
+	var bs: Dictionary = cb.bases.get("comet_nest", {})
+	_assert(not bs.is_empty() and bs.awake and cb.pirates.size() >= 1, "base wakes up and launches defenders")
+	cr = g.credits
+	g.combat.hull = 9999.0
+	cb.damage_base(g, "comet_nest", float(bs.hull) - 1.0)
+	_assert(cb.bases.has("comet_nest"), "base survives until the last hit")
+	for e in cb.pirates:
+		e.queue_free()
+	cb.pirates.clear()
+	cb._add_bolt(nest.position + Vector2(0, 40), Vector2.ZERO, 0.5, 10.0, true)
+	await physics_frame
+	await physics_frame
+	_assert(not cb.bases.has("comet_nest") and Cartels.weakened(g, "comets") and g.credits > cr, "laser hit finishes the base: raid paid, cartel weakened")
+	_assert(not cb.loot.is_empty(), "the base drops loot")
+	cb.clear()
+	g.combat.hull = SpaceCombat.max_hull(g)
+	g.upgrades.flak = 0
+	g.upgrades.ion = 0
+	g.upgrades.missile = 0
+	g.combat.secondary = "missile"
+	Cartels.state(g, "comets").weakened = 0
+	w.place_ship_at("mireth")
 	await frames(2)
 

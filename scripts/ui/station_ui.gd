@@ -496,6 +496,7 @@ func _build_shipyard(g) -> Control:
 	var right := VBoxContainer.new()  # the tab itself scrolls
 	right.add_theme_constant_override("separation", 10)
 	right.add_child(grid)
+	right.add_child(_build_hulls(g))
 	right.add_child(_build_mechanic(g))
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 16)
@@ -515,9 +516,46 @@ const UPGRADE_TIPS := {
 	"lab": "More units per batch at every station line.",
 	"laser": "Damage per laser bolt in space combat [J].",
 	"missile": "Homing missile pods [K]; restock at the mechanic.",
+	"flak": "Secondary weapon: a cone of flak pellets, shreds fighter swarms up close. No ammo. Switch with [Q].",
+	"ion": "Secondary weapon: an ion bolt that stuns ships around the hit and hits gunships and bases twice as hard. Switch with [Q].",
 	"shield": "Regenerating shield that soaks hits before the hull.",
 	"hull": "More hull points before the ship is crippled.",
 }
+
+
+## Hull classes: buy a new ship or switch to one you own. Modules move over.
+func _build_hulls(g) -> Control:
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	v.add_child(UI.heading("Hulls", 16))
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	for id in g.data.get("ship_classes", {}):
+		var sc: Dictionary = g.data.ship_classes[id]
+		var c := VBoxContainer.new()
+		c.add_theme_constant_override("separation", 2)
+		c.custom_minimum_size.x = 270
+		var flying: bool = g.ship_class == id
+		c.add_child(UI.label(str(sc.name) + ("  · flying" if flying else ""), 16, UI.ACCENT if flying else UI.GOLD))
+		var stats: Array = []
+		for k in [["cargo", "hold"], ["hull", "armour"], ["shield", "shield"], ["speed", "speed"], ["laser", "lasers"]]:
+			var m := float(sc.get(k[0], 1.0))
+			if not is_equal_approx(m, 1.0):
+				stats.append("%s %s%d%%" % [k[1], "+" if m > 1.0 else "", int(round((m - 1.0) * 100.0))])
+		c.add_child(UI.label(", ".join(PackedStringArray(stats)) if not stats.is_empty() else "baseline", 13, UI.MUTED))
+		if not flying:
+			var owned: bool = g.hulls.has(id)
+			var b := UI.accent_button("Switch (owned)" if owned else "Buy · %d cr" % int(sc.price), func(): GameState.act(g.buy_ship(id)))
+			b.name = "Hull_" + id
+			b.disabled = not owned and int(sc.price) > g.credits
+			c.add_child(b)
+		var card := UI.card(c)
+		card.tooltip_text = str(sc.get("desc", ""))
+		grid.add_child(card)
+	v.add_child(grid)
+	return v
 
 
 ## Mechanic: hull repairs and missile restocks (the weapon, shield and armour modules are in the grid above).
@@ -547,6 +585,8 @@ static func _upgrade_value(key: String, v) -> String:
 		"lab": return "%d units/batch" % int(v)
 		"laser": return "%d damage/shot" % int(v)
 		"missile": return "no pods" if int(v) == 0 else "%d missiles" % int(v)
+		"flak": return "no battery" if int(v) == 0 else "%d dmg/pellet" % int(v)
+		"ion": return "no emitter" if int(v) == 0 else "%d ion dmg" % int(v)
 		"shield": return "no shield" if int(v) == 0 else "%d shield" % int(v)
 		"hull": return "%d hull" % int(v)
 	return str(v)

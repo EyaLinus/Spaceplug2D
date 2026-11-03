@@ -99,6 +99,11 @@ func _init() -> void:
 		"test_cartels_influence",
 		"test_cartels_daily_and_robbery",
 		"test_cartels_save",
+		"test_space_enemies_and_loot",
+		"test_space_secondaries",
+		"test_space_wings",
+		"test_cartel_bases",
+		"test_ship_classes",
 		"test_bribe",
 		"test_corruption_data",
 		"test_heat_per_system",
@@ -2746,4 +2751,143 @@ func test_cartels_save() -> void:
 	var b := Game.new()
 	b.from_dict(data, bad)
 	check(Cartels.share(b, "mireth") + Cartels.share(b, "mireth", "comets") <= 1.0001, "garbage shares are normalised")
+
+
+# ---------------------------------------------------------------- space combat II (E4)
+
+func test_space_enemies_and_loot() -> void:
+	for k in ["fighter", "gunship", "interceptor"]:
+		var e: Dictionary = data.space_combat.enemies[k]
+		for f in ["hull", "speed", "turn", "orbit", "detect", "fire_cooldown", "damage", "bolt_speed", "bolt_range", "spread_degrees", "bounty", "radius", "shots"]:
+			check(e.has(f), "enemy %s has %s" % [k, f])
+	for k in data.space_combat.loot:
+		for item in data.space_combat.loot[k].items:
+			check(item == "product" or data.raws.has(item) or data.additives.has(item), "loot %s item %s exists" % [k, item])
+	var g := fly_game()
+	check(SpaceCombat.enemy_cfg(g, "pirate") == data.space_combat.pirate and SpaceCombat.enemy_cfg(g, "gunship").hull == data.space_combat.enemies.gunship.hull, "enemy rules by kind")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	var events: Array = []
+	g.event.connect(func(k, p): if k == "pirate_down": events.append(p))
+	var cr: int = g.credits
+	var r := SpaceCombat.enemy_down(g, "gunship", "comets", rng)
+	var br: Array = data.space_combat.enemies.gunship.bounty
+	check(int(r.bounty) >= int(br[0]) and int(r.bounty) <= int(br[1]) and g.credits == cr + int(r.bounty), "gunship bounty paid")
+	check(not (r.loot as Array).is_empty(), "a gunship always drops loot")
+	check(events.size() == 1 and events[0].kind == "gunship" and events[0].cartel == "comets", "pirate_down names kind and cartel")
+	check(int(Cartels.state(g, "comets").kills) == 1, "cartel kill counted")
+	# loot items are valid cargo
+	for i in 30:
+		for l in SpaceCombat.roll_loot(g, "fighter", rng):
+			check(l.item == "credits" or l.item == "missiles" or data.raws.has(l.item) or data.additives.has(l.item) or Mixing.is_product(l.item), "loot item valid: %s" % l.item)
+	check(SpaceCombat.roll_loot(g, "interceptor", rng).is_empty(), "Authority ships drop nothing")
+	# collecting
+	g.upgrades.missile = 1
+	g.combat.missiles = 3
+	g.credits = 100
+	var c := SpaceCombat.collect_loot(g, [{"item": "credits", "qty": 50}, {"item": "missiles", "qty": 5}, {"item": "pseudo", "qty": 4}])
+	check(c.ok and g.credits == 150 and g.combat.missiles == SpaceCombat.missile_cap(g) and g.cargo.get("pseudo", 0) == 4, "loot fills credits, pods up to capacity and the hold")
+	g.cargo = {"cannabis": g.cargo_capacity()}
+	check(not SpaceCombat.collect_loot(g, [{"item": "pseudo", "qty": 2}]).ok, "a full hold leaves the crate")
+
+
+func test_space_secondaries() -> void:
+	var g := fly_game()
+	check(SpaceCombat.secondaries(g).is_empty() and SpaceCombat.secondary(g) == "", "no secondary weapon at the start")
+	g.upgrades.flak = 1
+	check(SpaceCombat.secondary(g) == "flak" and SpaceCombat.flak_damage(g) == float(data.upgrades.flak.levels[1]), "flak battery fitted")
+	g.upgrades.missile = 1
+	g.upgrades.ion = 2
+	check(SpaceCombat.secondaries(g) == ["missile", "flak", "ion"], "cycle order")
+	check(SpaceCombat.secondary(g) == "missile", "missiles selected by default")
+	check(SpaceCombat.cycle_secondary(g) == "flak" and SpaceCombat.cycle_secondary(g) == "ion" and SpaceCombat.cycle_secondary(g) == "missile", "cycling wraps")
+	g.combat.secondary = "ion"
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(SpaceCombat.secondary(h) == "ion", "selected secondary survives a save")
+
+
+func test_space_wings() -> void:
+	var g := fly_game()
+	for c in data.cartels.gangs:
+		check(not (data.cartels.gangs[c].wing as Dictionary).is_empty(), "cartel %s has a wing" % c)
+		for k in data.cartels.gangs[c].wing:
+			check(data.space_combat.enemies.has(k), "wing of %s uses known ships" % c)
+	Cartels.state(g, "comets").hostility = 0.0
+	var low := SpaceCombat.wing_chance(g, "comets")
+	Cartels.state(g, "comets").hostility = 80.0
+	var high := SpaceCombat.wing_chance(g, "comets")
+	check(high > low and high <= float(data.space_combat.wings.max_chance), "angry cartels send more wings, capped")
+	var u := SpaceCombat.wing_units(g, "comets")
+	check(u.has("gunship") and u.count("fighter") == 4, "at war: gunship and an extra fighter join (%s)" % [u])
+	Cartels.state(g, "comets").hostility = 0.0
+	check(not SpaceCombat.wing_units(g, "comets").has("gunship"), "calm cartels fly fighters only")
+	Cartels.state(g, "comets").weakened = g.day + 2
+	check(SpaceCombat.wing_chance(g, "comets") == 0.0, "a rebuilding cartel sends no wings")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var kinds := {}
+	g.system = "kovar"
+	Cartels.state(g, "tide").hostility = 100.0
+	Cartels.state(g, "veil").hostility = 100.0
+	for i in 200:
+		var pk := SpaceCombat.pick_spawn(g, rng)
+		kinds[pk.cartel] = true
+		check(pk.cartel == "" or Cartels.gang(g, pk.cartel).home == "kovar" or Cartels.system_share(g, "kovar", pk.cartel) > 0.0, "wings come from cartels present in the system")
+	check(kinds.has("tide") or kinds.has("veil"), "Kovar sends cartel wings")
+
+
+func test_cartel_bases() -> void:
+	for c in data.cartels.gangs:
+		var b: String = data.cartels.gangs[c].base
+		check(data.locations.has(b) and data.locations[b].kind == "cartel_base" and data.locations[b].cartel == c, "cartel %s base %s exists" % [c, b])
+		check(not data.locations[b].get("dockable", true), "cartel bases are not dockable")
+	var g := fly_game()
+	check(SpaceCombat.base_cartel(g, "comet_nest") == "comets" and SpaceCombat.base_cartel(g, "mireth") == "", "base owner")
+	check(SpaceCombat.base_active(g, "comet_nest"), "base active at the start")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2
+	var cr: int = g.credits
+	var mi := Cartels.share(g, "cinder", "comets")
+	var r := SpaceCombat.raid_base(g, "comet_nest", rng)
+	check(int(r.credits) > 0 and g.credits == cr + int(r.credits), "raid pays")
+	check(Cartels.share(g, "cinder", "comets") < mi and Cartels.weakened(g, "comets"), "raid costs the cartel its ground and weakens it")
+	check(not SpaceCombat.base_active(g, "comet_nest") and int(SpaceCombat.raid_base(g, "comet_nest", rng).credits) == 0, "a wrecked base pays only once")
+	for i in int(data.cartels.weakened_days) + 1:
+		g._new_day()
+	check(SpaceCombat.base_active(g, "comet_nest"), "the base is rebuilt after a few days")
+	check(Cartels.places(g).find("comet_nest") == -1, "bases hold no street influence")
+
+
+func test_ship_classes() -> void:
+	var g := new_game()
+	check(g.ship_class == "courier" and g.hulls == ["courier"], "start in the courier")
+	var cap := g.cargo_capacity()
+	var hull := SpaceCombat.max_hull(g)
+	check(g.buy_ship("hauler").ok == false, "the hauler costs money")
+	g.credits = 10000
+	var r := g.buy_ship("hauler")
+	check(r.ok and g.ship_class == "hauler" and g.hulls.has("hauler") and g.credits == 10000 - int(data.ship_classes.hauler.price), "hauler bought")
+	check(g.cargo_capacity() > cap and SpaceCombat.max_hull(g) > hull and g.engine_mult() < 1.0, "hauler: bigger hold and armour, slower")
+	check(is_equal_approx(SpaceCombat.hull_ratio(g), 1.0), "full hull after the swap")
+	g.cargo = {"cannabis": g.cargo_capacity()}
+	check(not g.switch_ship("courier").ok, "cargo has to fit the smaller hold")
+	g.cargo = {}
+	g.combat.hull = SpaceCombat.max_hull(g) * 0.5
+	check(g.switch_ship("courier").ok and g.ship_class == "courier" and g.credits == 10000 - int(data.ship_classes.hauler.price), "switching back is free")
+	check(is_equal_approx(SpaceCombat.hull_ratio(g), 0.5), "damage carries over as a share")
+	g.credits = 10000
+	g.buy_ship("corvette")
+	check(SpaceCombat.laser_damage(g) > float(data.upgrades.laser.levels[0]) and SpaceCombat.max_shield(g) == 0.0, "corvette lasers hit harder (no shield module yet)")
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(h.ship_class == "corvette" and h.hulls.size() == 3, "hulls survive a save")
+	g.undock()
+	check(not g.buy_ship("runner").ok, "only at a shipyard")
+	var old := g.to_dict()
+	old.erase("hulls")
+	old.ship_class = "battleship"
+	var o := Game.new()
+	o.from_dict(data, old)
+	check(o.ship_class == "courier" and o.hulls == ["courier"], "old or broken saves fly the courier")
 

@@ -33,6 +33,7 @@ const ACTIONS := {
 	"ship_dock": [KEY_E],
 	"ship_fire": [KEY_J],
 	"ship_missile": [KEY_K],
+	"ship_cycle": [KEY_Q],
 	"ship_boost": [KEY_SHIFT],
 	"ui_menu": [KEY_ESCAPE, KEY_P],
 	"phone": [KEY_TAB],

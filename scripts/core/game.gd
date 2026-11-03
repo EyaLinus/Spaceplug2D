@@ -46,7 +46,9 @@ var offers: Array = []  ## Deal-O-Matic requests and agreed deals (see deals.gd)
 var next_offer_id: int = 0
 var offer_clock: float = 0.0  ## seconds since the last round of customer texts
 var people: Dictionary = {}  ## contact id -> addiction, affinity, spent today, known, history (see people.gd)
-var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "shield": 0, "hull": 0}
+var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "flak": 0, "ion": 0, "shield": 0, "hull": 0}
+var ship_class: String = "courier"  ## hull class you fly (content.json "ship_classes"), saved
+var hulls: Array = ["courier"]  ## hull classes you own; switch between them at a shipyard, saved
 var combat: Dictionary = {}  ## space combat state: hull, shield, missiles, kills (saved), boost, idle (runtime); see spacecombat.gd
 var state: String = "playing"  ## playing | won | lost
 var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0}
@@ -102,7 +104,9 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	offers = []
 	next_offer_id = 0
 	offer_clock = 0.0
-	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "shield": 0, "hull": 0}
+	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "flak": 0, "ion": 0, "shield": 0, "hull": 0}
+	ship_class = "courier"
+	hulls = ["courier"]
 	SpaceCombat.reset(self)
 	state = "playing"
 	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0}
@@ -176,7 +180,7 @@ func cargo_used() -> int:
 
 
 func cargo_capacity() -> int:
-	return int(data.upgrades.cargo.levels[upgrades.cargo])
+	return int(round(float(data.upgrades.cargo.levels[upgrades.cargo]) * SpaceCombat.class_mult(self, "cargo")))
 
 
 func cargo_free() -> int:
@@ -188,7 +192,7 @@ func lab_capacity() -> int:
 
 
 func engine_mult() -> float:
-	return float(data.upgrades.engine.levels[upgrades.engine])
+	return float(data.upgrades.engine.levels[upgrades.engine]) * SpaceCombat.class_mult(self, "speed")
 
 
 func stealth() -> float:
@@ -634,6 +638,56 @@ func buy_upgrade(key: String) -> Dictionary:
 	return _ok("%s upgraded to Mk %d." % [data.upgrades[key].name, upgrades[key] + 1])
 
 
+## Buys a new hull class at a shipyard and flies it right away (modules move over).
+func buy_ship(id: String) -> Dictionary:
+	if not loc_data().get("shipyard", false):
+		return _fail("No shipyard here.")
+	var sc: Dictionary = data.get("ship_classes", {}).get(id, {})
+	if sc.is_empty():
+		return _fail("Unknown hull.")
+	if hulls.has(id):
+		return switch_ship(id)
+	if credits < int(sc.price):
+		return _fail("The %s costs %d cr." % [sc.name, int(sc.price)])
+	var fits := _hold_fits(id)
+	if not fits.ok:
+		return fits
+	credits -= int(sc.price)
+	hulls.append(id)
+	_set_ship(id)
+	_emit("ship_bought", {"class": id})
+	return _ok("You bought a %s." % sc.name)
+
+
+## Swaps to a hull you own (free, at a shipyard). Hull damage carries over as a share.
+func switch_ship(id: String) -> Dictionary:
+	if not loc_data().get("shipyard", false):
+		return _fail("No shipyard here.")
+	if not hulls.has(id):
+		return _fail("You don't own that hull.")
+	if id == ship_class:
+		return _fail("You are flying it.")
+	var fits := _hold_fits(id)
+	if not fits.ok:
+		return fits
+	_set_ship(id)
+	return _ok("Switched to the %s." % data.ship_classes[id].name)
+
+
+func _hold_fits(id: String) -> Dictionary:
+	var cap := int(round(float(data.upgrades.cargo.levels[upgrades.cargo]) * float(data.ship_classes[id].get("cargo", 1.0))))
+	if cargo_used() > cap:
+		return _fail("Your cargo (%d) does not fit in that hold (%d)." % [cargo_used(), cap])
+	return _ok("")
+
+
+func _set_ship(id: String) -> void:
+	var ratio := SpaceCombat.hull_ratio(self)
+	ship_class = id
+	combat.hull = SpaceCombat.max_hull(self) * ratio
+	combat.shield = minf(float(combat.shield), SpaceCombat.max_shield(self))
+
+
 func pay_debt(amount: int) -> Dictionary:
 	if not loc_data().get("office", false):
 		return _fail("The Consortium office is on Mireth.")
@@ -802,7 +856,7 @@ func to_dict() -> Dictionary:
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
 		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
 		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "quests": Quests.to_save(self),
-		"cartels": Cartels.to_save(self),
+		"cartels": Cartels.to_save(self), "ship_class": ship_class, "hulls": hulls.duplicate(),
 	}
 
 
@@ -864,6 +918,13 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 		estates[SHIP_BAY] = {"buildings": []}
 		Workers.ensure(estates[SHIP_BAY])
 	Orders.from_save(self, d)
+	hulls = ["courier"]
+	for h in d.get("hulls", []):
+		if data.get("ship_classes", {}).has(str(h)) and not hulls.has(str(h)):
+			hulls.append(str(h))
+	ship_class = str(d.get("ship_class", "courier"))
+	if not hulls.has(ship_class):
+		ship_class = "courier"
 	SpaceCombat.from_save(self, d)
 	Combat.from_save(self, d)
 	Deaddrops.from_save(self, d)
