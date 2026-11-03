@@ -13,6 +13,7 @@ const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
+const Interdiction = preload("res://scripts/core/interdiction.gd")
 
 var steps := 0
 
@@ -65,6 +66,7 @@ func _run() -> void:
 	m.start_new_game(99)
 	await frames(3)
 	var g = gs.game
+	g.data.interdiction.min_day = 9999  # no random interdictions on the scripted jumps (the card is tested on its own)
 	var sf = m.surface
 	_assert(sf != null and not m.station.visible and not m.world.visible, "starts on foot on the Mireth surface")
 	_assert(m.get_viewport().get_camera_2d() == sf.camera, "surface camera is current")
@@ -950,6 +952,8 @@ func _run() -> void:
 	step("space combat")
 	await _space_combat_2(m, g)
 	step("space combat II: wings, flak, ion, loot, cartel base")
+	await _interdiction(m, g)
+	step("interdiction card")
 
 	m.toggle_pause()
 	await frames(2)
@@ -1250,4 +1254,32 @@ func _space_combat_2(m, g) -> void:
 	Cartels.state(g, "comets").weakened = 0
 	w.place_ship_at("mireth")
 	await frames(2)
+
+
+## D3: an interdiction card pauses the flight; paying closes it, fighting spawns the wing ahead of the ship.
+func _interdiction(m, g) -> void:
+	var w = m.world
+	g.cargo["weed:glow"] = 6
+	g.credits = 5000
+	Interdiction.begin(g, {"kind": "cartel", "cartel": "comets", "units": ["fighter", "fighter"]})
+	await frames(3)
+	_assert(m.interdict.visible and root.get_node("GameState").paused, "interdiction card up, game paused")
+	for c in ["pay", "dump", "flee", "fight"]:
+		_assert(m.interdict.find_child("Interdict_" + c, true, false) != null, "card offers " + c)
+	m.toggle_pause()
+	_assert(not m.pause_menu.visible, "no pause menu over the card")
+	var cr: int = g.credits
+	m.interdict.find_child("Interdict_pay", true, false).pressed.emit()
+	await frames(2)
+	_assert(not m.interdict.visible and not root.get_node("GameState").paused and g.credits < cr and not Interdiction.pending(g), "toll paid, flight resumes")
+	w.combat.clear()
+	Interdiction.begin(g, {"kind": "authority", "cartel": "", "units": ["interceptor", "interceptor"]})
+	await frames(3)
+	_assert(m.interdict.visible, "Authority card up")
+	m.interdict.find_child("Interdict_fight", true, false).pressed.emit()
+	await frames(2)
+	_assert(not m.interdict.visible and w.combat.pirates.size() == 2 and w.combat.pirates[0].kind == "interceptor", "fight spawns the interceptors")
+	w.combat.clear()
+	g.cargo.erase("weed:glow")
+	g.heat = 0.0
 

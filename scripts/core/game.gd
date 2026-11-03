@@ -22,6 +22,7 @@ const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
+const Interdiction = preload("res://scripts/core/interdiction.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -78,6 +79,8 @@ var prices: Dictionary = {}  ## your asking price per Standard unit, recipe key 
 var dealers: Array = []  ## hired street dealers [{id, loc, stock, cash, sold, jail}] (see dealers.gd), saved
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 var quests: Dictionary = {"active": [], "done": [], "step": {}, "count": {}, "tracked": ""}  ## quest log (see quests.gd), saved
+var interdiction: Dictionary = {}  ## pending interdiction after a jump (runtime only, see interdiction.gd)
+var lane_rng := RandomNumberGenerator.new()  ## interdiction rolls only, so the game RNG stays untouched
 var cartels: Dictionary = {}  ## sector influence per location and cartel hostility (see cartels.gd), saved
 
 
@@ -129,6 +132,8 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	dealers = []
 	quests = Quests.empty_state()  # the opening quests start in GameState.new_game (tests and sims run without)
 	cartels = Cartels.init_state(data)
+	interdiction = {}
+	lane_rng.seed = seed_value * 7919 + 13
 	_add_starter_estates()
 	demand = {}
 	for loc in data.locations:
@@ -435,6 +440,7 @@ func jump(gate: String) -> Dictionary:
 	Corruption.on_jump(self, from, system)
 	tick(float(j.get("seconds", 0.0)))
 	_emit("jumped", {"from": from, "to": system, "gate": gate, "arrive": str(gd.get("arrive", ""))})
+	Interdiction.roll(self, system)
 	return _ok("Jumped to %s (%d cr toll)." % [system_data().get("name", system), fee])
 
 

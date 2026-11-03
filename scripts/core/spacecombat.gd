@@ -198,6 +198,8 @@ static func enemy_down(g, kind: String, cartel: String, rng: RandomNumberGenerat
 	g.combat.kills = int(g.combat.kills) + 1
 	if cartel != "":
 		Cartels.on_kill(g, cartel)
+	if kind == "interceptor":  # shooting down the Authority is a crime
+		g.add_heat(float(g.data.get("interdiction", {}).get("authority_kill_heat", 0.0)))
 	var loot := roll_loot(g, kind, rng)
 	g._emit("pirate_down", {"bounty": amount, "kind": kind, "cartel": cartel})
 	return {"bounty": amount, "loot": loot}

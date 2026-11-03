@@ -1,5 +1,25 @@
 # Progress log
 
+## D3: interdiction + main quest chapter 2 (phase 3 wave 9, 2026-11-03)
+- **Core** `scripts/core/interdiction.gd`, data `content.json` "interdiction". `Game.jump` rolls on arrival with its own
+  `Game.lane_rng` (game RNG untouched); from `min_day` 2. Authority: only with product aboard and heat ≥ chase heat.
+  Cartels: present in the arrival system (home or ground), not weakened; chance from hostility, +bonus with product.
+  Pending encounter in `Game.interdiction` (runtime only, not saved), events `interdicted` and
+  `interdiction_resolved` {choice, kind, cartel, fight}. `resolve(g, choice)`: pay (toll base + per product unit /
+  bribe base + heat × bribe rate, heat −30), dump (product only; cartel gains ground in the system / heat −20),
+  flee (35 % + 12 % per engine level + hull speed; failing = 30 damage + fight), fight (units for the world;
+  Authority fight +25 heat). Interceptor kills: no bounty, +15 heat.
+- **UI** `scripts/ui/interdict_card.gd`: dimmed full-screen card (who, boss line, crew, four buttons with cost or
+  chance, error line), opened deferred after the arrival; the game pauses, Esc does not open the pause menu over
+  it. Fight spawns the wing 520 px ahead of the ship.
+- **Main quest chapter 2** (`data/quests.json`, chained after Clean Slate): Turf War (turf_changed by you), Toll Road
+  (interdiction_resolved), Smoke the Nest (base_raided comets, waypoint on the Nest), Cold Front (base_raided tide,
+  waypoint routes over the gate). Win screen text updated.
+- Verified: 10559 unit checks (chances, every choice for both kinds, jumps roll and stay off on day 1, chapter 2
+  played through the core), UI smoke 46 steps (card, pause lock, pay, Authority fight spawns interceptors; random
+  interdictions off in the smoke and screenshot scripts via min_day), screenshot `interdiction`.
+- Gaps: numbers eyeballed; the Ninth Veil has no base quest yet (chapter 3); not played by a human.
+
 ## E4: space combat II (phase 3 wave 9, 2026-11-03)
 - **Enemies** `space_combat.enemies` (fighter, gunship with `shots`/`fan_degrees`, interceptor for D3); pirate.gd
   is now the generic enemy (kind, cartel, tint, ion `stun`). Sprites ships/fighter.png, ships/gunship.png (neutral
