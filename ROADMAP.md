@@ -201,7 +201,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
 - **E4 Space combat II.** ✅ done (see PROGRESS.md; escort missions not built). Cartel fighter wings and gunships, escort missions, cartel stations you can raid,
   new weapons (flak, ion), loot drops, ship classes at the shipyard.
 - **D3 Interdiction** (was D3). ✅ done (see PROGRESS.md). Jumps can be intercepted by cartel wings or the Authority: fight, pay, dump or flee.
-- → **Release v0.1.12**.
+- → **Release v0.1.12** (shipped as v0.1.11).
 
 ### Wave 10 – feel and QoL (v0.1.13)
 - **K1 Feedback & tooltips.** Floating numbers (+cr, heat, damage), screen shake, hit flashes, sale/cook jingles,
