@@ -1,5 +1,9 @@
 # Progress log
 
+## Release v0.1.9 (2026-11-03)
+- Phase 3 wave 7: Q1 quest core + tutorial (#52), Q2 main quest chapter 1 (#53). Changelog folded, version 0.1.9.
+  Next: wave 8 (D4 bigger planet maps, B4 every NPC a named person) in a fresh thread.
+
 ## Q2: main quest, chapter 1 (phase 3 wave 7, 2026-11-03)
 - 7 missions in `data/quests.json` (`main: true, chapter: 1`), chained after the tutorial (and started by Skip tutorial
   or by loading a pre-quest save): The Collector (Mara Vesk, Ouroboros: pay 1,000 cr → +2 debt days), Room to Grow
