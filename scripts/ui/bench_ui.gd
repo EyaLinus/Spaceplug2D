@@ -194,7 +194,7 @@ func _build_mix(g) -> void:
 		card.icon = Art.icon_for(a)
 		var pos := _adds.find(a)
 		card.text = "%s%s\nhave %d" % ["%d. " % (pos + 1) if pos >= 0 else "", g.item_name(a), have]
-		card.tooltip_text = _additive_tip(g, a)
+		card.tooltip_text = UI.item_tip(g, a)
 		card.toggle_mode = true
 		card.button_pressed = pos >= 0
 		card.disabled = pos < 0 and (have < int(t.qty) or _adds.size() >= Bench.MAX_ADDITIVES)
@@ -229,19 +229,6 @@ func _build_mix(g) -> void:
 		close())
 	skip.name = "MixSkip"
 	row.add_child(skip)
-
-
-func _additive_tip(g, a: String) -> String:
-	var ad: Dictionary = g.data.additives[a]
-	var parts: Array = []
-	if ad.has("adds"):
-		parts.append("adds %s" % g.data.traits[ad.adds].name)
-	if ad.has("transforms"):
-		var tf: Array = []
-		for k in ad.transforms:
-			tf.append("%s → %s" % [g.data.traits[k].name, g.data.traits[ad.transforms[k]].name])
-		parts.append("turns " + ", ".join(PackedStringArray(tf)))
-	return "%s: %s" % [ad.name, "; ".join(PackedStringArray(parts))] if not parts.is_empty() else str(ad.name)
 
 
 # ---------------------------------------------------------------- wait / result

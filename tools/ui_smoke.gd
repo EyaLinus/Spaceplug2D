@@ -98,6 +98,37 @@ func _run() -> void:
 		_assert(not m.station.visible, "panel closes")
 	step("doors and people")
 
+	# market shop screen: item cards fill a basket, one checkout buys it all
+	sf.place_player_at("market")
+	await physics_frame
+	await physics_frame
+	sf.interact()
+	await frames(2)
+	var have_c := int(g.cargo.get("cannabis", 0))
+	m.station.find_child("Item_cannabis", true, false).pressed.emit()
+	await frames(1)
+	m.station.find_child("Item_cannabis", true, false).pressed.emit()
+	await frames(1)
+	m.station.find_child("Item_nanoflux", true, false).pressed.emit()
+	await frames(1)
+	_assert(m.station._basket.get("cannabis", 0) == 2 and m.station._basket.get("nanoflux", 0) == 1, "basket %s" % [m.station._basket])
+	var cr_before: int = g.credits
+	m.station.find_child("Checkout", true, false).pressed.emit()
+	await frames(2)
+	_assert(int(g.cargo.get("cannabis", 0)) == have_c + 2 and g.credits < cr_before and m.station._basket.is_empty(), "checkout buys the basket")
+	m.station.close_requested.emit()
+	await frames(1)
+	# shipyard cards: one button per upgrade
+	sf.place_player_at("rusk")
+	await physics_frame
+	await physics_frame
+	sf.interact()
+	await frames(2)
+	_assert(m.station.find_child("Up_cargo", true, false) != null and m.station.find_child("Up_laser", true, false) != null, "upgrade cards")
+	m.station.close_requested.emit()
+	await frames(1)
+	step("market basket + shipyard cards")
+
 	# Com-Phone: Tab opens it on foot, Contacts lists the people met so far, Esc steps back and closes it
 	_assert(g.people.okka.known and not g.people.teo.known, "teo not met yet")
 	sf.place_player_at("teo")

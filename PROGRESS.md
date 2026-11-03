@@ -1,5 +1,15 @@
 # Progress log
 
+## G3: shop screens (phase 3, 2026-11-03)
+- **Market:** item cards (icon, price, owned, tooltip with what the raw/additive is for via `UI.item_tip`), click +1 /
+  Shift+click +5 into a basket (`station_ui._basket`, capped by credits and hold space), basket panel with −/+, total,
+  credits and hold after, one gold "Buy" checkout. Hold shown as icon chips.
+- **Shipyard:** one card per upgrade (current → next value, gold upgrade button `Up_<key>`, tooltip what it does),
+  ship preview and credits on the left, mechanic below. **Build menu:** station cards with the station sprite, cost or
+  kit count, footprint, stat and which drug lines use it. **Deals:** each buyer is a card, gold sell buttons.
+- Verified: unit tests, UI smoke (basket + checkout, upgrade cards), menu smoke, sim; screenshots reviewed.
+- Gaps: the office/estate-sale panels are only re-skinned (no card layout); market has no sell-back of raws.
+
 ## G2: lab on foot (phase 3, 2026-11-03)
 - **No lab menu any more.** The Old Cannery door now enters `cannery_rig`, a starter estate (content.json `estates`,
   `"starter": true`, owned from day one, old saves get it on load) with all 7 stations bolted down (`fixed`, can't be
