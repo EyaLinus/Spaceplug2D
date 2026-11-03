@@ -25,6 +25,85 @@
   systems exist so multi-hop is only tested with synthetic data; the transition is cosmetic (state changes instantly
   under it); ship keeps flying while charging; world.gd/ship.gd untouched; bot/sim does not use the drive.
 
+## Release v0.1.6 (2026-11-02)
+- Phase 2 wave 2 complete: A2 Deal-O-Matic, A3 Market & Orders, B2 ship cargo bay, B1 NPC schedules + day/night.
+  Changelog folded, version 0.1.6 in project.godot and export_presets.cfg. Next: wave 3 (A4 DeadDrops, B3 workers
+  (open PR #30), A5 dealers, A6 galaxy map + jump).
+
+## E2: space combat (2026-11-03)
+- **Core** `scripts/core/spacecombat.gd` (static rules over Game), state `Game.combat` {hull, shield, missiles, kills} saved
+  (+ runtime boost/idle); old saves load an undamaged stock ship. Four new upgrades in `content.json` (laser, missile, shield,
+  hull, 3 levels each; bought via the normal `buy_upgrade` at the mechanic, so the layered E3 ship art, shipyard grid and
+  save/old-save fallback come for free) and a `combat` section (weapons, boost, pirates, spawn, defeat). Rules: shield soaks
+  first, shield regen after 3 s idle and on docking, hull repaired for credits at the shipyard, boost = energy + 0.45 s
+  invulnerability, pirate pressure x system (Kovar 1.6) x hold (product units), pirates only farther than 750 px from any
+  location, wreck = half the hold + 10 % fine + half hull.
+- **World** `combat_layer.gd` (pirates, bolts, homing missiles, effects, spawn, shield ring, screen shake), `pirate.gd` (circle,
+  strafe, lead-aim), `ship.gd` boost/dodge, `world.gd` hooks (small hunks), HUD `scripts/ui/combat_hud.gd` as the world's own
+  CanvasLayer (hud.gd untouched; main.gd only gets 3 input actions J/K/Shift, also rebindable in settings). New art: pirate
+  sprite, 12 module frames (laser/missile/shield/hull x Mk2..Mk4) and 4 upgrade icons via build_art.py.
+- **Shipyard UI:** module rows come from the existing grid, new Mechanic block (repair hull, restock missiles, stats).
+- Verified: unit checks (module stats, damage/shield/regen, boost, pirates/pressure/defeat, mechanic, save + old-save
+  fallback, abstract duel balance: stock ship kills a pirate in 2.8 s at 50 % hits and survives ~12 s against three), UI smoke
+  (modules bought, auto-spawn, laser kill + bounty, missile kill, shield then hull damage, dodge passes bolts, wreck, docking
+  clears the fight), menu smoke, sim 5/5 won (bot ignores combat). Screenshot `space_combat` added to tools/shot.gd.
+- Gaps: no human playtest, pirate numbers are eyeballed (the unit "balance" test is an abstract duel, not the live game); the
+  sim bot does not fight or buy modules; the parked ship on the landing pad shows the new modules automatically (it draws
+  Game.upgrades) but surface.gd is untouched; no ramming/collisions; D3 Interdiction can reuse `combat_layer.spawn_pirate`.
+## A4: DeadDrop Logistics (2026-11-02)
+- **Core:** `scripts/core/deaddrops.gd`, rules in content.json `deaddrops`, state `Game.drops` (+ `next_drop_id`, saved;
+  old saves load without). Request a drop (60 cr, max 3, one per planet/station/outpost) from the phone; while docked
+  there it takes one job at a time: an accepted Deal-O-Matic deal (offer state `dropped`, customer collects after 25 s
+  and pays) or a courier run to the hub stash (4 cr/unit, min 20). Drop heat is 30 % of the in-person hand-over; every
+  pickup/courier can be stolen (7 % + up to 15 % at max heat, courier +5 %): no goods, no pay (offer state `stolen`).
+  Idle drops close after 600 s. `Deals._trim` keeps `dropped` deals.
+- **UI:** `apps/deaddrop_app.gd` + one line in `registry.gd` (icon `app_deaddrop`), toasts on pickup/theft in `main.gd`.
+- Verified: 1857 unit checks (rules, heat vs hand-over, pay, theft, courier, expiry, caps, trimming, save round-trip,
+  old save), UI smoke (request, leave deal, collect and pay), menu smoke, sim 5/5 won (avg day 6.2), screenshot of the app.
+- Gaps: no map marker for drops on the surface; the customer collects instantly in the sim (no walking NPC);
+  A5 (dealers) can reuse `Deaddrops.at()` / jobs; courier only goes drop -> hub stash.
+
+## B1: NPC schedules on foot (2026-11-02)
+- Surfaces have `spots` (schedule place name → tile, `surfaces.json`). `People.spot(c, spots, hour, slot)` picks the
+  spot of the current schedule place, nudged by the person's index on the surface so people sharing a place stand
+  side by side. Named people start at their current spot on landing and walk there (AStarGrid path) when the hour
+  changes; while the player is within 60 px they stop (`npc.hold`), so a conversation never walks away. Their
+  interaction point follows them.
+- Day/night: `time.daylight` colour keys, `CanvasModulate` on outdoor surfaces (interiors excluded). A day now starts
+  at 06:00 (`time.day_start_hour`), so the phone clock, contact schedules and Deal-O-Matic places shift accordingly.
+- Verified: 1816 unit checks (every schedule place has a spot on the person's surface, every spot walkable and
+  reachable at every hour, day start, daylight), UI smoke (schedule change → Okka walks, her interaction point
+  follows, light changes), menu smoke, night screenshot.
+- Gaps vs. the old draft PR #5: no idle chatter bubbles; anonymous walkers keep roaming; people stand at a spot in front
+  of "Home" instead of going indoors (keeps them dealable).
+
+## B2: ship cargo bay estate (2026-10-30)
+- **Core:** `estates["ship_bay"]` (`Game.SHIP_BAY`, content.json estates entry flagged `"ship": true`, 7x4 cells) is
+  always owned (also created for old saves) and not for sale. `estate_reachable()` gates `enter_ship_bay`, `can_place`,
+  `place_building` and `remove_building`: only while docked. Everything else (door cell, refund, cooking via
+  `lab_here`/`missing_stations`, save round-trip) is the existing estate code; `estate_layout.gd` is unchanged.
+- **UI:** a ramp interactable beside the landing pad (added in `main._with_ship_ramp`, so `surface.gd` and
+  `surfaces.json` are untouched) enters the bay; its exit door returns to the pad. Stations without a surface get a
+  "Cargo Bay" tab in the docked menu. Build menu and placement work as in any estate.
+- Verified: unit tests (new `test_ship_bay`), UI smoke (ramp, place, leave), menu smoke, sim 5/5 won.
+- Gaps: size does not grow with the cargo upgrade; no generator/crate buildables yet (needs the production-buildings
+  milestone); the ramp has no art, only an interaction label.
+## A2: Deal-O-Matic (2026-11-02)
+- **Core** `scripts/core/deals.gd`, state `Game.offers` (+ `next_offer_id`, `offer_clock`, saved; old saves start empty).
+  Every 40 s each known customer without an open deal may text (chance 0.3 × (0.5 + addiction), max 3 open):
+  a preferred drug, qty within deal size and today's budget, price = their Standard price + 15 % premium.
+  Accept → 150 s to meet them; counter +10/+25 % once (chance 0.8 − 2.6 × raise + 0.4 × affinity + 0.4 × addiction);
+  decline −0.02 affinity, failed counter −0.03, no-show −0.08. Fulfil in person: any product of the right drug,
+  heat × 0.8 vs. a walk-up sale. Rules in `content.json` → `deals`.
+- **Phone app** `apps/deals_app.gd`: threads sorted new → agreed → closed, chat bubbles, Accept / +10 % / +25 % /
+  Decline with shown odds, agreed deals show where to meet, time left and whether the hold has enough.
+- **On foot:** customers with an agreed deal carry a gold "$"; their Deals panel has a Hand over button.
+  Toasts for new requests and missed meets.
+- Verified: 1078 unit checks (request rules, expiry, decline/accept/counter odds and outcomes, no-show, fulfil rules,
+  save), UI smoke drives text → phone accept → marker → hand over, menu smoke, sim 5/5 (bot ignores texts),
+  screenshots of list, thread and marker checked.
+- Deviations/gaps: the meeting point is the customer on their planet, not a separate spot (dead drops are A4); the
+  walk-up Deals panel stays as a fallback; the balance bot does not use texts yet; prices are eyeballed.
 ## A3: Market & Orders app (2026-11-02)
 - **Core** `scripts/core/orders.gd`, state on `Game`: `orders` (open, saved), `order_seq`, `estate_stock` (estate id -> items, saved),
   `orders_unseen` (runtime, app badge). Phone price = cheapest walk-in price anywhere + 35% markup, plus a delivery fee
@@ -286,3 +365,27 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
 
 ## History
 - v0.1 (2026-10-30): repo skeleton, architecture, vertical slice, CI with Windows export.
+
+## E1: Ground combat (2026-11-02)
+- **Core** `scripts/core/combat.gd` (static functions over `Game`), rules in `content.json` -> `combat` (player hp/regen/knock-out,
+  3 weapons, officer stats and draw heat, cover pieces per planet). State on `Game`: `hp`, `weapons`, `weapon`, `ammo` (saved under
+  `combat`; old saves load full health + pistol), runtime `cooldown`/`reload_left`/`since_hit`; `stats.kills/knockouts`.
+  Pure geometry (`segment_rect_t`, `segment_circle_t`, `step_bullet`) so bullets, cover and line of fire are unit-testable.
+- **Weapons:** pistol (free, 12 rounds), SMG (600 cr, auto), shotgun (900 cr, 7 pellets). Magazine + reload, fire rate, spread.
+  Shots add a little heat only if an officer is within earshot (`witness_range`).
+- **Player:** 100 HP, regenerates 4/s after 6 s without a hit. Knock-out (0 HP): product confiscated, fine 20 % (min 80), heat -20,
+  wakes up at the launch pad with 50 % HP. Not a game over.
+- **Officers:** at heat >= 55 (`officer.draw_heat`) or once shot at, they draw weapons, stop within 280 px if the line is clear and
+  shoot every 1.0 s (9 dmg, spread). They hunt a visible player even without cargo while hostile (4 s memory). 40 HP; a kill gives
+  +12 heat, a hit +4; killed officers respawn after 25 s.
+- **Cover:** 5-7 pieces per planet beside the streets (`combat.cover`), solid for walking (also in the nav grid) and bullets, not for
+  sight. Test: inside the map, off buildings/roads/plazas/pad, every spot, NPC, door and pad stays reachable.
+- **UI** (`surface.gd`, `planet/combat_hud.gd`): crosshair, HP bar, weapon + magazine, reload ring, hurt vignette, weapon wheel,
+  bullets, sparks, gun in hand; officer gun, hp bar and hit flash. Foot help line lists the new keys.
+- Verified: 2185 unit checks (weapons, fire rate, reload, shop, damage/regen/knock-out, geometry incl. tunnelling, officer rules, cover
+  layout on all 5 planets, save/old save/garbage save), UI smoke (cover stops a bullet, clear shot hurts + provokes, real mouse click and
+  R key, armed officer shoots back, knock-out at the pad, officer kill, wheel buy + equip, key 1), menu smoke, sim 5/5 won.
+- Deviations/gaps: civilians and named NPCs cannot be shot (bullets pass them); new keys (Q, R, 1-3) are not in the rebinding screen
+  and the weapon actions are keyboard/mouse only; no ammo economy (unlimited reloads); cover is a static ground layer (no y-sort,
+  walkers on the roads can brush past it); no screenshot of the HUD/wheel (Xvfb rendering hung in this container), so the layout is
+  unseen; numbers are eyeballed; the balance bot does not fight. Officer AI is simple (no flanking, they do not seek cover).

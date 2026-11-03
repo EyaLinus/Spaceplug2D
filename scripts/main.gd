@@ -16,6 +16,7 @@ const SettingsPanelScript = preload("res://scripts/ui/menu/settings_panel.gd")
 const PhoneScript = preload("res://scripts/ui/phone/phone.gd")
 const HyperspaceScript = preload("res://scripts/ui/hyperspace.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
+const Deals = preload("res://scripts/core/deals.gd")
 
 ## Which station tab a surface interaction opens.
 const SURFACE_TABS := {"market": "Market", "lab": "Lab", "shipyard": "Shipyard", "office": "Office", "deal": "Deals", "fence": "Deals"}
@@ -27,6 +28,9 @@ const ACTIONS := {
 	"ship_left": [KEY_A, KEY_LEFT],
 	"ship_right": [KEY_D, KEY_RIGHT],
 	"ship_dock": [KEY_E],
+	"ship_fire": [KEY_J],
+	"ship_missile": [KEY_K],
+	"ship_boost": [KEY_SHIFT],
 	"ui_menu": [KEY_ESCAPE, KEY_P],
 	"phone": [KEY_TAB],
 }
@@ -267,7 +271,7 @@ func _arrive(gate: String) -> void:
 func _land(loc: String, announce := true) -> void:
 	_leave_surface()
 	surface = SurfaceScript.new()
-	surface.setup(loc, GameState.data.surfaces[loc])
+	surface.setup(loc, _with_ship_ramp(GameState.data.surfaces[loc]))
 	surface.interacted.connect(_on_surface_action)
 	add_child(surface)
 	move_child(surface, world.get_index() + 1)
@@ -276,6 +280,23 @@ func _land(loc: String, announce := true) -> void:
 	surface.place_player_at("pad")
 	if announce:
 		EventBus.toast.emit("Landed on %s. Walk to a building or person and press E." % GameState.data.locations[loc].name, true)
+
+
+## The planet layout plus a ramp beside the landing pad that leads into the ship's cargo bay.
+func _with_ship_ramp(cfg: Dictionary) -> Dictionary:
+	var c: Dictionary = cfg.duplicate()
+	if c.has("pad"):
+		var pp: Array = c.pad.pos
+		var exits: Array = c.get("exits", []).duplicate()
+		exits.append({"id": "ship_bay", "pos": [float(pp[0]) + 2.4, float(pp[1])], "label": "Cargo bay (your ship)", "action": "enter_ship_bay"})
+		c.exits = exits
+	return c
+
+
+func enter_ship_bay() -> void:
+	var g = GameState.game
+	if GameState.act(g.enter_ship_bay()).ok:
+		enter_estate(g.SHIP_BAY)
 
 
 func _leave_surface() -> void:
@@ -307,6 +328,9 @@ func _on_surface_action(action: String, p: Dictionary) -> void:
 			return
 		"exit_estate":
 			leave_estate()
+			return
+		"enter_ship_bay":
+			enter_ship_bay()
 			return
 		"station":
 			var bd: Dictionary = surface.cfg.buildings.filter(func(b): return b.id == p.id)[0]
@@ -349,6 +373,10 @@ func enter_estate(eid: String, at = null) -> void:
 func leave_estate() -> void:
 	var eid: String = surface.cfg.estate
 	var loc: String = GameState.game.location
+	if eid == GameState.game.SHIP_BAY and not GameState.data.get("surfaces", {}).has(loc):
+		_leave_surface()  # stations without a surface: back to the docked menu
+		station.open()
+		return
 	_land(loc, false)
 	for b in GameState.data.surfaces[loc].buildings:
 		if b.get("estate", "") == eid:
@@ -410,6 +438,15 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 			_end_label.text = "THE CONSORTIUM CAME TO COLLECT\n\nYou still owed %d cr on day %d.\nEarned %d cr, moved %d units, busted %d×." % [g.debt, g.day, g.stats.earned, g.stats.units_sold, g.stats.busts]
 		end_screen.visible = true
 		GameState.save_game()
+	elif kind == "offer_new":
+		var o: Dictionary = Deals.find(GameState.game, p.offer)
+		EventBus.toast.emit("%s wants %d %s. [%s] Deal-O-Matic" % [GameState.game.contact(p.contact).name, o.qty, GameState.data.bases[o.base].name, Settings.key_label("phone")], true)
+	elif kind == "offer_expired" and p.was == "accepted":
+		EventBus.toast.emit("You missed the meet with %s." % GameState.game.contact(p.contact).name, false)
+	elif kind == "drop_pickup":
+		EventBus.toast.emit(("Drop cleared: %s paid %d cr." % [GameState.game.contact(p.contact).name, p.credits]) if p.kind == "deal" else "Courier delivered %d × %s to your stash." % [p.qty, GameState.game.item_name(p.item)], true)
+	elif kind == "drop_stolen":
+		EventBus.toast.emit("A drop was cleaned out: %d units stolen." % p.qty, false)
 	elif kind == "met":
 		EventBus.toast.emit("New contact: %s. Open the Com-Phone [%s]." % [GameState.game.contact(p.contact).name, Settings.key_label("phone")], true)
 	elif kind == "jump_ready":

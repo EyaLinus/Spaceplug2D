@@ -22,8 +22,8 @@ const NPC_LOOKS := {
 
 ## Ship upgrade modules (ships/mod_<key>_<level>.png, 48 px, level 1..3; level 0 = none) in draw order around the
 ## 32 px hull: UNDER modules are drawn before it, OVER modules after. New upgrade keys (weapons, shields) go here.
-const SHIP_UNDER := ["engine", "cargo"]
-const SHIP_OVER := ["stealth", "lab"]
+const SHIP_UNDER := ["hull", "engine", "cargo"]
+const SHIP_OVER := ["stealth", "lab", "laser", "missile", "shield"]
 ## Exhaust nozzles per engine level: [position of the nozzle's bottom edge, flame width], relative to the ship centre.
 const SHIP_NOZZLES := [
 	[[Vector2(0, 12), 1.0]],

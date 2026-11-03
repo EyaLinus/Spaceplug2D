@@ -9,8 +9,10 @@ const Mixing = preload("res://scripts/core/mixing.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const Deals = preload("res://scripts/core/deals.gd")
 const RunnerScript = preload("res://scripts/ui/minigames/minigame_runner.gd")
 const ShipPreview = preload("res://scripts/ui/ship_preview.gd")
+const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 
 var tabs: TabContainer
 var _title: Label
@@ -113,6 +115,9 @@ func refresh(reset_tab := false) -> void:
 		_add_tab("Shipyard", _build_shipyard(g))
 	if ld.get("office", false) and _wants("Office"):
 		_add_tab("Office", _build_office(g))
+	# stations without a surface: the ship's cargo bay is entered from here
+	if _filter.is_empty():
+		_add_tab("Cargo Bay", _build_estate(g))
 	# estate panels only exist as filtered panels (a door, the build menu, a placed station)
 	if _filter.has("estate"):
 		if _wants("Estate"):
@@ -295,6 +300,24 @@ func _chosen_additives() -> Array:
 
 # ---------------------------------------------------------------- deals
 
+## The deal agreed over the Deal-O-Matic with this person: hand it over here.
+func _add_agreed_deal(g, box: VBoxContainer, c: Dictionary) -> void:
+	var o: Dictionary = Deals.open_for(g, c.id)
+	if o.is_empty() or o.state != "accepted":
+		return
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	h.add_child(UI.label("Agreed: %d × %s for %d cr each" % [o.qty, g.data.bases[o.base].name, o.price], 16, UI.GOLD))
+	var have: Array = Deals.matching_products(g, o)
+	if have.is_empty():
+		h.add_child(UI.label("(you don't carry enough)", 15, UI.WARN))
+	for k in have:
+		var b := UI.button("Hand over %s" % g.item_name(k), func(): GameState.act(Deals.fulfill(g, int(o.id), k)), 120)
+		b.name = "HandOver"
+		h.add_child(b)
+	box.add_child(h)
+
+
 func _build_deals(g) -> Control:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
@@ -326,6 +349,8 @@ func _build_deals(g) -> Control:
 		if not ready:
 			head += "  · back in %ds" % int(float(g.contact_ready_at[c.id]) - g.total_time)
 		box.add_child(UI.label(head, 17, UI.ACCENT if ready else UI.MUTED))
+		if c.id != "":
+			_add_agreed_deal(g, box, c)
 		for k in products:
 			var p := Mixing.parse_key(k)
 			if not g.demand.get(g.location, {}).has(p.base):
@@ -352,7 +377,7 @@ func _build_deals(g) -> Control:
 # ---------------------------------------------------------------- estates
 
 func _build_estate(g) -> Control:
-	var id: String = _filter.estate
+	var id: String = _filter.get("estate", g.SHIP_BAY)
 	var e: Dictionary = g.data.estates[id]
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
@@ -432,8 +457,32 @@ func _build_shipyard(g) -> Control:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 24)
 	h.add_child(ShipPreview.new(g.upgrades))
-	h.add_child(gr)
+	var right := VBoxContainer.new()
+	right.add_theme_constant_override("separation", 10)
+	right.add_child(gr)
+	right.add_child(HSeparator.new())
+	right.add_child(_build_mechanic(g))
+	h.add_child(right)
 	return h
+
+
+## Mechanic: hull repairs and missile restocks (the weapon, shield and armour modules are in the grid above).
+func _build_mechanic(g) -> Control:
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	v.add_child(UI.label("Mechanic", 19, UI.ACCENT))
+	v.add_child(UI.label("Hull %d / %d · shield %d · missiles %d / %d · pirates downed %d" % [int(g.combat.hull), int(SpaceCombat.max_hull(g)),
+		int(SpaceCombat.max_shield(g)), int(g.combat.missiles), SpaceCombat.missile_cap(g), int(g.combat.kills)], 15, UI.MUTED))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	var rep := UI.button("Repair hull (%d cr)" % SpaceCombat.repair_cost(g), func(): GameState.act(SpaceCombat.repair(g)), 190)
+	rep.disabled = SpaceCombat.repair_cost(g) <= 0 or SpaceCombat.repair_cost(g) > g.credits
+	row.add_child(rep)
+	var res := UI.button("Restock missiles (%d cr)" % SpaceCombat.restock_cost(g), func(): GameState.act(SpaceCombat.restock(g)), 220)
+	res.disabled = not SpaceCombat.has_missiles(g) or SpaceCombat.restock_cost(g) <= 0 or SpaceCombat.restock_cost(g) > g.credits
+	row.add_child(res)
+	v.add_child(row)
+	return v
 
 
 static func _upgrade_value(key: String, v) -> String:
@@ -442,6 +491,10 @@ static func _upgrade_value(key: String, v) -> String:
 		"engine": return "%d%% thrust" % int(float(v) * 100.0)
 		"stealth": return "-%d%% scan range" % int(float(v) * 100.0)
 		"lab": return "%d units/batch" % int(v)
+		"laser": return "%d damage/shot" % int(v)
+		"missile": return "no pods" if int(v) == 0 else "%d missiles" % int(v)
+		"shield": return "no shield" if int(v) == 0 else "%d shield" % int(v)
+		"hull": return "%d hull" % int(v)
 	return str(v)
 
 

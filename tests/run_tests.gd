@@ -7,9 +7,13 @@ const Data = preload("res://scripts/core/data.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const Deals = preload("res://scripts/core/deals.gd")
 const Orders = preload("res://scripts/core/orders.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
+const Combat = preload("res://scripts/core/combat.gd")
+const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const ArtReg = preload("res://scripts/core/art.gd")
+const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 
 var data: Dictionary
 var failures := 0
@@ -23,7 +27,14 @@ func _init() -> void:
 		"test_surface_layouts",
 		"test_art_registry",
 		"test_police_on_foot",
+		"test_combat_weapons",
+		"test_combat_player",
+		"test_combat_geometry",
+		"test_combat_officers",
+		"test_combat_cover_layout",
+		"test_combat_save",
 		"test_estates",
+		"test_ship_bay",
 		"test_orders",
 		"test_order_kits",
 		"test_orders_save",
@@ -42,11 +53,23 @@ func _init() -> void:
 		"test_people_profiles",
 		"test_people_deals",
 		"test_people_save",
+		"test_people_schedules_on_surfaces",
+		"test_deal_requests",
+		"test_deal_answers",
+		"test_deal_fulfill",
+		"test_deaddrops",
+		"test_deaddrops_save",
 		"test_market_saturation_recovers",
 		"test_heat_and_patrols",
 		"test_galaxy_and_jump",
 		"test_bust",
 		"test_upgrades",
+		"test_space_combat_stats",
+		"test_space_combat_damage",
+		"test_space_combat_pirates",
+		"test_space_combat_mechanic",
+		"test_space_combat_save",
+		"test_space_combat_balance",
 		"test_bribe",
 		"test_debt_win_and_loss",
 		"test_save_roundtrip",
@@ -181,7 +204,7 @@ func test_surface_layouts() -> void:
 		check(s.has("pad"), "%s has a launch pad" % loc)
 		check(s.has("security"), "%s sets its police security" % loc)
 		for e in data.estates:
-			if data.estates[e].location == loc:
+			if data.estates[e].get("location", "") == loc:
 				check(s.buildings.any(func(b): return b.get("estate", "") == e), "%s estate %s has a building" % [loc, e])
 		for c in data.contacts:
 			if c.location == loc:
@@ -229,9 +252,225 @@ func test_police_on_foot() -> void:
 	check(not Officer.sees(Vector2.ZERO, Vector2.RIGHT, Vector2(150, 0), 170.0, cone, [Rect2(60, -20, 20, 40)]), "walls block sight")
 
 
+# ---------------------------------------------------------------- E1 ground combat
+
+func test_combat_weapons() -> void:
+	var c: Dictionary = data.combat
+	check(c.weapons.size() >= 3 and c.weapons.has("pistol") and c.weapons.has("smg") and c.weapons.has("shotgun"), "pistol, smg and shotgun exist")
+	for id in c.weapons:
+		var w: Dictionary = c.weapons[id]
+		for k in ["name", "price", "damage", "pellets", "spread_deg", "interval", "auto", "mag", "reload", "bullet_speed", "range", "noise_heat"]:
+			check(w.has(k), "weapon %s has %s" % [id, k])
+		check(float(w.range) > 0.0 and int(w.mag) > 0 and int(w.pellets) >= 1, "weapon %s numbers are sane" % id)
+	check(int(c.weapons.pistol.price) == 0, "the pistol is free")
+	check(c.weapons.smg.auto and not c.weapons.pistol.auto, "only the smg fires automatically")
+	check(int(c.weapons.shotgun.pellets) > 1 and float(c.weapons.shotgun.damage) * int(c.weapons.shotgun.pellets) > float(c.weapons.pistol.damage), "shotgun pellets out-damage the pistol up close")
+	check(float(c.weapons.smg.interval) < float(c.weapons.pistol.interval), "smg fires faster than the pistol")
+	var g := new_game()
+	check(g.weapons == ["pistol"] and g.weapon == "pistol" and g.ammo.pistol == 12, "a new game starts with a loaded pistol")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	var shot := Combat.fire(g, Vector2.ZERO, Vector2.RIGHT, rng)
+	check(shot.ok and shot.bullets.size() == 1 and g.ammo.pistol == 11, "a shot costs a round and makes one bullet")
+	check(not Combat.fire(g, Vector2.ZERO, Vector2.RIGHT, rng).ok, "fire rate: no second shot inside the interval")
+	g.tick(0.4)
+	check(Combat.fire(g, Vector2.ZERO, Vector2.RIGHT, rng).ok, "shot possible again after the interval")
+	for i in 30:
+		g.tick(0.4)
+		Combat.fire(g, Vector2.ZERO, Vector2.RIGHT, rng)
+		if g.reload_left > 0.0:
+			break
+	check(g.ammo.pistol == 0 and g.reload_left > 0.0, "an empty magazine starts the reload by itself")
+	check(not Combat.fire(g, Vector2.ZERO, Vector2.RIGHT, rng).ok, "no firing while reloading")
+	g.tick(float(c.weapons.pistol.reload) + 0.1)
+	check(g.ammo.pistol == 12 and g.reload_left == 0.0, "reload refills the magazine")
+	check(not Combat.start_reload(g).ok, "a full magazine does not reload")
+	# aim: bullets fly in the aimed direction within the spread
+	g.tick(1.0)
+	var b: Dictionary = Combat.fire(g, Vector2.ZERO, Vector2(0, -1), rng).bullets[0]
+	check(Vector2(b.vel).normalized().angle_to(Vector2.UP) < deg_to_rad(float(c.weapons.pistol.spread_deg)), "bullet follows the aim")
+	# shop
+	check(not Combat.select(g, "smg").ok, "cannot equip a weapon you do not own")
+	g.credits = 100
+	check(not Combat.buy_weapon(g, "smg").ok and g.credits == 100, "too poor for the smg: nothing is charged")
+	g.credits = 5000
+	check(Combat.buy_weapon(g, "smg").ok and g.weapons.has("smg") and g.credits == 5000 - int(c.weapons.smg.price) and g.ammo.smg == 30, "buying the smg charges and loads it")
+	check(not Combat.buy_weapon(g, "smg").ok, "cannot buy twice")
+	check(not Combat.buy_weapon(g, "railgun").ok, "unknown weapon refused")
+	check(Combat.select(g, "smg").ok and g.weapon == "smg", "select equips an owned weapon")
+	Combat.buy_weapon(g, "shotgun")
+	Combat.cycle(g, 1)
+	check(g.weapon == "shotgun", "cycle goes to the next weapon")
+	Combat.cycle(g, 1)
+	check(g.weapon == "pistol", "cycle wraps around")
+	Combat.select(g, "shotgun")
+	g.tick(2.0)
+	var pellets: Array = Combat.fire(g, Vector2.ZERO, Vector2.RIGHT, rng).bullets
+	check(pellets.size() == int(c.weapons.shotgun.pellets), "the shotgun fires all its pellets")
+	var spread := 0.0
+	for p in pellets:
+		spread = maxf(spread, absf(Vector2(p.vel).angle()))
+	check(spread > 0.0 and spread <= deg_to_rad(float(c.weapons.shotgun.spread_deg)) * 0.5 + 0.001, "pellets scatter inside the spread cone")
+	# noise heat only with an officer in earshot
+	check(Combat.noise_heat(g, []) == 0.0 and Combat.noise_heat(g, [5000.0]) == 0.0, "nobody hears the shot: no heat")
+	check(Combat.noise_heat(g, [100.0]) == float(c.weapons.shotgun.noise_heat), "an officer in earshot hears it")
+
+
+func test_combat_player() -> void:
+	var g := new_game()
+	var p: Dictionary = data.combat.player
+	check(g.hp == float(p.hp) and Combat.max_hp(g) == float(p.hp), "full health at the start")
+	check(not Combat.damage_player(g, 30.0) and g.hp == float(p.hp) - 30.0, "a hit costs health")
+	g.tick(float(p.regen_delay) - 1.0)
+	check(g.hp == float(p.hp) - 30.0, "no regeneration right after a hit")
+	g.tick(2.0 + 5.0)
+	check(g.hp > float(p.hp) - 30.0, "health regenerates after a pause")
+	g.tick(100.0)
+	check(g.hp == float(p.hp), "regeneration stops at full health")
+	# knock out: cargo, fine, heat
+	g.credits = 1000
+	g.heat = 50.0
+	g.cargo["weed:glow"] = 4
+	g.cargo["cannabis"] = 3
+	check(Combat.damage_player(g, 500.0) and g.hp == 0.0, "lethal damage reports the knock-out")
+	var r := Combat.knock_out(g)
+	check(r.ok and not g.has_contraband() and g.cargo.get("cannabis", 0) == 3, "knock-out confiscates product but not raw material")
+	check(g.credits == 1000 - maxi(int(p.ko_fine_min), int(1000 * float(p.ko_fine_ratio))), "knock-out fine is paid")
+	check(is_equal_approx(g.heat, 50.0 - float(p.ko_heat_drop)), "knock-out cools heat")
+	check(g.hp == float(p.hp) * float(p.ko_hp_ratio) and g.stats.knockouts == 1, "player wakes up half healthy and it is counted")
+	g.credits = 10
+	Combat.knock_out(g)
+	check(g.credits == 0, "the fine never exceeds the credits")
+
+
+func test_combat_geometry() -> void:
+	var r := Rect2(10, -5, 10, 10)
+	check(Combat.segment_rect_t(Vector2.ZERO, Vector2(30, 0), r) < 0.5, "segment hits a rect in its way")
+	check(is_equal_approx(Combat.segment_rect_t(Vector2.ZERO, Vector2(30, 0), r), 10.0 / 30.0), "hit point is the near edge")
+	check(Combat.segment_rect_t(Vector2.ZERO, Vector2(0, 30), r) == INF, "segment misses a rect beside it")
+	check(Combat.segment_rect_t(Vector2.ZERO, Vector2(5, 0), r) == INF, "segment that stops short misses")
+	check(Combat.segment_rect_t(Vector2(12, 0), Vector2(30, 0), r) == 0.0, "starting inside counts as hit at t=0")
+	check(Combat.segment_circle_t(Vector2.ZERO, Vector2(100, 0), Vector2(50, 5), 10.0) < 0.5, "segment hits a circle")
+	check(Combat.segment_circle_t(Vector2.ZERO, Vector2(100, 0), Vector2(50, 30), 10.0) == INF, "segment misses a far circle")
+	check(Combat.line_clear(Vector2.ZERO, Vector2(0, 50), [r]) and not Combat.line_clear(Vector2.ZERO, Vector2(40, 0), [r]), "line of fire is blocked by cover")
+	# bullets
+	var b := Combat.make_bullet(Vector2.ZERO, Vector2.RIGHT, 100.0, 10.0, 250.0, "player")
+	var res := Combat.step_bullet(b, 0.5, [], [])
+	check(res.hit == "" and b.pos.is_equal_approx(Vector2(50, 0)) and is_equal_approx(b.left, 200.0), "bullet flies")
+	res = Combat.step_bullet(b, 0.5, [Rect2(70, -5, 10, 10)], [{"pos": Vector2(120, 0), "r": 10.0}])
+	check(res.hit == "wall" and is_equal_approx(b.pos.x, 70.0), "cover stops the bullet before the target behind it")
+	b = Combat.make_bullet(Vector2.ZERO, Vector2.RIGHT, 100.0, 10.0, 250.0, "player")
+	res = Combat.step_bullet(b, 1.0, [Rect2(200, -5, 10, 10)], [{"pos": Vector2(60, 3), "r": 10.0}])
+	check(res.hit == "target" and res.idx == 0, "a target in front of the cover is hit")
+	b = Combat.make_bullet(Vector2.ZERO, Vector2.RIGHT, 100.0, 10.0, 60.0, "player")
+	res = Combat.step_bullet(b, 1.0, [], [])
+	check(res.hit == "range", "bullet dies at the end of its range")
+	b = Combat.make_bullet(Vector2.ZERO, Vector2.RIGHT, 1000.0, 10.0, 500.0, "player")
+	res = Combat.step_bullet(b, 1.0, [Rect2(100, -2, 2, 4)], [])
+	check(res.hit == "wall", "a fast bullet cannot tunnel through a thin wall")
+
+
+func test_combat_officers() -> void:
+	var g := new_game()
+	var o: Dictionary = data.combat.officer
+	check(not Combat.officers_armed(g), "officers are unarmed at zero heat")
+	g.heat = float(o.draw_heat) - 1.0
+	check(not Combat.officers_armed(g), "still holstered just below the draw heat")
+	g.heat = float(o.draw_heat)
+	check(Combat.officers_armed(g), "officers draw their weapons at high heat")
+	check(float(o.draw_heat) > float(data.police.chase_heat), "they draw later than they start chasing")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	for i in 20:
+		var b := Combat.officer_bullet(g, Vector2.ZERO, Vector2(200, 0), rng)
+		check(b.owner == "officer" and Vector2(b.vel).angle() <= deg_to_rad(float(o.spread_deg)) * 0.5 + 0.001, "officer bullet aims at the player within its inaccuracy")
+	g.heat = 10.0
+	Combat.officer_killed(g)
+	check(g.heat == 10.0 + float(o.kill_heat) and g.stats.kills == 1, "killing an officer raises heat and is counted")
+	Combat.officer_hit(g)
+	check(is_equal_approx(g.heat, 10.0 + float(o.kill_heat) + float(o.hit_heat)), "shooting an officer raises heat")
+	check(float(o.hp) > float(data.combat.weapons.pistol.damage) * 2.0, "an officer survives more than two pistol hits")
+	check(float(o.damage) * 4.0 < float(data.combat.player.hp), "four officer hits do not kill the player")
+
+
+func test_combat_cover_layout() -> void:
+	var Nav = load("res://scripts/planet/nav.gd")
+	for loc in data.surfaces:
+		var s: Dictionary = data.surfaces[loc]
+		if s.has("estate"):
+			continue
+		var tiles: Array = Combat.cover_tiles(data, loc)
+		check(tiles.size() >= 3, "%s has cover on its streets" % loc)
+		var map := Rect2(0, 0, s.size[0], s.size[1])
+		var rects := Combat.cover_rects(tiles, 1.0)
+		var others: Array = []
+		for b in s.buildings:
+			others.append(Rect2(b.rect[0], b.rect[1], b.rect[2], b.rect[3]))
+		for r in s.roads:
+			others.append(Rect2(r[0], r[1], r[2], r[3]))
+		for r in s.get("plazas", []):
+			others.append(Rect2(r[0], r[1], r[2], r[3]))
+		var pad := Vector2(s.pad.pos[0], s.pad.pos[1])
+		for i in rects.size():
+			var r: Rect2 = rects[i]
+			check(map.encloses(r), "%s cover %d inside the map" % [loc, i])
+			check(not others.any(func(o): return o.intersects(r)), "%s cover %d stays off buildings, roads and plazas" % [loc, i])
+			check(r.get_center().distance_to(pad) > float(s.pad.radius), "%s cover %d is off the landing pad" % [loc, i])
+			for j in i:
+				check(not rects[j].intersects(r), "%s cover pieces %d/%d do not overlap" % [loc, i, j])
+		# cover blocks the nav grid but every named place, door and the pad stays reachable
+		var cfg: Dictionary = s.duplicate()
+		cfg.cover = tiles
+		var nav: AStarGrid2D = Nav.build(cfg)
+		var start := Vector2i(int(s.spawn[0]), int(s.spawn[1]))
+		check(not nav.is_point_solid(start), "%s spawn is free" % loc)
+		var goals: Array = []
+		for k in s.spots:
+			goals.append(s.spots[k])
+		for n in s.npcs:
+			goals.append(n.pos)
+		for b in s.buildings:
+			if b.has("door"):
+				goals.append([b.door[0], b.door[1] + (0.5 if b.get("side", "bottom") == "bottom" else -0.5)])
+		goals.append([pad.x, pad.y + float(s.pad.radius) + 0.5])
+		for gp in goals:
+			var cell := Vector2i(int(floor(gp[0])), int(floor(gp[1])))
+			check(not nav.is_point_solid(cell) and not nav.get_id_path(start, cell).is_empty(), "%s %s reachable with cover in place" % [loc, str(gp)])
+		for t in tiles:
+			check(nav.is_point_solid(Vector2i(int(t[0]), int(t[1]))), "%s cover is solid in the nav grid" % loc)
+
+
+func test_combat_save() -> void:
+	var g := new_game()
+	g.credits = 5000
+	Combat.buy_weapon(g, "shotgun")
+	Combat.select(g, "shotgun")
+	g.ammo.shotgun = 2
+	g.hp = 37.5
+	var json := JSON.stringify(g.to_dict())
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(json))
+	check(h.weapons == ["pistol", "shotgun"] and h.weapon == "shotgun" and h.ammo.shotgun == 2 and h.hp == 37.5, "weapons, ammo and health survive a save")
+	check(JSON.stringify(h.to_dict()) == json, "combat save round-trip is stable")
+	# an old save without any combat data loads with the fresh state
+	var old: Dictionary = JSON.parse_string(json)
+	old.erase("combat")
+	var k := Game.new()
+	k.from_dict(data, old)
+	check(k.hp == Combat.max_hp(k) and k.weapons == ["pistol"] and k.weapon == "pistol" and k.ammo.pistol == 12, "old saves load with full health and the pistol")
+	check(k.stats.kills == 0 and k.stats.knockouts == 0, "old saves have zero combat stats")
+	# garbage in the combat block is repaired
+	var bad: Dictionary = JSON.parse_string(json)
+	bad.combat = {"hp": -5, "weapons": ["railgun", "smg", "smg"], "weapon": "pistol", "ammo": {"smg": 999}}
+	var m := Game.new()
+	m.from_dict(data, bad)
+	check(m.hp >= 1.0 and m.weapons == ["smg"] and m.weapon == "smg" and m.ammo.smg == int(data.combat.weapons.smg.mag), "broken combat data is clamped and unknown weapons dropped")
+
+
 func test_estates() -> void:
 	for e in data.estates:
-		check(data.locations.has(data.estates[e].location), "estate %s location exists" % e)
+		if not data.estates[e].get("ship", false):
+			check(data.locations.has(data.estates[e].location), "estate %s location exists" % e)
 	for b in data.buildables:
 		check(data.stations.has(b), "buildable %s is a station" % b)
 	var g := new_game()
@@ -276,6 +515,46 @@ func test_estates() -> void:
 	check(g.collect_stash().ok and g.has_contraband(), "collect output in the estate")
 	g.inside_estate = ""
 	check(not g.lab_here(), "outside the estate no lab")
+
+
+func test_ship_bay() -> void:
+	var sb: String = Game.SHIP_BAY
+	check(data.estates.has(sb) and data.estates[sb].get("ship", false), "ship estate is defined")
+	var g := new_game()
+	g.credits = 10000
+	check(g.estate_owned(sb) and not g.buy_estate(sb).ok, "bay is owned from the start, not for sale")
+	check(g.location != "", "new game starts docked")
+	check(g.can_place(sb, "trim_table", 0, 0), "can place while docked")
+	check(g.enter_ship_bay().ok and g.inside_estate == sb and g.lab_here(), "enter the bay: it is a lab")
+	var r: Dictionary = g.check_batch("weed", [], 1)
+	check(not r.ok, "bay needs stations before cooking")
+	for st in [["trim_table", 0], ["cook_stove", 2], ["pack_table", 4]]:
+		check(g.place_building(sb, st[0], st[1], 0).ok, "place %s in the bay" % st[0])
+	var door: Vector2i = g.estate_door(sb)
+	check(not g.can_place(sb, "precursor_scale", door.x, door.y), "bay door stays free")
+	check(not g.can_place(sb, "cook_stove", 6, 3), "must fit inside the bay")
+	var g2 := Game.new()
+	g2.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(g2.estates[sb].buildings.size() == 3, "bay layout survives save/load")
+	# an old save without the bay gets an empty one
+	var d: Dictionary = g.to_dict()
+	d.estates.erase(sb)
+	var g3 := Game.new()
+	g3.from_dict(data, d)
+	check(g3.estate_owned(sb) and g3.estates[sb].buildings.is_empty(), "old saves get an empty bay")
+	# in flight the bay is closed
+	g.location = ""
+	g.inside_estate = ""
+	check(not g.enter_ship_bay().ok, "can't enter in flight")
+	check(not g.can_place(sb, "trim_table", 0, 1) and not g.place_building(sb, "trim_table", 0, 1).ok, "no building in flight")
+	check(not g.remove_building(sb, 0).ok, "no removing in flight")
+	g.location = "mireth"
+	check(g.remove_building(sb, 0).ok, "remove docked")
+	# a two-station recipe cooks on the ship at a station without a lab
+	g.location = "cinder"
+	g.cargo = {"cannabis": 5}
+	g.inside_estate = sb
+	check(g.lab_here() and g.missing_stations("weed", []).size() > 0, "ship bay is a lab at Cinder")
 
 
 func test_orders() -> void:
@@ -756,6 +1035,137 @@ func test_people_save() -> void:
 	check(g3.people.has("marta") and g3.people.okka.history.is_empty(), "old save without people gets defaults")
 
 
+func test_people_schedules_on_surfaces() -> void:
+	var Nav = load("res://scripts/planet/nav.gd")
+	for loc in data.surfaces:
+		var cfg: Dictionary = data.surfaces[loc]
+		if cfg.has("estate"):
+			continue
+		var nav: AStarGrid2D = Nav.build(cfg)
+		var start := Vector2i(int(cfg.spawn[0]), int(cfg.spawn[1]))
+		for n in cfg.get("npcs", []):
+			if n.get("contact", "") == "":
+				continue
+			var c: Dictionary = {}
+			for cc in data.contacts:
+				if cc.id == n.contact:
+					c = cc
+			for e in c.get("schedule", []):
+				check(cfg.get("spots", {}).has(e.place), "%s has a spot for %s's %s" % [loc, c.id, e.place])
+			for h in 24:
+				var sp: Array = People.spot(c, cfg.get("spots", {}), h + 0.5, cfg.npcs.find(n))
+				if sp.is_empty():
+					continue
+				var cell := Vector2i(int(floor(sp[0])), int(floor(sp[1])))
+				check(nav.region.has_point(cell) and not nav.is_point_solid(cell), "%s spot of %s at %d:00 is walkable" % [loc, c.id, h])
+				check(not nav.get_id_path(start, cell).is_empty(), "%s spot of %s at %d:00 is reachable" % [loc, c.id, h])
+	var g := new_game()
+	check(is_equal_approx(People.hour(g), float(data.time.day_start_hour)), "a day starts at %d:00" % int(data.time.day_start_hour))
+	check(People.daylight(data, 12.0).v > People.daylight(data, 0.0).v + 0.2, "noon is brighter than midnight")
+	check(People.daylight(data, 23.9).is_equal_approx(People.daylight(data, 0.0)) or People.daylight(data, 23.9).v - People.daylight(data, 0.0).v < 0.05, "daylight wraps at midnight")
+
+
+func test_deal_requests() -> void:
+	var g := new_game()
+	check(g.offers.is_empty(), "no requests at start")
+	for i in 40:
+		g.tick(10.0)
+	check(not g.offers.is_empty(), "known customers text requests over time")
+	var ids := {}
+	for o in g.offers:
+		check(g.people[o.contact].known, "only known people text (%s)" % o.contact)
+		check(o.base in g.contact(o.contact).prefers, "request for a preferred drug")
+		check(int(o.qty) >= 1 and int(o.qty) <= People.max_units(g, o.contact), "request size within deal size")
+		check(not ids.has(o.id), "offer ids unique")
+		ids[o.id] = true
+	var open := 0
+	for o in g.offers:
+		if o.state in Deals.OPEN:
+			open += 1
+	check(open <= int(data.deals.max_open), "open requests capped")
+	# unanswered requests expire
+	var g2 := new_game()
+	var o2: Dictionary = Deals.request(g2, "okka")
+	check(not o2.is_empty() and o2.state == "new", "manual request")
+	check(int(o2.price) > g2.sell_price("weed:glow", "okka", "mireth"), "texted price includes the premium")
+	g2.tick(float(data.deals.answer_seconds) + 1.0)
+	check(o2.state == "expired", "unanswered request expires")
+
+
+func test_deal_answers() -> void:
+	var g := new_game()
+	var o: Dictionary = Deals.request(g, "sen")
+	var aff0: float = g.people.sen.affinity
+	check(Deals.decline(g, o.id).ok and o.state == "declined", "decline")
+	check(g.people.sen.affinity < aff0, "declining costs a little affinity")
+	o = Deals.request(g, "sen")
+	check(Deals.accept(g, o.id).ok and o.state == "accepted", "accept")
+	check(float(o.expires_at) > g.total_time + 100.0, "meet window set")
+	check(o.msgs.size() >= 3, "conversation recorded")
+	# counter odds: small raises are likelier, loyal and hooked customers pay more
+	check(Deals.counter_chance(g, "okka", 0.1) > Deals.counter_chance(g, "okka", 0.25), "bigger raise, lower odds")
+	g.people.okka.affinity = 1.0
+	g.people.okka.addiction = 1.0
+	check(Deals.counter_chance(g, "okka", 0.25) > 0.6, "loyal + hooked customer usually accepts")
+	var accepted := 0
+	var refused := 0
+	for i in 30:
+		var gg := new_game()
+		gg.rng.seed = i
+		var oo: Dictionary = Deals.request(gg, "teo")
+		var p0: int = oo.price
+		var r: Dictionary = Deals.counter(gg, oo.id, 0.1)
+		if r.ok:
+			accepted += 1
+			check(oo.state == "accepted" and oo.price > p0, "counter accepted raises the price")
+		else:
+			refused += 1
+			check(oo.state == "new" and oo.price == p0 and oo.countered, "refused counter keeps the price")
+			check(not Deals.counter(gg, oo.id, 0.1).ok, "only one counter")
+	check(accepted > 0 and refused > 0, "counter outcome varies (%d/%d)" % [accepted, refused])
+	# an accepted deal you never deliver costs more affinity
+	var g3 := new_game()
+	var o3: Dictionary = Deals.request(g3, "okka")
+	Deals.accept(g3, o3.id)
+	var a3: float = g3.people.okka.affinity
+	g3.tick(float(data.deals.meet_seconds) + 1.0)
+	check(o3.state == "expired" and g3.people.okka.affinity < a3 + float(data.deals.affinity_noshow) * 0.5, "no-show hurts")
+
+
+func test_deal_fulfill() -> void:
+	var g := new_game()
+	g.location = "cinder"
+	var o: Dictionary = Deals.request(g, "okka")
+	Deals.accept(g, o.id)
+	var key := Mixing.key(o.base, [data.bases[o.base].innate])
+	g.cargo[key] = int(o.qty) + 2
+	check(not Deals.fulfill(g, o.id, key).ok, "must meet on their planet")
+	g.location = "mireth"
+	check(Deals.agreed_at(g, "mireth").has(o), "agreed deal listed at the meet planet")
+	var wrong := "cocaine:crisp" if o.base != "cocaine" else "weed:glow"
+	g.cargo[wrong] = 10
+	check(not Deals.fulfill(g, o.id, wrong).ok, "wrong drug refused")
+	var credits0 := g.credits
+	var hist0: int = g.people.okka.history.size()
+	var r: Dictionary = Deals.fulfill(g, o.id, key)
+	check(r.ok, "hand over: %s" % r.msg)
+	check(g.credits == credits0 + int(o.price) * int(o.qty), "paid the agreed price")
+	check(int(g.cargo[key]) == 2 and o.state == "done", "units handed over, deal done")
+	check(g.people.okka.history.size() == hist0 + 1, "deal in history")
+	check(not Deals.fulfill(g, o.id, key).ok, "can't deliver twice")
+	# save roundtrip keeps the conversation
+	var o2: Dictionary = Deals.request(g, "sen")
+	var d: Dictionary = JSON.parse_string(JSON.stringify(g.to_dict()))
+	var g2 := Game.new()
+	g2.from_dict(data, d)
+	check(g2.offers.size() == g.offers.size() and Deals.find(g2, o2.id).state == "new", "offers survive save")
+	check(Deals.accept(g2, int(o2.id)).ok, "loaded offer can be answered")
+	d.erase("offers")
+	var g3 := Game.new()
+	g3.from_dict(data, d)
+	check(g3.offers.is_empty(), "old save without offers")
+
+
 func test_sell_contact_and_fence() -> void:
 	var g := new_game()
 	var p := "weed:overclock+radiant"
@@ -773,6 +1183,116 @@ func test_sell_contact_and_fence() -> void:
 	g.tick(float(data.market.contact_cooldown) + 1.0)
 	check(g.sell(p, 1, "okka").ok, "okka buys again after cooldown")
 	check(not g.sell(p, 5, "okka").ok, "contact max units")
+
+
+func test_deaddrops() -> void:
+	var rl: Dictionary = data.deaddrops
+	for k in ["kinds", "fee", "max_open", "ttl", "pickup_seconds", "heat_mult", "theft_chance", "theft_heat", "courier_seconds", "courier_fee_unit", "spots"]:
+		check(rl.has(k), "deaddrops rule %s exists" % k)
+	for kind in rl.kinds:
+		check(rl.spots.has(kind) and not rl.spots[kind].is_empty(), "spot names for %s" % kind)
+	var g := new_game()
+	check(Deaddrops.eligible(g, "mireth") and Deaddrops.eligible(g, "cinder"), "planets and outposts take drops")
+	check(not Deaddrops.eligible(g, "kovar_gate") or data.locations.kovar_gate.kind != "gate", "gates don't")
+	check(not Deaddrops.request(g, "nope").ok, "unknown place refused")
+	var credits0 := g.credits
+	var r: Dictionary = Deaddrops.request(g, "mireth")
+	check(r.ok and g.drops.size() == 1 and g.credits == credits0 - int(rl.fee), "request costs the fee")
+	check(not Deaddrops.request(g, "mireth").ok, "one drop per place")
+	var d: Dictionary = g.drops[0]
+	# a deal at the drop
+	var o: Dictionary = Deals.request(g, "okka")
+	check(not Deaddrops.assign_deal(g, d.id, o.id, "x").ok, "deal must be agreed first")
+	Deals.accept(g, o.id)
+	var key := Mixing.key(o.base, [data.bases[o.base].innate])
+	check(not Deaddrops.assign_deal(g, d.id, o.id, key).ok, "need the units")
+	g.cargo[key] = int(o.qty) + 1
+	g.location = "cinder"
+	check(not Deaddrops.assign_deal(g, d.id, o.id, key).ok, "must be docked at the drop")
+	g.location = "mireth"
+	g.heat = 0.0
+	var heat_before := g.heat
+	r = Deaddrops.assign_deal(g, d.id, o.id, key)
+	check(r.ok, "left at the drop: %s" % r.msg)
+	check(o.state == "dropped" and int(g.cargo[key]) == 1 and not Deaddrops.is_free(d), "goods in the drop")
+	var in_person := float(g.loc_data().heat_per_unit) * int(o.qty) * g.heat_mult(o.base) * float(data.deals.heat_mult)
+	check(g.heat > heat_before and g.heat < in_person * 0.5, "drop heat (%.2f) well below hand-over heat (%.2f)" % [g.heat, in_person])
+	check(not Deaddrops.send_courier(g, d.id, key, 1).ok, "drop holds one job")
+	# customer picks up (theft off, then on)
+	data.deaddrops.theft_chance = 0.0
+	data.deaddrops.theft_heat = 0.0
+	var c1 := g.credits
+	g.tick(float(rl.pickup_seconds) + 1.0)
+	check(o.state == "done" and g.credits == c1 + int(o.price) * int(o.qty), "customer collected and paid")
+	check(Deaddrops.is_free(d) and g.drops_unseen == 1, "drop free again, pickup counted")
+	var o2: Dictionary = Deals.request(g, "okka")
+	Deals.accept(g, o2.id)
+	g.cargo[key] = int(o2.qty)
+	data.deaddrops.theft_chance = 1.0
+	check(Deaddrops.assign_deal(g, d.id, o2.id, key).ok, "second deal dropped")
+	var c2 := g.credits
+	g.tick(float(rl.pickup_seconds) + 1.0)
+	check(o2.state == "stolen" and g.credits == c2 and not g.cargo.has(key), "theft: no goods, no pay")
+	# courier
+	g.cargo["cannabis"] = 10
+	var fee := Deaddrops.courier_fee(g, 10)
+	var c3 := g.credits
+	check(Deaddrops.send_courier(g, d.id, "cannabis", 10).ok and g.credits == c3 - fee and not g.cargo.has("cannabis"), "courier takes goods and fee")
+	g.tick(float(rl.courier_seconds) + 1.0)
+	check(not g.stash.has("cannabis"), "stolen courier run delivers nothing")
+	data.deaddrops.theft_chance = 0.0
+	g.cargo["cannabis"] = 10
+	Deaddrops.send_courier(g, d.id, "cannabis", 10)
+	g.tick(float(rl.courier_seconds) + 1.0)
+	check(int(g.stash.get("cannabis", 0)) == 10, "courier delivers to the hub stash")
+	# idle drops expire, abandoning works
+	g.tick(float(rl.ttl) + 1.0)
+	check(g.drops.is_empty(), "idle drop expires")
+	check(Deaddrops.request(g, "mireth").ok and Deaddrops.release(g, g.drops[0].id).ok and g.drops.is_empty(), "abandon a drop")
+	for loc in ["mireth", "cinder", "drift_bazaar", "varrow"]:
+		Deaddrops.request(g, loc)
+	check(g.drops.size() <= int(rl.max_open), "open drop cap")
+	# many deals in a row never trim a deal waiting at a drop
+	var g2 := new_game()
+	Deaddrops.request(g2, "mireth")
+	var w: Dictionary = Deals.request(g2, "okka")
+	Deals.accept(g2, w.id)
+	var k2 := Mixing.key(w.base, [data.bases[w.base].innate])
+	g2.cargo[k2] = int(w.qty)
+	Deaddrops.assign_deal(g2, g2.drops[0].id, w.id, k2)
+	for i in 30:
+		var x: Dictionary = Deals.request(g2, "sen")
+		if x.is_empty():
+			break
+		Deals.decline(g2, x.id)
+	Deals.tick(g2, 0.1)
+	check(not Deals.find(g2, w.id).is_empty(), "dropped deal survives history trimming")
+	data.deaddrops.theft_chance = 0.07  # restore: data is shared between tests
+	data.deaddrops.theft_heat = 0.15
+
+
+func test_deaddrops_save() -> void:
+	var g := new_game()
+	Deaddrops.request(g, "mireth")
+	var o: Dictionary = Deals.request(g, "okka")
+	Deals.accept(g, o.id)
+	var key := Mixing.key(o.base, [data.bases[o.base].innate])
+	g.cargo[key] = int(o.qty)
+	Deaddrops.assign_deal(g, g.drops[0].id, o.id, key)
+	var json := JSON.stringify(g.to_dict())
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(json))
+	check(h.drops.size() == 1 and not Deaddrops.is_free(h.drops[0]), "drop with a job survives save/load")
+	check(Deals.find(h, o.id).state == "dropped", "dropped deal survives save/load")
+	check(JSON.stringify(h.to_dict()) == json, "save with drops is stable")
+	h.next_drop_id = 0
+	h.rng.seed = 3
+	var d := new_game().to_dict()
+	d.erase("drops")
+	d.erase("next_drop_id")
+	var old := Game.new()
+	old.from_dict(data, d)
+	check(old.drops.is_empty() and old.next_drop_id == 0, "old saves load without drops")
 
 
 func test_market_saturation_recovers() -> void:
@@ -860,6 +1380,182 @@ func test_upgrades() -> void:
 	var t0 := g.batch_seconds(5)
 	g.buy_upgrade("lab")
 	check(g.lab_capacity() == 10 and g.batch_seconds(5) < t0, "lab upgrade: capacity and speed")
+
+
+func fly_game() -> Game:
+	var g := new_game()
+	g.undock()
+	return g
+
+
+func test_space_combat_stats() -> void:
+	for k in ["laser", "missile", "shield", "hull"]:
+		check(data.upgrades.has(k) and data.upgrades[k].levels.size() == 4, "combat module %s has 4 levels" % k)
+		check(ArtReg.SHIP_UNDER.has(k) or ArtReg.SHIP_OVER.has(k), "combat module %s is drawn on the ship" % k)
+	var c: Dictionary = data.space_combat
+	for k in ["laser", "missile", "shield", "boost", "pirate", "spawn", "defeat"]:
+		check(c.has(k), "combat config %s" % k)
+	var g := fly_game()
+	check(SpaceCombat.max_hull(g) == 100.0 and g.combat.hull == 100.0, "new ship has the base hull")
+	check(SpaceCombat.max_shield(g) == 0.0 and not SpaceCombat.has_missiles(g), "new ship has no shield and no missiles")
+	check(SpaceCombat.laser_damage(g) == 8.0, "stock laser damage")
+	g.credits = 100000
+	g.dock("mireth")
+	for k in ["laser", "missile", "shield", "hull"]:
+		for i in 3:
+			check(g.buy_upgrade(k).ok, "buy %s Mk%d" % [k, i + 2])
+		check(not g.buy_upgrade(k).ok, "%s maxes out" % k)
+	check(SpaceCombat.max_hull(g) == 220.0 and g.combat.hull == 220.0, "hull armour raises max and current hull")
+	check(SpaceCombat.max_shield(g) == 140.0 and g.combat.shield == 140.0, "shield generator arrives charged")
+	check(SpaceCombat.missile_cap(g) == 14 and g.combat.missiles == 14, "missile pods arrive loaded")
+	check(SpaceCombat.laser_damage(g) == 20.0, "laser damage upgrade")
+	var lvls := {}
+	for k in ArtReg.SHIP_UNDER + ArtReg.SHIP_OVER:
+		lvls[k] = g.upgrades.get(k, 0)
+	check(lvls.laser == 3 and lvls.shield == 3, "ship art levels follow the bought modules")
+
+
+func test_space_combat_damage() -> void:
+	var g := fly_game()
+	g.upgrades.shield = 1
+	SpaceCombat.reset(g)
+	check(g.combat.shield == 40.0, "reset fills the shield")
+	var r := SpaceCombat.damage(g, 25.0)
+	check(r.shield == 25.0 and r.hull == 0.0 and g.combat.shield == 15.0 and g.combat.hull == 100.0, "shield soaks damage first")
+	r = SpaceCombat.damage(g, 35.0)
+	check(r.shield == 15.0 and r.hull == 20.0 and g.combat.hull == 80.0 and not r.destroyed, "overflow hits the hull")
+	# shield regen waits for the delay, only while flying
+	var s0: float = g.combat.shield
+	g.tick(1.0)
+	check(g.combat.shield == s0, "no shield regen right after a hit")
+	g.tick(float(data.space_combat.shield.delay))
+	var s1: float = g.combat.shield
+	check(s1 > s0, "shield regenerates after the delay")
+	g.tick(100.0)
+	check(g.combat.shield == 40.0, "shield regen stops at the maximum")
+	check(g.combat.hull == 80.0, "hull does not regenerate")
+	r = SpaceCombat.damage(g, 500.0)
+	check(r.destroyed and g.combat.hull == 0.0, "hull at zero is destroyed")
+	# docking recharges the shield for free, not the hull
+	var h := fly_game()
+	h.upgrades.shield = 2
+	SpaceCombat.reset(h)
+	SpaceCombat.damage(h, 70.0)
+	h.dock("mireth")
+	check(h.combat.shield == 80.0 and h.combat.hull == 100.0, "docking recharges the shield, not the hull")
+	# boost
+	var b := fly_game()
+	var cost: float = data.space_combat.boost.cost
+	check(SpaceCombat.try_boost(b) and b.combat.boost == float(data.space_combat.boost.max) - cost, "boost spends energy")
+	check(SpaceCombat.try_boost(b), "boost can be chained while energy lasts")
+	check(not SpaceCombat.try_boost(b), "boost refused without energy")
+	b.tick(2.0)
+	check(b.combat.boost > 0.0, "boost energy regenerates")
+	b.tick(60.0)
+	check(b.combat.boost == float(data.space_combat.boost.max), "boost refills")
+	b.dock("mireth")
+	check(not SpaceCombat.try_boost(b), "no boost while docked")
+
+
+func test_space_combat_pirates() -> void:
+	var g := fly_game()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var credits: int = g.credits
+	var bounty := SpaceCombat.collect_bounty(g, rng)
+	var br: Array = data.space_combat.pirate.bounty
+	check(bounty >= int(br[0]) and bounty <= int(br[1]) and g.credits == credits + bounty and g.combat.kills == 1, "bounty pays and counts the kill")
+	var base_interval := SpaceCombat.spawn_interval(g)
+	check(base_interval == float(data.space_combat.spawn.interval), "empty hold in Halvane: base spawn interval")
+	g.cargo = {"weed:overclock@standard": 30}
+	check(SpaceCombat.spawn_interval(g) < base_interval and SpaceCombat.max_pirates(g) >= int(data.space_combat.spawn.max), "hauling product attracts pirates")
+	var k := fly_game()
+	k.system = "kovar"
+	check(SpaceCombat.spawn_interval(k) < base_interval, "lawless Kovar has more pirates than Halvane")
+	check(SpaceCombat.max_pirates(k) >= 1 and SpaceCombat.max_pirates(k) <= int(data.space_combat.spawn.max) + 2, "pirate cap stays bounded")
+	check(not SpaceCombat.is_deep_space(g, 400.0) and SpaceCombat.is_deep_space(g, 2000.0), "pirates only in deep space")
+	# defeat
+	g.cargo = {"weed:overclock@standard": 11, "cannabis": 4}
+	g.credits = 1000
+	var res := SpaceCombat.defeat(g)
+	check(g.cargo["weed:overclock@standard"] == 5 and g.cargo["cannabis"] == 2, "wreck loses half the hold (rounded up per item): %s" % g.cargo)
+	check(res.fine == 100 and g.credits == 900, "tow fine is 10%% of the credits")
+	check(g.combat.hull == 50.0 and g.combat.shield == 0.0, "wreck is towed back at half hull")
+	g.credits = 5
+	check(SpaceCombat.defeat(g).fine == 5, "fine is capped by credits")
+
+
+func test_space_combat_mechanic() -> void:
+	var g := fly_game()
+	g.combat.hull = 40.0
+	check(not SpaceCombat.repair(g).ok, "no repairs in flight")
+	g.dock("mireth")
+	var cost := SpaceCombat.repair_cost(g)
+	check(cost == int(ceil(60.0 * float(data.space_combat.repair_per_hull))), "repair cost scales with the damage (%d)" % cost)
+	g.credits = cost - 1
+	check(not SpaceCombat.repair(g).ok and g.combat.hull == 40.0, "repair needs credits")
+	g.credits = cost + 7
+	check(SpaceCombat.repair(g).ok and g.combat.hull == 100.0 and g.credits == 7, "repair restores the hull")
+	check(not SpaceCombat.repair(g).ok, "nothing to repair")
+	check(not SpaceCombat.restock(g).ok, "no restock without pods")
+	g.upgrades.missile = 2
+	SpaceCombat.reset(g)
+	check(SpaceCombat.take_missile(g) and SpaceCombat.take_missile(g) and g.combat.missiles == 6, "missiles are used up one by one")
+	check(SpaceCombat.restock_cost(g) == 2 * int(data.space_combat.missile.price), "restock costs per missile")
+	g.credits = 1000
+	check(SpaceCombat.restock(g).ok and g.combat.missiles == 8 and g.credits == 1000 - 2 * int(data.space_combat.missile.price), "restock fills the pods")
+	g.combat.missiles = 0
+	check(not SpaceCombat.take_missile(g), "no missile when empty")
+	var c := new_game()
+	c.undock()
+	c.dock("cinder")
+	c.combat.hull = 10.0
+	check(not SpaceCombat.repair(c).ok, "only the shipyard repairs")
+
+
+func test_space_combat_save() -> void:
+	var g := fly_game()
+	g.upgrades.missile = 1
+	g.upgrades.shield = 1
+	SpaceCombat.reset(g)
+	SpaceCombat.damage(g, 55.0)
+	SpaceCombat.take_missile(g)
+	g.combat.kills = 3
+	var json := JSON.stringify(g.to_dict())
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(json))
+	check(JSON.stringify(h.to_dict()) == json, "combat save round-trip is stable")
+	check(h.combat.hull == 85.0 and h.combat.shield == 0.0 and h.combat.missiles == 3 and h.combat.kills == 3, "damage, ammo and kills restored: %s" % h.combat)
+	var old: Dictionary = JSON.parse_string(json)
+	old.erase("space")
+	for k in ["laser", "missile", "shield", "hull"]:
+		old.upgrades.erase(k)
+	var o := Game.new()
+	o.from_dict(data, old)
+	check(o.combat.hull == 100.0 and o.combat.missiles == 0 and o.combat.kills == 0 and o.upgrades.laser == 0, "old save without combat state starts with an undamaged stock ship")
+	var bad: Dictionary = JSON.parse_string(json)
+	bad.combat = {"hull": -5, "shield": 9999, "missiles": 99}
+	var b := Game.new()
+	b.from_dict(data, bad)
+	check(b.combat.hull >= 1.0 and b.combat.shield <= 40.0 and b.combat.missiles <= 4, "broken combat values are clamped")
+
+
+func test_space_combat_balance() -> void:
+	var stock := fly_game()
+	var full := fly_game()
+	for k in ["laser", "missile", "shield", "hull"]:
+		full.upgrades[k] = 3
+	SpaceCombat.reset(full)
+	var ttk0 := SpaceCombat.seconds_to_kill(stock, 0.5)
+	var ttk3 := SpaceCombat.seconds_to_kill(full, 0.5)
+	check(ttk0 < 4.0 and ttk3 < ttk0 * 0.6, "stock laser kills a pirate in %.1fs, Mk4 in %.1fs at 50%% hits" % [ttk0, ttk3])
+	var d1 := SpaceCombat.seconds_to_die(stock, 1, 0.5)
+	var d3 := SpaceCombat.seconds_to_die(stock, 3, 0.5)
+	check(d1 > 4.0 * ttk0, "a stock ship wins a 1v1 comfortably (%.0fs to die vs %.1fs to kill)" % [d1, ttk0])
+	check(d3 > 3.0 * ttk0 * 0.9 and d3 < 20.0, "three pirates are a real threat to a stock ship (%.0fs to die, %.1fs per kill)" % [d3, ttk0])
+	var f3 := SpaceCombat.seconds_to_die(full, 3, 0.5)
+	check(f3 > 2.5 * d3, "armour + shield roughly triple the survival time (%.0fs vs %.0fs)" % [f3, d3])
+	check(f3 > 3.0 * ttk3 * 4.0, "a full kit clears three pirates with room to spare")
 
 
 func test_bribe() -> void:

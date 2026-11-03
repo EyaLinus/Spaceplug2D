@@ -19,6 +19,9 @@ shows "Windows protected your PC" → *More info* → *Run anyway*).
 | S / ↓ | Reverse thrust |
 | Space | Brake |
 | E | Dock / undock (when in range) |
+| J | Fire laser (hold) |
+| K | Fire homing missile (needs Missile Pods) |
+| Shift | Dodge boost: short burst, invulnerable for a moment (uses boost energy) |
 | Esc / P | Pause menu (save, sound, main menu) |
 | Tab | Com-Phone (contacts, orders, galaxy map; works in flight and on foot, Esc steps back) |
 
@@ -28,6 +31,10 @@ shows "Windows protected your PC" → *More info* → *Run anyway*).
 | W A S D / arrows | Walk |
 | E / Enter | Use door, talk to a person, take off at the launch pad |
 | Esc | Close the open panel / pause menu |
+| Mouse | Aim; left button fires (hold for the SMG) |
+| Q (hold) | Weapon wheel: move the mouse to a weapon, release to equip; locked weapons are bought here |
+| 1 2 3 / mouse wheel | Pistol, SMG, shotgun / cycle owned weapons |
+| R | Reload |
 
 ## Core loop (prototype v0.1)
 1. **Buy** precursors plus additives. Drug ladder (tier: raw → where):
@@ -56,11 +63,13 @@ shows "Windows protected your PC" → *More info* → *Run anyway*).
 ```
 scripts/core/       headless simulation, no Node dependencies (testable)
   galaxy.gd         lanes, route planning, heat/price overlays and the jump drive charge (phone Map app)
+  combat.gd         ground combat rules: health, weapons, officer draw, bullet and cover geometry
   game.gd           state + actions (buy, cook, sell, upgrade, bribe, bust, debt), tick(), save/load
   mixing.gd         recipe → traits → product key/value
+  spacecombat.gd    space combat: hull/shield damage, boost, missiles, pirate pressure, defeat, mechanic repairs
   data.gd           loads data/content.json
 scripts/autoload/   EventBus (signals), GameState (owns Game, relays events, save files), AudioManager (synth SFX)
-scripts/world/      sector, ship physics, locations, patrols (spatial rules → core actions)
+scripts/world/      sector, ship physics, locations, patrols, pirates + bolts (spatial rules → core actions)
 scripts/planet/     planet surfaces (one instance per landing, layout in data/surfaces.json), on-foot player, NPCs
 scripts/ui/         theme, HUD + minimap + nav arrows, station menu (Market/Lab/Deals/Shipyard/Office)
 scripts/main.gd     state switching (menu, flight, docked, paused, end screen)

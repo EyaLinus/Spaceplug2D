@@ -1,0 +1,29 @@
+# Upgrade: hull armour plates.
+legend:
+. = transparent
+k = ink
+S = slate_light
+s = slate
+R = red
+Y = gold_light
+y = gold
+d = blue_light
+N = teal
+b = blue
+---
+................
+................
+.kkkkkkkkkkkkkk.
+.kSSSSSSSSSSSSk.
+.kSssssssssssSk.
+.kSsNsssssssNsk.
+.kSssssssssssSk.
+.kkkkkkkkkkkkkk.
+.kSSSSSSSSSSSSk.
+.kSssssssssssSk.
+.kSsNsssssssNsk.
+.kSssssssssssSk.
+.kkkkkkkkkkkkkk.
+................
+................
+................

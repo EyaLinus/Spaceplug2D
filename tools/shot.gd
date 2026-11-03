@@ -128,7 +128,37 @@ func _run() -> void:
 	await _save(out, "phone_contacts")
 	m.phone.push(g.contact("okka").name, func(gg): return m.phone.app_by_id("contacts").detail(gg, "okka"))
 	await _save(out, "phone_profile")
+	var Deals = load("res://scripts/core/deals.gd")
+	var o1: Dictionary = Deals.request(g, "sen")
+	var o2: Dictionary = Deals.request(g, "okka")
+	Deals.accept(g, o2.id)
+	Deals.request(g, "teo")
+	m.phone.open_app("deals")
+	await _save(out, "phone_deals")
+	m.phone.push("Sen Varo", func(gg): return m.phone.app_by_id("deals").thread(gg, int(o1.id)))
+	await _save(out, "phone_deal_thread")
+	var Deaddrops = load("res://scripts/core/deaddrops.gd")
+	g.credits = maxi(g.credits, 500)
+	Deaddrops.request(g, "mireth")
+	Deaddrops.request(g, "drift_bazaar")
+	var okey: String = load("res://scripts/core/mixing.gd").key(o2.base, [g.data.bases[o2.base].innate])
+	g.cargo[okey] = int(o2.qty)
+	m.phone.open_app("deaddrop")
+	await _save(out, "phone_deaddrop")
 	m.phone.close()
+	sf.place_player_at("okka")
+	for i in 5:
+		await physics_frame
+	await _save(out, "deal_marker")
+	var day0: float = g.day_time
+	g.day_time = g.day_seconds() * 16.0 / 24.0  # 22:00
+	for i in 60:
+		await physics_frame
+	sf.place_player_at("okka")
+	for i in 5:
+		await physics_frame
+	await _save(out, "surface_night")
+	g.day_time = day0
 	g.add_heat(55)
 	m.undock()
 	for i in 90:
@@ -178,6 +208,38 @@ func _run() -> void:
 		await physics_frame
 	await _save(out, "flight_upgraded")
 	Input.action_release("ship_thrust")
+	# space combat: pirates around a fully armed ship, bolts and a missile in the air, shield ring flashing
+	var w = m.world
+	w.clear_patrols()
+	w.ship.position = Vector2(-3000, 3000)
+	w.ship.rotation = 0.0
+	w.ship.stop()
+	w.camera.reset_smoothing()
+	g.heat = 0.0
+	g.combat.shield = 140.0
+	g.combat.missiles = 14
+	g.combat.hull = 150.0
+	for off in [Vector2(-120, -330), Vector2(200, -240), Vector2(0, -520)]:
+		var pr = w.combat.spawn_pirate(g, w.ship.position + off)
+		pr.velocity = Vector2.ZERO
+	for i in 6:
+		w.combat.fire_laser(g)
+		await physics_frame
+		await physics_frame
+		await physics_frame
+		await physics_frame
+		await physics_frame
+		await physics_frame
+		await physics_frame
+		await physics_frame
+		await physics_frame
+		await physics_frame
+	w.combat.fire_missile(g)
+	w.combat.hurt_player(g, 20.0)
+	for i in 4:
+		await physics_frame
+	await _save(out, "space_combat")
+	w.combat.clear()
 	g.upgrades = before
 	for loc in m.world.locations:
 		m.world.ship.position = m.world.locations[loc].position + Vector2(0, m.world.locations[loc].radius + 120)
