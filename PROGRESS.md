@@ -1,5 +1,23 @@
 # Progress log
 
+## Release v0.1.8 (2026-11-03)
+- Phase 3 wave 6: H1 Products app (#46), H2 deal appointments (#47), A5 dealers (#49). Changelog folded, version
+  0.1.8. Next: wave 7 (Q1 quest core + tutorial, Q2 main quest act 1).
+
+## H2: deal appointments (phase 3 wave 6, 2026-11-03)
+- **Core** `deals.gd`: requests carry `product` (recipe key from your book, liked trait first; "" = any of the drug,
+  `any_product_chance`), `meet_at` (total_time of a full hour 6–16 h ahead) and the schedule place at that hour.
+  Price = your asking price when within their ceiling, else their offer + premium (capped at the ceiling while you
+  have a price). `window()`: open from `early_hours` before, late after `grace_hours`, closes after `window_hours`
+  (= expires_at once agreed). `fulfill` refuses too early, late = `affinity_late`, on time = `affinity_on_time`.
+  `counter_qty` (fewer always ok, more by chance), `counter_time` (±h, chance from affinity); one haggle per kind
+  (`haggled`). `meet_soon` event once `remind_hours` before. Clock helpers `clock_at/clock_text/hour_start`.
+  Old saves: offers without `meet_at` keep the old timer. Dead drops bypass the meeting time.
+- **UI**: Deal-O-Matic thread shows the meeting time and phase, Fewer/More/Earlier/Later buttons; phone home has a
+  MEETINGS calendar strip (`Meet_<id>`), toasts for new requests with time and the reminder; the Deals panel on the
+  surface shows the time and "(too early)".
+- Verified: unit tests (appointments, haggles, named products), UI smoke (calendar), menu smoke, sim; screenshots.
+
 ## A5: dealers (phase 3 wave 6, 2026-11-03)
 - **Core** `scripts/core/dealers.gd`, state `Game.dealers` [{id, loc, stock, cash, sold, jail}] (saved), candidates and
   numbers in content.json `dealers` (fee, cut, skill, bag capacity). `hire/fire/assign/give/take_back/collect`

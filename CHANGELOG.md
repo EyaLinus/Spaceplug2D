@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.8 – 2026-11-03
+- **Deal appointments:** customers now text a concrete deal with the product (often one from your recipe book), amount, price and a meeting time on the clock at a place. Hand over from two hours before the meeting; late costs affinity, on time earns some, and after the window the deal is missed. Requests use your asking price when the customer accepts it.
+- **Haggle on everything:** before you agree, haggle once each on price (+10/+25 %), amount (fewer or more) and time (2 h earlier or 3 h later).
+- **Calendar:** the Com-Phone home screen lists today's meetings, and tapping one opens the conversation. You get a reminder an hour before each meeting.
+- **Dealers:** hire street dealers in the HR app (one-off fee, then they keep a cut). Give them a district, hand them product in person, and they sell to the locals at your asking price while you're away. Collect the cash when you're back in their district. Heat raises their bust risk, skill lowers it, and a bust costs their stock and cash and puts them in jail for a while.
+- **Auto recipes from your book:** the HR estate screen can now set a worker's auto recipe to any mix from the Products app, not only plain drugs.
+- **Products app:** a recipe book on the Com-Phone. Every product you've cooked once, grouped by drug, with its recipe in mixing order, traits, best grade and the estates that can make it; drugs you never cooked show as "???".
+- **Your own prices:** set an asking price per product (grades scale it) or leave it on Market. Customers pay your price if it is within what they'd pay (loyal and hooked customers tolerate more), refuse if it is too steep, and like you a bit more for a bargain. The product screen lists every buyer you know with their offer and limit.
+
 ## v0.1.7 – 2026-11-03
 - **Shop screens:** markets now work with item cards and a shopping basket (one checkout, totals and hold space shown up front), the mechanic shows every ship upgrade as a card with what it changes, the build menu shows the station machines, and buyers in the Deals panel get their own cards. Hover anything for a tooltip.
 - **Production on foot:** the lab menu is gone. The Old Cannery is now your first estate with a full production line: start a batch at the Trim Table or Precursor Scale, carry the tray from station to station and play each minigame, pick additives from an ingredient shelf with a live preview at the Mixing Station, then collect the product from the stash crate. The next station glows on the floor.
