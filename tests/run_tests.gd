@@ -3129,7 +3129,7 @@ func test_customize_decor() -> void:
 	check(not Customize.can_place_decor(g, eid, "sofa", free.x, free.y), "unknown prop")
 	check(not Customize.place_decor(g, "cannery_annex", "rug", 0, 0).ok, "cannot decorate an estate you do not own")
 	var before := g.credits
-	var ring_plus_stations := EstateLayout.build_cfg(data, eid, g.estates[eid].buildings).buildings.size()
+	var ring_plus_stations: int = EstateLayout.build_cfg(data, eid, g.estates[eid].buildings).buildings.size()
 	var r := Customize.place_decor(g, eid, "rug", free.x, free.y)
 	check(r.ok and g.credits == before - int(data.customize.decor.rug.cost) and Customize.decor_list(g, eid).size() == 1, "place a rug")
 	check(not Customize.place_decor(g, eid, "plant", free.x, free.y).ok, "cell is taken")
