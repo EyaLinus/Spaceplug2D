@@ -13,6 +13,7 @@ const Deals = preload("res://scripts/core/deals.gd")
 const Products = preload("res://scripts/core/products.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const ShipPreview = preload("res://scripts/ui/ship_preview.gd")
+const Customize = preload("res://scripts/core/customize.gd")
 const OfficialsApp = preload("res://scripts/ui/phone/apps/officials_app.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 
@@ -463,6 +464,44 @@ func _build_build_menu(g) -> Control:
 	v.add_child(UI.heading("Stations"))
 	v.add_child(grid)
 	v.add_child(UI.label("Pick a station, then walk to a free spot: it goes on the cells in front of you. Station kits ordered in the phone's Orders app are placed for free.", 14, UI.MUTED))
+	v.add_child(_build_decor(g))
+	return v
+
+
+## K2: decoration props. Pure looks: they sit on the floor, you walk over them. A new prop goes on the first free cell.
+func _build_decor(g) -> Control:
+	var eid: String = _filter.get("estate", g.SHIP_BAY)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	v.add_child(UI.heading("Decoration"))
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	var full := Customize.decor_list(g, eid).size() >= int(g.data.customize.decor_max)
+	for id in g.data.customize.decor:
+		var def: Dictionary = g.data.customize.decor[id]
+		var b := UI.button("%s · %d cr" % [def.name, int(def.cost)], func():
+			var c := Customize.free_cell(g, eid, id)
+			GameState.act(Customize.place_decor(g, eid, id, c.x, c.y)), 270)
+		b.name = "Decor_" + id
+		b.tooltip_text = "%s Goes on the first free floor cell; remove it below for half your money back." % def.hint
+		b.disabled = g.credits < int(def.cost) or full
+		grid.add_child(b)
+	v.add_child(grid)
+	var list := Customize.decor_list(g, eid)
+	v.add_child(UI.label("%d / %d props placed." % [list.size(), int(g.data.customize.decor_max)], 14, UI.MUTED))
+	for i in list.size():
+		var d: Dictionary = list[i]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		row.add_child(UI.label("%s  (%d, %d)" % [g.data.customize.decor[d.id].name, int(d.x) + 1, int(d.y) + 1], 14))
+		var rb := UI.button("Remove +%d cr" % int(round(int(g.data.customize.decor[d.id].cost) * float(g.data.estate_refund))), func():
+			GameState.act(Customize.remove_decor(g, eid, i)))
+		rb.name = "DecorRemove_%d" % i
+		rb.tooltip_text = "Take this prop away and get half of its price back."
+		row.add_child(rb)
+		v.add_child(row)
 	return v
 
 
@@ -497,12 +536,16 @@ func _build_shipyard(g) -> Control:
 	right.add_theme_constant_override("separation", 10)
 	right.add_child(grid)
 	right.add_child(_build_hulls(g))
+	right.add_child(_build_wardrobe(g))
 	right.add_child(_build_mechanic(g))
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 16)
 	var lv := VBoxContainer.new()
 	lv.add_child(UI.heading("Your ship", 16))
-	lv.add_child(ShipPreview.new(g.upgrades))
+	var preview := ShipPreview.new(g.upgrades)
+	preview.paint = Customize.color(g, "paint")
+	preview.decal = Customize.decal(g)
+	lv.add_child(preview)
 	lv.add_child(UI.label("Credits %d cr" % g.credits, 15, UI.GOLD))
 	h.add_child(lv)
 	h.add_child(right)
@@ -555,6 +598,33 @@ func _build_hulls(g) -> Control:
 		card.tooltip_text = str(sc.get("desc", ""))
 		grid.add_child(card)
 	v.add_child(grid)
+	return v
+
+
+## K2 paint shop and mirror: ship paint and decals, hair and jacket colours. Pay once per option, switch freely after.
+func _build_wardrobe(g) -> Control:
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	v.add_child(UI.heading("Paint shop & mirror", 16))
+	for slot in Customize.SLOTS:
+		v.add_child(UI.label(Customize.SLOT_NAMES[slot], 14, UI.MUTED))
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 6)
+		flow.add_theme_constant_override("v_separation", 6)
+		for o in Customize.options(g.data, slot):
+			var oid := str(o.id)
+			var equipped: bool = g.look[slot] == oid
+			var owned := Customize.owned(g, slot, oid)
+			var label := str(o.name) + ("  [on]" if equipped else ("" if owned else "  · %d cr" % int(o.cost)))
+			var b := UI.button(label, func(): GameState.act(Customize.equip(g, slot, oid)))
+			b.name = "Look_%s_%s" % [slot, oid]
+			b.disabled = equipped or (not owned and int(o.cost) > g.credits)
+			b.tooltip_text = "%s: %s. %s" % [Customize.SLOT_NAMES[slot], o.name,
+				"Equipped." if equipped else ("Yours, switch for free." if owned else "Costs %d cr once, then yours." % int(o.cost))]
+			if str(o.get("color", "")) != "":
+				b.add_theme_color_override("font_color", Color(str(o.color)).lightened(0.25))
+			flow.add_child(b)
+		v.add_child(flow)
 	return v
 
 

@@ -206,7 +206,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
 ### Wave 10 – feel and QoL (v0.1.13)
 - **K1 Feedback & tooltips.** Floating numbers (+cr, heat, damage), screen shake, hit flashes, sale/cook jingles,
   tooltips on every icon, stat and button; HUD notifications stack.
-- **K2 Customization.** Player look (hair, jacket colours), ship paint and decals, estate decoration props.
+- **K2 Customization.** ✅ done (see PROGRESS.md; hair/jacket, paint/decals, decor props; art is procedural for now). Player look (hair, jacket colours), ship paint and decals, estate decoration props.
 - **K3 QoL.** Hold-to-repeat buy, sort/filter in lists, compare prices tooltip, auto-route to marker, quick-save,
   rebindable everything, settings for text size; long balance sims and a first real balance pass if Linus asks.
 - **C2 Automation machines.** Auto-trimmer, drip mixer, packing machine: estate buildings that run a station step on

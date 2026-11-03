@@ -5,6 +5,8 @@ const Art = preload("res://scripts/core/art.gd")
 
 var levels: Dictionary = {}
 var zoom := 3
+var paint := Color(0, 0, 0, 0)  ## K2: current paint and decal
+var decal := "none"
 
 
 func _init(upgrade_levels: Dictionary = {}) -> void:
@@ -17,3 +19,4 @@ func _init(upgrade_levels: Dictionary = {}) -> void:
 func _draw() -> void:
 	draw_set_transform(size / 2.0, 0.0, Vector2(zoom, zoom))
 	Art.draw_ship(self, levels)
+	Art.draw_ship_paint(self, paint, decal)

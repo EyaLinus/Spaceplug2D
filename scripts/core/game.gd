@@ -23,6 +23,7 @@ const Dealers = preload("res://scripts/core/dealers.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Customize = preload("res://scripts/core/customize.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -48,6 +49,8 @@ var next_offer_id: int = 0
 var offer_clock: float = 0.0  ## seconds since the last round of customer texts
 var people: Dictionary = {}  ## contact id -> addiction, affinity, spent today, known, history (see people.gd)
 var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "flak": 0, "ion": 0, "shield": 0, "hull": 0}
+var look: Dictionary = {}  ## K2: equipped cosmetics per slot (customize.gd), saved
+var look_owned: Array = []  ## K2: bought cosmetics "slot:id", saved
 var ship_class: String = "courier"  ## hull class you fly (content.json "ship_classes"), saved
 var hulls: Array = ["courier"]  ## hull classes you own; switch between them at a shipyard, saved
 var combat: Dictionary = {}  ## space combat state: hull, shield, missiles, kills (saved), boost, idle (runtime); see spacecombat.gd
@@ -110,6 +113,8 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "flak": 0, "ion": 0, "shield": 0, "hull": 0}
 	ship_class = "courier"
 	hulls = ["courier"]
+	look = Customize.defaults(data)
+	look_owned = []
 	SpaceCombat.reset(self)
 	state = "playing"
 	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0}
@@ -862,7 +867,7 @@ func to_dict() -> Dictionary:
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
 		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
 		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "quests": Quests.to_save(self),
-		"cartels": Cartels.to_save(self), "ship_class": ship_class, "hulls": hulls.duplicate(),
+		"cartels": Cartels.to_save(self), "ship_class": ship_class, "hulls": hulls.duplicate(), "customize": Customize.to_save(self),
 	}
 
 
@@ -941,6 +946,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Dealers.from_save(self, d.get("dealers", []))
 	Quests.from_save(self, d.get("quests", {}), d.has("quests"))
 	Cartels.from_save(self, d.get("cartels", {}))
+	Customize.from_save(self, d.get("customize", {}), d.get("estates", {}))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

@@ -11,6 +11,8 @@ var frozen := false  ## true while docked or paused
 var engine_mult := 1.0
 var modules: Dictionary = {}  ## upgrade key -> level (Game.upgrades); picks the module sprites and nozzles
 var cfg: Dictionary = {}
+var paint := Color(0, 0, 0, 0)  ## K2 ship paint (alpha 0 = factory) and decal id, set by world.gd from Game.look
+var decal := "none"
 var hull_cfg: Dictionary = {}  ## hull class (content.json "ship_classes"): drawn size and paint stripe
 
 var _flame := 0.0
@@ -116,8 +118,10 @@ func _draw() -> void:
 			var c := Color(stripe)
 			draw_line(Vector2(-14, 6), Vector2(-6, 2), c, 2.0)
 			draw_line(Vector2(14, 6), Vector2(6, 2), c, 2.0)
+		Art.draw_ship_paint(self, paint, decal)
 		return
 	var hull := PackedVector2Array([Vector2(0, -20), Vector2(13, 14), Vector2(0, 8), Vector2(-13, 14)])
 	draw_colored_polygon(hull, Color("#ffd166"))
 	draw_polyline(hull + PackedVector2Array([hull[0]]), Color("#7a4e00"), 2.0)
 	draw_circle(Vector2(0, -4), 4.0, Color("#2b5f8a"))
+	Art.draw_ship_paint(self, paint, decal)

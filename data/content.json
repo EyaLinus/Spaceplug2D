@@ -365,6 +365,51 @@
     "max_qty": 40, "max_open": 6, "cancel_refund": 0.8, "kit_price": 0.85
   },
   "estate_refund": 0.5,
+  "customize": {
+    "hair": [
+      {"id": "brown", "name": "Chestnut", "color": "#3b2a20", "cost": 0},
+      {"id": "black", "name": "Void black", "color": "#15131c", "cost": 40},
+      {"id": "blond", "name": "Dune blond", "color": "#d9b45a", "cost": 60},
+      {"id": "red", "name": "Rust red", "color": "#b5442e", "cost": 60},
+      {"id": "teal", "name": "Neon teal", "color": "#4fe3c1", "cost": 120},
+      {"id": "pink", "name": "Hot pink", "color": "#ff7ac8", "cost": 120},
+      {"id": "white", "name": "Frost white", "color": "#e8ecf5", "cost": 90}
+    ],
+    "jacket": [
+      {"id": "gold", "name": "Courier gold", "color": "#ffd166", "cost": 0},
+      {"id": "slate", "name": "Dock slate", "color": "#6b7285", "cost": 50},
+      {"id": "crimson", "name": "Crimson", "color": "#c8453a", "cost": 80},
+      {"id": "moss", "name": "Moss green", "color": "#5f9a5e", "cost": 80},
+      {"id": "violet", "name": "Violet", "color": "#7a52b8", "cost": 120},
+      {"id": "ice", "name": "Ice blue", "color": "#7fc4e8", "cost": 120},
+      {"id": "night", "name": "Night black", "color": "#23222e", "cost": 150}
+    ],
+    "paint": [
+      {"id": "none", "name": "Factory", "color": "", "cost": 0},
+      {"id": "teal", "name": "Ion teal", "color": "#4fe3c1", "cost": 150},
+      {"id": "red", "name": "Signal red", "color": "#e8503f", "cost": 150},
+      {"id": "gold", "name": "Brass gold", "color": "#ffd166", "cost": 200},
+      {"id": "violet", "name": "Nebula violet", "color": "#9a6ae0", "cost": 250},
+      {"id": "white", "name": "Frost white", "color": "#eef0ff", "cost": 250},
+      {"id": "black", "name": "Matte black", "color": "#2a2838", "cost": 350}
+    ],
+    "decal": [
+      {"id": "none", "name": "Bare hull", "cost": 0},
+      {"id": "stripe", "name": "Racing stripe", "cost": 80},
+      {"id": "chevron", "name": "Chevrons", "cost": 120},
+      {"id": "star", "name": "Star", "cost": 160},
+      {"id": "skull", "name": "Skull", "cost": 260}
+    ],
+    "decor": {
+      "rug": {"name": "Woven rug", "cost": 90, "color": "#8a3a4e", "hint": "A rug for the cold floor. Walk over it."},
+      "plant": {"name": "Hydro plant", "cost": 70, "color": "#3f8a5e", "hint": "One legal plant."},
+      "lamp": {"name": "Floor lamp", "cost": 110, "color": "#ffe8a3", "hint": "Warm light, no questions."},
+      "poster": {"name": "Poster", "cost": 60, "color": "#5fb6c9", "hint": "A band nobody has heard of."},
+      "couch": {"name": "Couch", "cost": 180, "color": "#6a3a8a", "hint": "For the long cooks."},
+      "trophy": {"name": "Trophy", "cost": 300, "color": "#ffd166", "hint": "Employee of the month: you."}
+    },
+    "decor_max": 24
+  },
   "combat": {
     "player": {"hp": 100, "regen_per_second": 4.0, "regen_delay": 6.0, "radius": 10, "ko_hp_ratio": 0.5,
       "ko_fine_ratio": 0.2, "ko_fine_min": 80, "ko_heat_drop": 20},

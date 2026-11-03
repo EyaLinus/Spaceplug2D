@@ -7,7 +7,15 @@ extends RefCounted
 const WALL := 1
 
 
-static func build_cfg(data: Dictionary, estate_id: String, buildings: Array) -> Dictionary:
+## Decoration props (K2) as [[id, map x, map y]]: floor items drawn by surface.gd, never part of the collision.
+static func decor_cells(decor: Array) -> Array:
+	var r := []
+	for d in decor:
+		r.append([str(d.id), int(d.x) + WALL, int(d.y) + WALL])
+	return r
+
+
+static func build_cfg(data: Dictionary, estate_id: String, buildings: Array, decor: Array = []) -> Dictionary:
 	var e: Dictionary = data.estates[estate_id]
 	var w := int(e.size[0])
 	var h := int(e.size[1])
@@ -17,7 +25,7 @@ static func build_cfg(data: Dictionary, estate_id: String, buildings: Array) -> 
 		"ground": "#3a3328", "ground_alt": "#40382c", "road": "#45464f", "road_line": "#6b6c78",
 		"roads": [], "plazas": [], "walkers": 0, "security": 0.0, "props": [["crate", WALL + 0.5, h + WALL - 0.4]], "npcs": [],
 		"spawn": [door.x + WALL + 0.5, door.y + WALL + 0.3],
-		"estate": estate_id, "estate_size": [w, h], "estate_offset": WALL, "zoom": 2.0, "grass": false,
+		"estate": estate_id, "estate_size": [w, h], "decor": decor_cells(decor), "estate_offset": WALL, "zoom": 2.0, "grass": false,
 		"exits": [{"id": "exit", "pos": [door.x + WALL + 0.5, door.y + WALL + 0.75], "label": "Leave %s" % e.name, "action": "exit_estate"},
 			{"id": "stash", "pos": [WALL + 0.5, h + WALL - 0.5], "label": "Stash crate", "action": "stash"}],
 		"buildings": [],

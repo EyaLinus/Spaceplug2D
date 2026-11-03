@@ -95,6 +95,9 @@ func _ready() -> void:
 		station.close()
 		if surface != null:
 			surface.placing = st)
+	EventBus.game_event.connect(func(kind: String, _p: Dictionary):  # K2: props are floor items, no room rebuild needed
+		if (kind == "decor_placed" or kind == "decor_removed") and surface != null and surface.cfg.has("estate"):
+			surface.set_decor(EstateLayout.decor_cells(GameState.game.estates[surface.cfg.estate].get("decor", []))))
 	station.estate_changed.connect(func():
 		if surface != null and surface.cfg.has("estate"):
 			enter_estate(surface.cfg.estate, surface.player.position))
@@ -399,7 +402,7 @@ func enter_estate(eid: String, at = null) -> void:
 	station.close()
 	_leave_surface()
 	surface = SurfaceScript.new()
-	surface.setup("estate:" + eid, EstateLayout.build_cfg(GameState.data, eid, g.estates[eid].buildings))
+	surface.setup("estate:" + eid, EstateLayout.build_cfg(GameState.data, eid, g.estates[eid].buildings, g.estates[eid].get("decor", [])))
 	g.inside_estate = eid
 	g.note("entered_estate", {"estate": eid})
 	surface.can_place = func(st: String, x: int, y: int) -> bool: return g.can_place(eid, st, x, y)

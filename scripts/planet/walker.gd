@@ -3,6 +3,7 @@ extends CharacterBody2D
 ## procedural body as fallback.
 
 const Art = preload("res://scripts/core/art.gd")
+const Customize = preload("res://scripts/core/customize.gd")
 const SPEED := 170.0
 const SPRINT := 1.6  ## speed factor while the sprint key is held (planets are big)
 const RADIUS := 9.0
@@ -53,13 +54,15 @@ func _draw() -> void:
 	var look := aim_dir if aim_dir != Vector2.ZERO else facing
 	if flash > 0.0:
 		draw_circle(Vector2(0, 0), 13.0, Color(1, 0.2, 0.2, minf(0.5, flash * 2.0)))
-	if Art.draw_character(self, "player", look, int(_step * 4.0 / TAU) if _moving else 0):
+	var g = GameState.game
+	var styled: bool = g != null and Customize.custom_body(g)  # K2: a new hair/jacket colour draws the coloured body
+	if not styled and Art.draw_character(self, "player", look, int(_step * 4.0 / TAU) if _moving else 0):
 		return
 	var swing := sin(_step) * 4.0 if _moving else 0.0
 	var leg := Color("#2a2f45")
 	draw_line(Vector2(-3, 4), Vector2(-3 + swing * 0.3, 12 + swing * 0.2), leg, 3.0)
 	draw_line(Vector2(3, 4), Vector2(3 - swing * 0.3, 12 - swing * 0.2), leg, 3.0)
-	var coat := Color("#ffd166")
+	var coat := Customize.color(g, "jacket") if styled else Color("#ffd166")
 	draw_rect(Rect2(-6, -6, 12, 12), coat)
 	draw_rect(Rect2(-6, -6, 12, 12), coat.darkened(0.5), false, 1.5)
 	var bob := absf(sin(_step)) * 1.5 if _moving else 0.0
@@ -70,4 +73,7 @@ func _draw() -> void:
 		var off := Vector2(facing.x * 2.5, 1.0)
 		draw_circle(head + off + Vector2(-2, 0), 1.1, Color("#1a1a22"))
 		draw_circle(head + off + Vector2(2, 0), 1.1, Color("#1a1a22"))
-	draw_arc(head, 6.0, PI, TAU, 12, Color("#3b2a20"), 3.0)
+	var hair := Customize.color(g, "hair") if styled else Color("#3b2a20")
+	if facing.y <= -0.5:  # seen from behind: all hair
+		draw_circle(head, 6.0, hair)
+	draw_arc(head, 6.0, PI, TAU, 12, hair, 3.0)

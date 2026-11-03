@@ -5,6 +5,13 @@
   chapter 2 (#61). Changelog folded, version 0.1.11. Next: wave 10 (K1 feedback & tooltips, K2 customization,
   K3 QoL, C2 automation machines) in a fresh thread. Escort missions from E4 are still open.
 
+## K2: customization (2026-11-03, wave 10)
+- **Core** `scripts/core/customize.gd`, data `content.json` -> "customize" (hair, jacket, paint, decal option lists, the first entry of each is the free default; decor props with cost/colour/hint; `decor_max` 24). State: `Game.look` {slot: id}, `Game.look_owned` ["slot:id"], `estates[id].decor` [{id, x, y}]. Saved under `customize` (look, owned) and inside each estate's record (decor); `from_save` validates every id, so old saves and junk fall back to the factory look. `equip` pays once, needs a dock, emits `customized`; decor `place_decor` / `remove_decor` (half refund, `estate_refund`) / `can_place_decor` (not on stations, door, stash crate, other props) / `free_cell`, events `decor_placed` / `decor_removed`.
+- **Rendering**: `Art.draw_ship_paint` (fuselage tint, nose, wing stripes, decal) over the hull sprite in flight (`ship.gd`), on the pad (`surface.gd`) and in the shipyard preview; `Art.draw_decor` (procedural, non-solid) via `cfg.decor` in `EstateLayout.build_cfg`, `Surface.set_decor` refreshes it live without rebuilding the room. The walker draws the coloured procedural body (jacket/hair) once either differs from the default, otherwise the sprite.
+- **UI** `station_ui.gd`: Shipyard tab "Paint shop & mirror" (button per option, tooltip on each), Build tab "Decoration" (place on the first free cell, list with Remove). All new buttons carry tooltips.
+- Verified: unit tests added (`test_customize_data/look/decor/save`: data shape, buying/switching/refusals, placement rules and limit, refunds, save round trip, old save without the block, junk ids). Not run here: no Godot binary in this container, so unit tests, UI smoke, menu smoke and sim are left to CI.
+- Gaps: not run or seen in-engine (colours, decal shapes and decor drawings are unreviewed by eye); a custom hair/jacket swaps the sprite for the simple procedural body (no recoloured sprite sheets yet); decor is placed on the first free cell (no ghost/drag placement, no moving); no decor art PNGs; hair/jacket only changeable at a shipyard; NPCs/officers unaffected; UI smoke has no K2 steps yet.
+
 ## D3: interdiction + main quest chapter 2 (phase 3 wave 9, 2026-11-03)
 - **Core** `scripts/core/interdiction.gd`, data `content.json` "interdiction". `Game.jump` rolls on arrival with its own
   `Game.lane_rng` (game RNG untouched); from `min_day` 2. Authority: only with product aboard and heat ≥ chase heat.

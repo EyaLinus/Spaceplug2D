@@ -9,6 +9,7 @@ const PatrolScript = preload("res://scripts/world/patrol.gd")
 const CombatLayerScript = preload("res://scripts/world/combat_layer.gd")
 const CombatHudScript = preload("res://scripts/ui/combat_hud.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
+const Customize = preload("res://scripts/core/customize.gd")
 
 const SECTOR_HALF := 4200.0
 
@@ -111,6 +112,8 @@ func _physics_process(delta: float) -> void:
 	ship.engine_mult = g.engine_mult()
 	ship.modules = g.upgrades
 	ship.hull_cfg = SpaceCombat.ship_class(g)
+	ship.paint = Customize.color(g, "paint")
+	ship.decal = Customize.decal(g)
 	if GameState.paused:
 		return
 	combat_hud.visible = active and not GameState.paused

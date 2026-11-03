@@ -23,6 +23,8 @@ const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Customize = preload("res://scripts/core/customize.gd")
+const EstateLayout = preload("res://scripts/planet/estate_layout.gd")
 
 var data: Dictionary
 var failures := 0
@@ -109,6 +111,10 @@ func _init() -> void:
 		"test_interdiction_choices",
 		"test_interdiction_on_jump",
 		"test_quest_chapter2",
+		"test_customize_data",
+		"test_customize_look",
+		"test_customize_decor",
+		"test_customize_save",
 		"test_bribe",
 		"test_corruption_data",
 		"test_heat_per_system",
@@ -3055,3 +3061,127 @@ func test_quest_chapter2() -> void:
 	check(g.quests.done.has("main_nest") and g.quests.active.has("main_rig"), "raiding the Nest finishes Smoke the Nest")
 	check(Quests.space_goal(g, {"loc": "tide_rig"}) == "halvane_gate", "the Rig waypoint routes through the gate")
 
+
+
+# ---------------------------------------------------------------- K2 customization
+
+func test_customize_data() -> void:
+	var c: Dictionary = data.customize
+	for slot in Customize.SLOTS:
+		var seen := {}
+		check(c[slot].size() >= 4, "%s has options" % slot)
+		check(int(c[slot][0].cost) == 0, "%s: the first option is the free default" % slot)
+		for o in c[slot]:
+			check(not seen.has(o.id) and o.has("name") and int(o.cost) >= 0, "%s option %s well formed" % [slot, o.id])
+			seen[o.id] = true
+			if str(o.get("color", "")) != "":
+				check(str(o.color).begins_with("#") and str(o.color).length() == 7, "%s %s colour is #rrggbb" % [slot, o.id])
+	for slot in ["hair", "jacket"]:
+		for o in c[slot]:
+			check(str(o.get("color", "")) != "", "%s %s has a colour" % [slot, o.id])
+	for id in c.decor:
+		check(c.decor[id].has("name") and int(c.decor[id].cost) > 0 and str(c.decor[id].color).begins_with("#"), "decor %s well formed" % id)
+	check(int(c.decor_max) > 0, "decor limit")
+
+
+func test_customize_look() -> void:
+	var g := new_game()
+	check(g.look == Customize.defaults(data) and g.look_owned.is_empty(), "start with the factory look")
+	check(not Customize.custom_body(g), "factory look keeps the sprite")
+	check(Customize.color(g, "paint").a == 0.0 and Customize.decal(g) == "none", "no paint, no decal at start")
+	g.credits = 1000
+	g.location = ""
+	check(not Customize.equip(g, "hair", "red").ok and g.credits == 1000, "cannot shop in flight")
+	g.location = "mireth"
+	check(not Customize.equip(g, "hair", "nope").ok and not Customize.equip(g, "beard", "red").ok, "unknown option or slot")
+	check(not Customize.equip(g, "hair", "brown").ok, "already equipped")
+	var cost := int(Customize.option(data, "hair", "red").cost)
+	var r := Customize.equip(g, "hair", "red")
+	check(r.ok and g.look.hair == "red" and g.credits == 1000 - cost, "buy and equip hair")
+	check(Customize.custom_body(g) and Customize.color(g, "hair") == Color("#b5442e"), "custom body, hair colour")
+	check(Customize.equip(g, "hair", "brown").ok and g.credits == 1000 - cost, "switching back to the free default costs nothing")
+	check(Customize.equip(g, "hair", "red").ok and g.credits == 1000 - cost, "an owned option is free to re-equip")
+	g.credits = 5
+	check(not Customize.equip(g, "jacket", "night").ok and g.look.jacket == "gold", "too poor for a jacket")
+	g.credits = 1000
+	check(Customize.equip(g, "paint", "teal").ok and Customize.color(g, "paint") == Color("#4fe3c1"), "ship paint")
+	check(Customize.equip(g, "decal", "star").ok and Customize.decal(g) == "star", "ship decal")
+	var seen := []
+	g.event.connect(func(k, _p): seen.append(k))
+	Customize.equip(g, "decal", "skull")
+	check(seen.has("customized"), "customized event")
+
+
+func test_customize_decor() -> void:
+	var g := new_game()
+	var eid := "cannery_rig"
+	g.credits = 5000
+	var size: Array = data.estates[eid].size
+	g.location = "mireth"
+	var free := Customize.free_cell(g, eid, "rug")
+	check(free.x >= 0 and Customize.can_place_decor(g, eid, "rug", free.x, free.y), "a free cell exists")
+	var station: Dictionary = g.estates[eid].buildings[0]
+	check(not Customize.can_place_decor(g, eid, "rug", int(station.x), int(station.y)), "not on a station")
+	var door := g.estate_door(eid)
+	check(not Customize.can_place_decor(g, eid, "rug", door.x, door.y), "not on the door")
+	check(not Customize.can_place_decor(g, eid, "rug", 0, int(size[1]) - 1), "not on the stash crate")
+	check(not Customize.can_place_decor(g, eid, "rug", -1, 0) and not Customize.can_place_decor(g, eid, "rug", int(size[0]), 0), "inside the room")
+	check(not Customize.can_place_decor(g, eid, "sofa", free.x, free.y), "unknown prop")
+	check(not Customize.place_decor(g, "cannery_annex", "rug", 0, 0).ok, "cannot decorate an estate you do not own")
+	var before := g.credits
+	var ring_plus_stations := EstateLayout.build_cfg(data, eid, g.estates[eid].buildings).buildings.size()
+	var r := Customize.place_decor(g, eid, "rug", free.x, free.y)
+	check(r.ok and g.credits == before - int(data.customize.decor.rug.cost) and Customize.decor_list(g, eid).size() == 1, "place a rug")
+	check(not Customize.place_decor(g, eid, "plant", free.x, free.y).ok, "cell is taken")
+	check(Customize.free_cell(g, eid, "plant") != free, "next free cell differs")
+	check(EstateLayout.build_cfg(data, eid, g.estates[eid].buildings).buildings.size() == ring_plus_stations, "decor adds no solid buildings")
+	g.credits = 10
+	var tc := Customize.free_cell(g, eid, "trophy")
+	check(not Customize.place_decor(g, eid, "trophy", tc.x, tc.y).ok, "too poor for a trophy")
+	g.credits = before
+	var rm := Customize.remove_decor(g, eid, 0)
+	check(rm.ok and Customize.decor_list(g, eid).is_empty(), "remove the rug")
+	check(g.credits == before + int(round(int(data.customize.decor.rug.cost) * float(data.estate_refund))), "half refunded")
+	check(not Customize.remove_decor(g, eid, 0).ok, "nothing left to remove")
+	g.credits = 100000
+	var n := 0
+	while Customize.place_decor(g, eid, "plant", Customize.free_cell(g, eid, "plant").x, Customize.free_cell(g, eid, "plant").y).ok:
+		n += 1
+		if n > 200:
+			break
+	check(n == int(data.customize.decor_max), "decor limit reached at %d" % int(data.customize.decor_max))
+	# the ship bay only while docked
+	g.location = ""
+	check(not Customize.place_decor(g, g.SHIP_BAY, "rug", 0, 0).ok, "ship bay closed in flight")
+
+
+func test_customize_save() -> void:
+	var g := new_game()
+	g.credits = 5000
+	Customize.equip(g, "hair", "pink")
+	Customize.equip(g, "jacket", "violet")
+	Customize.equip(g, "paint", "gold")
+	Customize.equip(g, "decal", "chevron")
+	Customize.equip(g, "decal", "none")
+	Customize.place_decor(g, "cannery_rig", "lamp", 10, 5)
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(h.look == g.look, "look survives a save")
+	check(Customize.owned(h, "decal", "chevron") and Customize.owned(h, "hair", "pink"), "owned list survives")
+	check(Customize.decor_list(h, "cannery_rig") == g.estates.cannery_rig.decor, "decor survives a save")
+	# old save: no customize block at all
+	var old: Dictionary = JSON.parse_string(JSON.stringify(g.to_dict()))
+	old.erase("customize")
+	for e in old.estates:
+		old.estates[e].erase("decor")
+	var o := Game.new()
+	o.from_dict(data, old)
+	check(o.look == Customize.defaults(data) and o.look_owned.is_empty() and Customize.decor_list(o, "cannery_rig").is_empty(), "old saves load with the factory look")
+	# junk values fall back
+	var bad: Dictionary = JSON.parse_string(JSON.stringify(g.to_dict()))
+	bad.customize = {"look": {"hair": "rainbow", "jacket": "night"}, "owned": ["x", "hair:rainbow", "jacket:night"]}
+	bad.estates.cannery_rig.decor = [{"id": "ufo", "x": 1, "y": 1}, {"id": "rug", "x": 2, "y": 2}]
+	var b := Game.new()
+	b.from_dict(data, bad)
+	check(b.look.hair == "brown" and b.look.jacket == "night" and Customize.owned(b, "jacket", "night"), "unknown ids fall back, equipped option stays usable")
+	check(Customize.decor_list(b, "cannery_rig").size() == 1, "unknown props dropped")

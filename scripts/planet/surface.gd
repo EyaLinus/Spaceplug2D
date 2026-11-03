@@ -15,6 +15,7 @@ const Bench = preload("res://scripts/core/bench.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const CombatHud = preload("res://scripts/planet/combat_hud.gd")
 const Locals = preload("res://scripts/core/locals.gd")
+const Customize = preload("res://scripts/core/customize.gd")
 
 const INPUT := {
 	"move_up": [KEY_W, KEY_UP],
@@ -738,6 +739,7 @@ func _draw() -> void:
 		_draw_building(b)
 	for p in cfg.get("props", []):
 		_draw_prop(p[0], Vector2(float(p[1]), float(p[2])) * tile)
+	_draw_decor()
 	for i in covers.size():
 		_draw_cover(covers[i], str(cfg.cover[i][4]) if cfg.cover[i].size() > 4 else "barrier")
 	var font := ThemeDB.fallback_font
@@ -875,6 +877,8 @@ func _draw_pad() -> void:
 	# the parked ship, same sprite and upgrade modules as in flight but bigger
 	draw_set_transform(c, 0.0, Vector2(2.5, 2.5))
 	var drawn := Art.draw_ship(self, GameState.game.upgrades if GameState.game != null else {})
+	if drawn and GameState.game != null:
+		Art.draw_ship_paint(self, Customize.color(GameState.game, "paint"), Customize.decal(GameState.game))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if drawn:
 		return
@@ -1008,6 +1012,20 @@ func _machine_label(text: String, r: Rect2) -> void:
 	var p := Vector2(r.get_center().x - w / 2.0, r.end.y - 4)
 	draw_rect(Rect2(p + Vector2(-2, -7), Vector2(w + 4, 9)), Color(0, 0, 0, 0.6))
 	draw_string(font, p, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color("#e6e9ff"))
+
+
+## K2 estate decoration (cfg.decor: [[prop id, cell x, cell y]], map cells): floor items, never solid.
+func _draw_decor() -> void:
+	var defs: Dictionary = GameState.data.get("customize", {}).get("decor", {})
+	for d in cfg.get("decor", []):
+		if defs.has(d[0]):
+			Art.draw_decor(self, str(d[0]), Color(str(defs[d[0]].color)), (Vector2(float(d[1]), float(d[2])) + Vector2(0.5, 0.5)) * tile, tile)
+
+
+## Swaps the decoration list of an estate interior (after placing/removing a prop) without rebuilding the room.
+func set_decor(decor: Array) -> void:
+	cfg.decor = decor
+	queue_redraw()
 
 
 func _draw_prop(kind: String, p: Vector2) -> void:
