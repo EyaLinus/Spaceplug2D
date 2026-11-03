@@ -1,5 +1,10 @@
 # Progress log
 
+## Release v0.1.11 (2026-11-03)
+- Phase 3 wave 9: I1 cartels + sector influence (#59), E4 space combat II (#60), D3 interdiction + main quest
+  chapter 2 (#61). Changelog folded, version 0.1.11. Next: wave 10 (K1 feedback & tooltips, K2 customization,
+  K3 QoL, C2 automation machines) in a fresh thread. Escort missions from E4 are still open.
+
 ## D3: interdiction + main quest chapter 2 (phase 3 wave 9, 2026-11-03)
 - **Core** `scripts/core/interdiction.gd`, data `content.json` "interdiction". `Game.jump` rolls on arrival with its own
   `Game.lane_rng` (game RNG untouched); from `min_day` 2. Authority: only with product aboard and heat ≥ chase heat.
