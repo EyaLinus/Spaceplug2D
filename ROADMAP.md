@@ -209,6 +209,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
 - **K2 Customization.** ✅ done (#65; Style app). Player look (hair, jacket colours), ship paint and decals, estate decoration props.
 - **K3 QoL.** ✅ done (K3 PR; balance pass still waits for Linus). Hold-to-repeat buy, sort/filter in lists, compare prices tooltip, auto-route to marker, quick-save,
   rebindable everything, settings for text size; long balance sims and a first real balance pass if Linus asks.
+- **Q3 Main quest chapter 3.** ✅ done (see PROGRESS.md). Ninth Veil base quest: 6 missions from Varrow to Veil Spire.
 - **C2 Automation machines.** ⏳ open, moved to the next phase. Auto-trimmer, drip mixer, packing machine: estate buildings that run a station step on
   their own (lower quality than a good minigame, but no worker needed).
 - → **Release v0.1.13**.

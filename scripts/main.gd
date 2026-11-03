@@ -533,7 +533,7 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		if p.won:
 			var left: int = (g.quests.active as Array).filter(func(q): return Quests.defs(g).get(q, {}).get("main", false)).size()
 			_end_label.text = "DEBT CLEARED · CHAPTER 1 COMPLETE\n\nThe Consortium closes your account. Day %d, %d cr earned, %d units moved, busted %d×.\n%s" % [g.day, g.stats.earned, g.stats.units_sold, g.stats.busts,
-				"Your main quest goes on: check the Quests app." if left > 0 else "The cartel war is over for now. Chapter 3 arrives in a later build."]
+				"Your main quest goes on: check the Quests app." if left > 0 else "The cartel war is over for now. Chapter 4 arrives in a later build."]
 		else:
 			_end_label.text = "THE CONSORTIUM CAME TO COLLECT\n\nYou still owed %d cr on day %d.\nEarned %d cr, moved %d units, busted %d×." % [g.debt, g.day, g.stats.earned, g.stats.units_sold, g.stats.busts]
 		end_screen.visible = true
