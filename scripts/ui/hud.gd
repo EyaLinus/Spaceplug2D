@@ -6,8 +6,10 @@ const UI = preload("res://scripts/ui/ui_theme.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Bench = preload("res://scripts/core/bench.gd")
+const Escort = preload("res://scripts/core/escort.gd")
 const FxScript = preload("res://scripts/ui/fx.gd")
 
+const ESCORT_COLOR := Color("#6fe3d0")
 const MAX_TOASTS := 5
 const TOAST_SECONDS := 4.0
 
@@ -350,10 +352,16 @@ func _draw_minimap() -> void:
 	var qp = quest_point()
 	if qp != null:
 		_minimap.draw_arc(to_map.call(qp), 6.0, 0, TAU, 16, UI.GOLD, 2.0)
+	if world.freighter != null:  # escort mission: the freighter and where it is going
+		_minimap.draw_circle(to_map.call(world.freighter.position), 3.5, ESCORT_COLOR)
+		var ep: Vector2 = escort_goal_point()
+		if ep != Vector2.INF:
+			_minimap.draw_arc(to_map.call(ep), 7.0, 0, TAU, 16, ESCORT_COLOR, 2.0)
 
 
 func _draw_nav() -> void:
 	_draw_quest_marker()
+	_draw_escort()
 	if world == null or not world.active:
 		return
 	var view := _nav.size
@@ -563,13 +571,16 @@ func _interactable_pos(id: String):
 
 ## Gold diamond over the quest target, or an edge arrow when it is off screen.
 func _draw_quest_marker() -> void:
-	var wp = quest_point()
+	_draw_marker(quest_point(), UI.GOLD, "QUEST")
+
+
+## Gold diamond over `wp` (a world position or null), or an edge arrow labelled `label` when it is off screen.
+func _draw_marker(wp, col: Color, label: String) -> void:
 	if wp == null:
 		return
 	var view := _nav.size
 	var p: Vector2 = get_viewport().get_canvas_transform() * (wp as Vector2)
 	var bob := sin(Time.get_ticks_msec() / 220.0) * 4.0
-	var col := UI.GOLD
 	var margin := 48.0
 	if Rect2(Vector2(margin, margin), view - Vector2(margin, margin) * 2.0).has_point(p):
 		var c := p + Vector2(0, -34 + bob)
@@ -583,5 +594,50 @@ func _draw_quest_marker() -> void:
 	var tip := e + dir * (18.0 + bob)
 	_nav.draw_colored_polygon(PackedVector2Array([tip, e + dir.orthogonal() * 11.0, e - dir.orthogonal() * 11.0]), col)
 	var font := ThemeDB.fallback_font
-	var w := font.get_string_size("QUEST", HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	_nav.draw_string(font, e - dir * 20.0 - Vector2(w / 2.0, -5.0), "QUEST", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
+	var w := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	_nav.draw_string(font, e - dir * 20.0 - Vector2(w / 2.0, -5.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
+
+
+## World position of the escort destination (or the gate on the way) in the current system, Vector2.INF if none.
+func escort_goal_point() -> Vector2:
+	var g = GameState.game
+	if g == null or world == null or not Escort.active(g):
+		return Vector2.INF
+	var goal := Escort.goal(g)
+	return world.locations[goal].position if world.locations.has(goal) else Vector2.INF
+
+
+## Escort mission: markers on the freighter and its destination plus a status line under the top bar.
+func escort_status() -> String:
+	var g = GameState.game
+	if g == null or not Escort.active(g):
+		return ""
+	var m: Dictionary = Escort.mission(g)
+	var j: Dictionary = Escort.job(g)
+	var hint := ""
+	if bool(j.get("at_gate", false)):
+		hint = "  ·  holding at the gate: jump with it"
+	elif bool(j.get("waiting", false)):
+		hint = "  ·  waiting for you"
+	var dist := ""
+	if world != null and world.freighter != null:
+		var ep := escort_goal_point()
+		if ep != Vector2.INF:
+			dist = "  ·  %.1fk to %s" % [Escort.pos(g).distance_to(ep) / 1000.0, g.data.locations[Escort.goal(g)].name]
+	return "ESCORT %s  ·  hull %d%%%s  ·  %d waves to come%s" % [m.get("name", ""), int(round(Escort.hull_ratio(g) * 100.0)), dist, Escort.waves_left(g), hint]
+
+
+func _draw_escort() -> void:
+	var g = GameState.game
+	if g == null or world == null or not world.active or not Escort.active(g) or world.freighter == null:
+		return
+	_draw_marker(world.freighter.position, ESCORT_COLOR, "FREIGHTER")
+	var ep := escort_goal_point()
+	if ep != Vector2.INF and world.camera != null:
+		_draw_marker(ep, UI.GOLD.lerp(ESCORT_COLOR, 0.5), "DEST")
+	var text := escort_status()
+	var font := ThemeDB.fallback_font
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+	var at := Vector2((_nav.size.x - w) / 2.0, 118.0)
+	_nav.draw_rect(Rect2(at - Vector2(10, 18), Vector2(w + 20, 26)), Color(0.04, 0.1, 0.1, 0.78))
+	_nav.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, ESCORT_COLOR)

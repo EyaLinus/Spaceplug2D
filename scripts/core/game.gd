@@ -24,6 +24,7 @@ const Quests = preload("res://scripts/core/quests.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Style = preload("res://scripts/core/style.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Escort = preload("res://scripts/core/escort.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -81,6 +82,7 @@ var dealers: Array = []  ## hired street dealers [{id, loc, stock, cash, sold, j
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 var quests: Dictionary = {"active": [], "done": [], "step": {}, "count": {}, "tracked": ""}  ## quest log (see quests.gd), saved
 var interdiction: Dictionary = {}  ## pending interdiction after a jump (runtime only, see interdiction.gd)
+var escort: Dictionary = {"job": {}, "last": {}, "done": 0}  ## freighter escort job and cooldowns (see escort.gd), saved
 var lane_rng := RandomNumberGenerator.new()  ## interdiction rolls only, so the game RNG stays untouched
 var style: Dictionary = {}  ## K2 look, ship paint/decal and estate decor (see style.gd), saved
 var cartels: Dictionary = {}  ## sector influence per location and cartel hostility (see cartels.gd), saved
@@ -136,6 +138,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	cartels = Cartels.init_state(data)
 	style = Style.init_state(data)
 	interdiction = {}
+	escort = Escort.empty_state()
 	lane_rng.seed = seed_value * 7919 + 13
 	_add_starter_estates()
 	demand = {}
@@ -442,6 +445,7 @@ func jump(gate: String) -> Dictionary:
 	system = str(gd.jump_to)
 	Corruption.on_jump(self, from, system)
 	tick(float(j.get("seconds", 0.0)))
+	Escort.on_jump(self, from, system, str(gd.get("arrive", "")))
 	_emit("jumped", {"from": from, "to": system, "gate": gate, "arrive": str(gd.get("arrive", ""))})
 	Interdiction.roll(self, system)
 	return _ok("Jumped to %s (%d cr toll)." % [system_data().get("name", system), fee])
@@ -866,7 +870,7 @@ func to_dict() -> Dictionary:
 		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
 		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "quests": Quests.to_save(self),
 		"cartels": Cartels.to_save(self), "ship_class": ship_class, "hulls": hulls.duplicate(),
-		"style": Style.to_save(self),
+		"style": Style.to_save(self), "escort": Escort.to_save(self),
 	}
 
 
@@ -946,6 +950,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Quests.from_save(self, d.get("quests", {}), d.has("quests"))
 	Cartels.from_save(self, d.get("cartels", {}))
 	Style.from_save(self, d.get("style", {}))
+	Escort.from_save(self, d.get("escort", {}))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

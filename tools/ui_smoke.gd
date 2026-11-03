@@ -14,6 +14,7 @@ const Combat = preload("res://scripts/core/combat.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Escort = preload("res://scripts/core/escort.gd")
 
 var steps := 0
 
@@ -1045,6 +1046,8 @@ func _run() -> void:
 	step("space combat II: wings, flak, ion, loot, cartel base")
 	await _interdiction(m, g)
 	step("interdiction card")
+	await _escort(m, g)
+	step("escort mission")
 
 	m.toggle_pause()
 	await frames(2)
@@ -1374,3 +1377,74 @@ func _interdiction(m, g) -> void:
 	g.cargo.erase("weed:glow")
 	g.heat = 0.0
 
+
+
+## E4 escort: accept the job in the phone while docked, the freighter appears, a wave goes for it, a bolt hurts it,
+## arrival pays; a second job fails when it is shot down.
+func _escort(m, g) -> void:
+	var w = m.world
+	var cb = w.combat
+	var home: String = g.location
+	w.clear_patrols()
+	cb.clear()
+	g.heat = 0.0
+	g.escort = Escort.empty_state()
+	g.location = "mireth"  # the offer list is for docked players
+	m.phone.open_app("quests")
+	await frames(2)
+	var day0: int = g.day
+	g.day = 1
+	m.phone.refresh()
+	await frames(2)
+	var btn = m.phone.find_child("EscortAccept_mireth_bazaar", true, false)
+	_assert(btn != null and not btn.disabled and btn.tooltip_text != "", "phone lists the Mireth freight job with a tooltip")
+	_assert(m.phone.find_child("EscortAccept_mireth_varrow", true, false).disabled, "the Varrow charter is locked on day 1")
+	g.day = day0
+	btn.pressed.emit()
+	await frames(2)
+	_assert(Escort.active(g) and m.phone.find_child("EscortCancel", true, false) != null, "accepting starts the job, the card offers Cut loose")
+	await key(KEY_TAB)
+	g.location = ""
+	w.show_system("halvane")
+	w.active = true
+	w.ship.position = Escort.pos(g) + Vector2(200, 0)
+	w.ship.stop()
+	await pframes(6)
+	_assert(w.freighter != null and w.freighter.position.distance_to(Escort.pos(g)) < 1.0, "the freighter is in space")
+	var p0: Vector2 = w.freighter.position
+	w.ship.position = w.freighter.position + Vector2(200, 0)
+	await pframes(30)
+	_assert(w.freighter.position.distance_to(p0) > 10.0, "it flies towards Drift Bazaar (%.0f px)" % w.freighter.position.distance_to(p0))
+	_assert(m.hud.escort_status().begins_with("ESCORT") and m.hud.escort_goal_point() != Vector2.INF, "HUD status and destination marker")
+	# a wave arrives around it and the raiders pick the freighter as the target
+	Escort.job(g).clock = 999.0
+	w.ship.position = w.freighter.position + Vector2(300, 0)
+	await pframes(3)
+	_assert(cb.pirates.size() >= 1 and Escort.job(g).spawned == 1, "a wave arrives (%d ships)" % cb.pirates.size())
+	_assert(Escort.prefers_freighter(g, w.freighter.position + Vector2(700, 0), w.ship.position + Vector2(2000, 0)), "raiders go for the freighter")
+	cb.clear()
+	var hull0: float = Escort.job(g).hull
+	cb._add_bolt(w.freighter.position, Vector2.ZERO, 1.0, 25.0, false)
+	await pframes(2)
+	_assert(float(Escort.job(g).hull) <= hull0 - 24.0, "an enemy bolt hurts the freighter")
+	# arrival pays
+	var dest: Vector2 = Escort.loc_pos(g, "bazaar")
+	Escort.job(g).pos = [dest.x, dest.y - 400.0]
+	w.ship.position = dest + Vector2(0, -500)
+	var cr: int = g.credits
+	await pframes(90)
+	_assert(not Escort.active(g) and g.credits > cr and w.freighter == null and int(g.escort.done) == 1, "arrival pays and the freighter is gone")
+	# a second job is shot down
+	g.escort.last = {}
+	g.location = "cinder"
+	_assert(Escort.accept(g, "cinder_mireth").ok, "second job accepted")
+	g.location = ""
+	w.ship.position = Escort.pos(g) + Vector2(200, 0)
+	await pframes(4)
+	cr = g.credits
+	cb._add_bolt(w.freighter.position, Vector2.ZERO, 1.0, 500.0, false)
+	await pframes(3)
+	_assert(not Escort.active(g) and g.credits == cr and w.freighter == null, "a destroyed freighter fails the job without pay")
+	cb.clear()
+	g.escort = Escort.empty_state()
+	g.location = home

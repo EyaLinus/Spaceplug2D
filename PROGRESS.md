@@ -2,8 +2,33 @@
 
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,
-  version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building
+  version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, building
   interiors (D4), a real balance pass (waits for Linus), Ninth Veil base quest (chapter 3), duplicate PRs #48 and #64.
+
+## E4 leftover: escort missions (phase 3 wave 11, 2026-11-03)
+- **Core** `scripts/core/escort.gd`, data `content.json` "escort" (freighter stats, wave rules, 5 missions: Mireth to
+  Bazaar, Cinder to Mireth, Bazaar to Cinder, and the cross-gate charters Mireth to Varrow and back from day 2). State
+  `Game.escort` {job, last, done} (saved; old saves start empty). The freighter's kinematics are in the core (positions
+  from the location data): it follows the route (destination, or the gate on the way) at 200 px/s, waits when you are
+  more than `leash` away and resumes inside 70 % of it. At a gate it holds; `Game.jump` calls `Escort.on_jump`, the
+  freighter follows only if it is within `jump_follow` of you, otherwise the job fails (`left_behind`).
+- **Waves**: `tick_wave` (first after 10 s, then every 15 s, the mission's wave count, max 4 enemies alive, only while
+  you are near the freighter) returns `SpaceCombat.pick_spawn`, so cartel wings come exactly as in free flight; they
+  spawn 900-1200 px around the freighter. `prefers_freighter`: raiders in range target it unless you are within 380 px
+  of them. Enemy bolts that reach it call `Escort.damage`; zero hull = `escort_failed` (no pay, no penalty, retake at once).
+- **Pay**: `reward + bonus * hull left` on arrival (`escort_done`), 2 day cooldown per job after a success. Events
+  `escort_started/done/failed` go through `Game._emit`, so quests can match them (no quest uses them yet).
+- **UI**: Quests app (phone) lists the jobs of the place you are docked at (Accept, disabled with a reason when locked or
+  cooling down) and the running job with Cut loose; `scripts/world/freighter.gd` draws the freighter (procedural
+  polygon, hull bar); HUD status line (hull, distance, waves left, gate/waiting hints), FREIGHTER and DEST edge markers,
+  minimap dot and destination ring; toasts for delivery and failure.
+- Verified (Godot 4.3 headless, this session): unit tests 10889 checks 0 failures (new: data, flow, enemies/waves,
+  gate jump, save/old save), UI smoke 51 steps (accept via phone, freighter flies, wave spawns, bolt damage, arrival
+  pays, destroyed freighter fails), tip audit 0, menu smoke, sim 5/5 won avg day 4.6 (unchanged; the bot never flies).
+- Not verified: how it looks and feels (headless only, no rendered screenshot; the freighter art is a placeholder
+  polygon), a full cross-gate escort played in the real scene (the gate path is tested in the core only, the smoke
+  covers one system), difficulty/pay numbers are eyeballed, nothing played by a human. The Galaxy Map drive reuses
+  `Game.jump`, so it should behave the same but was not exercised with an escort.
 
 ## K3: QoL (phase 3 wave 10, 2026-11-03)
 - **Autopilot** (`ship.gd`): action `ship_autopilot` (T) toggles; `goal_provider` = `hud.quest_point` (set in main);

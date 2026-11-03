@@ -18,6 +18,7 @@ const PhoneScript = preload("res://scripts/ui/phone/phone.gd")
 const HyperspaceScript = preload("res://scripts/ui/hyperspace.gd")
 const InterdictCardScript = preload("res://scripts/ui/interdict_card.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Escort = preload("res://scripts/core/escort.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
@@ -584,6 +585,10 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		EventBus.toast.emit(str(p.why), false)
 	elif kind == "busted":
 		EventBus.toast.emit("BUSTED: lost %d units, fined %d cr." % [p.lost, p.fine], false)
+	elif kind == "escort_done":
+		EventBus.toast.emit("Freighter delivered: +%d cr%s." % [p.credits, " (intact hull bonus)" if float(p.hull_ratio) >= 0.99 else ""], true)
+	elif kind == "escort_failed":
+		EventBus.toast.emit(Escort.fail_text(GameState.game, str(p.mission), str(p.why)), false)
 	elif kind == "quest_started":
 		EventBus.toast.emit("New quest: %s" % Quests.defs(GameState.game).get(p.quest, {}).get("title", p.quest), true)
 	elif kind == "quest_step":

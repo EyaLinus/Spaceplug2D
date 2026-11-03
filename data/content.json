@@ -439,6 +439,18 @@
     "flee_base": 0.35, "flee_engine": 0.12, "flee_speed": 0.3, "flee_fail_damage": 30,
     "fight_heat": 25, "authority_kill_heat": 15
   },
+  "escort": {
+    "freighter": {"name": "Freighter", "hull": 300, "speed": 200, "radius": 30, "leash": 750, "resume": 0.7, "jump_follow": 900, "arrive": 150},
+    "waves": {"first": 10.0, "interval": 15.0, "max_enemies": 4, "spawn_min": 900, "spawn_max": 1200, "target_range": 1500, "provoke": 380},
+    "cooldown_days": 2,
+    "missions": {
+      "mireth_bazaar": {"name": "Hullmarket Convoy", "from": "mireth", "to": "bazaar", "reward": 300, "bonus": 140, "waves": 2, "desc": "A Bazaar salvage hauler wants company across Halvane. Raiders know the route."},
+      "cinder_mireth": {"name": "Ore Run", "from": "cinder", "to": "mireth", "reward": 320, "bonus": 150, "waves": 2, "desc": "A loaded ore freighter bound for the Mireth spaceport. Keep the Comets off it."},
+      "bazaar_cinder": {"name": "Black Market Lift", "from": "bazaar", "to": "cinder", "reward": 480, "bonus": 200, "waves": 3, "desc": "Long haul across the whole system with a hold nobody will name."},
+      "mireth_varrow": {"name": "Frontier Charter", "from": "mireth", "to": "varrow", "min_day": 2, "reward": 950, "bonus": 380, "waves": 4, "desc": "A charter freighter to Varrow through the Kovar gate. Both systems have cartel wings; stay close and jump with it."},
+      "varrow_mireth": {"name": "Salt Return", "from": "varrow", "to": "mireth", "min_day": 2, "reward": 950, "bonus": 380, "waves": 4, "desc": "A salt freighter heading home through the gate. Kovar wings hit hard."}
+    }
+  },
   "style": {
     "_doc": "K2 customization (Style app on the phone). Ramps swap palette roles of the player sprite (hair H/h, skin S/s, jacket C/c/A, pants P) and of the ship hull (y/c/A). cost 0 = owned from the start. Decor is shown in the estates you switch it on for.",
     "hair": {
