@@ -155,7 +155,7 @@ func _draw() -> void:
 
 
 func _bottle(p: Vector2, c: Color, label: String, left: int) -> void:
-	draw_rect(Rect2(p + Vector2(18, 0), Vector2(20, 18)), Color("#5a5f7a"))
+	draw_rect(Rect2(p + Vector2(18, 0), Vector2(20, 18)), Color("#5a5b6a"))
 	var body := Rect2(p + Vector2(0, 18), Vector2(56, 90))
 	draw_rect(body, Color("#26323a"))
 	var f := clampf(float(left) / SUPPLY, 0.0, 1.0)

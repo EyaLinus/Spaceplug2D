@@ -50,7 +50,7 @@ func _ready() -> void:
 	panel.add_child(v)
 	var head := HBoxContainer.new()
 	v.add_child(head)
-	_title = UI.label("", 26, UI.ACCENT)
+	_title = UI.label("", 26, UI.GOLD)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_title)
 	_leave_btn = UI.button("Undock", func():

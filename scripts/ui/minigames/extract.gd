@@ -70,7 +70,7 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, AREA), Color("#141a1e"))
 	# column: boiler at the bottom, glass tube, condenser coil, drip into the collection flask
 	var col := Rect2(120, 60, 46, 190)
-	draw_rect(Rect2(90, 250, 106, 36), Color("#5a5f7a"))
+	draw_rect(Rect2(90, 250, 106, 36), Color("#5a5b6a"))
 	draw_rect(Rect2(98, 258, 90, 20), Color("#3d2b4f").lerp(Color("#ff9a4d"), temp))
 	draw_rect(col, Color("#26323a"))
 	var fill := col.size.y * clampf(temp, 0.0, 1.0)
@@ -114,7 +114,7 @@ func _draw() -> void:
 	var now: Vector2 = to_px.call(elapsed, temp)
 	draw_line(Vector2(now.x, ch.position.y), Vector2(now.x, ch.end.y), Color(1, 1, 1, 0.25), 1.0)
 	draw_circle(now, 5.0, GOLD)
-	draw_rect(ch, Color("#3a3f66"), false, 2.0)
+	draw_rect(ch, Color("#3a3a4a"), false, 2.0)
 	text(Vector2(20, 28), "Ride the extraction profile", 18, GOOD)
 	text(Vector2(ch.end.x - 70, ch.position.y - 8), "%d°" % int(40 + temp * 140), 18, GOLD)
 	text(Vector2(20, AREA.y - 30), status_text(), 15, MUTED)

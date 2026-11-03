@@ -74,7 +74,7 @@ func _draw() -> void:
 	draw_rect(Rect2(zx - zw, bar.position.y, zw * 2.0, bar.size.y), Color(GOOD, 0.45))
 	var sx := bar.position.x + bar.size.x * x
 	draw_rect(Rect2(sx - 4, bar.position.y - 30, 8, bar.size.y + 60), GOLD)
-	draw_rect(Rect2(sx - 22, bar.position.y - 44, 44, 16), Color("#5a5f7a"))
+	draw_rect(Rect2(sx - 22, bar.position.y - 44, 44, 16), Color("#5a5b6a"))
 	for i in bags:
 		var c: Color = MUTED
 		if i < sealed.size():
