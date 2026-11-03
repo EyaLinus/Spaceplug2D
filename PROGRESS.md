@@ -1,5 +1,15 @@
 # Progress log
 
+## G1: UI skin (phase 3, 2026-11-03)
+- **Art:** `build_ui()` in `tools/art/build_art.py` draws 14 bevelled 12×12 nine-patch frames (panel, inset, card,
+  button states, gold accent button, tabs, tooltip, bar) from the art_profile palette → `assets/gfx/ui/*.png`.
+- **Theme:** `ui_theme.gd` builds StyleBoxTexture frames (margin 8 px, flat fallback when a PNG is missing) for panels,
+  popups, tooltips, buttons/option buttons, line edits/spin boxes, tabs, progress and scroll bars. Type variations
+  `AccentButton`, `CardButton`, `Card`, `Inset` and helpers `UI.accent_button`, `UI.card`, `UI.heading` for the next
+  milestones (G2 lab, G3 shops). Old blue hard-coded colours in UI scripts mapped to the palette; UI root draws nearest.
+- Phase 3 plan in ROADMAP.md (waves 5–10). Also fixed `tools/shot.gd` crashing after the HR shots (surface rebuilt).
+- Verified: unit tests, UI + menu smoke, sim, all screenshots reviewed (no blue panels left).
+
 ## B3: Workers & HR app (2026-10-30)
 - **Core** `scripts/core/workers.gd` (state: `Game.workers` [{id, loyalty, estate, hired_day}] + per-estate `storage`,
   `bench`, `out`, `recipe`, `job`, all saved; old saves get empty defaults). Candidates and tuning are data in

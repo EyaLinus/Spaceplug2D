@@ -121,6 +121,10 @@ func test_data_references() -> void:
 ## Every surface, character look and prop has art in assets/gfx (see scripts/core/art.gd).
 func test_art_registry() -> void:
 	var Art = load("res://scripts/core/art.gd")
+	for f in ["panel", "inset", "card", "card_hover", "button", "button_hover", "button_pressed", "button_disabled",
+			"button_accent", "button_accent_hover", "tab", "tab_selected", "tooltip", "bar_bg"]:
+		var ft: Texture2D = Art.tex("ui/%s.png" % f)
+		check(ft != null and ft.get_width() == 24, "UI frame %s exists (12 art px)" % f)
 	for loc in data.surfaces:
 		var set_name: String = Art.TILESETS.get(loc, "")
 		check(set_name != "", "surface %s has a tile set" % loc)
