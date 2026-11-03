@@ -18,6 +18,7 @@ const PLAYER_SRC := {
 	"pants": ["#1a2a55"],
 }
 const HULL_SRC := ["#ffd166", "#9a6a12", "#ffeab0"]
+const WIDE_DECOR := ["rug", "sofa", "neon", "aquarium"]  ## two cells wide (32 px art); only along the bottom row
 
 
 static func catalogue(data: Dictionary, cat: String) -> Dictionary:
@@ -119,14 +120,22 @@ static func decor_spots(data: Dictionary, estate_id: String, buildings: Array, s
 	for y in range(h - 2, 0, -1):
 		cells.append(Vector2i(w - 1, y))
 	var out: Array = []
-	var i := 0
 	for id in shown:
-		while i < cells.size() and taken.has(cells[i]):
-			i += 1
-		if i >= cells.size():
+		var wide := WIDE_DECOR.has(str(id))
+		for c in cells:
+			if taken.has(c):
+				continue
+			if wide:
+				var left := Vector2i(c.x - 1, c.y)
+				if c.y != h - 1 or c.x < 1 or taken.has(left):
+					continue
+				taken[left] = true
+				taken[c] = true
+				out.append([str(id), float(c.x), c.y + 0.5])
+			else:
+				taken[c] = true
+				out.append([str(id), c.x + 0.5, c.y + 0.5])
 			break
-		out.append([str(id), cells[i].x + 0.5, cells[i].y + 0.5])
-		i += 1
 	return out
 
 

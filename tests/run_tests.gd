@@ -2155,14 +2155,17 @@ func test_style() -> void:
 		var spots := Style.decor_spots(data, eid, bl, data.style.decor.keys())
 		var seen := {}
 		for sp in spots:
-			var c := Vector2i(int(sp[1]), int(sp[2]))
-			check(c.x >= 0 and c.y >= 0 and c.x < int(e.size[0]) and c.y < int(e.size[1]), "%s decor inside the room" % eid)
-			check(c != Vector2i(int(e.size[0]) / 2, int(e.size[1]) - 1) and c != Vector2i(0, int(e.size[1]) - 1), "%s decor off door and stash" % eid)
-			check(not seen.has(c), "%s one decor per cell" % eid)
-			seen[c] = true
-			for b in bl:
-				var sz: Array = data.buildables[b.id].size
-				check(not Rect2i(int(b.x), int(b.y), int(sz[0]), int(sz[1]) + 1).has_point(c), "%s decor off stations" % eid)
+			var cells_used: Array = [Vector2i(int(sp[1]), int(sp[2]))]
+			if Style.WIDE_DECOR.has(sp[0]):  # centred on the line between two cells
+				cells_used = [Vector2i(int(sp[1]) - 1, int(sp[2])), Vector2i(int(sp[1]), int(sp[2]))]
+			for c in cells_used:
+				check(c.x >= 0 and c.y >= 0 and c.x < int(e.size[0]) and c.y < int(e.size[1]), "%s decor inside the room" % eid)
+				check(c != Vector2i(int(e.size[0]) / 2, int(e.size[1]) - 1) and c != Vector2i(0, int(e.size[1]) - 1), "%s decor off door and stash" % eid)
+				check(not seen.has(c), "%s one decor per cell" % eid)
+				seen[c] = true
+				for b in bl:
+					var sz: Array = data.buildables[b.id].size
+					check(not Rect2i(int(b.x), int(b.y), int(sz[0]), int(sz[1]) + 1).has_point(c), "%s decor off stations" % eid)
 	var cfg := EstateLayout.build_cfg(data, "cannery_annex", [], g.style.decor)
 	check(cfg.props.filter(func(p): return p.size() > 3 and p[3] == "decor").size() == 2, "estate layout carries the decor props")
 	# save round trip keeps the style, junk ids are dropped

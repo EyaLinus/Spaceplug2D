@@ -40,7 +40,7 @@ func home(g, phone) -> Control:
 			for item_id in items:
 				grid.add_child(_tile(g, phone, cat, item_id, items[item_id]))
 			v.add_child(grid)
-	var note := UI.label("Decor shows in every estate you own. Paint and decals show in flight, on the pad and at the shipyard.", 12, UI.MUTED)
+	var note := UI.label("Decor shows in every estate you own where there is room along the walls (wide pieces need the bottom row). Paint and decals show in flight, on the pad and at the shipyard.", 12, UI.MUTED)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(note)
 	return v
