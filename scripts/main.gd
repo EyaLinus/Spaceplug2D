@@ -39,6 +39,9 @@ const ACTIONS := {
 	"ship_boost": [KEY_SHIFT],
 	"ui_menu": [KEY_ESCAPE, KEY_P],
 	"phone": [KEY_TAB],
+	"quick_save": [KEY_F5],
+	"quick_load": [KEY_F9],
+	"ship_autopilot": [KEY_T],
 }
 
 var world: Node2D
@@ -55,6 +58,7 @@ var slot_panel: Control  ## save slot list (new / load / save), opened from the 
 var settings_panel: Control
 var end_screen: Control
 var _ui_layer: CanvasLayer
+var _ui_root: Control  ## every overlay lives under it; K3 scales it for the "Text & UI size" setting
 var _end_label: Label
 
 
@@ -71,9 +75,13 @@ func _ready() -> void:
 	root.theme = UI.build()
 	root.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # pixel-art UI frames
 	_ui_layer.add_child(root)
-	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ui_root = root
+	_apply_ui_scale()
+	Settings.changed.connect(_apply_ui_scale)
+	get_viewport().size_changed.connect(_apply_ui_scale)
 	hud = HudScript.new()
 	hud.world = world
+	world.ship.goal_provider = hud.quest_point
 	root.add_child(hud)
 	station = StationScript.new()
 	root.add_child(station)
@@ -116,6 +124,16 @@ func _ready() -> void:
 	show_main_menu()
 
 
+## K3: scale the whole UI (HUD, panels, phone) by Settings.ui_scale while it still covers exactly the screen.
+func _apply_ui_scale() -> void:
+	var s: float = Settings.UI_SCALES[Settings.ui_scale]
+	var vp := get_viewport().get_visible_rect().size
+	_ui_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_ui_root.position = Vector2.ZERO
+	_ui_root.scale = Vector2(s, s)
+	_ui_root.size = vp / s
+
+
 func _register_input() -> void:
 	for action in ACTIONS:
 		if not InputMap.has_action(action):
@@ -148,6 +166,12 @@ func toggle_phone() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not _in_game():
+		return
+	if event.is_action_pressed("quick_save") and not GameState.paused:
+		quick_save()
+		return
+	if event.is_action_pressed("quick_load"):
+		quick_load()
 		return
 	if phone.visible and event.is_action_pressed("ui_menu") and not GameState.paused:
 		phone.back()
@@ -186,6 +210,31 @@ func start_new_game(seed_value: int = 0, slot: int = 0) -> void:
 	GameState.save_game()
 	_enter_game()
 	EventBus.toast.emit("You owe the Ouroboros Consortium %d cr. Cook, sell, pay up." % GameState.game.debt, true)
+
+
+## K3: F5 writes the run to its slot, F9 reloads that slot (both rebindable).
+func quick_save() -> void:
+	if GameState.game == null or GameState.game.state != "playing":
+		return
+	if GameState.save_game():
+		EventBus.toast.emit("Quick-saved to slot %d." % GameState.slot, true)
+	else:
+		EventBus.toast.emit("Could not save.", false)
+
+
+func quick_load() -> void:
+	if interdict.visible:
+		return
+	if not GameState.slot_exists(GameState.slot):
+		EventBus.toast.emit("Nothing saved in slot %d yet." % GameState.slot, false)
+		return
+	if GameState.paused:
+		toggle_pause()
+	phone.close()
+	station.close()
+	bench.close()
+	load_slot(GameState.slot)
+	EventBus.toast.emit("Quick-loaded slot %d." % GameState.slot, true)
 
 
 func continue_game() -> void:

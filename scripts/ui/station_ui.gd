@@ -16,6 +16,7 @@ const ShipPreview = preload("res://scripts/ui/ship_preview.gd")
 const OfficialsApp = preload("res://scripts/ui/phone/apps/officials_app.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Style = preload("res://scripts/core/style.gd")
+const Galaxy = preload("res://scripts/core/galaxy.gd")
 
 var tabs: TabContainer
 var _title: Label
@@ -172,6 +173,9 @@ func _build_market(g) -> Control:
 		items.append(r)
 	for a in g.data.additives:
 		items.append(a)
+	var compare := {}  ## K3: item -> offers elsewhere (cheapest first) for the price-compare tooltip
+	for row in Galaxy.buy_table(g):
+		compare[str(row.get("item", ""))] = row.offers
 	for item in items:
 		var price: int = g.buy_price(item)
 		if price < 0:
@@ -183,7 +187,7 @@ func _build_market(g) -> Control:
 		card.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		card.icon = Art.icon_for(item)
 		card.text = "%s\n%d cr  ·  have %d" % [g.item_name(item), price, int(g.cargo.get(item, 0))]
-		card.tooltip_text = UI.item_tip(g, item)
+		card.tooltip_text = UI.item_tip(g, item) + _compare_tip(g, price, compare.get(item, []))
 		card.pressed.connect(func():
 			AudioManager.play("click")
 			_basket_add(g, item, 5 if Input.is_key_pressed(KEY_SHIFT) else 1))
@@ -625,3 +629,17 @@ func _add_fixers(v: VBoxContainer, g) -> void:
 			continue
 		v.add_child(UI.label("%s · %s" % [o.name, g.data.corruption.roles[o.role].name], 15))
 		v.add_child(OfficialsApp.actions(g, o.id))
+
+
+## K3: "Here 12 cr · cheapest Drift Bazaar 9 cr (Halvane)" under a market card's tooltip.
+func _compare_tip(g, here: int, offers: Array) -> String:
+	var lines: Array = []
+	for o in offers.slice(0, 3):
+		if str(o.loc) == g.location:
+			continue
+		var d: int = int(o.price) - here
+		lines.append("  %s (%s): %d cr  %s" % [g.data.locations[o.loc].name, g.data.systems[o.system].name, int(o.price),
+			"same" if d == 0 else ("%+d" % d)])
+	if lines.is_empty():
+		return "\nOnly sold here."
+	return "\nElsewhere:\n" + "\n".join(PackedStringArray(lines))

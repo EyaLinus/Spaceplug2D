@@ -1,0 +1,8 @@
+- **Autopilot:** press T in flight to fly to the quest waypoint on its own; any flight key takes back control, it brakes and switches off on arrival.
+- **Quick-save / quick-load:** F5 saves the run to its slot, F9 loads it back.
+- **Hold to repeat:** every +/− quantity and price button keeps counting while you hold it.
+- **Contacts filter:** All, Here, Buying (free and still has cash today), Fans, Hooked.
+- **Price compare:** market cards list the three cheapest other places you know in the tooltip.
+- **Text & UI size:** Normal, Large (110 %) or Larger (125 %) in Settings → Display.
+- **Rebind everything:** weapon wheel, reload, autopilot, quick-save and quick-load are now in the key list.
+- **Map app:** the last navy prototype colours are gone; the galaxy map uses the ink/brass palette.
