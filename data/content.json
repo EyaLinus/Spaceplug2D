@@ -83,7 +83,7 @@
       "desc": "Frontier system one jump out. Lawless dust towns, one rich corporate ice colony."
     }
   },
-  "jump": {"fee": 80, "seconds": 20},
+  "jump": {"fee": 80, "seconds": 20, "charge_seconds": 6, "charge_engine_cut": 0.1, "min_charge": 2.5},
   "locations": {
     "mireth": {
       "name": "Mireth", "system": "halvane", "kind": "planet", "pos": [0, 0], "radius": 170, "color": "#3d7a6a",

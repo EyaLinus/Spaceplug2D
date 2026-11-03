@@ -5,6 +5,7 @@ extends SceneTree
 ## pauses, saves/loads and reaches both end screens. Any GDScript error shows up as "SCRIPT ERROR" (CI greps for it).
 ## godot --headless --path . -s res://tools/ui_smoke.gd
 
+const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 
 var steps := 0
@@ -630,6 +631,9 @@ func _run() -> void:
 		_assert(ls.interact() and m.surface == null and m.world.active, "took off from %s" % loc)
 		await frames(1)
 
+	# Galaxy map app + jump drive: plan a route, charge, jump with the hyperspace transition, cancel, come back
+	await _map_and_drive(m, g)
+
 	# patrol bust: park a patrol on top of the ship while carrying product
 	g.cargo["weed:glow"] = 3
 	g.add_heat(60)
@@ -675,6 +679,72 @@ func _run() -> void:
 		gs.delete_slot(i)
 	print("SMOKE DONE %d steps" % steps)
 	quit(0)
+
+
+## Com-Phone Map app: overlays, route planning, price comparison and the jump drive charge -> hyperspace -> arrival.
+func _map_and_drive(m, g) -> void:
+	g.credits = 5000
+	g.heat = 50.0
+	_assert(g.location == "" and g.system == "halvane" and m.world.active, "flying in Halvane before the map test")
+	m.toggle_phone()
+	m.phone.open_app("map")
+	await frames(3)
+	_assert(m.phone.current_title() == "Map", "map app opens")
+	for n in ["MapCanvas", "MapSys_halvane", "MapSys_kovar", "MapSystem", "MapDrive", "MapPrices", "MapHeatBar"]:
+		_assert(m.phone.find_child(n, true, false) != null, "map shows " + n)
+	_assert(m.phone.find_child("MapLoc_mireth", true, false) != null, "selected system lists its locations")
+	_assert(m.phone.find_child("MapJump", true, false) == null, "no jump button for the system you are in")
+	m.phone.find_child("MapMode_price", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.find_child("MapHeatBar", true, false) != null, "price overlay keeps the system panel")
+	m.phone.find_child("MapMode_heat", true, false).pressed.emit()
+	m.phone.find_child("MapSys_kovar", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.find_child("MapLoc_varrow", true, false) != null and m.phone.find_child("MapLoc_mireth", true, false) == null, "Kovar locations shown")
+	_assert(m.phone.find_child("MapRoute", true, false).text.contains("Kovar Expanse"), "route planned to Kovar")
+	_assert(m.phone.find_child("MapCost", true, false).text.contains("80 cr"), "tolls shown")
+	step("map app overlays and route")
+	# price comparison screen
+	m.phone.find_child("MapPrices", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.current_title() == "Prices" and m.phone.find_child("Price_cannabis", true, false) != null, "price comparison lists raws")
+	m.phone.find_child("MapTab_sell", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.find_child("Price_cocaine", true, false) != null, "price comparison lists product demand")
+	m.phone.back()
+	await frames(3)
+	step("map price comparison")
+	# charge the drive from the phone
+	var credits: int = g.credits
+	m.phone.find_child("MapJump", true, false).pressed.emit()
+	await frames(3)
+	_assert(Galaxy.charging(g) and m.phone.find_child("MapCharge", true, false) != null and m.phone.find_child("MapCancel", true, false) != null, "drive charging, bar and cancel button shown")
+	m.phone.find_child("MapCancel", true, false).pressed.emit()
+	await frames(3)
+	_assert(g.jump_plan.is_empty() and m.phone.find_child("MapJump", true, false) != null, "cancel from the phone")
+	m.phone.find_child("MapJump", true, false).pressed.emit()
+	await frames(2)
+	g.tick(Galaxy.charge_seconds(g) * 0.5)
+	await frames(2)
+	_assert(m.hyper.charge > 0.3 and m.hyper.visible, "charge streaks shown while charging")
+	g.tick(30.0)
+	await frames(3)
+	_assert(g.system == "kovar" and m.world.system == "kovar" and g.credits == credits - int(g.data.jump.fee), "drive jumped to Kovar and paid the toll")
+	_assert(m.hyper.burst > 0.0 and m.hyper.card.contains("Kovar Expanse"), "hyperspace transition plays")
+	_assert(g.jump_plan.is_empty() and m.world.active, "plan done, flying")
+	step("jump drive to kovar")
+	await create_timer(2.0).timeout  # real time: the tween fades over ~1.5 s
+	_assert(m.hyper.burst < 0.5 or not m.hyper.visible, "transition fades out")
+	# back home; docking would cancel, so just check that and return
+	m.phone.find_child("MapSys_halvane", true, false).pressed.emit()
+	await frames(3)
+	m.phone.find_child("MapJump", true, false).pressed.emit()
+	g.tick(30.0)
+	await frames(3)
+	_assert(g.system == "halvane" and m.world.system == "halvane", "drive jumped home")
+	m.phone.close()
+	m.hyper.burst = 0.0
+	step("jump drive home")
 
 
 ## Flies into a jump gate and checks that the next system is built around the ship.

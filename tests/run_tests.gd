@@ -9,6 +9,7 @@ const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Orders = preload("res://scripts/core/orders.gd")
+const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const ArtReg = preload("res://scripts/core/art.gd")
@@ -37,6 +38,10 @@ func _init() -> void:
 		"test_orders",
 		"test_order_kits",
 		"test_orders_save",
+		"test_galaxy_routes",
+		"test_galaxy_overlays",
+		"test_jump_drive",
+		"test_jump_drive_multi_hop",
 		"test_mixing_rules",
 		"test_buy_and_cargo_limit",
 		"test_lab_batch",
@@ -668,6 +673,135 @@ func test_orders_save() -> void:
 	h2.from_dict(data, d2)
 	h2.tick(10.0)
 	check(h2.stash.get("cannabis", 0) == 2, "unknown destination falls back to the stash")
+
+
+## Lanes and route planning over the jump gates (A6).
+func test_galaxy_routes() -> void:
+	var g := new_game()
+	check(Galaxy.neighbours(g, "halvane") == ["kovar"] and Galaxy.neighbours(g, "kovar") == ["halvane"], "the two systems are neighbours")
+	check(Galaxy.lanes(g).size() == 1, "one lane (gate pairs count once)")
+	check(Galaxy.gates(g, "halvane", "kovar") == ["halvane_gate"] and Galaxy.gates(g, "kovar").size() == 1, "gate lookup")
+	check(Galaxy.route(g, "halvane", "kovar") == ["halvane", "kovar"] and Galaxy.route(g, "kovar", "kovar") == ["kovar"], "route over the lane")
+	check(Galaxy.route(g, "halvane", "nowhere").is_empty(), "unknown system has no route")
+	var pl := Galaxy.plan(g, "kovar")
+	check(pl.ok and pl.hops == 1 and pl.fee == int(data.jump.fee) and pl.charge > 0.0, "plan: one hop, toll, charge time")
+	check(is_equal_approx(pl.total_seconds, pl.charge + float(data.jump.seconds)), "plan total = charge + travel")
+	check(not Galaxy.plan(g, "halvane").ok, "no plan to the current system")
+	g.upgrades.engine = 3
+	check(Galaxy.charge_seconds(g) < pl.charge and Galaxy.charge_seconds(g) >= float(data.jump.min_charge), "engine upgrades shorten the charge, never below the minimum")
+
+
+## Heat overlay and price comparison data (A6).
+func test_galaxy_overlays() -> void:
+	var g := new_game()
+	check(Galaxy.heat_level(g, "halvane") == 0.0, "cold map at zero heat")
+	g.add_heat(80)
+	check(is_equal_approx(Galaxy.heat_level(g, "halvane"), 0.8), "Halvane heat level follows heat")
+	check(Galaxy.heat_level(g, "kovar") < Galaxy.heat_level(g, "halvane"), "frontier system reads cooler")
+	g.system = "kovar"
+	check(Galaxy.patrols_in(g, "kovar") == g.patrol_count() and Galaxy.patrols_in(g, "halvane") > Galaxy.patrols_in(g, "kovar"), "patrols_in matches patrol_count and Halvane has more")
+	var risk := Galaxy.location_risk(g, "glacis")
+	check(risk.sale_heat > Galaxy.location_risk(g, "bazaar").sale_heat and risk.security > Galaxy.location_risk(g, "varrow").security, "Glacis is risky, Bazaar and Varrow are not")
+	check(Galaxy.location_risk(g, "beacon").security < 0.0, "no surface = security -1")
+	var seen_items := 0
+	for row in Galaxy.buy_table(g):
+		seen_items += 1
+		for i in range(1, row.offers.size()):
+			check(row.offers[i - 1].price <= row.offers[i].price, "%s offers sorted cheapest first" % row.item)
+		check(row.offers[0].price == g.buy_price(row.item, row.offers[0].loc), "%s best offer matches buy_price" % row.item)
+	check(seen_items == data.raws.size() + data.additives.size(), "every raw and additive is listed")
+	var cannabis: Dictionary = Galaxy.buy_table(g).filter(func(r): return r.item == "cannabis")[0]
+	check(cannabis.offers[0].loc == "cinder" and cannabis.offers.size() >= 3, "cannabis is cheapest at Cinder and sold in three places")
+	var sells := Galaxy.sell_table(g)
+	check(sells.size() == data.bases.size(), "every drug in the sell table")
+	for row in sells:
+		for i in range(1, row.offers.size()):
+			check(row.offers[i - 1].price >= row.offers[i].price, "%s demand sorted best first" % row.base)
+	var coke: Dictionary = sells.filter(func(r): return r.base == "cocaine")[0]
+	check(coke.offers[0].loc == "glacis", "Glacis pays the most for cocaine")
+	g.demand["glacis"]["cocaine"] = 0.2
+	var coke2: Dictionary = Galaxy.sell_table(g).filter(func(r): return r.base == "cocaine")[0]
+	check(coke2.offers[0].loc != "glacis", "saturated demand drops the location in the ranking")
+
+
+## Jump drive: charge-up, cancel rules, engage (A6).
+func test_jump_drive() -> void:
+	var g := new_game()
+	check(not Galaxy.start(g, "kovar").ok, "no charge while docked")
+	g.undock()
+	check(not Galaxy.start(g, "halvane").ok and not Galaxy.start(g, "nowhere").ok, "bad targets refused")
+	g.credits = 10
+	check(not Galaxy.start(g, "kovar").ok and g.jump_plan.is_empty(), "the toll must be affordable")
+	g.credits = 500
+	check(Galaxy.start(g, "kovar").ok and Galaxy.charging(g) and not Galaxy.ready(g), "charging starts in flight")
+	check(not Galaxy.engage(g).ok, "cannot engage an uncharged drive")
+	var need := float(g.jump_plan.need)
+	g.tick(need * 0.5)
+	check(is_equal_approx(Galaxy.progress(g), 0.5) and g.system == "halvane", "half charged, still home")
+	g.tick(need)
+	check(Galaxy.ready(g) and Galaxy.progress(g) == 1.0 and g.system == "halvane", "charged but the jump waits for the engage")
+	var credits := g.credits
+	var t := g.total_time
+	var r := Galaxy.engage(g)
+	check(r.ok and r.gate == "halvane_gate" and g.system == "kovar" and not r.more, "engage jumps through the Halvane gate")
+	check(g.credits == credits - int(data.jump.fee) and g.total_time >= t + float(data.jump.seconds), "toll and travel time paid")
+	check(g.jump_plan.is_empty(), "plan cleared after the last hop")
+	# cancel rules
+	check(Galaxy.start(g, "halvane").ok, "charge back home")
+	Galaxy.cancel(g)
+	check(g.jump_plan.is_empty(), "cancel clears the plan")
+	Galaxy.start(g, "halvane")
+	g.stats.busts += 1
+	g.tick(0.1)
+	check(g.jump_plan.is_empty(), "a bust interrupts the charge")
+	Galaxy.start(g, "halvane")
+	g.dock("glacis")
+	g.tick(0.1)
+	check(g.jump_plan.is_empty(), "docking cancels the charge")
+	g.undock()
+	Galaxy.start(g, "halvane")
+	check(g.jump("kovar_gate").ok, "manual gate jump while charging")
+	check(g.jump_plan.is_empty(), "a manual jump cancels the plan")
+	var events: Array = []
+	g.event.connect(func(k, _p): events.append(k))
+	Galaxy.start(g, "kovar")
+	g.tick(100.0)
+	Galaxy.cancel(g)
+	check(events.has("jump_charging") and events.has("jump_ready") and events.has("jump_cancelled"), "charge events are emitted")
+	# not part of the save
+	Galaxy.start(g, "halvane")
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(h.jump_plan.is_empty() and h.system == g.system, "an unfinished charge is not saved")
+
+
+## A third system makes multi-hop routes: the drive recharges for every hop (A6).
+func test_jump_drive_multi_hop() -> void:
+	var d: Dictionary = data.duplicate(true)
+	d.systems["zeta"] = {"name": "Zeta", "galaxy_pos": [9, 1], "security": "low", "patrol_mult": 0.5, "star": "#ffffff", "nebula": ["#222222"], "desc": ""}
+	var gate_a: Dictionary = d.locations.kovar_gate.duplicate(true)
+	gate_a.merge({"name": "Zeta Gate", "jump_to": "zeta", "arrive": "zeta_gate"}, true)
+	var gate_b: Dictionary = d.locations.kovar_gate.duplicate(true)
+	gate_b.merge({"name": "Kovar Gate B", "system": "zeta", "jump_to": "kovar", "arrive": "kovar_gate_z"}, true)
+	d.locations["kovar_gate_z"] = gate_a
+	d.locations["zeta_gate"] = gate_b
+	var g := Game.new()
+	g.new_game(d, 3)
+	g.undock()
+	var pl := Galaxy.plan(g, "zeta")
+	check(pl.ok and pl.route == ["halvane", "kovar", "zeta"] and pl.hops == 2 and pl.fee == 2 * int(d.jump.fee), "two hops via Kovar")
+	g.credits = 100
+	check(not Galaxy.start(g, "zeta").ok, "two tolls must be affordable up front")
+	g.credits = 1000
+	Galaxy.start(g, "zeta")
+	g.tick(100.0)
+	var r1 := Galaxy.engage(g)
+	check(r1.ok and r1.more and g.system == "kovar" and Galaxy.charging(g), "first hop done, second hop already charging")
+	g.tick(100.0)
+	var r2 := Galaxy.engage(g)
+	check(r2.ok and not r2.more and g.system == "zeta" and g.jump_plan.is_empty(), "second hop arrives in Zeta")
+	check(Galaxy.route(g, "zeta", "halvane") == ["zeta", "kovar", "halvane"], "route back")
+	check(Galaxy.lanes(g).size() == 2, "two lanes")
 
 
 func test_mixing_rules() -> void:

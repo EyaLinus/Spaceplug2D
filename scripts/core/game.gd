@@ -11,6 +11,7 @@ const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Orders = preload("res://scripts/core/orders.gd")
+const Galaxy = preload("res://scripts/core/galaxy.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
@@ -49,6 +50,7 @@ var order_seq: int = 0
 var estate_stock: Dictionary = {}  ## estate id -> item -> qty delivered there, unloaded by collect_stash() inside
 var kits: Dictionary = {}  ## station id -> flat-packed kits delivered by phone order, placed for free in build mode
 var orders_unseen: int = 0  ## deliveries since the Orders app was last opened (runtime only)
+var jump_plan: Dictionary = {}  ## jump drive charge in progress (runtime only, see galaxy.gd)
 var hp: float = 100.0  ## player health on foot (see combat.gd), saved
 var weapons: Array = []  ## owned weapon ids, saved
 var weapon: String = ""  ## equipped weapon id, saved
@@ -93,6 +95,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	estate_stock = {}
 	kits = {}
 	orders_unseen = 0
+	jump_plan = {}
 	Combat.init(self)
 	drops = []
 	next_drop_id = 0
@@ -271,6 +274,7 @@ func tick(dt: float) -> void:
 	_tick_demand(dt)
 	Deals.tick(self, dt)
 	Orders.tick(self)
+	Galaxy.tick(self, dt)
 	SpaceCombat.tick(self, dt)
 	Combat.tick(self, dt)
 	Deaddrops.tick(self)
