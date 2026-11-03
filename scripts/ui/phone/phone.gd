@@ -7,6 +7,7 @@ extends Control
 const UI = preload("res://scripts/ui/ui_theme.gd")
 const Art = preload("res://scripts/core/art.gd")
 const People = preload("res://scripts/core/people.gd")
+const Deals = preload("res://scripts/core/deals.gd")
 const Registry = preload("res://scripts/ui/phone/registry.gd")
 
 const SIZE := Vector2(420, 640)
@@ -171,13 +172,45 @@ func refresh() -> void:
 
 
 func _home_grid(g) -> Control:
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	var strip := _calendar(g)
+	if strip != null:
+		v.add_child(strip)
 	var grid := GridContainer.new()
+	v.add_child(grid)
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 10)
 	for app in apps:
 		grid.add_child(_app_tile(g, app))
-	return grid
+	return v
+
+
+## Calendar strip: agreed meetings by time; a tap opens the conversation. null when nothing is planned.
+func _calendar(g) -> Control:
+	var list: Array = Deals.agenda(g)
+	if list.is_empty():
+		return null
+	var col := VBoxContainer.new()
+	col.name = "Calendar"
+	col.add_theme_constant_override("separation", 2)
+	col.add_child(UI.label("MEETINGS", 12, UI.MUTED))
+	for o in list.slice(0, 4):
+		var c: Dictionary = g.contact(o.contact)
+		var when := Deals.clock_text(g, float(o.meet_at)) if float(o.get("meet_at", 0.0)) > 0.0 else "asap"
+		var phase := Deals.meet_phase(g, o)
+		var b := UI.button("%s  %s · %s · %d× %s" % [when, c.name, g.loc_data(c.location).get("name", ""), int(o.qty), g.data.bases[o.base].name], func():
+			var app = app_by_id("deals")
+			open_app(app)
+			push(c.name, func(gg): return app.thread(gg, int(o.id))))
+		b.name = "Meet_%d" % int(o.id)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.add_theme_font_size_override("font_size", 13)
+		b.add_theme_color_override("font_color", UI.WARN if phase == "late" else (UI.ACCENT if phase == "open" else UI.TEXT))
+		b.tooltip_text = "Hand over in person on %s or through a dead drop." % g.loc_data(c.location).get("name", "")
+		col.add_child(b)
+	return UI.card(col, true)
 
 
 func _app_tile(g, app) -> Control:

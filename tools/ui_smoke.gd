@@ -272,10 +272,19 @@ func _run() -> void:
 	await frames(2)
 	_assert(offer.state == "accepted", "request accepted from the phone")
 	_assert(m.phone.find_child("Cancel", true, false) != null, "thread shows the agreed deal")
+	_assert(m.phone.find_child("MeetTime", true, false) != null, "thread shows the meeting time")
+	m.phone.home()
+	await frames(2)
+	var meet_btn: Button = m.phone.find_child("Meet_%d" % int(offer.id), true, false)
+	_assert(meet_btn != null, "calendar strip lists the meeting")
+	meet_btn.pressed.emit()
+	await frames(2)
+	_assert(m.phone.find_child("Cancel", true, false) != null, "calendar opens the conversation")
 	await key(KEY_TAB)
 	_assert(not m.phone.visible, "Tab closes the phone")
 	await frames(2)
 	_assert(sf.npcs.okka.marker, "okka carries the deal marker")
+	g.total_time = float(offer.meet_at)  # skip to the meeting
 	sf.place_player_at("okka")
 	await physics_frame
 	await physics_frame
