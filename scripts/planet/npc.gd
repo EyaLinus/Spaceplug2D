@@ -1,11 +1,12 @@
 extends Node2D
-## A person on a planet surface. Static NPCs (contacts, mechanic) stand still and show their name;
-## ambient walkers stroll along the road network the surface hands them. Sprite from the art registry
+## A person on a planet surface. Named people walk their schedule and show their name (unknown townsfolk show
+## their job up close instead); officers patrol the road network the surface hands them. Sprite from the art registry
 ## (look picked from `color` unless set), procedural body as fallback.
 
 const Art = preload("res://scripts/core/art.gd")
 
 var display_name := ""
+var subtitle := ""  ## grey line shown when there is no name (an unmet local's job, up close)
 var color := Color("#8fb3ff")
 var speed := 55.0
 var path: Array = []  ## Vector2 waypoints still to walk
@@ -37,8 +38,8 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	draw_circle(Vector2(0, 12), 8.0, Color(0, 0, 0, 0.28))
 	var moving := not path.is_empty() and not hold
-	if look == "":  # named people match their data colour; anonymous walkers get a varied mix
-		look = Art.look_for_color(color) if display_name != "" else Art.NPC_LOOKS.keys()[get_instance_id() % Art.NPC_LOOKS.size()]
+	if look == "":  # people without a profile look match their data colour
+		look = Art.look_for_color(color)
 	if Art.draw_character(self, look, heading, int(_step * 4.0 / TAU) if moving else 0):
 		_draw_name()
 		return
@@ -59,6 +60,11 @@ func _draw_name() -> void:
 		var bob := sin(_t * 4.0) * 2.0
 		draw_string(f, Vector2(-5, -38 + bob), "$", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color(0, 0, 0, 0.6))
 		draw_string(f, Vector2(-6, -39 + bob), "$", HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("#ffd166"))
+	if display_name == "" and subtitle != "":
+		var sf := ThemeDB.fallback_font
+		var sw := sf.get_string_size(subtitle, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+		draw_string(sf, Vector2(-sw / 2.0 + 1, -21), subtitle, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0, 0, 0, 0.6))
+		draw_string(sf, Vector2(-sw / 2.0, -22), subtitle, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.8, 0.8, 0.85, 0.8))
 	if display_name != "":
 		var font := ThemeDB.fallback_font
 		var w := font.get_string_size(display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x

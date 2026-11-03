@@ -189,7 +189,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
 - **D4 Larger planet maps** (was D4). ✅ done (see PROGRESS.md; interiors for key buildings not built). Each planet 2–3× bigger with its own districts and landmarks (Mireth canal
   docks, Cinder mine shafts, Bazaar market decks, Varrow dune town, Glacis domes), interiors for key buildings,
   procedural filler props, minimap zoom.
-- **B4 Everyone is someone.** Every NPC on a surface is a named person from `people.gd` (generated names + look per
+- **B4 Everyone is someone.** ✅ done (see PROGRESS.md). Every NPC on a surface is a named person from `people.gd` (generated names + look per
   planet), with a drug preference, budget and schedule: anyone can become a customer by talking to them or via
   referrals. Anonymous walkers are gone.
 - → **Release v0.1.11**.

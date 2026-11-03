@@ -20,6 +20,7 @@ const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
 const Quests = preload("res://scripts/core/quests.gd")
+const Locals = preload("res://scripts/core/locals.gd")
 
 var data: Dictionary
 var failures := 0
@@ -76,6 +77,7 @@ func _init() -> void:
 		"test_people_save",
 		"test_people_schedules_on_surfaces",
 		"test_planet_districts",
+		"test_locals",
 		"test_deal_requests",
 		"test_deal_answers",
 		"test_deal_fulfill",
@@ -242,7 +244,8 @@ func test_surface_layouts() -> void:
 				check(s.buildings.any(func(b): return b.get("estate", "") == e), "%s estate %s has a building" % [loc, e])
 		for c in data.contacts:
 			if c.location == loc:
-				check(s.npcs.any(func(n): return n.get("contact", "") == c.id), "%s contact %s stands on the surface" % [loc, c.id])
+				var people: Array = s.npcs + Locals.npcs_for(data, loc)
+				check(people.any(func(n): return n.get("contact", "") == c.id), "%s contact %s stands on the surface" % [loc, c.id])
 
 
 func test_police_on_foot() -> void:
@@ -1231,6 +1234,52 @@ func test_planet_districts() -> void:
 		check(s.spots.size() >= 8, "%s has places for people to be (%d)" % [loc, s.spots.size()])
 
 
+## B4: every person on a planet is a named customer with a habit, a budget and a day plan.
+func test_locals() -> void:
+	var again: Array = Locals.generate(data)
+	var locals: Array = data.contacts.filter(func(c): return c.get("local", false))
+	check(locals.size() == again.size() and locals.size() >= 50, "locals generated once (%d)" % locals.size())
+	check(locals.map(func(c): return c.name) == again.map(func(c): return c.name), "same people every run (seeded per planet)")
+	var names := {}
+	for c in data.contacts:
+		check(not names.has(c.name), "name %s is unique" % c.name)
+		names[c.name] = true
+	for loc in data.locals.count:
+		var here := locals.filter(func(c): return c.location == loc)
+		check(here.size() == int(data.locals.count[loc]), "%s has %d townsfolk" % [loc, here.size()])
+	var weed := 0
+	for c in locals:
+		check(not c.known and c.budget > 0 and c.max_units >= 1 and data.traits.has(c.likes), "%s is an unknown buyer with a budget" % c.id)
+		check(not c.prefers.is_empty() and c.prefers.all(func(b): return data.locations[c.location].demand.has(b)), "%s wants a drug sold on %s" % [c.id, c.location])
+		check(c.job != "" and c.bio != "", "%s has a job and a line" % c.id)
+		check(c.schedule.size() == 4 and c.schedule.all(func(e): return data.surfaces[c.location].spots.has(e.place)), "%s schedule uses the planet's spots" % c.id)
+		for h in 24:
+			check(not People.whereabouts(c, h + 0.5).is_empty(), "%s is somewhere at %d:00" % [c.id, h])
+		if c.prefers.has("weed"):
+			weed += 1
+	check(weed > locals.size() / 3, "weed is the most common habit (%d of %d)" % [weed, locals.size()])
+	# talking makes them a contact; a happy customer refers someone
+	var g := new_game()
+	var first: Dictionary = locals.filter(func(c): return c.location == "mireth")[0]
+	check(not People.state(g, first.id).known, "locals start unknown")
+	g.meet(first.id)
+	check(People.state(g, first.id).known, "talking to a local meets them")
+	data.locals.referral_chance = 1.0
+	g.location = "mireth"
+	g.cargo["weed:glow"] = 5
+	var unknown_before := locals.filter(func(c): return c.location == "mireth" and not People.state(g, c.id).known).size()
+	var got := []
+	g.event.connect(func(k, p): if k == "referral": got.append(p))
+	check(g.sell("weed:glow", 1, "okka").ok, "sale to Okka")
+	var unknown_after := locals.filter(func(c): return c.location == "mireth" and not People.state(g, c.id).known).size()
+	check(got.size() == 1 and unknown_after == unknown_before - 1, "a sale can bring a referral (%d -> %d)" % [unknown_before, unknown_after])
+	data.locals.referral_chance = 0.25
+	var d: Dictionary = JSON.parse_string(JSON.stringify(g.to_dict()))
+	var g2 := Game.new()
+	g2.from_dict(data, d)
+	check(g2.people[first.id].known and g2.people[got[0].contact].known, "met and referred locals survive a save")
+
+
 func test_people_schedules_on_surfaces() -> void:
 	var Nav = load("res://scripts/planet/nav.gd")
 	for loc in data.surfaces:
@@ -1239,7 +1288,8 @@ func test_people_schedules_on_surfaces() -> void:
 			continue
 		var nav: AStarGrid2D = Nav.build(cfg)
 		var start := Vector2i(int(cfg.spawn[0]), int(cfg.spawn[1]))
-		for n in cfg.get("npcs", []):
+		var all_npcs: Array = cfg.get("npcs", []) + Locals.npcs_for(data, loc)  # the order surface.gd uses for slots
+		for n in all_npcs:
 			if n.get("contact", "") == "":
 				continue
 			var c: Dictionary = {}
@@ -1249,9 +1299,10 @@ func test_people_schedules_on_surfaces() -> void:
 			for e in c.get("schedule", []):
 				check(cfg.get("spots", {}).has(e.place), "%s has a spot for %s's %s" % [loc, c.id, e.place])
 			for h in 24:
-				var sp: Array = People.spot(c, cfg.get("spots", {}), h + 0.5, cfg.npcs.find(n))
+				var sp: Array = People.spot(c, cfg.get("spots", {}), h + 0.5, all_npcs.find(n))
 				if sp.is_empty():
 					continue
+				sp = Nav.free_spot(nav, sp, cfg.spots[People.whereabouts(c, h + 0.5).place])
 				var cell := Vector2i(int(floor(sp[0])), int(floor(sp[1])))
 				check(nav.region.has_point(cell) and not nav.is_point_solid(cell), "%s spot of %s at %d:00 is walkable" % [loc, c.id, h])
 				check(not nav.get_id_path(start, cell).is_empty(), "%s spot of %s at %d:00 is reachable" % [loc, c.id, h])

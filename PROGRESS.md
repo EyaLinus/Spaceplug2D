@@ -578,3 +578,24 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
   bridge crosses, district label changes, M key zooms, sprint), menu smoke, sim 6/6 won. Screenshots of all five planets checked.
 - Gaps: no interiors for key buildings (ROADMAP item left open); new buildings are decoration only; every planet still uses a
   two-by-two street grid, so the layouts differ by districts and landmarks more than by street shape.
+
+## B4: Everyone is someone (2026-11-03, wave 8)
+- **Core** `scripts/core/locals.gd`: `Data.load_all` appends generated townsfolk to `data.contacts` (flag `local`, ids
+  `<planet>_local_<n>`). Rules and pools in `content.json` → `locals` (count per planet: Mireth 16, Cinder 11, Bazaar 14,
+  Varrow 11, Glacis 13; first/last names and jobs per planet; budget 80–220, 1–3 units, `prefer_weights` so weed is the most common
+  habit, tilted by the planet's demand; `referral_chance` 0.25). Seeded per planet, so every run and save sees the same people;
+  saves only store their state in `Game.people` like any contact.
+- Schedules: four parts of the day over four distinct spots of the planet (home at night), hours shifted per person so people are
+  always walking somewhere. `People.spot` now nudges crowds into rows; `Nav.free_spot` falls back to the place spot if the nudge
+  hits a wall (used by surface.gd and the test).
+- **Surface:** `Locals.npcs_for` adds the locals to the surface npcs; anonymous walkers removed (officers still patrol the roads).
+  Unmet locals show no name, only their job when you are close; the prompt reads "Talk to <job/name> · wants <drug>". Talking
+  meets them (existing `met` toast) → Contacts app, Deal-O-Matic requests, Products "buyers you know".
+- **Referrals:** a sale to a contact can reveal an unmet person on the same planet (`referral` event + toast).
+- Bot: sells to at most 4 locals per stop (they have to be found on foot). Sim 8/8 won, avg win day 4.9 (was 6.0 before B4):
+  more buyers make the debt easier. Eyeballed, left as is until a balance pass is asked for.
+- Verified: unit tests (`test_locals`: count, determinism, unique names, demand-valid habits, schedules over real spots, meet,
+  referral, save; schedule walkability for every local at every hour), UI smoke (all Mireth locals on the surface, no anonymous
+  people, stranger shows job, prompt shows want, talking opens Deals and makes a contact, name appears), menu smoke, screenshot.
+- Gaps: locals reuse the 8 NPC sprite looks (no per-planet outfits yet); no dialogue lines beyond the deal screen; the Contacts app
+  grows long once you know many people (no search/filter yet, K3).

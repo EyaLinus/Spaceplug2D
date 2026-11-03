@@ -1,6 +1,6 @@
 extends Node2D
 ## One planet surface instance, built from data/surfaces.json: ground, roads, buildings with doors, the launch pad,
-## NPCs and ambient walkers, plus the on-foot player and its camera. Created when the ship lands and freed on take-off.
+## named NPCs (story contacts plus the generated townsfolk from locals.gd), plus the on-foot player and its camera. Created when the ship lands and freed on take-off.
 ## It only finds out what the player is standing next to; main.gd turns `interacted` into panels and core actions.
 
 signal interacted(action: String, payload: Dictionary)
@@ -14,6 +14,7 @@ const People = preload("res://scripts/core/people.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const CombatHud = preload("res://scripts/planet/combat_hud.gd")
+const Locals = preload("res://scripts/core/locals.gd")
 
 const INPUT := {
 	"move_up": [KEY_W, KEY_UP],
@@ -40,7 +41,6 @@ var camera: Camera2D
 var interactables: Array = []  ## [{pos, stand, range, label, action, payload}]; stand = free spot in reach
 var focus: Dictionary = {}  ## interactable in reach, {} if none
 var npcs: Dictionary = {}  ## npc id -> node
-var walkers: Array = []
 var officers: Array = []
 var suspicion := 0.0  ## 0..1 while an officer watches you carry product; 1 = busted
 var _blockers: Array = []  ## building rects, block movement and sight
@@ -95,6 +95,7 @@ func setup(id: String, surface_cfg: Dictionary) -> void:
 		cfg = cfg.duplicate()
 		cfg.cover = Combat.cover_tiles(GameState.data, id)
 		covers = Combat.cover_rects(cfg.cover, tile)
+		cfg.npcs = cfg.get("npcs", []) + Locals.npcs_for(GameState.data, id)  # B4: the townsfolk are named customers
 
 
 ## Spot (tile units) where the named npc `n` should be at the current hour, [] if their place isn't on this surface.
@@ -104,7 +105,8 @@ func _schedule_spot(n: Dictionary) -> Array:
 		return []
 	for c in GameState.data.get("contacts", []):
 		if c.id == n.contact:
-			return People.spot(c, cfg.get("spots", {}), People.hour(g), cfg.npcs.find(n))
+			var sp := People.spot(c, cfg.get("spots", {}), People.hour(g), cfg.npcs.find(n))
+			return sp if sp.is_empty() else Nav.free_spot(nav, sp, cfg.spots[People.whereabouts(c, People.hour(g)).place])
 	return []
 
 
@@ -145,6 +147,25 @@ func _update_deal_markers() -> void:
 	for n in cfg.get("npcs", []):
 		if npcs.has(n.id):
 			npcs[n.id].marker = agreed.has(n.get("contact", ""))
+			if n.get("local", false):
+				_update_local(n, npcs[n.id])
+
+
+## Townsfolk you haven't met show their job instead of a name (only up close); talking or a referral reveals them.
+## The prompt always tells what they are after.
+func _update_local(n: Dictionary, npc: Node2D) -> void:
+	var g = GameState.game
+	var c: Dictionary = g.contact(n.contact)
+	var known: bool = People.state(g, n.contact).known
+	npc.display_name = c.name if known else ""
+	npc.subtitle = "" if known or player == null or player.position.distance_to(npc.position) > 150.0 else str(c.get("job", "?"))
+	var it := interactable(n.id)
+	if it.is_empty():
+		return
+	var wants: Array = []
+	for b in c.get("prefers", []):
+		wants.append(GameState.data.bases[b].name)
+	it.label = "Talk to %s · wants %s" % [c.name if known else str(c.get("job", "someone")).to_lower(), " / ".join(PackedStringArray(wants))]
 
 
 func _contact_look(id: String) -> String:
@@ -186,14 +207,6 @@ func _ready() -> void:
 			it.npc = npc  # the interaction point follows the person around
 			it.pos = npc.position
 			it.stand = npc.position + Vector2(0, 26)
-	for i in int(cfg.get("walkers", 0)):
-		var w := NpcScript.new()
-		w.color = Color.from_hsv(_rng.randf(), 0.35, 0.75)
-		w.speed = _rng.randf_range(40.0, 70.0)
-		w.position = _random_road_point()
-		w.pick_next = _walker_path
-		add_child(w)
-		walkers.append(w)
 	player = WalkerScript.new()
 	player.position = _px(cfg.spawn)
 	add_child(player)
@@ -299,7 +312,7 @@ func _build_interactables() -> void:
 			"action": "takeoff", "payload": {"id": "pad", "title": cfg.pad.label}})
 
 
-## Ambient walkers stay on the first two roads (main street + cross street) and turn at their crossing.
+## Patrolling officers stay on the first two roads (main street + cross street) and turn at their crossing.
 func _random_road_point() -> Vector2:
 	var r := _rect(cfg.roads[_rng.randi() % mini(2, cfg.roads.size())]).grow(-tile * 0.6)
 	return Vector2(_rng.randf_range(r.position.x, r.end.x), _rng.randf_range(r.position.y, r.end.y))

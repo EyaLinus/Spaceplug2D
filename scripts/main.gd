@@ -478,6 +478,8 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		EventBus.toast.emit("%s is out of jail." % Dealers.candidate(GameState.game, p.dealer).name, true)
 	elif kind == "met":
 		EventBus.toast.emit("New contact: %s. Open the Com-Phone [%s]." % [GameState.game.contact(p.contact).name, Settings.key_label("phone")], true)
+	elif kind == "referral":
+		EventBus.toast.emit(str(p.text), true)
 	elif kind == "notice":
 		EventBus.toast.emit(p.text, p.good)
 	elif kind == "jump_ready":
