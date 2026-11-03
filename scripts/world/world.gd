@@ -6,11 +6,15 @@ extends Node2D
 const ShipScript = preload("res://scripts/world/ship.gd")
 const LocationScript = preload("res://scripts/world/location_body.gd")
 const PatrolScript = preload("res://scripts/world/patrol.gd")
+const CombatLayerScript = preload("res://scripts/world/combat_layer.gd")
+const CombatHudScript = preload("res://scripts/ui/combat_hud.gd")
 
 const SECTOR_HALF := 4200.0
 
 var ship: Node2D
 var camera: Camera2D
+var combat: Node2D  ## pirates, bolts, missiles (combat_layer.gd)
+var combat_hud: CanvasLayer  ## hull / shield / boost / missile bars, visible while flying
 var system: String = ""  ## star system currently built
 var locations: Dictionary = {}  ## id -> location node (current system only)
 var patrols: Array = []
@@ -32,6 +36,12 @@ func _ready() -> void:
 	camera.position_smoothing_enabled = true
 	camera.position_smoothing_speed = 6.0
 	ship.add_child(camera)
+	combat = CombatLayerScript.new()
+	combat.setup(self, ship)
+	add_child(combat)
+	combat_hud = CombatHudScript.new()
+	combat_hud.setup(combat)
+	add_child(combat_hud)
 	var first: String = data.systems.keys()[0] if data.has("systems") else ""
 	show_system(first)
 
@@ -84,6 +94,8 @@ func place_ship_at(loc_id: String) -> void:
 
 
 func clear_patrols() -> void:
+	if combat != null:
+		combat.clear()
 	for p in patrols:
 		p.queue_free()
 	patrols.clear()
@@ -99,12 +111,32 @@ func _physics_process(delta: float) -> void:
 	ship.modules = g.upgrades
 	if GameState.paused:
 		return
+	combat_hud.visible = active and not GameState.paused
 	_clamp_to_sector()
 	_sync_patrols(g)
 	if not active:
+		combat.clear()
 		return
 	_update_nearby()
 	_update_scan(g, delta)
+	combat.step(delta, g)
+	camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * combat.shake
+
+
+## Distance from the ship to the edge of the nearest location (INF if the system has none).
+func nearest_location_distance() -> float:
+	var best := INF
+	for id in locations:
+		var n: Node2D = locations[id]
+		best = minf(best, ship.position.distance_to(n.position) - n.radius)
+	return best
+
+
+## The wreck is towed back to the system's patrol base (the core already applied the loot and fine).
+func respawn_after_wreck() -> void:
+	clear_patrols()
+	place_ship_at(GameState.game.patrol_home(system))
+	ship.position += Vector2(0, 120)
 
 
 func _clamp_to_sector() -> void:

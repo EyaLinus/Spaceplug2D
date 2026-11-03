@@ -94,33 +94,33 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
 - → **Release v0.1.5** when wave 1 is merged.
 
 ### Wave 2 – the phone takes over trade (needs A1)
-- **A2 Deal-O-Matic.** Customers text you requests (product, amount, price, place, time window) driven by addiction,
+- [x] **A2 Deal-O-Matic.** Customers text you requests (product, amount, price, place, time window) driven by addiction,
   budget and schedule; you accept, counter (haggling success depends on affinity) or decline; the deal is closed on
   foot at the agreed spot. Replaces the Deals panel for named customers (fence stays). Not parallel with B1 (surface.gd).
-- **A3 Market & Orders app.** Order raws, additives and equipment from the phone with delivery time and fee; goods
+- [x] **A3 Market & Orders app.** Order raws, additives and equipment from the phone with delivery time and fee; goods
   arrive in the stash or an estate. Market buildings stay as a cheaper walk-in option. Needs #14 (estates).
-- **B2 Ship cargo bay estate.** The ship gets its own estate grid (machines, tables, crates, generator) that you can
+- [x] **B2 Ship cargo bay estate.** The ship gets its own estate grid (machines, tables, crates, generator) that you can
   enter while docked; reuses estate_layout/build mode from #14. Parallel with A2/A3.
-- **B1 NPCs on foot with schedules** [P2]. Revive draft PR #5 on top of A1: named people walk home ↔ work ↔ plaza by
+- [x] **B1 NPCs on foot with schedules** [P2]. Revive draft PR #5 on top of A1: named people walk home ↔ work ↔ plaza by
   time of day, day/night tint, chatter; customers in the Contacts app can be found where their schedule says.
   Run after A2 or coordinate (both touch surface.gd).
 - → **Release v0.1.6**.
 
 ### Wave 3 – logistics & automation (needs wave 2)
-- **A4 DeadDrop Logistics.** Request anonymous drop points on planets/stations; customers or couriers pick up from
+- [x] **A4 DeadDrop Logistics.** Request anonymous drop points on planets/stations; customers or couriers pick up from
   them (less heat than hand-to-hand, small chance of theft). Needs A2 + A3.
 - **B3 Workers & HR app** [P5]. Hire lab hands and stockers in the HR app (wage per day, skill, loyalty); assigned
   workers run stations in an estate and move items storage → station → storage. Needs #14, A1.
 - **A5 Dealers & couriers** (HR app part 2) [P5]. Dealers sell to your customers on their own (cut, bust risk), couriers
   move goods between estates and drops. Needs A2, A4, B3.
-- **A6 Galaxy Map app + Jump Drive.** Map app with heat overlay, price comparison per location and route planning;
+- [x] **A6 Galaxy Map app + Jump Drive.** Map app with heat overlay, price comparison per location and route planning;
   interstellar jump with charge-up, hyperspace VFX and loading transition. Needs D1, A1. Not parallel with E2 (world.gd).
 - → **Release v0.1.7**.
 
 ### Wave 4 – combat & factions (mostly needs wave 1 only, but large)
-- **E1 Ground combat.** Player health, twin-stick aiming (mouse), 2–3 weapons (pistol, SMG, shotgun), weapon wheel,
+- [x] **E1 Ground combat.** Player health, twin-stick aiming (mouse), 2–3 weapons (pistol, SMG, shotgun), weapon wheel,
   cover objects on surfaces, officers can draw weapons at high heat. Not parallel with B1 (surface.gd).
-- **E2 Space combat.** Hull + shield, lasers and missiles, dodge (boost), pirate ships that attack in deep space,
+- [x] **E2 Space combat.** Hull + shield, lasers and missiles, dodge (boost), pirate ships that attack in deep space,
   weapon/shield modules at the mechanic (visible via E3). Not parallel with A6 (world.gd).
 - [x] **F1 Heat II + corruption.** Heat per system and personal "wanted" level; corrupt inspectors, customs officers and
   patrol captains as named NPCs (people.gd) you recruit with bribes: tip-offs before raids, cargo passes scanners.

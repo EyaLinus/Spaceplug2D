@@ -4,6 +4,11 @@ extends RefCounted
 const APPS := [
 	preload("res://scripts/ui/phone/apps/contacts_app.gd"),
 	preload("res://scripts/ui/phone/apps/officials_app.gd"),
+	preload("res://scripts/ui/phone/apps/hr_app.gd"),
+	preload("res://scripts/ui/phone/apps/deals_app.gd"),
+	preload("res://scripts/ui/phone/apps/orders_app.gd"),
+	preload("res://scripts/ui/phone/apps/map_app.gd"),
+	preload("res://scripts/ui/phone/apps/deaddrop_app.gd"),
 ]
 
 

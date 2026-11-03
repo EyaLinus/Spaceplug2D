@@ -5,6 +5,10 @@ extends SceneTree
 ## pauses, saves/loads and reaches both end screens. Any GDScript error shows up as "SCRIPT ERROR" (CI greps for it).
 ## godot --headless --path . -s res://tools/ui_smoke.gd
 
+const Workers = preload("res://scripts/core/workers.gd")
+const Galaxy = preload("res://scripts/core/galaxy.gd")
+const Combat = preload("res://scripts/core/combat.gd")
+
 var steps := 0
 
 
@@ -30,6 +34,11 @@ func key(code: Key) -> void:
 		Input.parse_input_event(ev)
 		await process_frame
 	await process_frame
+
+
+func pframes(n: int) -> void:
+	for i in n:
+		await physics_frame
 
 
 func frames(n: int) -> void:
@@ -129,9 +138,9 @@ func _run() -> void:
 	ftile.pressed.emit()
 	await frames(2)
 	_assert(m.phone.current_title() == "Fixers" and m.phone.find_child("Wanted", true, false) != null, "fixers app shows the wanted level")
-	var orow: Button = m.phone.find_child("Official_vell", true, false)
-	_assert(orow != null and m.phone.find_child("Official_roe", true, false) == null, "only met officials listed")
-	orow.pressed.emit()
+	var frow: Button = m.phone.find_child("Official_vell", true, false)
+	_assert(frow != null and m.phone.find_child("Official_roe", true, false) == null, "only met officials listed")
+	frow.pressed.emit()
 	await frames(2)
 	g.credits = 5000
 	g.add_heat(30)
@@ -153,6 +162,197 @@ func _run() -> void:
 	await key(KEY_ESCAPE)
 	_assert(not m.phone.visible, "phone closes again")
 	step("com-phone fixers")
+	# HR app: hire through the phone, assign, set the auto recipe, a day passes and wages are paid
+	var hr_saved: Dictionary = g.to_dict()
+	g.credits += 5000
+	g.buy_estate("cannery_annex")
+	_assert(g.estate_owned("cannery_annex"), "annex bought for the HR test")
+	g.place_building("cannery_annex", "trim_table", 0, 0)
+	g.place_building("cannery_annex", "cook_stove", 2, 0)
+	g.place_building("cannery_annex", "pack_table", 4, 0)
+	g.place_building("cannery_annex", "extractor", 6, 0)
+	m.toggle_phone()
+	await frames(2)
+	m.phone.open_app("hr")
+	await frames(2)
+	_assert(m.phone.current_title() == "HR" and m.phone.find_child("Hire_pia", true, false) != null, "HR app lists candidates")
+	m.phone.find_child("Hire_pia", true, false).pressed.emit()
+	await frames(2)
+	var hr_credits_before: int = g.credits
+	m.phone.find_child("HireBtn", true, false).pressed.emit()
+	await frames(2)
+	_assert(Workers.hired(g, "pia") and g.credits < hr_credits_before, "hire button hires and charges")
+	m.phone.find_child("Assign_pia_cannery_annex", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.workers[0].estate == "cannery_annex", "assign button assigns")
+	await key(KEY_ESCAPE)
+	m.phone.find_child("EstateRow_cannery_annex", true, false).pressed.emit()
+	await frames(2)
+	var opt: OptionButton = m.phone.find_child("Recipe_cannery_annex", true, false)
+	opt.select(1)
+	opt.item_selected.emit(1)
+	await frames(2)
+	_assert(g.estates.cannery_annex.recipe.base == g.data.bases.keys()[0], "recipe picker sets the auto recipe")
+	g.cargo["cannabis"] = 5
+	g.inside_estate = "cannery_annex"
+	g._emit("storage_changed", {})  # the screen rebuilds and enables the buttons
+	await frames(2)
+	m.phone.find_child("StoreRaws", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.cargo.is_empty() and not g.estates.cannery_annex.job.is_empty(), "stock button moves raws to storage and the lab hand starts cooking")
+	g.tick(60.0)
+	await frames(2)
+	_assert(g.stats.worker_batches >= 1, "the lab hand cooked a batch")
+	m.phone.find_child("TakeProducts", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.has_contraband(), "take button loads the products")
+	g.inside_estate = ""
+	var c1: int = g.credits
+	var w1: int = int(g.stats.get("wages", 0))
+	g.tick(g.day_seconds())
+	await frames(2)
+	_assert(g.credits < c1 and int(g.stats.wages) - w1 == Workers.wage_total(g), "wages are charged on a new day")  # other daily costs (retainers) may apply too
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	_assert(not m.phone.visible, "phone closed again")
+	g.from_dict(g.data, hr_saved)  # later steps expect the annex to be unowned
+	step("hr app")
+	# Deal-O-Matic: a text arrives, accept it in the phone, hand it over in person
+	var Deals = load("res://scripts/core/deals.gd")
+	g.contact_ready_at.erase("okka")
+	var offer: Dictionary = Deals.request(g, "okka")
+	_assert(not offer.is_empty(), "okka texts a request")
+	var deal_key: String = Deals.Mixing.key(offer.base, [g.data.bases[offer.base].innate])
+	g.cargo[deal_key] = int(g.cargo.get(deal_key, 0)) + int(offer.qty)
+	await key(KEY_TAB)
+	var dtile: Button = m.phone.find_child("App_deals", true, false)
+	_assert(dtile != null, "deals app tile")
+	dtile.pressed.emit()
+	await frames(2)
+	var orow: Button = m.phone.find_child("Offer_%d" % int(offer.id), true, false)
+	_assert(orow != null, "request listed in Deal-O-Matic")
+	orow.pressed.emit()
+	await frames(2)
+	var acc: Button = m.phone.find_child("Accept", true, false)
+	_assert(acc != null, "accept button")
+	acc.pressed.emit()
+	await frames(2)
+	_assert(offer.state == "accepted", "request accepted from the phone")
+	_assert(m.phone.find_child("Cancel", true, false) != null, "thread shows the agreed deal")
+	await key(KEY_TAB)
+	_assert(not m.phone.visible, "Tab closes the phone")
+	await frames(2)
+	_assert(sf.npcs.okka.marker, "okka carries the deal marker")
+	sf.place_player_at("okka")
+	await physics_frame
+	await physics_frame
+	_assert(sf.interact(), "talk to okka")
+	await frames(2)
+	var hand: Button = m.station.find_child("HandOver", true, false)
+	_assert(hand != null, "hand-over button in okka's deals panel")
+	var deal_credits_before: int = g.credits
+	hand.pressed.emit()
+	await frames(2)
+	_assert(offer.state == "done" and g.credits == deal_credits_before + int(offer.price) * int(offer.qty), "deal handed over and paid")
+	m.station.close_requested.emit()
+	await frames(2)
+	_assert(not sf.npcs.okka.marker, "marker gone after the deal")
+	step("deal-o-matic")
+
+	# NPC schedules: when the hour moves Okka to her next place she walks there; the light follows the clock
+	var People = load("res://scripts/core/people.gd")
+	sf.place_player_at("pad")
+	var okka_cfg: Dictionary = g.contact("okka")
+	var place0: String = People.whereabouts(okka_cfg, People.hour(g)).place
+	var light0: Color = sf._daylight.color
+	var guard_h := 0
+	while People.whereabouts(okka_cfg, People.hour(g)).place == place0 and guard_h < 48:
+		g.tick(g.day_seconds() / 48.0)
+		guard_h += 1
+	await frames(40)
+	var target_px: Vector2 = sf._px(sf._spot_of.okka)
+	_assert(People.whereabouts(okka_cfg, People.hour(g)).place != place0, "okka's schedule moves on")
+	_assert(not sf.npcs.okka.path.is_empty() or sf.npcs.okka.position.distance_to(target_px) < 4.0, "okka walks to her next place")
+	_assert(sf.interactable("okka").pos.distance_to(sf.npcs.okka.position) < 3.0, "okka's interaction point follows her")  # updated once per frame, she may be one step ahead
+	_assert(sf._daylight.color != light0, "daylight changes with the hour")
+	step("npc schedules")
+
+	# Market & Orders: order from the phone, goods arrive after the delivery time, cancel refunds
+	var credits_start: int = g.credits
+	g.credits = maxi(g.credits, 500)
+	await key(KEY_TAB)
+	var otile: Button = m.phone.find_child("App_orders", true, false)
+	_assert(otile != null, "orders app tile")
+	otile.pressed.emit()
+	await frames(2)
+	_assert(m.phone.current_title() == "Orders", "orders app opens")
+	var plus: Button = m.phone.find_child("OrderPlus_cannabis", true, false)
+	plus.pressed.emit()
+	await frames(2)
+	var stash_before: int = int(g.stash.get("cannabis", 0))
+	var credits_before: int = g.credits
+	var obtn: Button = m.phone.find_child("Order_cannabis", true, false)
+	_assert(obtn != null and not obtn.disabled, "order button enabled")
+	obtn.pressed.emit()
+	await frames(2)
+	_assert(g.orders.size() == 1 and g.credits < credits_before, "order placed and paid")
+	_assert(m.phone.find_child("Transit_%d" % int(g.orders[0].id), true, false) != null, "order listed in transit")
+	g.tick(100.0)
+	await frames(2)
+	_assert(g.orders.is_empty() and int(g.stash.get("cannabis", 0)) == stash_before + 6, "delivery lands in the stash")
+	obtn = m.phone.find_child("Order_nanoflux", true, false)
+	obtn.pressed.emit()
+	await frames(2)
+	_assert(g.orders.size() == 1, "second order placed")
+	var cbtn: Button = m.phone.find_child("OrderCancel_%d" % int(g.orders[0].id), true, false)
+	cbtn.pressed.emit()
+	await frames(2)
+	_assert(g.orders.is_empty(), "order cancelled")
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	_assert(not m.phone.visible, "phone closes")
+	g.credits = credits_start
+	g.stash.erase("cannabis")
+	step("com-phone orders")
+
+	# DeadDrop: request a drop, leave an agreed deal in it, the customer collects and pays
+	var Deals2 = load("res://scripts/core/deals.gd")
+	var Mixing2 = load("res://scripts/core/mixing.gd")
+	g.data.deaddrops.theft_chance = 0.0
+	g.data.deaddrops.theft_heat = 0.0
+	g.credits = maxi(g.credits, 500)
+	await key(KEY_TAB)
+	var ddtile: Button = m.phone.find_child("App_deaddrop", true, false)
+	_assert(ddtile != null, "deaddrop app tile")
+	ddtile.pressed.emit()
+	await frames(2)
+	_assert(m.phone.current_title() == "DeadDrop", "deaddrop app opens")
+	var dropreq: Button = m.phone.find_child("DropRequest_mireth", true, false)
+	_assert(dropreq != null and not dropreq.disabled, "drop request button")
+	dropreq.pressed.emit()
+	await frames(2)
+	_assert(g.drops.size() == 1, "drop requested")
+	var doffer: Dictionary = Deals2.request(g, "okka")
+	Deals2.accept(g, doffer.id)
+	var dkey: String = Mixing2.key(doffer.base, [g.data.bases[doffer.base].innate])
+	g.cargo[dkey] = int(doffer.qty)
+	await frames(3)
+	var ddeal: Button = m.phone.find_child("DropDeal_%d" % int(doffer.id), true, false)
+	_assert(ddeal != null and not ddeal.disabled, "drop-off button for the deal")
+	var dearned: int = int(g.stats.earned)
+	ddeal.pressed.emit()
+	await frames(2)
+	_assert(doffer.state == "dropped", "goods left in the drop")
+	g.tick(40.0)
+	await frames(2)
+	_assert(doffer.state == "done" and int(g.stats.earned) - dearned == int(doffer.price) * int(doffer.qty), "customer collected and paid")  # credits also move with retainers
+	await key(KEY_ESCAPE)
+	await key(KEY_ESCAPE)
+	_assert(not m.phone.visible, "phone closes after deaddrop")
+	g.drops.clear()
+	g.credits = credits_start
+	step("com-phone deaddrop")
 
 	# police on foot: an officer looking at you while you carry product frisks and busts you
 	_assert(sf.officers.size() == g.police_on_foot(1.0) and sf.officers.size() > 0, "officers on Mireth")
@@ -175,7 +375,7 @@ func _run() -> void:
 	# a chasing officer walks around the hangar instead of through it
 	var hang: Rect2 = sf._rect(sf.cfg.buildings[0].rect)
 	g.cargo["weed:glow"] = 1
-	g.heat = 60.0
+	g.heat = 45.0  # chasing, but below the heat where officers draw their weapons (combat.officer.draw_heat)
 	sf.player.position = Vector2(hang.get_center().x, hang.end.y + 24.0)
 	cop.position = Vector2(hang.get_center().x, hang.position.y - 20.0)
 	cop.chasing = true
@@ -197,6 +397,118 @@ func _run() -> void:
 	cop.speed = float(gs.data.police.speed)
 	cop.path = []
 	step("police pathfinding")
+
+	# ground combat: aim, fire, cover, armed officers, knock-out, weapon wheel
+	sf.use_mouse = false
+	for o in sf.officers:
+		o.pick_next = Callable()
+		o.path = []
+		o.chasing = false
+	_assert(sf.covers.size() >= 3 and sf._bullet_blockers.size() >= sf.covers.size() + sf.cfg.buildings.size(), "Mireth has cover pieces that stop bullets")
+	var cop2 = sf.officers[0]
+	var hp0: float = cop2.hp
+	g.heat = 0.0
+	g.credits = 5000
+	g.hp = Combat.max_hp(g)
+	var cv: Rect2 = sf.covers[0]
+	var ctr := cv.get_center()
+	var side := Vector2(130, 0) if cv.size.x >= cv.size.y else Vector2(0, 130)
+	sf.player.position = ctr - side
+	cop2.position = ctr + side
+	sf.aim_point = cop2.position
+	g.cooldown = 0.0
+	_assert(sf.shoot(), "pistol shot leaves the muzzle")
+	await pframes(40)
+	_assert(cop2.hp == hp0 and sf.bullets.is_empty(), "cover stops the bullet (officer hp %.0f/%.0f)" % [cop2.hp, hp0])
+	_assert(not cop2.provoked, "an officer behind cover is not provoked")
+	sf.player.position = ctr - side + side.orthogonal().normalized() * 70.0
+	cop2.position = ctr + side + side.orthogonal().normalized() * 70.0
+	sf.aim_point = cop2.position
+	g.cooldown = 0.0
+	var ammo0: int = g.ammo.pistol
+	_assert(sf.shoot() and g.ammo.pistol == ammo0 - 1, "a shot costs a round")
+	await pframes(40)
+	_assert(cop2.hp < hp0 and cop2.provoked, "a clear shot hurts the officer and provokes him (hp %.0f)" % cop2.hp)
+	_assert(g.heat >= float(gs.data.combat.officer.hit_heat), "shooting an officer raises heat")
+	# real mouse button + reload key through the input system
+	g.cooldown = 0.0
+	g.reload_left = 0.0
+	var mb := InputEventMouseButton.new()
+	mb.button_index = MOUSE_BUTTON_LEFT
+	mb.pressed = true
+	Input.parse_input_event(mb)
+	await pframes(2)
+	mb = InputEventMouseButton.new()
+	mb.button_index = MOUSE_BUTTON_LEFT
+	mb.pressed = false
+	Input.parse_input_event(mb)
+	await pframes(2)
+	_assert(g.ammo.pistol <= ammo0 - 2, "left mouse button fires (ammo %d)" % g.ammo.pistol)
+	await key(KEY_R)
+	_assert(g.reload_left > 0.0, "R starts a reload")
+	await pframes(90)
+	_assert(g.ammo.pistol == 12 and g.reload_left == 0.0, "reload finishes")
+	# armed officer shoots back; knock-out wakes the player at the pad
+	g.heat = 70.0
+	cop2.hp = cop2.max_hp
+	cop2.provoked = false
+	sf.player.position = Vector2(14 * 32, 16.5 * 32)
+	cop2.position = sf.player.position + Vector2(160, 0)
+	cop2.facing = Vector2.LEFT
+	cop2.fire_cd = 0.0
+	var hp1: float = g.hp
+	for i in 240:
+		cop2.position = sf.player.position + Vector2(160, 0)
+		await physics_frame
+		if g.hp < hp1:
+			break
+	_assert(cop2.armed and g.hp < hp1, "an officer draws and shoots at high heat (hp %.0f)" % g.hp)
+	g.cargo["weed:glow"] = 3
+	g.hp = 1.0
+	var ko0: int = g.stats.knockouts
+	var credits0: int = g.credits
+	for i in 300:
+		cop2.position = sf.player.position + Vector2(160, 0) if g.stats.knockouts == ko0 else Vector2(40 * 32, 5 * 32)
+		await physics_frame
+		if g.stats.knockouts > ko0:
+			break
+	_assert(g.stats.knockouts == ko0 + 1 and g.credits < credits0 and not g.has_contraband(), "knocked out: fined, product gone")
+	_assert(g.hp == Combat.max_hp(g) * float(gs.data.combat.player.ko_hp_ratio), "wakes up half healthy")
+	_assert(sf.player.position.distance_to(sf.interactable("pad").stand) < 1.0, "wakes up at the launch pad")
+	# officer kill
+	for o in sf.officers:
+		o.position = Vector2(40 * 32, 5 * 32)
+		o.hold = true
+	g.heat = 0.0
+	cop2 = sf.officers[0]
+	cop2.hp = 5.0
+	cop2.provoked = false
+	var kills0: int = g.stats.kills
+	sf.player.position = Vector2(14 * 32, 16.5 * 32)
+	cop2.position = sf.player.position + Vector2(100, 0)
+	sf.aim_point = cop2.position
+	g.cooldown = 0.0
+	sf.shoot()
+	await pframes(20)
+	_assert(g.stats.kills == kills0 + 1 and not sf.officers.has(cop2), "an officer can be shot down")
+	# weapon wheel: buy and equip the smg
+	g.credits = 5000
+	sf.open_wheel()
+	_assert(sf.wheel_open, "weapon wheel opens")
+	sf.wheel_sel = 1
+	sf.close_wheel(true)
+	_assert(not sf.wheel_open and g.weapon == "smg" and g.weapons.has("smg") and g.credits == 5000 - int(gs.data.combat.weapons.smg.price), "wheel buys and equips the smg")
+	await key(KEY_1)
+	_assert(g.weapon == "pistol", "key 1 equips the pistol")
+	g.hp = Combat.max_hp(g)
+	g.heat = 0.0
+	g.cargo.erase("weed:glow")
+	sf.bullets.clear()
+	for o in sf.officers:
+		o.hold = false
+		o.pick_next = sf._walker_path
+	sf.use_mouse = true
+	step("ground combat")
 
 	# estates: buy the Cannery Annex, go inside, place a station, open it, leave
 	g.credits = 99999
@@ -243,6 +555,32 @@ func _run() -> void:
 	_assert(g.inside_estate == "", "left the estate")
 	_assert(sf.loc_id == "mireth" and sf.player.position.distance_to(sf.interactable("annex").stand) < 1.0, "back on Mireth at the annex door")
 	step("estate buy, build, leave")
+
+	# ship cargo bay: ramp next to the pad, build a station, cook flag, leave back onto the pad
+	sf.place_player_at("ship_bay")
+	await physics_frame
+	await physics_frame
+	_assert(sf.interact(), "use the cargo bay ramp")
+	await frames(2)
+	es = m.surface
+	_assert(es != null and es.cfg.get("estate", "") == "ship_bay" and g.inside_estate == "ship_bay", "inside the cargo bay")
+	m.station.place_requested.emit("trim_table")
+	await frames(1)
+	es.player.position = Vector2(2 * 32 + 16, 2 * 32 + 10)
+	es.player.facing = Vector2.DOWN
+	await physics_frame
+	es.interact()
+	await frames(2)
+	_assert(g.estates.ship_bay.buildings.size() == 1, "station placed in the bay")
+	es = m.surface
+	es.place_player_at("exit")
+	await physics_frame
+	await physics_frame
+	_assert(es.interact(), "leave the cargo bay")
+	await frames(2)
+	sf = m.surface
+	_assert(g.inside_estate == "" and sf.loc_id == "mireth", "back on Mireth from the bay")
+	step("cargo bay enter, build, leave")
 
 	gs.act(g.buy("cannabis", 5))
 	gs.act(g.buy("nanoflux", 5))
@@ -310,15 +648,17 @@ func _run() -> void:
 	await physics_frame
 	sf.interact()
 	await frames(2)
-	_assert(m.station.visible and m.station._filter.get("contact", "") == "okka", "deals panel limited to Okka")
+	_assert(m.station.visible and m.station._filter.get("contact", "") == "okka", "deals panel limited to Okka (focus %s, filter %s, okka at %s, player %s)" % [sf.focus.get("payload", {}), m.station._filter, sf.npcs.okka.position, sf.player.position])
 	gs.act(g.sell("weed:overclock+radiant", 3, "okka"))
 	await frames(2)
 	m.station.close()
 	step("cook and sell")
 
 	g.credits = 20000
-	for u in ["cargo", "engine", "stealth", "lab"]:
+	for u in ["cargo", "engine", "stealth", "lab", "laser", "missile", "shield", "hull"]:
 		gs.act(g.buy_upgrade(u))
+	_assert(g.upgrades.laser == 1 and g.upgrades.missile == 1 and g.upgrades.shield == 1 and g.upgrades.hull == 1, "weapon and shield modules bought at the mechanic")
+	_assert(g.combat.missiles == 4 and g.combat.shield == 40.0 and g.combat.hull == 130.0, "new modules arrive charged")
 	g.add_heat(30)
 	gs.act(g.bribe(10))
 	gs.act(g.pay_debt(1000))
@@ -359,7 +699,7 @@ func _run() -> void:
 		_assert(ls != null and ls.loc_id == loc, "landed on %s" % loc)
 		var opened: Array = []
 		for it in ls.interactables:
-			if it.action == "takeoff":
+			if it.action == "takeoff" or it.action == "enter_ship_bay":
 				continue
 			ls.place_player_at(it.payload.id)
 			await physics_frame
@@ -379,6 +719,9 @@ func _run() -> void:
 		_assert(ls.interact() and m.surface == null and m.world.active, "took off from %s" % loc)
 		await frames(1)
 
+	# Galaxy map app + jump drive: plan a route, charge, jump with the hyperspace transition, cancel, come back
+	await _map_and_drive(m, g)
+
 	# patrol bust: park a patrol on top of the ship while carrying product
 	g.cargo["weed:glow"] = 3
 	g.add_heat(60)
@@ -393,6 +736,9 @@ func _run() -> void:
 			break
 	_assert(g.stats.busts > busts, "patrol scan busts the player")
 	step("bust")
+
+	await _space_combat(m, g)
+	step("space combat")
 
 	m.toggle_pause()
 	await frames(2)
@@ -423,6 +769,72 @@ func _run() -> void:
 	quit(0)
 
 
+## Com-Phone Map app: overlays, route planning, price comparison and the jump drive charge -> hyperspace -> arrival.
+func _map_and_drive(m, g) -> void:
+	g.credits = 5000
+	g.heat = 50.0
+	_assert(g.location == "" and g.system == "halvane" and m.world.active, "flying in Halvane before the map test")
+	m.toggle_phone()
+	m.phone.open_app("map")
+	await frames(3)
+	_assert(m.phone.current_title() == "Map", "map app opens")
+	for n in ["MapCanvas", "MapSys_halvane", "MapSys_kovar", "MapSystem", "MapDrive", "MapPrices", "MapHeatBar"]:
+		_assert(m.phone.find_child(n, true, false) != null, "map shows " + n)
+	_assert(m.phone.find_child("MapLoc_mireth", true, false) != null, "selected system lists its locations")
+	_assert(m.phone.find_child("MapJump", true, false) == null, "no jump button for the system you are in")
+	m.phone.find_child("MapMode_price", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.find_child("MapHeatBar", true, false) != null, "price overlay keeps the system panel")
+	m.phone.find_child("MapMode_heat", true, false).pressed.emit()
+	m.phone.find_child("MapSys_kovar", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.find_child("MapLoc_varrow", true, false) != null and m.phone.find_child("MapLoc_mireth", true, false) == null, "Kovar locations shown")
+	_assert(m.phone.find_child("MapRoute", true, false).text.contains("Kovar Expanse"), "route planned to Kovar")
+	_assert(m.phone.find_child("MapCost", true, false).text.contains("80 cr"), "tolls shown")
+	step("map app overlays and route")
+	# price comparison screen
+	m.phone.find_child("MapPrices", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.current_title() == "Prices" and m.phone.find_child("Price_cannabis", true, false) != null, "price comparison lists raws")
+	m.phone.find_child("MapTab_sell", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.find_child("Price_cocaine", true, false) != null, "price comparison lists product demand")
+	m.phone.back()
+	await frames(3)
+	step("map price comparison")
+	# charge the drive from the phone
+	var credits: int = g.credits
+	m.phone.find_child("MapJump", true, false).pressed.emit()
+	await frames(3)
+	_assert(Galaxy.charging(g) and m.phone.find_child("MapCharge", true, false) != null and m.phone.find_child("MapCancel", true, false) != null, "drive charging, bar and cancel button shown")
+	m.phone.find_child("MapCancel", true, false).pressed.emit()
+	await frames(3)
+	_assert(g.jump_plan.is_empty() and m.phone.find_child("MapJump", true, false) != null, "cancel from the phone")
+	m.phone.find_child("MapJump", true, false).pressed.emit()
+	await frames(2)
+	g.tick(Galaxy.charge_seconds(g) * 0.5)
+	await frames(2)
+	_assert(m.hyper.charge > 0.3 and m.hyper.visible, "charge streaks shown while charging")
+	g.tick(30.0)
+	await frames(3)
+	_assert(g.system == "kovar" and m.world.system == "kovar" and g.credits == credits - int(g.data.jump.fee), "drive jumped to Kovar and paid the toll")
+	_assert(m.hyper.burst > 0.0 and m.hyper.card.contains("Kovar Expanse"), "hyperspace transition plays")
+	_assert(g.jump_plan.is_empty() and m.world.active, "plan done, flying")
+	step("jump drive to kovar")
+	await create_timer(2.0).timeout  # real time: the tween fades over ~1.5 s
+	_assert(m.hyper.burst < 0.5 or not m.hyper.visible, "transition fades out")
+	# back home; docking would cancel, so just check that and return
+	m.phone.find_child("MapSys_halvane", true, false).pressed.emit()
+	await frames(3)
+	m.phone.find_child("MapJump", true, false).pressed.emit()
+	g.tick(30.0)
+	await frames(3)
+	_assert(g.system == "halvane" and m.world.system == "halvane", "drive jumped home")
+	m.phone.close()
+	m.hyper.burst = 0.0
+	step("jump drive home")
+
+
 ## Flies into a jump gate and checks that the next system is built around the ship.
 func _jump(m, g, gate: String) -> void:
 	var to: String = g.data.locations[gate].jump_to
@@ -445,3 +857,88 @@ func _assert(cond: bool, msg: String) -> void:
 	if not cond:
 		printerr("SMOKE FAIL: " + msg)
 		quit(1)
+
+
+## Pirates in deep space: auto spawn, lasers, missile, bounty, shield and hull damage, the dodge boost, the wreck.
+func _space_combat(m, g) -> void:
+	var w = m.world
+	var cb = w.combat
+	_assert(w.ship.modules.laser == g.upgrades.laser and w.ship.modules.shield == 1, "ship art follows the combat modules")
+	g.heat = 0.0
+	w.clear_patrols()
+	for pos in [Vector2(-3000, 3000), Vector2(3000, 3000), Vector2(3000, -3000), Vector2(-3000, -3000), Vector2.ZERO]:
+		w.ship.position = pos
+		if w.nearest_location_distance() > 1200.0:
+			break
+	_assert(w.nearest_location_distance() > float(g.data.space_combat.spawn.safe_radius), "test position is deep space")
+	w.ship.rotation = 0.0
+	w.ship.stop()
+	g.combat.hull = g.data.upgrades.hull.levels[g.upgrades.hull]
+	# a pirate shows up on its own after the spawn interval, and not near a planet
+	cb._spawn_clock = 999.0
+	await frames(3)
+	_assert(cb.pirates.size() >= 1, "pirate arrives in deep space")
+	cb.clear()
+	cb._spawn_clock = 0.0
+	# lasers: a pirate parked ahead is shot down and pays a bounty
+	var credits: int = g.credits
+	var kills: int = g.combat.kills
+	var p = cb.spawn_pirate(g, w.ship.position + Vector2(0, -260))
+	for i in 240:
+		p.position = w.ship.position + Vector2(0, -260)
+		p.velocity = Vector2.ZERO
+		cb.fire_laser(g)
+		await physics_frame
+		if g.combat.kills > kills:
+			break
+	_assert(g.combat.kills == kills + 1 and g.credits > credits and cb.pirates.is_empty(), "lasers shoot down a pirate and pay a bounty")
+	# missile: homes in on a pirate beside the flight line
+	var ammo: int = g.combat.missiles
+	p = cb.spawn_pirate(g, w.ship.position + Vector2(160, -420))
+	_assert(cb.fire_missile(g) and g.combat.missiles == ammo - 1, "missile launched, one round used")
+	for i in 240:
+		p.velocity = Vector2.ZERO
+		await physics_frame
+		if cb.pirates.is_empty():
+			break
+	_assert(cb.pirates.is_empty() and g.combat.kills == kills + 2, "homing missile destroys the pirate")
+	# damage: shield first, then hull, shown on the HUD
+	_assert(w.combat_hud.visible, "combat HUD visible in flight")
+	var shield: float = g.combat.shield
+	cb.hurt_player(g, 10.0)
+	_assert(g.combat.shield == shield - 10.0, "pirate bolt hits the shield first")
+	cb.hurt_player(g, 40.0)
+	_assert(g.combat.shield == 0.0 and g.combat.hull < g.data.upgrades.hull.levels[g.upgrades.hull], "overflow damages the hull")
+	# dodge: boosting makes the ship untouchable for a moment, then bolts hurt again
+	await frames(30)
+	_assert(w.ship.boost() and w.ship.boosting() and w.ship.invulnerable(), "boost starts a dodge")
+	var hull: float = g.combat.hull
+	var sh: float = g.combat.shield
+	cb._add_bolt(w.ship.position, Vector2.ZERO, 1.0, 20.0, false)
+	await physics_frame
+	await physics_frame
+	_assert(g.combat.hull == hull and g.combat.shield == sh, "a bolt passes through the dodging ship")
+	cb.bolts.clear()
+	for i in 45:
+		await physics_frame
+	_assert(not w.ship.invulnerable(), "dodge ends")
+	cb._add_bolt(w.ship.position, Vector2.ZERO, 1.0, 20.0, false)
+	await physics_frame
+	await physics_frame
+	_assert(g.combat.hull < hull or g.combat.shield < sh, "a bolt hits after the dodge")
+	# wreck: half the cargo and a fine, towed back to the patrol base at half hull
+	g.cargo["weed:glow"] = 6
+	g.credits = 1000
+	cb.hurt_player(g, 9999.0)
+	await frames(2)
+	_assert(g.cargo.get("weed:glow", 0) == 3 and g.credits == 900, "wreck loses half the hold and 10%% credits (%s, %d)" % [g.cargo, g.credits])
+	_assert(is_equal_approx(g.combat.hull, g.data.upgrades.hull.levels[g.upgrades.hull] * 0.5) and cb.pirates.is_empty(), "towed back at half hull")
+	_assert(w.nearest_location_distance() < 400.0, "wreck respawns next to a location")
+	# docking clears the fight; the mechanic repairs
+	w.active = false
+	cb.spawn_pirate(g, w.ship.position + Vector2(0, -300))
+	await frames(2)
+	_assert(cb.pirates.is_empty() and not w.combat_hud.visible, "no pirates or combat HUD while docked")
+	w.active = true
+	await frames(2)
+

@@ -18,6 +18,8 @@ var _ambient: AudioStreamPlayer
 func _ready() -> void:
 	sounds = {
 		"click": _tone(880.0, 0.05, 0.4, "square"),
+		"jump_charge": _sweep(120.0, 700.0, 0.9, 0.4),
+		"jump": _sweep(1200.0, 90.0, 0.9, 0.55),
 		"buy": _sweep(500.0, 900.0, 0.12, 0.5),
 		"sell": _chord([660.0, 990.0, 1320.0], 0.35, 0.45),
 		"dock": _sweep(300.0, 150.0, 0.4, 0.5),
@@ -29,6 +31,12 @@ func _ready() -> void:
 		"upgrade": _chord([392.0, 523.0, 659.0, 784.0], 0.6, 0.4),
 		"snip": _tone(1500.0, 0.03, 0.3, "square"),
 		"seal": _sweep(900.0, 300.0, 0.09, 0.4),
+		"laser": _sweep(1400.0, 500.0, 0.09, 0.25, "square"),
+		"hit": _sweep(260.0, 90.0, 0.18, 0.5, "square"),
+		"boom": _sweep(220.0, 40.0, 0.45, 0.55, "square"),
+		"boost": _sweep(300.0, 900.0, 0.22, 0.4),
+		"shot": _sweep(900.0, 120.0, 0.09, 0.45, "square"),
+		"hurt": _sweep(260.0, 90.0, 0.2, 0.5, "square"),
 	}
 	for i in POOL:
 		var p := AudioStreamPlayer.new()
@@ -90,9 +98,13 @@ func _on_game_event(kind: String, _payload: Dictionary) -> void:
 		"sold": play("sell")
 		"docked": play("dock")
 		"undocked": play("undock")
-		"busted": play("bust")
-		"lab_done": play("lab_done")
+		"busted", "knocked_out": play("bust")
+		"shot": play("shot")
+		"lab_done", "order_delivered": play("lab_done")
 		"upgraded": play("upgrade")
+		"jump_charging": play("jump_charge")
+		"jumped": play("jump")
+		"jump_cancelled": play("error")
 
 
 # ---------------------------------------------------------------- synthesis

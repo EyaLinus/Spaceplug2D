@@ -88,8 +88,43 @@ static func units_wanted(g, id: String, product_key: String) -> int:
 
 
 ## Hour of the in-game day (0..24) from the day clock.
+## A day starts at time.day_start_hour (06:00), so a new game begins in the morning.
 static func hour(g) -> float:
-	return 24.0 * g.day_time / g.day_seconds()
+	var start := float(g.data.get("time", {}).get("day_start_hour", 0.0))
+	return fposmod(start + 24.0 * g.day_time / g.day_seconds(), 24.0)
+
+
+## Where on its surface a person stands at `at_hour`: the surface's spot for the current schedule place (tile units),
+## nudged sideways by `slot` (the person's index on the surface) so people sharing a place stand side by side.
+## [] when the surface has no spot for it.
+static func spot(c: Dictionary, spots: Dictionary, at_hour: float, slot := 0) -> Array:
+	var e := whereabouts(c, at_hour)
+	if e.is_empty() or not spots.has(e.place):
+		return []
+	var p: Array = spots[e.place]
+	var nudge := (float(posmod(slot, 4)) - 1.5) * 0.8
+	return [float(p[0]) + nudge, float(p[1])]
+
+
+## Day/night colour for `at_hour` from time.daylight keys [[hour, "#rrggbb"], ...], blended and wrapping at midnight.
+static func daylight(data: Dictionary, at_hour: float) -> Color:
+	var keys: Array = data.get("time", {}).get("daylight", [])
+	if keys.is_empty():
+		return Color.WHITE
+	var prev_h := float(keys[-1][0]) - 24.0
+	var prev_c := Color(keys[-1][1])
+	var next_h := float(keys[0][0]) + 24.0
+	var next_c := Color(keys[0][1])
+	for k in keys:
+		if float(k[0]) <= at_hour:
+			prev_h = float(k[0])
+			prev_c = Color(k[1])
+		else:
+			next_h = float(k[0])
+			next_c = Color(k[1])
+			break
+	var span := next_h - prev_h
+	return prev_c.lerp(next_c, 0.0 if span <= 0.0 else clampf((at_hour - prev_h) / span, 0.0, 1.0))
 
 
 ## The schedule entry for `at_hour` ({from, to, place}); entries may wrap past midnight (from 22 to 6).

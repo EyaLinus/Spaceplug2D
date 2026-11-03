@@ -178,6 +178,8 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 	match kind:
 		"lab_done":
 			show_toast("Lab: %d × %s ready in your stash." % [p.qty, g.item_name(p.product)])
+		"order_delivered":
+			show_toast("Delivery: %d × %s arrived (%s)." % [p.qty, g.item_name(p.item), "stash" if p.dest == "stash" else g.data.estates[p.dest].name])
 		"new_day":
 			show_toast("Day %d begins. %d days until the Consortium collects." % [p.day, maxi(0, g.debt_due_day - p.day + 1)] if g.debt > 0 else "Day %d begins." % p.day)
 		"rumour":
@@ -258,5 +260,5 @@ func _refresh_help() -> void:
 	var k := func(a: String) -> String: return Settings.key_label(a)
 	_flight_help.text = "%s thrust   %s reverse   %s/%s turn   %s brake   %s dock   %s phone   %s menu" % [k.call("ship_thrust"),
 		k.call("ship_reverse"), k.call("ship_left"), k.call("ship_right"), k.call("ship_brake"), k.call("ship_dock"), k.call("phone"), k.call("ui_menu")]
-	_foot_help.text = "%s%s%s%s/arrows walk   %s use / talk   %s phone   %s close / menu   launch pad = take off" % [k.call("move_up"),
-		k.call("move_left"), k.call("move_down"), k.call("move_right"), k.call("interact"), k.call("phone"), k.call("ui_menu")]
+	_foot_help.text = "%s%s%s%s/arrows walk   %s use / talk   mouse aim + fire   %s weapons   %s reload   %s phone   %s menu" % [k.call("move_up"),
+		k.call("move_left"), k.call("move_down"), k.call("move_right"), k.call("interact"), k.call("weapon_wheel"), k.call("reload"), k.call("phone"), k.call("ui_menu")]
