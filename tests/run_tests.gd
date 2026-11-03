@@ -19,15 +19,25 @@ const ArtReg = preload("res://scripts/core/art.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
+const Quests = preload("res://scripts/core/quests.gd")
 
 var data: Dictionary
+var quest_defs: Array = []  ## the real quests from content.json; `data` itself runs without quests so rewards never disturb other tests
 var failures := 0
 var checks := 0
 
 
 func _init() -> void:
 	data = Data.load_all()
+	quest_defs = data.quests
+	data.quests = []
 	for t in [
+		"test_quests_data",
+		"test_quests_tutorial",
+		"test_quests_steps",
+		"test_quests_chain_and_track",
+		"test_quests_waypoint",
+		"test_quests_save",
 		"test_data_references",
 		"test_surface_layouts",
 		"test_art_registry",
@@ -1573,6 +1583,201 @@ func test_dealers_bust_and_save() -> void:
 	check(Dealers.bust_chance(g2, g2.dealers[1]) < b0, "skilled dealers get busted less")
 	g2.heat = 80.0
 	check(Dealers.bust_chance(g2, g2.dealers[0]) > b0, "heat raises the bust risk")
+
+
+## Game with the real quests from content.json (the shared `data` has none, see quest_defs).
+func quest_game(defs: Array = []) -> Game:
+	var c: Dictionary = data.duplicate()
+	c.quests = defs if not defs.is_empty() else quest_defs
+	var g := Game.new()
+	g.new_game(c, 7)
+	return g
+
+
+func test_quests_data() -> void:
+	check(quest_defs.size() >= 6, "tutorial chain exists")
+	var seen := {}
+	for q in quest_defs:
+		var id: String = q.id
+		check(not seen.has(id), "quest %s is unique" % id)
+		check(str(q.title) != "" and str(q.desc) != "", "quest %s has title and text" % id)
+		check(not (q.steps as Array).is_empty(), "quest %s has steps" % id)
+		check(int(q.get("reward", {}).get("credits", 0)) >= 0, "quest %s reward" % id)
+		for r in q.get("requires", []):
+			check(seen.has(r), "quest %s requires an earlier quest (%s)" % [id, r])
+		seen[id] = true
+		for st in q.steps:
+			check(Quests.KINDS.has(str(st.kind)), "quest %s step kind %s" % [id, st.kind])
+			check(str(st.text) != "", "quest %s step has text" % id)
+			check(not st.has("item") or data.raws.has(st.item) or data.additives.has(st.item), "quest %s item exists" % id)
+			check(not st.has("base") or data.bases.has(st.base), "quest %s base exists" % id)
+			check(not st.has("loc") or data.locations.has(st.loc), "quest %s loc exists" % id)
+			check(not st.has("contact") or not (data.contacts as Array).filter(func(c): return c.id == st.contact).is_empty(), "quest %s contact exists" % id)
+			check(not st.has("estate") or data.estates.has(st.estate), "quest %s estate exists" % id)
+			check(not st.has("to") or data.systems.has(st.to), "quest %s system exists" % id)
+			check(str(st.get("waypoint", "")) == "" or data.locations.has(st.waypoint), "quest %s waypoint exists" % id)
+			check(int(st.get("qty", 1)) >= 1, "quest %s qty" % id)
+	check((quest_defs[0].get("requires", []) as Array).is_empty(), "the first quest has no prerequisite")
+	var g := quest_game()
+	check(g.quests.size() == 1 and Quests.is_active(g, "tut_buy") and Quests.tracked(g) == "tut_buy", "a new game starts the first tutorial quest")
+	check(Game.new().quests.is_empty(), "no quests before new_game")
+	var plain := new_game()
+	check(plain.quests.is_empty() and Quests.tracked(plain) == "", "content without quests runs without them")
+
+
+func test_quests_tutorial() -> void:
+	var g := quest_game()
+	g.credits = 1000
+	var events: Array = []
+	g.event.connect(func(k, p): if k.begins_with("quest_"): events.append(k))
+	# other purchases do not count, partial purchases show progress
+	g.buy("ion_syrup", 5)
+	check(Quests.progress_text(g, "tut_buy") == "0/5", "wrong item does not count")
+	g.buy("cannabis", 4)
+	check(Quests.progress_text(g, "tut_buy") == "4/5" and Quests.is_active(g, "tut_buy"), "buy progress counts units")
+	var c0 := g.credits
+	var price := g.buy_price("cannabis")
+	g.buy("cannabis", 1)
+	check(Quests.is_done(g, "tut_buy") and g.credits == c0 - price + 50, "buying 5 finishes the quest and pays the reward")
+	check(Quests.is_active(g, "tut_cook") and Quests.tracked(g) == "tut_cook", "the next quest starts and is tracked")
+	check(events == ["quest_done", "quest_started"], "events: done then started (%s)" % str(events))
+	# cook
+	check(g.start_batch("weed", [], 1).ok and Quests.is_done(g, "tut_cook"), "starting a Weed batch finishes the cook quest")
+	check(Quests.is_active(g, "tut_sell"), "sell quest next")
+	# sell: 2 units, then 1 more to another buyer
+	g.cargo["weed:glow"] = 3
+	g.sell("weed:glow", 2, "okka")
+	check(Quests.progress_text(g, "tut_sell") == "2/3", "sale progress")
+	g.sell("weed:glow", 1, "sen")
+	check(Quests.is_done(g, "tut_sell") and Quests.is_active(g, "tut_people"), "3 units sold finishes the sale quest")
+	# talk to the right person only
+	g.meet("vesna")
+	check(Quests.is_active(g, "tut_people"), "meeting someone else does not count")
+	g.meet("teo")
+	check(Quests.is_done(g, "tut_people") and Quests.is_active(g, "tut_order"), "meeting Teo finishes the people quest")
+	# delivery
+	g._emit("order_delivered", {"item": "cannabis", "qty": 5, "dest": "stash"})
+	check(Quests.is_done(g, "tut_order") and Quests.is_active(g, "tut_estate"), "a delivery finishes the supply quest")
+	# estate
+	g.credits = 3000
+	check(g.buy_estate("cannery_annex").ok and Quests.is_done(g, "tut_estate"), "buying an estate finishes the estate quest")
+	check(Quests.is_active(g, "tut_jump") and Quests.progress_text(g, "tut_jump") == "", "jump quest next")
+	g.undock()
+	g.credits = 500
+	g.jump("halvane_gate")
+	check(Quests.is_active(g, "tut_jump") and int(g.quests.tut_jump.step) == 1, "jump done, dock step next")
+	g.dock("varrow")
+	check(Quests.is_done(g, "tut_jump") and Quests.tracked(g) == "" and Quests.active(g).is_empty(), "tutorial finished")
+	check(Quests.done(g).size() == quest_defs.size(), "every quest done")
+	check(Quests.waypoint(g) == "", "no waypoint without a quest")
+
+
+func test_quests_steps() -> void:
+	var defs: Array = [
+		{"id": "d", "title": "D", "desc": "d", "steps": [{"kind": "dock", "loc": "mireth", "text": "Be at Mireth."}, {"kind": "buy", "qty": 2, "text": "Buy 2 of anything."}]},
+		{"id": "e", "title": "E", "desc": "e", "steps": [{"kind": "estate", "text": "Own one."}]},
+		{"id": "s", "title": "S", "desc": "s", "steps": [{"kind": "sell", "base": "cocaine", "text": "Sell cocaine."}, {"kind": "cook", "base": "meth", "text": "Cook meth."}]},
+	]
+	var g := quest_game(defs)
+	check(int(g.quests.d.step) == 1, "a dock step that already holds finishes at once")
+	check(Quests.is_active(g, "e"), "starter estates and the ship bay don't count as owned")
+	g.buy("cannabis", 1)
+	g.buy("ion_syrup", 1)
+	check(Quests.is_done(g, "d"), "buy without an item counts anything")
+	g.credits = 3000
+	g.buy_estate("cannery_annex")
+	check(Quests.is_done(g, "e"), "estate_bought finishes the estate step")
+	# base filters: weed does not satisfy a cocaine step
+	g.cargo["weed:glow"] = 1
+	g.sell("weed:glow", 1, "okka")
+	check(int(g.quests.s.step) == 0, "wrong base is ignored")
+	g.cargo["cocaine:crisp"] = 1
+	g.location = "mireth"
+	g.sell("cocaine:crisp", 1, "sen")
+	check(int(g.quests.s.step) == 1, "right base advances")
+	g.cargo["coca_leaf"] = 1
+	g.start_batch("cocaine", [], 1)
+	check(Quests.is_active(g, "s"), "cooking another drug is ignored")
+	# a quest that starts while the estate is already owned is done on the spot
+	var h := quest_game([{"id": "e2", "title": "E2", "desc": "", "steps": [{"kind": "estate", "text": "x"}]}])
+	h.credits = 3000
+	h.buy_estate("cannery_annex")
+	check(Quests.is_done(h, "e2"), "single-step quest completes")
+	var late := quest_game([{"id": "a", "title": "A", "desc": "", "steps": [{"kind": "buy", "text": "x"}]},
+		{"id": "b", "title": "B", "desc": "", "requires": ["a"], "steps": [{"kind": "estate", "text": "x"}]}])
+	late.credits = 3000
+	late.buy_estate("cannery_annex")
+	late.buy("cannabis", 1)
+	check(Quests.is_done(late, "a") and Quests.is_done(late, "b"), "owning an estate already completes a later estate step")
+
+
+func test_quests_chain_and_track() -> void:
+	var defs: Array = [
+		{"id": "a", "title": "A", "desc": "", "reward": {"credits": 100}, "steps": [{"kind": "buy", "item": "cannabis", "text": "x"}]},
+		{"id": "b", "title": "B", "desc": "", "steps": [{"kind": "buy", "item": "cannabis", "qty": 2, "text": "x"}]},
+		{"id": "c", "title": "C", "desc": "", "requires": ["a", "b"], "steps": [{"kind": "talk", "text": "x"}]},
+	]
+	var g := quest_game(defs)
+	check(Quests.is_active(g, "a") and Quests.is_active(g, "b") and not g.quests.has("c"), "independent quests run in parallel, dependent waits")
+	check(Quests.tracked(g) == "a", "first active quest is tracked")
+	check(Quests.track(g, "b").ok and Quests.tracked(g) == "b", "pin another quest")
+	check(not Quests.track(g, "c").ok, "can't track a quest that hasn't started")
+	g.credits = 500
+	g.buy("cannabis", 1)
+	check(Quests.is_done(g, "a") and g.credits == 500 - g.buy_price("cannabis") + 100 and Quests.progress_text(g, "b") == "1/2", "one purchase advances both quests")
+	check(not g.quests.has("c"), "c waits for b")
+	g.buy("cannabis", 1)
+	check(Quests.is_done(g, "b") and Quests.is_active(g, "c"), "c starts when both are done")
+	check(Quests.tracked(g) == "c", "tracking moves on when the pinned quest ends")
+	check(g.quests_unseen > 0, "news counter rises")
+
+
+func test_quests_waypoint() -> void:
+	var g := quest_game()
+	check(Quests.waypoint(g) == "", "no arrow while docked at the waypoint")
+	g.undock()
+	check(Quests.waypoint(g) == "mireth", "arrow to the quest location")
+	g.quests.tut_buy.state = "done"
+	g.quests.tut_jump = {"state": "active", "step": 0, "progress": 0}
+	g.quest_tracked = "tut_jump"
+	check(Quests.waypoint(g) == "halvane_gate", "jump step points at the gate")
+	g.quests.tut_jump.step = 1
+	check(Quests.waypoint(g) == "halvane_gate", "a waypoint in another system points at the gate on the way")
+	g.system = "kovar"
+	check(Quests.waypoint(g) == "varrow", "arrow to the waypoint inside the system")
+
+
+func test_quests_save() -> void:
+	var g := quest_game()
+	g.credits = 500
+	g.buy("cannabis", 3)
+	g.quest_tracked = "tut_buy"
+	var c: Dictionary = data.duplicate()
+	c.quests = quest_defs
+	var json := JSON.stringify(g.to_dict())
+	var h := Game.new()
+	h.from_dict(c, JSON.parse_string(json))
+	check(JSON.stringify(h.to_dict()) == json, "quest save round-trip is stable")
+	check(Quests.progress_text(h, "tut_buy") == "3/5" and h.quest_tracked == "tut_buy", "progress and pin survive a save")
+	h.buy("cannabis", 2)
+	check(Quests.is_done(h, "tut_buy") and Quests.is_active(h, "tut_cook"), "a loaded game keeps advancing")
+	# an old save without quests skips the tutorial, no rewards
+	var d: Dictionary = JSON.parse_string(json)
+	d.erase("quests")
+	var o := Game.new()
+	o.from_dict(c, d)
+	check(Quests.done(o).size() == quest_defs.size() and o.credits == int(d.credits), "old saves are past the tutorial")
+	# garbage and unknown ids are survivable
+	var bad: Dictionary = JSON.parse_string(json)
+	bad.quests = {"states": {"tut_buy": {"state": "active", "step": 99, "progress": -4}, "ghost": {"state": "done"}, "tut_cook": "x"}, "tracked": "ghost"}
+	var b := Game.new()
+	b.from_dict(c, bad)
+	check(Quests.is_active(b, "tut_buy") and int(b.quests.tut_buy.step) == 0 and int(b.quests.tut_buy.progress) == 0 and not b.quests.has("ghost"), "bad quest entries are clamped")
+	check(Quests.tracked(b) == "tut_buy", "unknown pin falls back")
+	bad.quests = "nonsense"
+	var b2 := Game.new()
+	b2.from_dict(c, bad)
+	check(b2.quests.size() == 1, "non-dictionary quests save starts fresh")
 
 
 func test_deaddrops() -> void:

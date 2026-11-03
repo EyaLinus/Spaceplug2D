@@ -228,6 +228,8 @@ func _run() -> void:
 	g.cargo[okey] = int(o2.qty)
 	m.phone.open_app("deaddrop")
 	await _save(out, "phone_deaddrop")
+	m.phone.open_app("quests")
+	await _save(out, "phone_quests")
 	var Products = load("res://scripts/core/products.gd")
 	Products.discover(g, "weed", ["energy_drink", "glowcap"] if g.data.additives.has("glowcap") else g.data.additives.keys().slice(0, 2), 2, 12)
 	Products.discover(g, "weed", [], 1, 20)

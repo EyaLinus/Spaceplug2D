@@ -167,6 +167,30 @@
     "tolerance_base": 0.05, "tolerance_affinity": 0.15, "tolerance_addiction": 0.3,
     "bargain_ratio": 0.9, "affinity_bargain": 0.02, "max_price_mult": 4.0, "price_steps": [1, 5, 25]
   },
+  "quests": [
+    {"id": "tut_buy", "title": "Stock up", "tutorial": true, "desc": "Every cook starts with raws. Mireth's market sells Cannabis Buds.",
+      "reward": {"credits": 50}, "steps": [
+        {"kind": "buy", "item": "cannabis", "qty": 5, "text": "Buy 5 Cannabis Buds at the Mireth market (Buy tab).", "waypoint": "mireth"}]},
+    {"id": "tut_cook", "title": "First batch", "tutorial": true, "requires": ["tut_buy"], "desc": "Your rented rig in the old cannery is a full production line.",
+      "reward": {"credits": 75}, "steps": [
+        {"kind": "cook", "base": "weed", "text": "Walk into the Old Cannery, carry a batch from table to table and start a Weed batch.", "waypoint": "mireth"}]},
+    {"id": "tut_sell", "title": "First sale", "tutorial": true, "requires": ["tut_cook"], "desc": "Finished product sits in your stash until you load it.",
+      "reward": {"credits": 150}, "steps": [
+        {"kind": "sell", "base": "weed", "qty": 3, "text": "Load your stash into the hold and sell 3 units of Weed to a buyer or the Deal-O-Matic.", "waypoint": "mireth"}]},
+    {"id": "tut_people", "title": "Know your people", "tutorial": true, "requires": ["tut_sell"], "desc": "Regular buyers pay better and text you with deals.",
+      "reward": {"credits": 50}, "steps": [
+        {"kind": "talk", "contact": "teo", "text": "Find Teo Brack on the Mireth streets and talk to him. He is in your contacts afterwards.", "waypoint": "mireth"}]},
+    {"id": "tut_order", "title": "Supply run", "tutorial": true, "requires": ["tut_people"], "desc": "The Orders app brings goods to your stash or your estates.",
+      "reward": {"credits": 75}, "steps": [
+        {"kind": "deliver", "text": "Order any goods in the Orders app on your phone and wait for the delivery.", "waypoint": ""}]},
+    {"id": "tut_estate", "title": "Own a place", "tutorial": true, "requires": ["tut_order"], "desc": "A second estate means a second production line.",
+      "reward": {"credits": 200}, "steps": [
+        {"kind": "estate", "text": "Buy your first estate (the Cannery Annex is the cheapest) at the Mireth office.", "waypoint": "mireth"}]},
+    {"id": "tut_jump", "title": "Beyond the Reach", "tutorial": true, "requires": ["tut_estate"], "desc": "Kovar pays more for hard drugs and asks fewer questions.",
+      "reward": {"credits": 250}, "steps": [
+        {"kind": "jump", "to": "kovar", "text": "Fly to the Kovar Jump Gate and jump to the Kovar Expanse.", "waypoint": "halvane_gate"},
+        {"kind": "dock", "loc": "varrow", "text": "Dock at Varrow.", "waypoint": "varrow"}]}
+  ],
   "dealers": {
     "max_dealers": 3, "sell_seconds": 20, "units_base": 1, "units_skill": 3, "tolerance": 0.1, "max_cash": 2500,
     "bust_base": 0.008, "bust_per_heat": 0.0006, "jail_seconds": 240, "heat_mult": 0.5,

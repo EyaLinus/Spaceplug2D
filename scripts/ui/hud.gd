@@ -4,6 +4,7 @@ extends Control
 
 const UI = preload("res://scripts/ui/ui_theme.gd")
 const Art = preload("res://scripts/core/art.gd")
+const Quests = preload("res://scripts/core/quests.gd")
 
 var world: Node2D
 var surface: Node2D  ## set by main while on foot, null in space
@@ -24,6 +25,9 @@ var _scan_label: Label
 var _toasts: VBoxContainer
 var _minimap: Control
 var _nav: Control  ## edge arrows pointing at off-screen locations
+var _quest_box: PanelContainer  ## tracked quest: title + current step
+var _quest_title: Label
+var _quest_text: Label
 
 
 func _ready() -> void:
@@ -52,6 +56,24 @@ func _ready() -> void:
 	for c in [_credits, _debt, _day, _day_bar, _heat_label, _heat, _cargo, _lab]:
 		c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(Art.with_icon(icons[c], c) if icons.has(c) else c)
+
+	_quest_box = PanelContainer.new()
+	_quest_box.name = "QuestTracker"
+	_quest_box.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	_quest_box.offset_left = 8
+	_quest_box.offset_top = 66
+	_quest_box.custom_minimum_size.x = 330
+	_quest_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var qv := VBoxContainer.new()
+	qv.add_theme_constant_override("separation", 2)
+	_quest_title = UI.label("", 15, UI.GOLD)
+	_quest_text = UI.label("", 13)
+	_quest_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	qv.add_child(_quest_title)
+	qv.add_child(_quest_text)
+	_quest_box.add_child(qv)
+	_quest_box.visible = false
+	add_child(_quest_box)
 
 	_prompt = UI.label("", 22, UI.ACCENT)
 	_prompt.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
@@ -141,6 +163,7 @@ func _process(_delta: float) -> void:
 	else:
 		var job: Dictionary = g.lab_queue[0]
 		_lab.text = "Lab %d%% (%d queued)" % [int((1.0 - job.remaining / job.total) * 100.0), g.lab_queue.size()]
+	_update_quest_box(g)
 	_scan_label.text = "! OFFICER FRISKING YOU – GET OUT OF SIGHT !" if surface != null else "! AUTHORITY SCAN – GET OUT OF RANGE !"
 	_flight_help.visible = surface == null
 	_foot_help.visible = surface != null
@@ -156,6 +179,17 @@ func _process(_delta: float) -> void:
 		_prompt.text = ""
 	_minimap.queue_redraw()
 	_nav.queue_redraw()
+
+
+func _update_quest_box(g) -> void:
+	var qid: String = Quests.tracked(g)
+	_quest_box.visible = qid != ""
+	if qid == "":
+		return
+	var st: Dictionary = Quests.step_def(g, qid)
+	_quest_title.text = str(Quests.find(g, qid).title)
+	var pr: String = Quests.progress_text(g, qid)
+	_quest_text.text = str(st.get("text", "")) + ("  (%s)" % pr if pr != "" else "")
 
 
 func show_toast(text: String, good: bool = true) -> void:
@@ -185,6 +219,12 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		"rumour":
 			var up: bool = p.demand >= 1.0
 			show_toast("Rumour: %s demand %s at %s." % [g.data.bases[p.base].name, "hot" if up else "cooling", g.data.locations[p.location].name])
+		"quest_started":
+			show_toast("New quest: %s" % Quests.find(g, p.quest).title)
+		"quest_step":
+			show_toast("Quest: %s" % Quests.step_def(g, p.quest).get("text", ""))
+		"quest_done":
+			show_toast("Quest done: %s%s" % [Quests.find(g, p.quest).title, " (+%d cr)" % int(p.credits) if int(p.credits) > 0 else ""])
 		"heat_level":
 			if p.heat >= float(g.data.heat.chase_heat):
 				show_toast("Heat %d: patrols will hunt you." % int(p.heat), false)
@@ -201,9 +241,12 @@ func _draw_minimap() -> void:
 	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(0.3, 0.4, 0.8, 0.6), false, 1.5)
 	var scale: float = size.x / (world.SECTOR_HALF * 2.0)
 	var to_map := func(p: Vector2) -> Vector2: return (p + Vector2(world.SECTOR_HALF, world.SECTOR_HALF)) * scale
+	var wp: String = Quests.waypoint(GameState.game)
 	for id in world.locations:
 		var n = world.locations[id]
 		_minimap.draw_circle(to_map.call(n.position), maxf(3.0, n.radius * scale), Color(n.info.color))
+		if id == wp:
+			_minimap.draw_arc(to_map.call(n.position), maxf(3.0, n.radius * scale) + 4.0, 0.0, TAU, 24, UI.GOLD, 2.0)
 	for p in world.patrols:
 		_minimap.draw_circle(to_map.call(p.position), 2.5, Color(0.4, 0.6, 1.0))
 	_minimap.draw_circle(to_map.call(world.ship.position), 3.5, UI.GOLD)
@@ -215,6 +258,7 @@ func _draw_nav() -> void:
 	var view := _nav.size
 	var centre: Vector2 = world.camera.get_screen_center_position()
 	var font := ThemeDB.fallback_font
+	var wp: String = Quests.waypoint(GameState.game) if GameState.game != null else ""
 	for id in world.locations:
 		var n = world.locations[id]
 		var rel: Vector2 = n.position - centre
@@ -226,9 +270,11 @@ func _draw_nav() -> void:
 		var t := minf(half.x / maxf(absf(dir.x), 0.001), half.y / maxf(absf(dir.y), 0.001))
 		var p := view / 2.0 + dir * t
 		var c := Color(n.info.color).lightened(0.3)
+		if id == wp:
+			c = UI.GOLD
 		var tip := p + dir * 14.0
 		_nav.draw_colored_polygon(PackedVector2Array([tip, p + dir.orthogonal() * 8.0, p - dir.orthogonal() * 8.0]), c)
-		var text := "%s %dk" % [n.info.name, int(rel.length() / 1000.0 + 0.5)]
+		var text := "%s%s %dk" % ["* " if id == wp else "", n.info.name, int(rel.length() / 1000.0 + 0.5)]
 		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 		_nav.draw_string(font, p - dir * 22.0 - Vector2(w / 2.0, -5.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, c)
 

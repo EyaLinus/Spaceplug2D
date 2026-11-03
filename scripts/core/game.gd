@@ -20,6 +20,7 @@ const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
+const Quests = preload("res://scripts/core/quests.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -72,6 +73,9 @@ var bench: Dictionary = {}  ## estate id -> batch tray carried between stations 
 var recipes: Dictionary = {}  ## recipe book: recipe key -> {base, additives, made, best, day} (see products.gd), saved
 var prices: Dictionary = {}  ## your asking price per Standard unit, recipe key -> cr; no entry = market price, saved
 var dealers: Array = []  ## hired street dealers [{id, loc, stock, cash, sold, jail}] (see dealers.gd), saved
+var quests: Dictionary = {}  ## quest id -> {state, step, progress} (see quests.gd), saved
+var quest_tracked: String = ""  ## quest the HUD tracks, "" = the first active one, saved
+var quests_unseen: int = 0  ## quest news since the Quests app was opened (runtime only)
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 
 
@@ -120,6 +124,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	prices = {}
 	dealers = []
 	_add_starter_estates()
+	Quests.init(self)
 	demand = {}
 	for loc in data.locations:
 		demand[loc] = {}
@@ -776,7 +781,7 @@ func to_dict() -> Dictionary:
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
 		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
-		"products": Products.to_save(self), "dealers": Dealers.to_save(self),
+		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "quests": Quests.to_save(self),
 	}
 
 
@@ -846,6 +851,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Bench.from_save(self, d)
 	Products.from_save(self, d.get("products", {}))
 	Dealers.from_save(self, d.get("dealers", []))
+	Quests.from_save(self, d)
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 
@@ -887,6 +893,7 @@ static func _add(dict: Dictionary, k: String, n: int) -> void:
 
 func _emit(kind: String, payload: Dictionary) -> void:
 	event.emit(kind, payload)
+	Quests.on_event(self, kind, payload)
 
 
 func _ok(msg: String) -> Dictionary:

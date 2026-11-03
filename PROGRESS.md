@@ -1,5 +1,27 @@
 # Progress log
 
+## Q1: quest core + tutorial (phase 3 wave 7, 2026-11-03)
+- **Core** `scripts/core/quests.gd`, quests in content.json `quests` (array: id, title, desc, `tutorial`, `requires`,
+  `reward.credits`, `steps`). Step kinds: buy, cook, sell, dock, deliver, talk, estate, jump, each with optional filters
+  (item, base, loc, contact, estate, to), `qty` and a `waypoint` location. `Game._emit` feeds every event to
+  `Quests.on_event`; steps count units (buy/sell/deliver), dock/estate/jump steps that already hold finish at once.
+  State `Game.quests` {id: {state, step, progress}} + `quest_tracked` (saved under `quests`), `quests_unseen` (runtime).
+  Events `quest_started/quest_step/quest_done`. Quests start when all `requires` are done. Old saves (no `quests` key)
+  skip the tutorial without rewards; garbage entries are clamped.
+- **Tutorial chain** (7 quests, 850 cr in rewards): buy 5 Cannabis, first Weed batch, sell 3 Weed, meet Teo, a phone
+  delivery, first estate, jump to Kovar and dock at Varrow.
+- **UI** HUD tracker (`QuestTracker`, top left) with the current step and progress, toasts for new quest / step / done;
+  gold waypoint arrow at the screen edge and a ring on the minimap (points at the gate when the target is in another
+  system, `Quests.waypoint`); Quests app on the phone (`Quest_<id>`, `Track_<id>`, `Done_<id>`, badge for news).
+- Tests: `tests/run_tests.gd` runs its shared `data` without quests (`quest_defs` holds the real ones, `quest_game()`
+  builds a game with them) so rewards never disturb other tests; new tests cover data validity, the whole tutorial,
+  step filters, parallel/dependent quests, tracking, waypoints and saves. UI smoke has a quest section (and switches
+  quests off for the other sections since they check exact credits). `shot.gd` takes `phone_quests`.
+- Verified: NOT RUN. This container had no Godot binary and the sandbox refused to run a downloaded one, so unit tests,
+  UI smoke, menu smoke and the balance sim are left to CI. Code was checked by reading only.
+- Gaps: no on-foot waypoint arrow (minimap only shows the space view's ring), no icon for the Quests app (coloured Q
+  tile), the sim bot collects tutorial rewards (+850 cr) which makes it win slightly earlier.
+
 ## Release v0.1.8 (2026-11-03)
 - Phase 3 wave 6: H1 Products app (#46), H2 deal appointments (#47), A5 dealers (#49). Changelog folded, version
   0.1.8. Next: wave 7 (Q1 quest core + tutorial, Q2 main quest act 1).

@@ -61,6 +61,10 @@ func _run() -> void:
 	m.start_new_game(99)
 	await frames(3)
 	var g = gs.game
+	# the other sections check exact credits: run them without quests (rewards), switch them on again for the quest section
+	var quest_defs: Array = gs.data.quests
+	gs.data.quests = []
+	g.quests = {}
 	var sf = m.surface
 	_assert(sf != null and not m.station.visible and not m.world.visible, "starts on foot on the Mireth surface")
 	_assert(m.get_viewport().get_camera_2d() == sf.camera, "surface camera is current")
@@ -362,6 +366,43 @@ func _run() -> void:
 	_assert(g.credits == c_before + 120, "cash collected from the phone")
 	await key(KEY_TAB)
 	step("dealers")
+
+	# Quests: tracker in the HUD, the Quests app, progress from real actions, reward and the next quest
+	var Quests = load("res://scripts/core/quests.gd")
+	gs.data.quests = quest_defs
+	Quests.init(g)
+	await frames(3)
+	var qbox: Control = m.hud.find_child("QuestTracker", true, false)
+	_assert(qbox != null and qbox.visible and m.hud._quest_title.text == "Stock up", "HUD tracks the first tutorial quest")
+	await key(KEY_TAB)
+	m.phone.open_app("quests")
+	await frames(2)
+	_assert(m.phone.find_child("Quest_tut_buy", true, false) != null, "Quests app lists the active quest")
+	_assert(m.phone.find_child("Track_tut_buy", true, false) == null, "the tracked quest has no track button")
+	await key(KEY_TAB)
+	g.credits = maxi(g.credits, 1000)
+	_assert(g.location == "mireth", "still docked at Mireth")
+	var qc: int = g.credits
+	var qprice: int = g.buy_price("cannabis")
+	var kept_cargo: Dictionary = g.cargo.duplicate()
+	g.cargo = {}
+	gs.act(g.buy("cannabis", 5))
+	g.cargo = kept_cargo
+	await frames(3)
+	_assert(Quests.is_done(g, "tut_buy") and g.credits == qc - qprice * 5 + 50, "buying 5 Cannabis Buds finishes the quest and pays")
+	_assert(m.hud._quest_title.text == "First batch", "tracker moves to the next quest")
+	_assert(g.quests_unseen > 0, "phone badge has news")
+	await key(KEY_TAB)
+	_assert(m.phone.find_child("App_quests", true, false) != null, "Quests app tile")
+	m.phone.open_app("quests")
+	await frames(2)
+	_assert(m.phone.find_child("Done_tut_buy", true, false) != null and g.quests_unseen == 0, "finished quest listed, news cleared")
+	await key(KEY_TAB)
+	gs.data.quests = []
+	g.quests = {}
+	await frames(2)
+	_assert(not m.hud._quest_box.visible, "tracker hides without quests")
+	step("quests")
 
 	# NPC schedules: when the hour moves Okka to her next place she walks there; the light follows the clock
 	var People = load("res://scripts/core/people.gd")
