@@ -110,6 +110,41 @@ func _run() -> void:
 	g.credits -= 500 - int(g.data.style.jacket.teal.cost) - int(g.data.style.decor.plant.cost)
 	step("style app")
 
+	# K3: contacts filter, stepper detection, quick-save/-load, UI scale
+	m.toggle_phone()
+	m.phone.open_app("contacts")
+	await frames(2)
+	var app = m.phone.app_by_id("contacts")
+	m.phone.find_child("Filter_hooked", true, false).pressed.emit()
+	await frames(2)
+	_assert(app.filter == "hooked", "contacts filter switches")
+	var listed: int = m.phone.find_children("Contact_*", "", true, false).size()
+	var hooked := 0
+	for c in g.data.contacts:
+		if g.people.get(c.id, {}).get("known", false) and app.passes(g, c):
+			hooked += 1
+	_assert(listed == hooked, "filter shows only matching contacts (%d)" % listed)
+	m.phone.find_child("Filter_all", true, false).pressed.emit()
+	await frames(2)
+	m.phone.close()
+	var UIT = load("res://scripts/ui/ui_theme.gd")
+	_assert(UIT.is_stepper("+") and UIT.is_stepper("−") and UIT.is_stepper("-5") and UIT.is_stepper("+10") and not UIT.is_stepper("+5 heat") and not UIT.is_stepper("Buy"), "stepper buttons are recognised")
+	var qs_credits: int = g.credits
+	m.quick_save()
+	g.credits += 777
+	m.quick_load()
+	await frames(3)
+	g = gs.game
+	sf = m.surface
+	_assert(g.credits == qs_credits and sf != null, "quick-load restores the quick-save")
+	var settings = root.get_node("Settings")
+	settings.set_ui_scale(2)
+	await frames(1)
+	_assert(is_equal_approx(m._ui_root.scale.x, 1.25) and m._ui_root.size.x * 1.25 > 1270.0, "UI scale fills the screen at 125%")
+	settings.set_ui_scale(0)
+	await frames(1)
+	step("qol: filter, quick-save, ui scale")
+
 	# quests: the tutorial starts with a tracker, a message from Okka, a waypoint and the Quests app
 	var Quests = load("res://scripts/core/quests.gd")
 	await frames(2)
@@ -921,6 +956,24 @@ func _run() -> void:
 	await frames(2)
 	_assert(m.surface == null and m.world.visible and m.world.active and not m.station.visible, "took off and flying")
 	_assert(m.get_viewport().get_camera_2d() == m.world.camera, "ship camera is current again")
+	# K3 autopilot: a waypoint ahead-right, the ship turns to it, thrusts, and switches off on arrival
+	var ship = m.world.ship
+	var goal: Vector2 = ship.position + Vector2(900, -300)
+	var old_provider: Callable = ship.goal_provider
+	ship.goal_provider = func(): return goal
+	ship.set_autopilot(true)
+	_assert(ship.autopilot, "autopilot engages with a waypoint")
+	var ap_start: float = ship.position.distance_to(goal)
+	for i in 600:
+		if not ship.autopilot:
+			break
+		var ap: Dictionary = ship.autopilot_step(1.0 / 60.0)
+		ship.rotation += float(ap.turn) * float(ship.cfg.turn_speed) / 60.0
+		ship.steer(1.0 / 60.0, ap.thrust, ap.brake)
+	_assert(not ship.autopilot and ship.position.distance_to(goal) < ap_start * 0.5, "autopilot flew to the waypoint and switched off")
+	ship.goal_provider = old_provider
+	ship.velocity = Vector2.ZERO
+	step("autopilot")
 	_assert(not is_instance_valid(sf) or sf.is_queued_for_deletion(), "surface instance freed")
 	for i in 120:
 		m.world.ship.steer(1.0 / 60.0, true, false)

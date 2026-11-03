@@ -1,5 +1,24 @@
 # Progress log
 
+## K3: QoL (phase 3 wave 10, 2026-11-03)
+- **Autopilot** (`ship.gd`): action `ship_autopilot` (T) toggles; `goal_provider` = `hud.quest_point` (set in main);
+  `autopilot_step()` turns to the goal, thrusts when within ~20°, brakes inside the stopping distance, switches off
+  under 260 px or on any flight key. Only targets quest waypoints (no free map target yet).
+- **Quick-save/-load**: actions `quick_save` (F5) / `quick_load` (F9) in `main.gd` (current slot; load is blocked
+  while the interdiction card is up).
+- **Hold-to-repeat**: `UI.is_stepper()` (+, −, -5, +10 …) → `UI.hold_to_repeat()`; the loop runs on the tree with a
+  static press id, so it survives the screen rebuilding under the held button.
+- **Contacts filter** (`contacts_app.gd` `filter`, `passes()`): all / here / buying / fans (affinity ≥ 0.25) /
+  hooked (addiction ≥ 0.45).
+- **Price compare** in market card tooltips (`station_ui._compare_tip`, from `Galaxy.buy_table`).
+- **UI scale**: `Settings.ui_scale` → `UI_SCALES` [1.0, 1.1, 1.25]; main scales `_ui_root` and sizes it to
+  viewport / scale (re-applied on Settings.changed and window resize).
+- **Rebinding**: weapon_wheel, reload, ship_autopilot, quick_save, quick_load added to `Settings.BINDABLE`.
+- **Blue sweep**: map app galaxy view navy → ink/brass/slate. Remaining blue = police uniforms and art fallbacks.
+- Verified: unit tests, UI smoke 50 steps (+ autopilot flight, filter, quick-save round trip, 125 % UI), menu smoke,
+  tip audit 0, sim 5/5 avg win day 4.6, screenshots.
+- Gaps: autopilot ignores asteroids/patrols and only knows quest waypoints; no hand-placed map marker; no balance pass.
+
 ## K2: customization (phase 3 wave 10, 2026-11-03)
 - **Core** `scripts/core/style.gd`, data `content.json` "style" (hair, skin, jacket, pants, paint, decal, decor; each
   item has name/cost, colour items a palette `ramp`). State `Game.style` {slot ids, owned ["cat:id"], decor [ids]},

@@ -27,10 +27,10 @@ class MapCanvas extends Control:
 		queue_redraw()
 
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), Color("#0a0e24"))
-		draw_rect(Rect2(Vector2.ZERO, size), Color("#262b4d"), false, 1.0)
+		draw_rect(Rect2(Vector2.ZERO, size), Color("#14121c"))
+		draw_rect(Rect2(Vector2.ZERO, size), Color("#9a6a12", 0.7), false, 1.0)
 		for l in lanes:
-			draw_line(l[0] * size, l[1] * size, Color("#4fe3c1") if l[2] else Color("#3a4170"), 3.0 if l[2] else 2.0)
+			draw_line(l[0] * size, l[1] * size, Color("#4fe3c1") if l[2] else Color("#5a5b6a"), 3.0 if l[2] else 2.0)
 		for gl in glows:
 			var p: Vector2 = gl[0] * size
 			for i in 4:

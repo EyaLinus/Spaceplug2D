@@ -15,6 +15,9 @@ var paint: Dictionary = {}  ## K2: hull palette swaps from Style.hull_swaps
 var decal := ""  ## K2: decal id (content.json style.decal)
 var hull_cfg: Dictionary = {}  ## hull class (content.json "ship_classes"): drawn size and paint stripe
 
+var autopilot := false  ## K3: fly to the quest waypoint on its own until you touch the controls or arrive
+var goal_provider: Callable  ## returns the waypoint (Vector2) or null; set by main (HUD quest point)
+const AUTOPILOT_ARRIVE := 260.0
 var _flame := 0.0
 var _boost_t := 0.0  ## seconds of dodge boost left
 var _invuln_t := 0.0  ## seconds of dodge invulnerability left
@@ -36,15 +39,58 @@ func _physics_process(delta: float) -> void:
 		queue_redraw()
 		return
 	var turn := Input.get_axis("ship_left", "ship_right")
-	rotation += turn * float(cfg.turn_speed) * delta
 	thrusting = Input.is_action_pressed("ship_thrust")
-	if Input.is_action_just_pressed("ship_boost"):
-		boost(Input.is_action_pressed("ship_reverse") and not thrusting)
 	var reversing := Input.is_action_pressed("ship_reverse")
-	steer(delta, thrusting, Input.is_action_pressed("ship_brake"), reversing)
+	var braking := Input.is_action_pressed("ship_brake")
+	if InputMap.has_action("ship_autopilot") and Input.is_action_just_pressed("ship_autopilot"):
+		set_autopilot(not autopilot)
+	if autopilot and (turn != 0.0 or thrusting or reversing or braking):
+		set_autopilot(false, "Autopilot off: manual control.")
+	if autopilot:
+		var ap := autopilot_step(delta)
+		turn = ap.turn
+		thrusting = ap.thrust
+		braking = ap.brake
+	rotation += turn * float(cfg.turn_speed) * delta
+	if Input.is_action_just_pressed("ship_boost"):
+		boost(reversing and not thrusting)
+	steer(delta, thrusting, braking, reversing)
 	AudioManager.set_thrust(1.0 if thrusting else (0.5 if reversing else 0.0))
 	_flame = lerpf(_flame, 1.0 if thrusting else 0.0, 12.0 * delta)
 	queue_redraw()
+
+
+func set_autopilot(on: bool, why := "") -> void:
+	if on:
+		var goal = goal_provider.call() if goal_provider.is_valid() else null
+		if goal == null:
+			EventBus.toast.emit("Autopilot: no waypoint. Track a quest with a place to go.", false)
+			return
+	if on == autopilot:
+		return
+	autopilot = on
+	EventBus.toast.emit("Autopilot on: flying to the waypoint. Any flight key takes over." if on else (why if why != "" else "Autopilot off."), true)
+
+
+## One autopilot decision towards the waypoint: {turn -1..1, thrust, brake}. Arriving switches it off.
+func autopilot_step(_delta: float) -> Dictionary:
+	var goal = goal_provider.call() if goal_provider.is_valid() else null
+	if goal == null:
+		set_autopilot(false, "Autopilot off: the waypoint is gone.")
+		return {"turn": 0.0, "thrust": false, "brake": false}
+	var to: Vector2 = (goal as Vector2) - position
+	var dist := to.length()
+	if dist < AUTOPILOT_ARRIVE:
+		set_autopilot(false, "Autopilot: arrived.")
+		return {"turn": 0.0, "thrust": false, "brake": true}
+	var want := to.angle() + PI / 2.0  # the nose points up (−y)
+	var diff := wrapf(want - rotation, -PI, PI)
+	var turn := clampf(diff * 3.0, -1.0, 1.0)
+	var speed := velocity.length()
+	var stop_dist := speed * speed / maxf(1.0, 2.0 * float(cfg.thrust) * engine_mult) + 160.0
+	var brake := dist < stop_dist and speed > 120.0
+	var thrust := absf(diff) < 0.35 and not brake
+	return {"turn": turn, "thrust": thrust, "brake": brake}
 
 
 ## Integrates one step; split out so the UI smoke test can fly without key input.

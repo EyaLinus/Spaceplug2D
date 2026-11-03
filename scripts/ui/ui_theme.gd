@@ -220,7 +220,38 @@ static func button(text: String, cb: Callable, min_w := 0) -> Button:
 	b.pressed.connect(func():
 		AudioManager.play("click")
 		cb.call())
+	if is_stepper(text):
+		hold_to_repeat(b, cb)
 	return b
+
+
+## K3: "+", "−", "-5", "+10" … quantity/price steppers repeat while held.
+static func is_stepper(text: String) -> bool:
+	var t := text.strip_edges()
+	if t.is_empty() or not "+-−".contains(t[0]) or t.length() > 4:
+		return false
+	var rest := t.substr(1).trim_suffix("%")
+	return rest.is_empty() or rest.is_valid_int()
+
+
+static var _repeat_id := 0  ## bumps on every press/release; a running repeat loop stops when it changes
+
+## Holding the button calls `cb` again after REPEAT_DELAY, then every REPEAT_STEP, until the mouse is released.
+## The loop runs on the tree, not on the button, so it survives the screen being rebuilt by the callback.
+const REPEAT_DELAY := 0.4
+const REPEAT_STEP := 0.07
+
+static func hold_to_repeat(b: BaseButton, cb: Callable) -> void:
+	b.button_down.connect(func():
+		_repeat_id += 1
+		var mine := _repeat_id
+		var tree := b.get_tree()
+		await tree.create_timer(REPEAT_DELAY).timeout
+		while mine == _repeat_id and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			AudioManager.play("click")
+			cb.call()
+			await tree.create_timer(REPEAT_STEP).timeout)
+	b.button_up.connect(func(): _repeat_id += 1)
 
 
 ## A gold primary-action button (buy, confirm, start).

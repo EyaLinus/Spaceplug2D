@@ -7,6 +7,47 @@ const Mixing = preload("res://scripts/core/mixing.gd")
 const People = preload("res://scripts/core/people.gd")
 
 var _seen := {}  ## ids already shown in the list; newly met people make the badge count up
+var filter := "all"  ## K3 list filter: all | here (this planet) | buying (cash left today) | fans (friendly+) | hooked
+
+const FILTERS := [
+	["all", "All", "Everyone you have met."],
+	["here", "Here", "Only people at the place you are now."],
+	["buying", "Buying", "Only people who are free and still have cash today."],
+	["fans", "Fans", "Only people who like you (affinity friendly or better)."],
+	["hooked", "Hooked", "Only dependent or hooked people: they pay more and come back."],
+]
+
+
+## Does contact `c` pass the current filter?
+func passes(g, c: Dictionary) -> bool:
+	var s: Dictionary = g.people[c.id]
+	match filter:
+		"here":
+			return c.location == g.location
+		"buying":
+			return g.contact_ready(c.id) and People.budget_left(g, c.id) > 0
+		"fans":
+			return float(s.affinity) >= 0.25
+		"hooked":
+			return float(s.addiction) >= 0.45
+	return true
+
+
+func _filter_bar(phone) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 3)
+	for f in FILTERS:
+		var b := UI.button(f[1], func():
+			filter = f[0]
+			phone.refresh())
+		b.name = "Filter_" + f[0]
+		b.tooltip_text = f[2]
+		b.toggle_mode = true
+		b.button_pressed = filter == f[0]
+		b.add_theme_font_size_override("font_size", 12)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(b)
+	return row
 
 
 func _init() -> void:
@@ -27,6 +68,8 @@ func badge(g) -> int:
 func home(g, phone) -> Control:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
+	var bar := _filter_bar(phone)
+	var shown := 0
 	var unknown: Dictionary = {}  ## location -> count
 	for loc in g.data.locations:
 		var rows: Array = []
@@ -34,8 +77,9 @@ func home(g, phone) -> Control:
 			if c.location != loc:
 				continue
 			if g.people.get(c.id, {}).get("known", false):
-				rows.append(c)
 				_seen[c.id] = true
+				if passes(g, c):
+					rows.append(c)
 			else:
 				unknown[loc] = int(unknown.get(loc, 0)) + 1
 		if rows.is_empty():
@@ -43,8 +87,11 @@ func home(g, phone) -> Control:
 		v.add_child(UI.label(g.data.locations[loc].name.to_upper(), 13, UI.MUTED))
 		for c in rows:
 			v.add_child(_row(g, phone, c))
-	if v.get_child_count() == 0:
-		v.add_child(UI.label("No contacts yet.", 15, UI.MUTED))
+			shown += 1
+	if shown == 0:
+		v.add_child(UI.label("No contacts yet." if filter == "all" else "Nobody matches this filter.", 15, UI.MUTED))
+	v.add_child(bar)
+	v.move_child(bar, 0)
 	for loc in unknown:
 		var hint := UI.label("%d more on %s you haven't met. Talk to people there." % [unknown[loc], g.data.locations[loc].name], 13, UI.MUTED)
 		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

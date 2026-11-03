@@ -92,6 +92,14 @@ func _display_tab() -> Control:
 	tut.tooltip_text = "New games start with Okka's tutorial quests. Off = straight to the main quest."
 	tut.toggled.connect(func(on: bool): Settings.set_tutorial(on))
 	v.add_child(_row("Tutorial (new games)", tut))
+	var us := OptionButton.new()
+	us.name = "UiScale"
+	for t in ["Normal", "Large (110%)", "Larger (125%)"]:
+		us.add_item(t)
+	us.select(Settings.ui_scale)
+	us.tooltip_text = "Makes all text, the HUD, the phone and every panel bigger."
+	us.item_selected.connect(func(i: int): Settings.set_ui_scale(i))
+	v.add_child(_row("Text & UI size", us))
 	var sh := HSlider.new()
 	sh.name = "ShakeSlider"
 	sh.min_value = 0.0

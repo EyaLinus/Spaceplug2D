@@ -9,6 +9,7 @@ signal changed  ## any setting changed (HUD refreshes its key hints)
 const BUSES := ["Master", "Music", "SFX"]
 const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440)]
 const WINDOW_MODES := ["Windowed", "Fullscreen"]
+const UI_SCALES := [1.0, 1.1, 1.25]  ## K3 "Text & UI size": Normal, Large, Larger
 
 ## Rebindable actions in the order the settings screen lists them. The actions themselves are registered by main.gd
 ## and surface.gd; `apply_input()` must run after that.
@@ -23,6 +24,7 @@ const BINDABLE := [
 	{"action": "ship_missile", "label": "Fire secondary weapon", "group": "Flight"},
 	{"action": "ship_cycle", "label": "Switch secondary weapon", "group": "Flight"},
 	{"action": "ship_boost", "label": "Dodge boost", "group": "Flight"},
+	{"action": "ship_autopilot", "label": "Autopilot to waypoint", "group": "Flight"},
 	{"action": "move_up", "label": "Walk up", "group": "On foot"},
 	{"action": "move_down", "label": "Walk down", "group": "On foot"},
 	{"action": "move_left", "label": "Walk left", "group": "On foot"},
@@ -31,8 +33,12 @@ const BINDABLE := [
 	{"action": "build_menu", "label": "Build menu (estate)", "group": "On foot"},
 	{"action": "sprint", "label": "Sprint (hold)", "group": "On foot"},
 	{"action": "map_zoom", "label": "Minimap zoom", "group": "On foot"},
+	{"action": "weapon_wheel", "label": "Weapon wheel", "group": "On foot"},
+	{"action": "reload", "label": "Reload", "group": "On foot"},
 	{"action": "ui_menu", "label": "Pause menu", "group": "General"},
 	{"action": "phone", "label": "Com-Phone", "group": "General"},
+	{"action": "quick_save", "label": "Quick-save", "group": "General"},
+	{"action": "quick_load", "label": "Quick-load", "group": "General"},
 ]
 
 var config_path := "user://settings.cfg"
@@ -43,6 +49,7 @@ var vsync := true
 var tutorial := true  ## new games start with the tutorial quests (off = straight to the main quest)
 var screen_shake := 1.0  ## K1: camera shake strength 0..1 (0 = off)
 var damage_numbers := true  ## K1: floating damage numbers in fights
+var ui_scale := 0  ## K3: index into UI_SCALES
 var bindings: Dictionary = {}  ## action -> physical keycode overriding the default primary key
 var _defaults: Dictionary = {}  ## action -> default primary physical keycode, captured on first apply_input()
 
@@ -68,6 +75,7 @@ func load_settings() -> void:
 	tutorial = bool(cf.get_value("game", "tutorial", tutorial))
 	screen_shake = clampf(float(cf.get_value("feel", "screen_shake", screen_shake)), 0.0, 1.0)
 	damage_numbers = bool(cf.get_value("feel", "damage_numbers", damage_numbers))
+	ui_scale = clampi(int(cf.get_value("display", "ui_scale", ui_scale)), 0, UI_SCALES.size() - 1)
 	bindings = {}
 	if cf.has_section("keys"):
 		for action in cf.get_section_keys("keys"):
@@ -84,6 +92,7 @@ func save_settings() -> bool:
 	cf.set_value("game", "tutorial", tutorial)
 	cf.set_value("feel", "screen_shake", screen_shake)
 	cf.set_value("feel", "damage_numbers", damage_numbers)
+	cf.set_value("display", "ui_scale", ui_scale)
 	for action in bindings:
 		cf.set_value("keys", action, bindings[action])
 	return cf.save(config_path) == OK
@@ -132,6 +141,11 @@ func set_resolution(i: int) -> void:
 
 func set_screen_shake(x: float) -> void:
 	screen_shake = clampf(x, 0.0, 1.0)
+	changed.emit()
+
+
+func set_ui_scale(i: int) -> void:
+	ui_scale = clampi(i, 0, UI_SCALES.size() - 1)
 	changed.emit()
 
 
