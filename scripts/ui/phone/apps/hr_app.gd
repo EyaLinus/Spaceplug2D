@@ -39,6 +39,7 @@ func home(g, phone) -> Control:
 		v.add_child(UI.label("You own no estate. Workers need one to work in.", 14, UI.MUTED))
 	for eid in g.estates:
 		var b := UI.button("%s · %s" % [g.data.estates[eid].name, _estate_state(g, eid)], func(): phone.push(g.data.estates[eid].name, func(gg): return estate(gg, phone, eid)))
+		b.tooltip_text = {"cooking": "Your crew is cooking here.", "idle": "Nothing cooking: %s." % Workers.blocker(g, eid), "ready": "Ready to cook. Open to set the recipe and stock it."}[_estate_state(g, eid)]
 		b.name = "EstateRow_" + eid
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		v.add_child(b)
@@ -61,6 +62,7 @@ func home(g, phone) -> Control:
 func _dealer_row(g, phone, cand: Dictionary, d: Dictionary) -> Control:
 	var b := Button.new()
 	b.name = ("Dealer_" if not d.is_empty() else "DHire_") + cand.id
+	b.tooltip_text = ("Manage %s: stock, district and cash." if not d.is_empty() else "%s could deal for you. Open to see their cut and hire them.") % cand.name
 	b.custom_minimum_size = Vector2(0, 54)
 	b.pressed.connect(func():
 		AudioManager.play("click")
@@ -189,6 +191,7 @@ func _estate_state(g, eid: String) -> String:
 func _worker_row(g, phone, cand: Dictionary, w: Dictionary, prefix: String) -> Control:
 	var b := Button.new()
 	b.name = prefix + cand.id
+	b.tooltip_text = ("Open %s: skill, wage, loyalty and where they work." if w.size() > 0 else "%s is looking for work. Open to see skill and wage.") % cand.name
 	b.custom_minimum_size = Vector2(0, 54)
 	b.pressed.connect(func():
 		AudioManager.play("click")

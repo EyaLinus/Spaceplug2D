@@ -72,6 +72,25 @@ func _run() -> void:
 	_assert(m.get_viewport().get_camera_2d() == sf.camera, "surface camera is current")
 	step("landed on surface")
 
+	# K1 feedback: credit pops next to the HUD, stacked toasts, camera shake on foot, floating text over the player
+	var bus = root.get_node("EventBus")
+	await frames(2)
+	g.credits += 50
+	await frames(2)
+	_assert(m.hud.fx.pops.any(func(p): return p.text == "+50 cr"), "credit change pops next to the HUD")
+	bus.toast.emit("Smoke toast", true)
+	bus.toast.emit("Smoke toast", true)
+	await frames(1)
+	var tb = m.hud._toasts
+	var last = tb.get_child(tb.get_child_count() - 1)
+	_assert(int(last.get_meta("count", 1)) == 2, "the same toast twice stacks into one card ×2")
+	bus.shake.emit(6.0)
+	await frames(1)
+	_assert(sf.shake > 0.0, "EventBus.shake shakes the surface camera")
+	m.hud.fx.over_player("+1 test", Color.WHITE)
+	_assert(sf.get_children().any(func(c): return c.get_script() == load("res://scripts/world/float_text.gd")), "floating text over the player")
+	step("feedback layer")
+
 	# quests: the tutorial starts with a tracker, a message from Okka, a waypoint and the Quests app
 	var Quests = load("res://scripts/core/quests.gd")
 	await frames(2)

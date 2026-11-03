@@ -41,6 +41,8 @@ var window_mode := 0  ## index into WINDOW_MODES
 var resolution := 0  ## index into RESOLUTIONS (windowed only)
 var vsync := true
 var tutorial := true  ## new games start with the tutorial quests (off = straight to the main quest)
+var screen_shake := 1.0  ## K1: camera shake strength 0..1 (0 = off)
+var damage_numbers := true  ## K1: floating damage numbers in fights
 var bindings: Dictionary = {}  ## action -> physical keycode overriding the default primary key
 var _defaults: Dictionary = {}  ## action -> default primary physical keycode, captured on first apply_input()
 
@@ -64,6 +66,8 @@ func load_settings() -> void:
 	resolution = clampi(int(cf.get_value("display", "resolution", resolution)), 0, RESOLUTIONS.size() - 1)
 	vsync = bool(cf.get_value("display", "vsync", vsync))
 	tutorial = bool(cf.get_value("game", "tutorial", tutorial))
+	screen_shake = clampf(float(cf.get_value("feel", "screen_shake", screen_shake)), 0.0, 1.0)
+	damage_numbers = bool(cf.get_value("feel", "damage_numbers", damage_numbers))
 	bindings = {}
 	if cf.has_section("keys"):
 		for action in cf.get_section_keys("keys"):
@@ -78,6 +82,8 @@ func save_settings() -> bool:
 	cf.set_value("display", "resolution", resolution)
 	cf.set_value("display", "vsync", vsync)
 	cf.set_value("game", "tutorial", tutorial)
+	cf.set_value("feel", "screen_shake", screen_shake)
+	cf.set_value("feel", "damage_numbers", damage_numbers)
 	for action in bindings:
 		cf.set_value("keys", action, bindings[action])
 	return cf.save(config_path) == OK
@@ -121,6 +127,16 @@ func set_window_mode(i: int) -> void:
 func set_resolution(i: int) -> void:
 	resolution = clampi(i, 0, RESOLUTIONS.size() - 1)
 	apply_display()
+	changed.emit()
+
+
+func set_screen_shake(x: float) -> void:
+	screen_shake = clampf(x, 0.0, 1.0)
+	changed.emit()
+
+
+func set_damage_numbers(on: bool) -> void:
+	damage_numbers = on
 	changed.emit()
 
 

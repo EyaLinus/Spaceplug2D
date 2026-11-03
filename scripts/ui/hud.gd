@@ -6,6 +6,10 @@ const UI = preload("res://scripts/ui/ui_theme.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Bench = preload("res://scripts/core/bench.gd")
+const FxScript = preload("res://scripts/ui/fx.gd")
+
+const MAX_TOASTS := 5
+const TOAST_SECONDS := 4.0
 
 var world: Node2D
 var surface: Node2D  ## set by main while on foot, null in space
@@ -44,6 +48,7 @@ var _card_from: Label
 var _card_text: Label
 var _card_queue: Array = []  ## [[from, text]] waiting to be shown
 var _card_left := 0.0
+var fx: Control  ## K1 feedback layer (floating numbers, flashes)
 
 
 func _ready() -> void:
@@ -71,6 +76,7 @@ func _ready() -> void:
 	var icons := {_credits: "hud_credits", _day: "hud_day", _heat_label: "hud_heat", _cargo: "up_cargo"}
 	for c in [_credits, _debt, _day, _day_bar, _heat_label, _heat, _cargo, _lab]:
 		c.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		c.mouse_filter = Control.MOUSE_FILTER_PASS  # labels ignore the mouse by default; the tooltips need hover
 		row.add_child(Art.with_icon(icons[c], c) if icons.has(c) else c)
 
 	_prompt = UI.label("", 22, UI.ACCENT)
@@ -98,7 +104,7 @@ func _ready() -> void:
 	_toasts = VBoxContainer.new()
 	_toasts.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	_toasts.offset_top = 110
-	_toasts.offset_left = -420
+	_toasts.offset_left = -400
 	_toasts.offset_right = -12
 	_toasts.alignment = BoxContainer.ALIGNMENT_BEGIN
 	_toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -112,6 +118,10 @@ func _ready() -> void:
 	move_child(_nav, 0)
 
 	_build_quest_ui()
+
+	fx = FxScript.new()
+	fx.name = "Fx"
+	fx.hud = self
 
 	_minimap = Control.new()
 	_minimap.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -145,6 +155,7 @@ func _ready() -> void:
 	_foot_help.offset_top = -30
 	_foot_help.visible = false
 	add_child(_foot_help)
+	add_child(fx)  # last: flashes and numbers draw over everything else in the HUD
 	_refresh_help()
 	Settings.changed.connect(_refresh_help)
 
@@ -166,6 +177,7 @@ func _process(_delta: float) -> void:
 	_heat.value = g.heat
 	_heat_label.text = "Heat %d · %d patrol%s" % [int(g.heat), g.patrol_count(), "" if g.patrol_count() == 1 else "s"]
 	_cargo.text = "Cargo %d/%d%s" % [g.cargo_used(), g.cargo_capacity(), "  ⚠" if g.has_contraband() else ""]
+	_update_tips(g)
 	if g.lab_queue.is_empty():
 		var stashed := 0
 		for k in g.stash:
@@ -218,19 +230,80 @@ func cycle_map_zoom() -> void:
 	map_zoom = (map_zoom + 1) % MAP_ZOOMS.size()
 
 
+## HUD widgets the feedback layer pops numbers from.
+func credits_label() -> Control:
+	return _credits
+
+
+func heat_label() -> Control:
+	return _heat_label
+
+
+## Hover help for the top bar; refreshed every frame so the numbers in it stay true.
+func _update_tips(g) -> void:
+	_credits.tooltip_text = "Cash on hand. Buy raws and upgrades with it, pay the Consortium before the due day."
+	_debt.tooltip_text = ("You owe the Ouroboros Consortium %d cr. Pay at any bank terminal before day %d or it is game over." % [g.debt, g.debt_due_day]) if g.debt > 0 else "Your debt is paid. Everything you make now is yours."
+	var mins := int(g.day_time / g.day_seconds() * 24.0 * 60.0)
+	_day.tooltip_text = "Day %d, %02d:%02d in %s. Contacts keep their meeting times on this clock." % [g.day, mins / 60, mins % 60, g.system_data().get("name", "")]
+	_day_bar.tooltip_text = _day.tooltip_text
+	var tip_heat := "Heat %d/100. Selling, fighting and being seen with product raise it; it cools over time. More heat = more patrols; from %d they hunt you." % [int(g.heat), int(g.data.heat.chase_heat)]
+	_heat_label.tooltip_text = tip_heat
+	_heat.tooltip_text = tip_heat
+	_cargo.tooltip_text = "Hold: %d of %d slots used.%s" % [g.cargo_used(), g.cargo_capacity(), " ⚠ You carry contraband: scans and frisks can bust you." if g.has_contraband() else ""]
+	_lab.tooltip_text = "Your estates' production. Finished batches wait in the stash crate of the estate."
+
+
+## Notification card on the right. The same text twice in a row stacks into one card with a counter.
 func show_toast(text: String, good: bool = true) -> void:
-	var l := UI.label(text, 16, UI.TEXT if good else UI.WARN)
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	if _toasts.get_child_count() > 0:
+		var last := _toasts.get_child(_toasts.get_child_count() - 1)
+		if last.get_meta("text", "") == text and not last.is_queued_for_deletion():
+			var n: int = int(last.get_meta("count", 1)) + 1
+			last.set_meta("count", n)
+			(last.get_meta("counter") as Label).text = "×%d" % n
+			(last.get_meta("counter") as Label).visible = true
+			_fade_toast(last)
+			return
+	var card := PanelContainer.new()
+	card.theme_type_variation = "Card"
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.set_meta("text", text)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	card.add_child(row)
+	var stripe := ColorRect.new()
+	stripe.color = UI.ACCENT if good else UI.WARN
+	stripe.custom_minimum_size = Vector2(4, 0)
+	row.add_child(stripe)
+	var l := UI.label(text, 15, UI.TEXT if good else UI.WARN)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_toasts.add_child(l)
-	while _toasts.get_child_count() > 6:
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(l)
+	var counter := UI.label("", 15, UI.GOLD)
+	counter.visible = false
+	row.add_child(counter)
+	card.set_meta("counter", counter)
+	_toasts.add_child(card)
+	while _toasts.get_child_count() > MAX_TOASTS:
 		var old := _toasts.get_child(0)
 		_toasts.remove_child(old)
 		old.queue_free()
-	var tw := l.create_tween()
-	tw.tween_interval(3.5)
-	tw.tween_property(l, "modulate:a", 0.0, 0.8)
-	tw.tween_callback(l.queue_free)
+	if good:
+		AudioManager.play("toast")
+	_fade_toast(card)
+
+
+func _fade_toast(card: Control) -> void:
+	card.modulate.a = 1.0
+	if card.has_meta("tween"):
+		var old: Tween = card.get_meta("tween")
+		if old.is_valid():
+			old.kill()
+	var tw := card.create_tween()
+	tw.tween_interval(TOAST_SECONDS)
+	tw.tween_property(card, "modulate:a", 0.0, 0.8)
+	tw.tween_callback(card.queue_free)
+	card.set_meta("tween", tw)
 
 
 func _on_game_event(kind: String, p: Dictionary) -> void:
@@ -264,8 +337,8 @@ func _draw_minimap() -> void:
 		_draw_surface_map()
 		return
 	var size := _minimap.size
-	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.07, 0.15, 0.85))
-	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(0.3, 0.4, 0.8, 0.6), false, 1.5)
+	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(UI.INK, 0.88))
+	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(UI.BRASS, 0.9), false, 2.0)
 	var scale: float = size.x / (world.SECTOR_HALF * 2.0)
 	var to_map := func(p: Vector2) -> Vector2: return (p + Vector2(world.SECTOR_HALF, world.SECTOR_HALF)) * scale
 	for id in world.locations:
@@ -334,7 +407,7 @@ func _draw_surface_map() -> void:
 	var qp = quest_point()
 	if qp != null:
 		_minimap.draw_arc(off + (qp as Vector2) * scale, 6.0, 0, TAU, 16, UI.GOLD, 2.0)
-	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(0.3, 0.8, 0.6, 0.6), false, 1.5)
+	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(UI.BRASS, 0.9), false, 2.0)
 
 
 ## Control hints follow the player's key bindings (Settings).

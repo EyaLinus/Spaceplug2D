@@ -56,6 +56,7 @@ func _row(g, phone, c: Dictionary) -> Control:
 	var s: Dictionary = g.people[c.id]
 	var b := Button.new()
 	b.name = "Contact_" + c.id
+	b.tooltip_text = "Open %s's profile: likes, budget, schedule and affinity." % c.name
 	b.custom_minimum_size = Vector2(0, 58)
 	b.pressed.connect(func():
 		AudioManager.play("click")

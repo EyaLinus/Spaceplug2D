@@ -42,6 +42,11 @@ jobs:
           timeout 300 godot --headless --path . -s res://tools/ui_smoke.gd 2>&1 | tee smoke.txt
           grep -q "SMOKE DONE" smoke.txt
           ! grep -q "SCRIPT ERROR" smoke.txt
+      - name: Tooltip audit (every visible button on the main screens has hover help)
+        run: |
+          timeout 120 godot --headless --path . -s res://tools/tip_audit.gd 2>&1 | tee tips.txt
+          grep -q "TIPS DONE 0" tips.txt
+          ! grep -q "SCRIPT ERROR" tips.txt
       - name: Menu smoke test (main/pause menu, save slots, settings, rebinding)
         run: |
           timeout 120 godot --headless --path . -s res://tools/menu_smoke.gd 2>&1 | tee menu.txt

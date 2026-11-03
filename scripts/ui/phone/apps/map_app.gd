@@ -76,6 +76,8 @@ func _mode_row(g) -> Control:
 			_mode = m[0]
 			_refresh_soon(), 0)
 		b.name = "MapMode_" + m[0]
+		b.tooltip_text = {"heat": "Glow = patrol pressure at your heat in each system.", "price": "Glow = cheapest raws and additives in each system.",
+			"influence": "Glow = who runs the streets: you or a cartel."}[m[0]]
 		b.toggle_mode = true
 		b.button_pressed = _mode == m[0]
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -142,6 +144,7 @@ func _canvas(g) -> Control:
 	for s in g.data.systems:
 		var b := Button.new()
 		b.name = "MapSys_" + s
+		b.tooltip_text = "Show what is in %s; from here you can charge the jump drive." % str(g.data.systems[s].name)
 		b.text = str(g.data.systems[s].name)
 		b.add_theme_font_size_override("font_size", 12)
 		b.toggle_mode = true

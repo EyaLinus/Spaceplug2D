@@ -145,9 +145,77 @@ static func label(text: String, size := 17, color := TEXT) -> Label:
 	return l
 
 
+## K1: hover help for buttons whose label starts with one of these words (checked in order, case-sensitive).
+## A call site that sets `tooltip_text` itself always wins; `untipped()` lists buttons that still have none.
+const BUTTON_TIPS := [
+	["◀ Back", "Back to the previous screen."], ["● Home", "Back to the phone's home screen."],
+	["✕ Close", "Put the phone away."], ["Close", "Close this screen."], ["Back", "Back to the previous screen."],
+	["Leave", "Walk away from this counter."], ["Resume", "Back to the game."],
+	["Settings", "Volume, window, screen shake, text size and key bindings."],
+	["Save game", "Save into one of the three slots."], ["Load game", "Pick a save slot to continue."],
+	["New game", "Start a fresh run in a save slot."], ["New run", "Start over from day 1."],
+	["Continue", "Carry on."], ["Quit", "Close the game."], ["Main menu", "Back to the title screen."],
+	["Save & ", "Save first, then leave."], ["Keep playing", "Stay in this run."],
+	["Reset to defaults", "Restore every key binding."], ["Delete", "Delete this save."],
+	["Accept", "Take the deal as offered."], ["Decline", "Turn the offer down. They will remember."],
+	["Fewer", "Counter with a smaller amount."], ["More", "Counter with a larger amount."],
+	["Earlier", "Counter with an earlier meeting time."], ["Later", "Counter with a later meeting time."],
+	["+", "Add more (hold to repeat)."], ["-", "Take some away (hold to repeat)."], ["−", "Take some away (hold to repeat)."],
+	["Max", "As many as fit."], ["All", "Everything you have."],
+	["Buy", "Pay and take it."], ["Sell", "Sell to this buyer at the price shown."],
+	["Clear basket", "Empty the basket without buying."], ["Upgrade", "Install the next level of this module."],
+	["Switch", "Move into this hull; your cargo comes along if it fits."],
+	["Repair hull", "Patch the hull back to full."], ["Restock missiles", "Refill the missile pods."],
+	["Hire", "Take them on. Wages are paid every morning."], ["Fire", "Let them go."], ["Let go", "Let them go."],
+	["Recruit", "Pay to add this contact to your network."], ["Track", "Show this quest in the HUD and on the map."],
+	["Skip tutorial", "Jump straight to the main quest."], ["Request", "Ask for a new drop point here."],
+	["Abandon", "Give up this drop point."], ["Courier", "Send a courier with these goods."],
+	["Leave ", "Leave these goods in the drop for the buyer."], ["Order", "Order these goods for delivery."],
+	["Express", "Faster delivery for a higher fee."], ["Standard", "Normal delivery time and price."],
+	["Cancel", "Call it off."], ["Call it off", "Cancel this meeting. The contact will be unhappy."],
+	["Collect", "Take the cash your dealer has made."], ["Take stock back", "Take the dealer's unsold stock back."],
+	["Stock raws", "Move raws from your hold to the workers' shelf."],
+	["Take products", "Move finished products from the estate into your hold."],
+	["Load stash", "Load every finished product from the stash into your hold."],
+	["Pour the mix", "Pour the chosen additives into the tray (Mixing Station minigame)."],
+	["No additives", "Skip mixing and cook the plain base."], ["Scrap tray", "Throw this tray away."],
+	["Start & work", "Start a new tray here and play the station's minigame."],
+	["Skip the rest", "Remaining stations count as Standard quality."],
+	["Pay", "Pay this amount."], ["Clear heat", "Bribe your heat down."], ["Clear wanted", "Make the Authority forget you."],
+	["Divert sweep", "Pay to steer patrols away for a while."], ["-10 heat", "Pay to lose 10 heat."],
+	["Take down", "Rob this courier for the cash shown."], ["Hand over", "Give them what they asked for."],
+	["Go inside", "Enter the building."], ["Undock", "Take off and fly."], ["Charge jump drive", "Spool up the jump drive (hold still)."],
+	["Cancel jump", "Stop charging the jump drive."], ["Price comparison", "Compare prices at every market you know."],
+	["Market", "Set your asking price to what the market pays."], ["Worth", "Set your asking price to the product's worth."],
+	["Cartels", "Who runs which street, how angry they are."],
+]
+
+
+## Hover help for a button label (see BUTTON_TIPS); "" when there is none.
+static func tip_for(text: String) -> String:
+	var t := text.strip_edges()
+	for pair in BUTTON_TIPS:
+		if t.begins_with(pair[0]):
+			return pair[1]
+	return ""
+
+
+## Visible buttons under `root` that have no hover help (used by the UI smoke test).
+static func untipped(root: Node) -> Array:
+	var out: Array = []
+	for c in root.get_children():
+		if c is CanvasItem and not (c as CanvasItem).visible:
+			continue
+		if c is BaseButton and (c as Control).tooltip_text == "":
+			out.append((c as Button).text if c is Button and (c as Button).text != "" else str(c.get_path()).get_file())
+		out.append_array(untipped(c))
+	return out
+
+
 static func button(text: String, cb: Callable, min_w := 0) -> Button:
 	var b := Button.new()
 	b.text = text
+	b.tooltip_text = tip_for(text)
 	b.custom_minimum_size.x = min_w
 	b.pressed.connect(func():
 		AudioManager.play("click")

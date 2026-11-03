@@ -42,6 +42,8 @@ func _ready() -> void:
 		"coin": _chord([988.0, 1319.0], 0.18, 0.35),
 		"flak": _sweep(500.0, 140.0, 0.12, 0.45, "square"),
 		"ion": _sweep(200.0, 1600.0, 0.25, 0.35),
+		"cook": _chord([392.0, 587.0], 0.22, 0.3),  ## K1: a station step of a tray is done
+		"toast": _tone(1320.0, 0.04, 0.18),  ## K1: soft tick for a good notification
 	}
 	for i in POOL:
 		var p := AudioStreamPlayer.new()

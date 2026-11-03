@@ -61,6 +61,7 @@ func _options(g) -> Control:
 	row.add_child(UI.label("Deliver to", 14, UI.MUTED))
 	var ob := OptionButton.new()
 	ob.name = "OrdersDest"
+	ob.tooltip_text = "Where the order is delivered: the hub stash on Mireth or one of your estates."
 	ob.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var sel := 0
 	var dests := Orders.destinations(g)

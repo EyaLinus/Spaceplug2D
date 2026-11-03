@@ -75,6 +75,7 @@ func _row(g, phone, o: Dictionary) -> Control:
 	var s := People.official_state(g, o.id)
 	var b := Button.new()
 	b.name = "Official_" + o.id
+	b.tooltip_text = "Open %s: what they can do for you and what it costs." % o.name
 	b.custom_minimum_size = Vector2(0, 58)
 	b.pressed.connect(func():
 		AudioManager.play("click")

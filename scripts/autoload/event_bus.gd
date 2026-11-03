@@ -6,6 +6,7 @@ signal game_event(kind: String, payload: Dictionary)  ## everything the core Gam
 signal toast(text: String, good: bool)  ## short on-screen notification
 signal dock_requested(location: String)
 signal undock_requested
+signal shake(strength: float)  ## K1: shake the active camera (space or on foot); Settings.screen_shake scales it
 signal scan_progress(ratio: float)  ## 0 = nobody scanning, 1 = busted
 signal new_game_started
 signal game_loaded
