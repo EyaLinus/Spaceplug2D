@@ -1,5 +1,27 @@
 # Progress log
 
+## Q1: quest core + tutorial (phase 3 wave 7, 2026-11-03)
+- **Core** `scripts/core/quests.gd`, quests in `data/quests.json` (merged into content as `quests`), state `Game.quests`
+  {active, done, step, count, tracked} (saved). Steps complete on an event (`on` + `match` payload filter, `min`, `sum`,
+  `need`) or a state check (`check`: cargo, credits, debt_max, estates, recipes, dealers, system, location, inside).
+  Step `on_start` effects (force a customer text, hand out the additive for the tray), `retry_on` (expired or declined
+  deal sends the quest back a step), rewards (credits, items, contacts met, extra debt days), `next` chains.
+  `Game._emit` feeds every event to the quests; `Game.note()` lets the UI report `app_opened`, `entered_estate`,
+  `landed`. New events: `tray_mixed`, `tray_step`; `lab_started` now carries `base` and `additives`.
+- **Tutorial** (4 quests by Okka): buy 5 buds → enter the Old Cannery → start a tray → mix Ion Syrup (gifted) → finish
+  the line → collect → open Products → set a price → accept Okka's forced request → hand it over at the meet → hire a
+  dealer → stock them. Rewards 120/60/150(+Teo)/100 cr. Core `new_game` starts no quests (tests, bot and sims are
+  unchanged); `GameState.new_game` starts them. Saves from before v0.1.9 count the tutorial as done.
+- **UI** HUD tracker (`QuestTracker`, top left), giver message card (`QuestCard`, bottom centre, queued, click to
+  dismiss), waypoint diamond / edge arrow and minimap ring (`hud.quest_point()`: market door, estate door, next
+  station on the tray, stash crate, contact NPC, pad when on another planet, gate on the route when in another system),
+  Quests app (first tile, Track buttons, Skip tutorial), Settings → Display → "Tutorial (new games)", quest sounds.
+- Verified: 2825 unit checks (quest data references, full tutorial run through the core, retry on decline and no-show,
+  check-steps that already hold, skip, save / old save / garbage save), UI smoke (tracker, card, waypoint on the
+  market door, quest log, skip button), menu smoke, screenshots (surface with tracker + card, Quests app).
+- Gaps: the tutorial has not been played through by a human; the deal step waits for Okka's meet time (6–16 game
+  hours ≈ 45–120 s); if the player walks past the Mixing Station the mix step waits for the next batch.
+
 ## Release v0.1.8 (2026-11-03)
 - Phase 3 wave 6: H1 Products app (#46), H2 deal appointments (#47), A5 dealers (#49). Changelog folded, version
   0.1.8. Next: wave 7 (Q1 quest core + tutorial, Q2 main quest act 1).

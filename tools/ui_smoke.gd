@@ -66,6 +66,22 @@ func _run() -> void:
 	_assert(m.get_viewport().get_camera_2d() == sf.camera, "surface camera is current")
 	step("landed on surface")
 
+	# quests: the tutorial starts with a tracker, a message from Okka, a waypoint and the Quests app
+	var Quests = load("res://scripts/core/quests.gd")
+	await frames(2)
+	_assert(Quests.tracked(g) == "tut_cook", "tutorial quest running")
+	_assert(m.hud.find_child("QuestTracker", true, false).visible, "quest tracker shown")
+	_assert(m.hud.find_child("QuestCard", true, false).visible, "Okka's intro card shown")
+	var qp = m.hud.quest_point()
+	_assert(qp != null and qp.distance_to(sf.interactable("market").pos) < 1.0, "waypoint on the market door")
+	await key(KEY_TAB)
+	m.phone.open_app("quests")
+	await frames(2)
+	_assert(m.phone.find_child("Quest_tut_cook", true, false) != null, "quest log lists the tutorial")
+	_assert(m.phone.find_child("SkipTutorial", true, false) != null, "tutorial can be skipped")
+	await key(KEY_TAB)
+	step("quest tracker, waypoint, quest log")
+
 	# walking: free movement works, buildings block
 	var start: Vector2 = sf.player.position
 	for i in 30:

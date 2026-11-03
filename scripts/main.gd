@@ -19,6 +19,7 @@ const HyperspaceScript = preload("res://scripts/ui/hyperspace.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
+const Quests = preload("res://scripts/core/quests.gd")
 
 ## Which station tab a surface interaction opens.
 const SURFACE_TABS := {"market": "Market", "shipyard": "Shipyard", "office": "Office", "deal": "Deals", "fence": "Deals"}
@@ -288,6 +289,7 @@ func _land(loc: String, announce := true) -> void:
 	world.visible = false
 	hud.surface = surface
 	surface.place_player_at("pad")
+	GameState.game.note("landed", {"location": loc})
 	if announce:
 		EventBus.toast.emit("Landed on %s. Walk to a building or person and press E." % GameState.data.locations[loc].name, true)
 
@@ -369,6 +371,7 @@ func enter_estate(eid: String, at = null) -> void:
 	surface = SurfaceScript.new()
 	surface.setup("estate:" + eid, EstateLayout.build_cfg(GameState.data, eid, g.estates[eid].buildings))
 	g.inside_estate = eid
+	g.note("entered_estate", {"estate": eid})
 	surface.can_place = func(st: String, x: int, y: int) -> bool: return g.can_place(eid, st, x, y)
 	surface.interacted.connect(_on_surface_action)
 	add_child(surface)
@@ -481,6 +484,17 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		EventBus.toast.emit(str(p.why), false)
 	elif kind == "busted":
 		EventBus.toast.emit("BUSTED: lost %d units, fined %d cr." % [p.lost, p.fine], false)
+	elif kind == "quest_started":
+		EventBus.toast.emit("New quest: %s" % Quests.defs(GameState.game).get(p.quest, {}).get("title", p.quest), true)
+	elif kind == "quest_step":
+		var qs: Array = Quests.steps(GameState.game, p.quest)
+		if int(p.step) < qs.size() - 1:
+			EventBus.toast.emit("✓ %s" % qs[int(p.step)].get("text", ""), true)
+	elif kind == "quest_done":
+		var rw: Dictionary = p.get("reward", {})
+		EventBus.toast.emit("Quest complete: %s%s" % [Quests.defs(GameState.game).get(p.quest, {}).get("title", p.quest), "  +%d cr" % int(rw.credits) if rw.has("credits") else ""], true)
+	elif kind == "quest_retry" and str(p.get("text", "")) != "":
+		EventBus.toast.emit(str(p.text), false)
 
 
 # ---------------------------------------------------------------- menus

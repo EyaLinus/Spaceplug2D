@@ -19,6 +19,7 @@ const ArtReg = preload("res://scripts/core/art.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
+const Quests = preload("res://scripts/core/quests.gd")
 
 var data: Dictionary
 var failures := 0
@@ -65,6 +66,10 @@ func _init() -> void:
 		"test_deal_haggle_qty_time",
 		"test_dealers",
 		"test_dealers_bust_and_save",
+		"test_quest_data",
+		"test_quest_tutorial_flow",
+		"test_quest_retry_and_skip",
+		"test_quest_save",
 		"test_people_profiles",
 		"test_people_deals",
 		"test_people_save",
@@ -2300,3 +2305,163 @@ func test_bench_save() -> void:
 	var old := Game.new()
 	old.from_dict(data, d)
 	check(old.estate_owned("cannery_rig") and old.bench.is_empty(), "old saves get the cannery rig and no tray")
+
+
+# ---------------------------------------------------------------- quests
+
+const QUEST_EVENTS := ["bought", "sold", "tray_started", "tray_mixed", "tray_step", "lab_started", "lab_done", "collected",
+	"app_opened", "price_set", "offer_accepted", "dealer_hired", "dealer_stocked", "dealer_collected", "entered_estate", "landed",
+	"docked", "jumped", "met", "estate_bought", "debt_paid", "upgraded", "pirate_down", "building_placed", "worker_hired",
+	"drop_pickup", "weapon_bought", "bribed", "scan_passed", "officer_killed", "product_discovered"]
+const QUEST_APPS := ["quests", "contacts", "fixers", "hr", "deals", "products", "orders", "map", "deaddrop"]
+
+
+func test_quest_data() -> void:
+	var qs: Dictionary = data.get("quests", {})
+	check(not qs.is_empty(), "quests.json loaded")
+	var starts := 0
+	for qid in qs:
+		var q: Dictionary = qs[qid]
+		if q.get("start", false):
+			starts += 1
+		check(q.has("title") and not (q.get("steps", []) as Array).is_empty(), "quest %s has a title and steps" % qid)
+		for n in q.get("next", []):
+			check(qs.has(n), "quest %s: next %s exists" % [qid, n])
+		for cid in q.get("reward", {}).get("meet", []):
+			check(not Game.new().data.is_empty() or data.contacts.any(func(c): return c.id == cid), "quest %s rewards a real contact %s" % [qid, cid])
+		for item in q.get("reward", {}).get("items", {}):
+			check(data.raws.has(item) or data.additives.has(item), "quest %s reward item %s exists" % [qid, item])
+		for s in q.steps:
+			check(s.has("text"), "quest %s step has text" % qid)
+			check(s.has("on") or s.has("check"), "quest %s step '%s' has a condition" % [qid, s.get("text", "")])
+			if s.has("on"):
+				check(QUEST_EVENTS.has(s.on), "quest %s: event %s is emitted somewhere" % [qid, s.on])
+			var t: Dictionary = s.get("target", {})
+			if t.has("app"):
+				check(QUEST_APPS.has(t.app), "quest %s: app %s exists" % [qid, t.app])
+			if t.has("loc"):
+				check(data.locations.has(t.loc), "quest %s: target location %s" % [qid, t.loc])
+			if t.has("building"):
+				check(data.surfaces.get(t.loc, {}).get("buildings", []).any(func(b): return b.id == t.building), "quest %s: building %s on %s" % [qid, t.building, t.loc])
+			if t.has("estate"):
+				check(data.estates.has(t.estate) and str(data.estates[t.estate].get("location", "")) == str(t.loc), "quest %s: estate %s on %s" % [qid, t.estate, t.loc])
+			if t.has("contact"):
+				check(data.surfaces.get(t.loc, {}).get("npcs", []).any(func(n): return n.get("contact", "") == t.contact), "quest %s: contact %s stands on %s" % [qid, t.contact, t.loc])
+			if t.has("station") and t.station != "@next":
+				check(data.stations.has(t.station), "quest %s: station %s" % [qid, t.station])
+			var os: Dictionary = s.get("on_start", {})
+			if os.has("offer"):
+				check(data.contacts.any(func(c): return c.id == os.offer), "quest %s: offer contact %s" % [qid, os.offer])
+	check(starts >= 1, "at least one quest starts a new run")
+
+
+func test_quest_tutorial_flow() -> void:
+	var g := new_game()
+	check(g.quests.active.is_empty(), "core new_game starts no quests (sims and tests stay unchanged)")
+	var log: Array = []
+	g.event.connect(func(k, p): if str(k).begins_with("quest_"): log.append([k, p]))
+	Quests.begin(g)
+	check(Quests.tracked(g) == "tut_cook" and Quests.step_index(g, "tut_cook") == 0, "tutorial starts at step 0")
+	check(Quests.target(g).get("building", "") == "market", "first waypoint: the market")
+	g.location = "mireth"
+	g.buy("cannabis", 3)
+	check(Quests.step_index(g, "tut_cook") == 0, "3 buds are not enough")
+	g.buy("cannabis", 2)
+	check(Quests.step_index(g, "tut_cook") == 1, "5 buds in the hold: next step")
+	g.inside_estate = "cannery_rig"
+	g.note("entered_estate", {"estate": "cannery_rig"})
+	check(Quests.step_index(g, "tut_cook") == 2, "inside the cannery")
+	check(Bench.begin(g, "trim_table", "weed", 5).ok, "tray started")
+	check(Quests.step_index(g, "tut_cook") == 3, "tray step done")
+	check(int(g.cargo.get("ion_syrup", 0)) == 5, "Okka hands over Ion Syrup for the whole tray")
+	Bench.record(g, "trim_table", 0.8)
+	Bench.record(g, "extractor", 0.8)
+	check(Bench.mix(g, ["ion_syrup"]).ok, "mixed")
+	check(Quests.step_index(g, "tut_cook") == 4, "mix step done")
+	while not Bench.tray(g).is_empty():
+		Bench.record(g, Bench.next_station(g, Bench.tray(g)), 0.8)
+	check(Quests.step_index(g, "tut_cook") == 5, "line finished: collect step (%s)" % [g.lab_queue])
+	g.collect_stash()
+	check(Quests.step_index(g, "tut_cook") == 5, "nothing cooked yet: collecting nothing does not count")
+	g.tick(g.batch_seconds(5) + 1.0)
+	var c0 := g.credits
+	g.collect_stash()
+	check(Quests.is_done(g, "tut_cook") and g.credits == c0 + 120, "first quest done, reward paid")
+	check(Quests.tracked(g) == "tut_price", "next quest tracked")
+	check(Quests.target(g).get("app", "") == "products", "phone app target")
+	g.note("app_opened", {"app": "contacts"})
+	check(Quests.step_index(g, "tut_price") == 0, "wrong app does not count")
+	g.note("app_opened", {"app": "products"})
+	var rk: String = g.recipes.keys()[0]
+	Products.set_price(g, rk, Products.suggested(g, rk))
+	check(Quests.is_done(g, "tut_price") and Quests.is_active(g, "tut_deal"), "price quest done, deal quest on")
+	var o: Dictionary = Deals.open_for(g, "okka")
+	check(not o.is_empty(), "the deal quest makes Okka text you")
+	check(Deals.accept(g, o.id).ok and Quests.step_index(g, "tut_deal") == 1, "accepting moves on")
+	check(Quests.target(g).get("contact", "") == "okka", "waypoint on Okka")
+	var key: String = g.cargo.keys().filter(func(k): return str(k).begins_with("weed:"))[0]
+	g.cargo[key] = maxi(int(g.cargo[key]), int(o.qty))
+	g.total_time = float(o.meet_at)
+	g.location = "mireth"
+	var fr: Dictionary = Deals.fulfill(g, o.id, key)
+	check(fr.ok, "deal handed over: %s" % fr.msg)
+	check(Quests.is_done(g, "tut_deal") and People.state(g, "teo").known, "deal quest done, Teo met")
+	g.credits += 2000
+	check(Dealers.hire(g, "rook").ok and Quests.step_index(g, "tut_dealer") == 1, "dealer hired")
+	g.cargo[key] = 5
+	Dealers.assign(g, "rook", "mireth")
+	var gv: Dictionary = Dealers.give(g, "rook", key, 3)
+	check(gv.ok and Quests.is_done(g, "tut_dealer"), "dealer stocked: tutorial over (%s)" % gv.msg)
+	check(Quests.tracked(g) == "" or not Quests.in_tutorial(g), "no tutorial quest left")
+	check(log.filter(func(e): return e[0] == "quest_done").size() == 4, "4 tutorial quests finished")
+
+
+func test_quest_retry_and_skip() -> void:
+	var g := new_game()
+	Quests.start(g, "tut_deal")
+	var o: Dictionary = Deals.open_for(g, "okka")
+	check(not o.is_empty(), "offer forced")
+	Deals.decline(g, o.id)
+	var o2: Dictionary = Deals.open_for(g, "okka")
+	check(Quests.step_index(g, "tut_deal") == 0 and not o2.is_empty() and o2.id != o.id, "declined: Okka texts again")
+	Deals.accept(g, o2.id)
+	check(Quests.step_index(g, "tut_deal") == 1, "accepted")
+	g.total_time = float(o2.meet_at) + 99999.0
+	Deals.tick(g, 0.1)
+	check(Quests.step_index(g, "tut_deal") == 0 and not Deals.open_for(g, "okka").is_empty(), "no-show: back to step 0 with a new text")
+	# a state check that already holds completes on entry
+	var g2 := new_game()
+	g2.cargo["cannabis"] = 9
+	Quests.begin(g2)
+	check(Quests.step_index(g2, "tut_cook") == 1, "buds already in the hold skip the market step")
+	var c0 := g2.credits
+	Quests.skip_tutorial(g2)
+	check(not Quests.in_tutorial(g2) and g2.credits == c0, "skipped without rewards")
+	for qid in data.quests:
+		if data.quests[qid].get("tutorial", false):
+			check(Quests.is_done(g2, qid), "%s marked done" % qid)
+	# events while nothing is active are harmless
+	var g3 := new_game()
+	g3.buy("cannabis", 1)
+	check(g3.quests.active.is_empty(), "no quests, no crash")
+
+
+func test_quest_save() -> void:
+	var g := new_game()
+	Quests.begin(g)
+	g.location = "mireth"
+	g.buy("cannabis", 5)
+	var d: Dictionary = JSON.parse_string(JSON.stringify(g.to_dict()))
+	var g2 := Game.new()
+	g2.from_dict(data, d)
+	check(Quests.is_active(g2, "tut_cook") and Quests.step_index(g2, "tut_cook") == 1, "quest step survives a save")
+	check(Quests.tracked(g2) == "tut_cook", "tracked quest survives")
+	d.erase("quests")
+	var g3 := Game.new()
+	g3.from_dict(data, d)
+	check(not Quests.in_tutorial(g3) and Quests.is_done(g3, "tut_cook"), "old saves skip the tutorial")
+	d["quests"] = {"active": ["nope", "tut_price"], "done": ["tut_cook", "bogus"], "step": {"tut_price": 99}, "count": {}, "tracked": "nope"}
+	var g4 := Game.new()
+	g4.from_dict(data, d)
+	check(g4.quests.active == ["tut_price"] and g4.quests.done == ["tut_cook"], "unknown quest ids dropped")
+	check(Quests.step_index(g4, "tut_price") == 1 and Quests.tracked(g4) == "tut_price", "step index clamped, tracking repaired")

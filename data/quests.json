@@ -1,0 +1,73 @@
+{
+	"tut_cook": {
+		"title": "Fresh off the Pad",
+		"giver": "Okka the Welder",
+		"tutorial": true,
+		"start": true,
+		"intro": "So you're the one the Consortium staked a ship to. Six grand by day twelve, huh? Then quit standing on my pad. Buds at the market, the old cannery is yours to use. Let's see if you can cook.",
+		"steps": [
+			{"text": "Buy 5 Cannabis Buds at the Mireth market", "check": {"type": "cargo", "item": "cannabis", "min": 5},
+				"target": {"loc": "mireth", "building": "market"}, "hint": "Walk to the market door and press E. Put the buds in the basket, then Checkout."},
+			{"text": "Walk into the Old Cannery", "check": {"type": "inside", "id": "cannery_rig"},
+				"target": {"loc": "mireth", "estate": "cannery_rig"}, "hint": "The cannery is your free starter lab. Press E at its door."},
+			{"text": "Start a tray of Weed at the Trim Table", "on": "tray_started", "match": {"base": "weed"},
+				"target": {"loc": "mireth", "estate": "cannery_rig", "station": "trim_table"}, "hint": "Press E at the Trim Table, pick an amount and snip the fan leaves."},
+			{"text": "Mix Ion Syrup into the batch at the Mixing Station", "on": "tray_mixed", "min": {"additives": 1},
+				"on_start": {"tray_additive": "ion_syrup", "tray_fallback": 5},
+				"target": {"loc": "mireth", "estate": "cannery_rig", "station": "mixing_station"}, "hint": "Okka slipped you a jar of Ion Syrup. Additives change the traits and the price."},
+			{"text": "Carry the tray through the rest of the line", "on": "lab_started", "match": {"base": "weed"},
+				"target": {"loc": "mireth", "estate": "cannery_rig", "station": "@next"}, "hint": "The glowing frame marks the next station. Each minigame decides yield, grade or heat."},
+			{"text": "Collect the cooked batch from the stash crate", "on": "collected", "min": {"qty": 1},
+				"target": {"loc": "mireth", "estate": "cannery_rig", "stash": true}, "hint": "Cooking takes a little while. The HUD shows the lab progress."}
+		],
+		"reward": {"credits": 120},
+		"outro": "Not bad for a pilot. Now let's talk about what that stuff is worth.",
+		"next": ["tut_price"]
+	},
+	"tut_price": {
+		"title": "Know Your Product",
+		"giver": "Okka the Welder",
+		"tutorial": true,
+		"intro": "Every mix you cook lands in the Products app on your Com-Phone. Look it up and put a price on it. Too greedy and nobody bites.",
+		"steps": [
+			{"text": "Open the Products app on your Com-Phone", "on": "app_opened", "match": {"app": "products"},
+				"target": {"app": "products"}, "hint": "Press the phone key, then tap Products."},
+			{"text": "Set an asking price for your new Weed", "on": "price_set",
+				"target": {"app": "products"}, "hint": "Tap the product, then use the price buttons. Market = buyers pay what they offer."}
+		],
+		"reward": {"credits": 60},
+		"next": ["tut_deal"]
+	},
+	"tut_deal": {
+		"title": "Street Business",
+		"giver": "Okka the Welder",
+		"tutorial": true,
+		"intro": "Customers text you on the Deal-O-Matic: how much, what price, when. I'll go first. Check your phone.",
+		"steps": [
+			{"text": "Accept Okka's request in the Deal-O-Matic", "on": "offer_accepted", "match": {"contact": "okka"},
+				"on_start": {"offer": "okka"}, "retry_on": ["offer_expired", "offer_declined"], "retry_match": {"contact": "okka"}, "retry_to": 0,
+				"retry_text": "Missed that one? I'll text again.",
+				"target": {"app": "deals"}, "hint": "Accept, or counter the amount or the time if you can't make it."},
+			{"text": "Meet Okka at the agreed time and hand it over", "on": "sold", "match": {"contact": "okka", "offer": "*"},
+				"retry_on": ["offer_expired"], "retry_match": {"contact": "okka"}, "retry_to": 0, "retry_text": "You stood me up. Let's try that again.",
+				"target": {"loc": "mireth", "contact": "okka"}, "hint": "Be there inside the time window. A marker shows over the buyer."}
+		],
+		"reward": {"credits": 150, "meet": ["teo"]},
+		"outro": "Pleasure. Teo Brack down the street wants in too, I gave him your number.",
+		"next": ["tut_dealer"]
+	},
+	"tut_dealer": {
+		"title": "Let Others Sell",
+		"giver": "Okka the Welder",
+		"tutorial": true,
+		"intro": "You can't stand on every corner yourself. Hire a street dealer in the HR app, give them product, and collect the cash later.",
+		"steps": [
+			{"text": "Hire a street dealer in the HR app", "on": "dealer_hired", "check": {"type": "dealers", "min": 1},
+				"target": {"app": "hr"}, "hint": "Dealers take a cut and can get busted, but they sell while you fly."},
+			{"text": "Give your dealer product to sell", "on": "dealer_stocked",
+				"target": {"app": "hr"}, "hint": "Open the dealer, pick a district and hand over some units."}
+		],
+		"reward": {"credits": 100},
+		"outro": "That's the whole trade, kid. Cook, price, deal, delegate. The Consortium will want its money. Don't make them come for it."
+	}
+}

@@ -4,6 +4,7 @@ extends Node
 
 const Game = preload("res://scripts/core/game.gd")
 const Data = preload("res://scripts/core/data.gd")
+const Quests = preload("res://scripts/core/quests.gd")
 const SLOTS := 3
 const LEGACY_SAVE := "user://savegame.json"  ## single save file before the save slots (v0.1.4), moved into slot 1
 
@@ -72,6 +73,10 @@ func new_game(seed_value: int = 0) -> void:
 	_attach(Game.new())
 	game.new_game(data, seed_value if seed_value != 0 else int(Time.get_unix_time_from_system()))
 	EventBus.new_game_started.emit()
+	if Settings.tutorial:
+		Quests.begin(game)
+	else:
+		Quests.skip_tutorial(game)
 
 
 func has_save() -> bool:

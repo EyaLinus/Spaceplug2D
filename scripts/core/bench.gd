@@ -116,6 +116,7 @@ static func mix(g, additives: Array) -> Dictionary:
 		g._add(g.cargo, a, -need[a])
 	t.additives = additives.duplicate()
 	t.mixed = true
+	g._emit("tray_mixed", {"base": t.base, "additives": additives.size()})
 	if additives.is_empty():
 		return g._ok("No additives this time.")
 	return g._ok("Mixed in %s." % ", ".join(PackedStringArray(additives.map(func(a): return g.item_name(a)))))
@@ -130,6 +131,7 @@ static func record(g, station: String, score: float) -> Dictionary:
 		t.mixed = true  # walked past the Mixing Station: no additives in this batch
 	t.done.append(station)
 	t.scores[station] = clampf(score, 0.0, 1.0)
+	g._emit("tray_step", {"station": station, "base": t.base, "score": t.scores[station]})
 	if next_station(g, t) != "":
 		return g._ok("%s done. Next: %s." % [g.data.stations[station].name, g.data.stations[next_station(g, t)].name])
 	return finish(g)
