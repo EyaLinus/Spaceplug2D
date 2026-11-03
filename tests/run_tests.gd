@@ -60,6 +60,8 @@ func _init() -> void:
 		"test_sell_contact_and_fence",
 		"test_products_recipe_book",
 		"test_products_asking_price",
+		"test_deal_appointments",
+		"test_deal_haggle_qty_time",
 		"test_people_profiles",
 		"test_people_deals",
 		"test_people_save",
@@ -1243,7 +1245,7 @@ func test_deal_answers() -> void:
 	check(g.people.sen.affinity < aff0, "declining costs a little affinity")
 	o = Deals.request(g, "sen")
 	check(Deals.accept(g, o.id).ok and o.state == "accepted", "accept")
-	check(float(o.expires_at) > g.total_time + 100.0, "meet window set")
+	check(float(o.meet_at) > g.total_time and float(o.expires_at) > float(o.meet_at), "meeting time and window set")
 	check(o.msgs.size() >= 3, "conversation recorded")
 	# counter odds: small raises are likelier, loyal and hooked customers pay more
 	check(Deals.counter_chance(g, "okka", 0.1) > Deals.counter_chance(g, "okka", 0.25), "bigger raise, lower odds")
@@ -1271,7 +1273,7 @@ func test_deal_answers() -> void:
 	var o3: Dictionary = Deals.request(g3, "okka")
 	Deals.accept(g3, o3.id)
 	var a3: float = g3.people.okka.affinity
-	g3.tick(float(data.deals.meet_seconds) + 1.0)
+	g3.tick(float(o3.expires_at) - g3.total_time + 1.0)
 	check(o3.state == "expired" and g3.people.okka.affinity < a3 + float(data.deals.affinity_noshow) * 0.5, "no-show hurts")
 
 
@@ -1288,6 +1290,9 @@ func test_deal_fulfill() -> void:
 	var wrong := "cocaine:crisp" if o.base != "cocaine" else "weed:glow"
 	g.cargo[wrong] = 10
 	check(not Deals.fulfill(g, o.id, wrong).ok, "wrong drug refused")
+	var early: Dictionary = Deals.fulfill(g, o.id, key)
+	check(not early.ok and str(early.msg).contains("Too early"), "can't hand over long before the meeting")
+	g.total_time = float(o.meet_at)
 	var credits0 := g.credits
 	var hist0: int = g.people.okka.history.size()
 	var r: Dictionary = Deals.fulfill(g, o.id, key)
@@ -1388,6 +1393,98 @@ func test_products_asking_price() -> void:
 	var t0 := Products.tolerance(g, "okka")
 	People.state(g, "okka").addiction = 1.0
 	check(Products.tolerance(g, "okka") > t0, "addiction raises tolerance")
+
+
+func test_deal_appointments() -> void:
+	var g := new_game()
+	g.location = "mireth"
+	var o: Dictionary = Deals.request(g, "okka")
+	var sph: float = Deals.seconds_per_hour(g)
+	check(float(o.meet_at) >= g.total_time + (float(data.deals.lead_hours_min) - 1.0) * sph, "meeting is hours ahead")
+	check(is_equal_approx(fposmod(Deals.clock_at(g, float(o.meet_at)), 1.0), 0.0) or fposmod(Deals.clock_at(g, float(o.meet_at)), 1.0) > 0.999, "meets on the full hour")
+	check(str(o.msgs[0].text).contains(Deals.clock_text(g, float(o.meet_at)).split(" ")[0]), "text names the time")
+	Deals.accept(g, o.id)
+	check(Deals.agenda(g).has(o), "agenda lists it")
+	check(is_equal_approx(float(o.expires_at), float(Deals.window(g, o).close)), "missed after the window")
+	check(Deals.meet_phase(g, o) == "early", "early before the window")
+	var key := Mixing.key(o.base, [data.bases[o.base].innate])
+	g.cargo[key] = int(o.qty) * 3
+	# late hand-over costs affinity compared to on time
+	g.total_time = float(Deals.window(g, o).late) + 1.0
+	check(Deals.meet_phase(g, o) == "late", "late after the grace time")
+	var a0 := float(g.people.okka.affinity)
+	check(Deals.fulfill(g, o.id, key).ok, "late still hands over")
+	var late_gain := float(g.people.okka.affinity) - a0
+	var g2 := new_game()
+	g2.location = "mireth"
+	var o2: Dictionary = Deals.request(g2, "okka")
+	Deals.accept(g2, o2.id)
+	g2.cargo[key] = int(o2.qty) * 3
+	var key2 := Mixing.key(o2.base, [data.bases[o2.base].innate])
+	g2.cargo[key2] = int(o2.qty) * 3
+	g2.total_time = float(o2.meet_at)
+	var b0 := float(g2.people.okka.affinity)
+	check(Deals.fulfill(g2, o2.id, key2).ok, "on time")
+	check(float(g2.people.okka.affinity) - b0 > late_gain, "on time beats late")
+	# reminder fires once before the meeting
+	var g3 := new_game()
+	var o3: Dictionary = Deals.request(g3, "sen")
+	Deals.accept(g3, o3.id)
+	var hits := [0]
+	g3.event.connect(func(k, _p): if k == "meet_soon": hits[0] += 1)
+	g3.tick(float(o3.meet_at) - g3.total_time - 0.5 * sph)
+	g3.tick(1.0)
+	check(hits[0] == 1 and o3.reminded, "meeting reminder once")
+	# named products: with a recipe book the customer asks for one of yours, and only that one matches
+	var g4 := new_game()
+	Products.discover(g4, "weed", ["energy_drink"] if data.additives.has("energy_drink") else [data.additives.keys()[0]], 1, 5)
+	var named := 0
+	for i in 20:
+		g4.contact_ready_at.clear()
+		var oo: Dictionary = Deals.request(g4, "okka")
+		if oo.is_empty():
+			continue
+		if str(oo.product) != "":
+			named += 1
+			check(Products.known(g4, oo.product) and Mixing.parse_key(oo.product).base == oo.base, "named product is from your book")
+			var plain := Mixing.key(oo.base, [data.bases[oo.base].innate])
+			if plain != oo.product:
+				g4.cargo[plain] = 99
+				check(not Deals.matching_products(g4, oo).has(plain), "other products of the drug don't match")
+		Deals.decline(g4, oo.id)
+	check(named > 0, "some requests name a product")
+	# asking price is used when they accept it
+	var g5 := new_game()
+	var rk := Mixing.key("weed", [data.bases.weed.innate])
+	Products.adopt_items(g5, {rk: 1})
+	Products.set_price(g5, rk, 5)
+	check(Deals.offer_price(g5, "okka", "weed", rk) == 5, "cheap asking price offered as is")
+	Products.set_price(g5, rk, 100000)
+	check(Deals.offer_price(g5, "okka", "weed", rk) <= Products.ceiling(g5, rk, "okka", "mireth"), "steep price capped at their limit")
+
+
+func test_deal_haggle_qty_time() -> void:
+	var g := new_game()
+	var o: Dictionary = Deals.request(g, "okka")
+	var q0 := int(o.qty)
+	if q0 > 1:
+		check(Deals.counter_qty(g, o.id, 0.5).ok and int(o.qty) < q0, "fewer is always fine")
+	check(not Deals.counter_qty(g, o.id, 1.5).ok, "one amount haggle")
+	var t0 := float(o.meet_at)
+	var moved := 0
+	for i in 20:
+		var gg := new_game()
+		gg.rng.seed = i + 7
+		var oo: Dictionary = Deals.request(gg, "teo")
+		var t1 := float(oo.meet_at)
+		var r: Dictionary = Deals.counter_time(gg, oo.id, 3)
+		if r.ok:
+			moved += 1
+			check(is_equal_approx(float(oo.meet_at), t1 + 3.0 * Deals.seconds_per_hour(gg)), "meeting moved 3 h")
+		check(not Deals.counter_time(gg, oo.id, 3).ok, "one time haggle")
+	check(moved > 0, "time changes are usually accepted (%d/20)" % moved)
+	check(not Deals.counter_time(g, o.id, -48).ok and is_equal_approx(float(o.meet_at), t0), "can't move into the past")
+	check(Deals.accept(g, o.id).ok, "still answerable after haggling")
 
 
 func test_deaddrops() -> void:
@@ -1507,7 +1604,7 @@ func test_market_saturation_recovers() -> void:
 	var d0: float = g.demand.mireth.weed
 	g.sell(p, 4, "okka")
 	check(g.demand.mireth.weed < d0, "selling saturates demand")
-	g.tick(600.0)
+	g.tick(g.day_seconds() - g.day_time - 1.0)  # within the day: no market rumour can move it
 	check(is_equal_approx(g.demand.mireth.weed, d0), "demand recovers")
 
 

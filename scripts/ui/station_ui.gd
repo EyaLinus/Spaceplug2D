@@ -338,7 +338,10 @@ func _add_agreed_deal(g, box: VBoxContainer, c: Dictionary) -> void:
 		return
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 10)
-	h.add_child(UI.label("Agreed: %d × %s for %d cr each" % [o.qty, g.data.bases[o.base].name, o.price], 16, UI.GOLD))
+	var when := (" · meet %s" % Deals.clock_text(g, float(o.meet_at))) if float(o.get("meet_at", 0.0)) > 0.0 else ""
+	h.add_child(UI.label("Agreed: %d × %s for %d cr each%s" % [o.qty, Deals.want_name(g, o), o.price, when], 16, UI.GOLD))
+	if Deals.meet_phase(g, o) == "early":
+		h.add_child(UI.label("(too early)", 15, UI.MUTED))
 	var have: Array = Deals.matching_products(g, o)
 	if have.is_empty():
 		h.add_child(UI.label("(you don't carry enough)", 15, UI.WARN))

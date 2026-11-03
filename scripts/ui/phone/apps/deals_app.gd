@@ -80,7 +80,16 @@ func thread(g, offer_id: int) -> Control:
 		v.add_child(UI.label("This conversation was deleted.", 14, UI.MUTED))
 		return v
 	var c: Dictionary = g.contact(o.contact)
-	v.add_child(Art.with_icon(o.base, UI.label("%d × %s · %d cr each · %d cr total" % [o.qty, g.data.bases[o.base].name, o.price, int(o.price) * int(o.qty)], 14, UI.GOLD)))
+	var head := UI.label("%d × %s · %d cr each · %d cr total" % [o.qty, Deals.want_name(g, o), o.price, int(o.price) * int(o.qty)], 14, UI.GOLD)
+	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.add_child(Art.with_icon(str(o.get("product", "")) if str(o.get("product", "")) != "" else o.base, head))
+	if float(o.get("meet_at", 0.0)) > 0.0 and o.state in Deals.OPEN:
+		var spot := (" · %s" % o.place) if str(o.place) != "" else ""
+		var ml := UI.label("Meet at %s on %s%s" % [Deals.clock_text(g, float(o.meet_at)), g.loc_data(c.location).get("name", ""), spot], 14, UI.ACCENT)
+		ml.name = "MeetTime"
+		ml.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(ml)
 	for m in o.msgs:
 		v.add_child(_bubble(m.text, m.me))
 	var left := int(ceil(float(o.expires_at) - g.total_time))
@@ -102,15 +111,45 @@ func thread(g, offer_id: int) -> Control:
 			dec.name = "Decline"
 			row.add_child(dec)
 			v.add_child(row)
+			var row2 := HBoxContainer.new()
+			row2.add_theme_constant_override("separation", 6)
+			var haggled: Array = o.get("haggled", [])
+			if not haggled.has("qty"):
+				var fewer := UI.button("Fewer", func(): GameState.act(Deals.counter_qty(g, offer_id, 0.6)), 70)
+				fewer.name = "Fewer"
+				fewer.tooltip_text = "Offer about %d units instead (they always agree)" % maxi(1, int(round(o.qty * 0.6)))
+				fewer.disabled = int(o.qty) <= 1
+				row2.add_child(fewer)
+				var more := UI.button("More", func(): GameState.act(Deals.counter_qty(g, offer_id, 1.5)), 70)
+				more.name = "More"
+				more.tooltip_text = "Ask them to take about %d units (%d%% chance)" % [int(round(o.qty * 1.5)), int(Deals.counter_chance(g, o.contact, 0.5) * 100.0)]
+				row2.add_child(more)
+			if not haggled.has("time") and float(o.get("meet_at", 0.0)) > 0.0:
+				for hrs in [-2, 3]:
+					var tb := UI.button("%s %dh" % ["Earlier" if hrs < 0 else "Later", absi(hrs)], func(): GameState.act(Deals.counter_time(g, offer_id, hrs)), 80)
+					tb.name = "Earlier" if hrs < 0 else "Later"
+					tb.tooltip_text = "Ask to meet at %s instead" % Deals.clock_text(g, float(o.meet_at) + hrs * Deals.seconds_per_hour(g))
+					row2.add_child(tb)
+			if row2.get_child_count() > 0:
+				v.add_child(row2)
 			if not o.countered:
 				v.add_child(UI.label("Haggle odds: +10%% → %d%%, +25%% → %d%%" % [int(Deals.counter_chance(g, o.contact, 0.1) * 100.0), int(Deals.counter_chance(g, o.contact, 0.25) * 100.0)], 13, UI.MUTED))
 		"accepted":
 			var where: String = g.loc_data(c.location).get("name", "")
-			var info := UI.label("Meet %s on %s within %ds and hand over %d × %s." % [c.name, where, left, o.qty, g.data.bases[o.base].name], 14, UI.ACCENT)
+			var info := UI.label("Meet %s on %s within %ds and hand over %d × %s." % [c.name, where, left, o.qty, Deals.want_name(g, o)], 14, UI.ACCENT)
+			if float(o.get("meet_at", 0.0)) > 0.0:
+				var w: Dictionary = Deals.window(g, o)
+				var phase := Deals.meet_phase(g, o)
+				var txt: String = {"early": "Hand over from %s (they're not there yet)." % Deals.clock_text(g, float(w.open)),
+					"open": "They're expecting you now. On time until %s." % Deals.clock_text(g, float(w.late)),
+					"late": "You're late! They leave at %s." % Deals.clock_text(g, float(w.close))}[phase]
+				info.text = "%s Meet on %s and hand over %d × %s." % [txt, where, o.qty, Deals.want_name(g, o)]
+				if phase == "late":
+					info.add_theme_color_override("font_color", UI.WARN)
 			info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			v.add_child(info)
 			var have: Array = Deals.matching_products(g, o)
-			v.add_child(UI.label("In your hold: %s" % ("ready" if not have.is_empty() else "not enough %s" % g.data.bases[o.base].name), 13, UI.ACCENT if not have.is_empty() else UI.WARN))
+			v.add_child(UI.label("In your hold: %s" % ("ready" if not have.is_empty() else "not enough %s" % Deals.want_name(g, o)), 13, UI.ACCENT if not have.is_empty() else UI.WARN))
 			var cancel := UI.button("Call it off", func(): GameState.act(Deals.decline(g, offer_id)), 120)
 			cancel.name = "Cancel"
 			v.add_child(cancel)

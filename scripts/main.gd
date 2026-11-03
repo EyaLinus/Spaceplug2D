@@ -452,7 +452,10 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		GameState.save_game()
 	elif kind == "offer_new":
 		var o: Dictionary = Deals.find(GameState.game, p.offer)
-		EventBus.toast.emit("%s wants %d %s. [%s] Deal-O-Matic" % [GameState.game.contact(p.contact).name, o.qty, GameState.data.bases[o.base].name, Settings.key_label("phone")], true)
+		EventBus.toast.emit("%s wants %d %s at %s. [%s] Deal-O-Matic" % [GameState.game.contact(p.contact).name, o.qty, GameState.data.bases[o.base].name, Deals.clock_text(GameState.game, float(o.get("meet_at", 0.0))), Settings.key_label("phone")], true)
+	elif kind == "meet_soon":
+		var mo: Dictionary = Deals.find(GameState.game, p.offer)
+		EventBus.toast.emit("Meeting with %s at %s on %s." % [GameState.game.contact(p.contact).name, Deals.clock_text(GameState.game, float(mo.meet_at)), GameState.game.loc_data(GameState.game.contact(p.contact).location).get("name", "")], true)
 	elif kind == "offer_expired" and p.was == "accepted":
 		EventBus.toast.emit("You missed the meet with %s." % GameState.game.contact(p.contact).name, false)
 	elif kind == "drop_pickup":
