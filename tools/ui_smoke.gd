@@ -187,6 +187,7 @@ func _run() -> void:
 	await key(KEY_ESCAPE)
 	_assert(not m.phone.visible, "phone closed again")
 	g.from_dict(g.data, hr_saved)  # later steps expect the annex to be unowned
+	g.interdict_ready_at = 1e12  # from_dict reset the runtime cooldown
 	step("hr app")
 	# Deal-O-Matic: a text arrives, accept it in the phone, hand it over in person
 	var Deals = load("res://scripts/core/deals.gd")
