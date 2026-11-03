@@ -28,6 +28,8 @@ const BINDABLE := [
 	{"action": "move_right", "label": "Walk right", "group": "On foot"},
 	{"action": "interact", "label": "Use / talk", "group": "On foot"},
 	{"action": "build_menu", "label": "Build menu (estate)", "group": "On foot"},
+	{"action": "sprint", "label": "Sprint (hold)", "group": "On foot"},
+	{"action": "map_zoom", "label": "Minimap zoom", "group": "On foot"},
 	{"action": "ui_menu", "label": "Pause menu", "group": "General"},
 	{"action": "phone", "label": "Com-Phone", "group": "General"},
 ]

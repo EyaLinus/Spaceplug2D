@@ -1,6 +1,19 @@
 extends RefCounted
 ## Grid pathfinding on planet surfaces (no autoload dependencies, so unit tests can use it headless).
 
+## Ground areas (surfaces.json "areas": [x, y, w, h, kind]) of these kinds can't be walked on: canals, mine pits,
+## slag pools, hull windows and chasms. Every other kind (grass, sand, deck, ...) is only paint.
+const SOLID_AREAS := ["water", "pit", "slag", "void", "chasm"]
+
+
+static func solid_areas(surface_cfg: Dictionary) -> Array:
+	var r: Array = []
+	for a in surface_cfg.get("areas", []):
+		if str(a[4]) in SOLID_AREAS:
+			r.append([a[0], a[1], a[2], a[3]])
+	return r
+
+
 ## Walkable tile grid of a surface: building rects are solid, diagonal steps only around free corners.
 static func build(surface_cfg: Dictionary) -> AStarGrid2D:
 	var g := AStarGrid2D.new()
@@ -13,6 +26,7 @@ static func build(surface_cfg: Dictionary) -> AStarGrid2D:
 		solids.append(b.rect)
 	for c in surface_cfg.get("cover", []):  # cover pieces block walking too (but not sight)
 		solids.append(c)
+	solids.append_array(solid_areas(surface_cfg))
 	for r in solids:
 		for y in range(int(r[1]), int(r[1]) + int(r[3])):
 			for x in range(int(r[0]), int(r[0]) + int(r[2])):

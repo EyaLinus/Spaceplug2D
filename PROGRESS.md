@@ -561,3 +561,20 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
   and the weapon actions are keyboard/mouse only; no ammo economy (unlimited reloads); cover is a static ground layer (no y-sort,
   walkers on the roads can brush past it); no screenshot of the HUD/wheel (Xvfb rendering hung in this container), so the layout is
   unseen; numbers are eyeballed; the balance bot does not fight. Officer AI is simple (no flanking, they do not seek cover).
+
+## D4: Larger planet maps (2026-11-03, wave 8)
+- **Data** (`data/surfaces.json`): every planet grew 2–3× (Mireth 50×34 → 84×56, Cinder 36×26 → 64×46, Bazaar 36×24 → 64×42,
+  Varrow 44×30 → 76×50, Glacis 46×32 → 78×52). All old coordinates (buildings, doors, pad, spawn, spots, NPCs, cover) stay where
+  they were, so quests, tutorial waypoints and old saves are untouched; the new districts were added to the east and south.
+- New keys per surface: `districts` ([{name, rect}], they tile the whole map) and `areas` ([x, y, w, h, kind]). Kinds
+  `water`, `pit`, `slag`, `void`, `chasm` are solid (`Nav.SOLID_AREAS`, nav grid + collision; bullets fly over them); `grass`, `sand`,
+  `salt`, `ice`, `rubble`, `rail`, `deck`, `arena`, `dome` are paint. A road drawn over a gap between two solid areas is a bridge.
+- 31 new decorative buildings with signs, ~40 new named spots (for people's schedules), more props and 4–5 new cover pieces per planet
+  (`content.json` → `combat.cover`).
+- **HUD:** minimap zoom (M: whole map, ×2, ×4 following the player, clipped), solid areas on the minimap, district label above it that
+  lights up when you enter a new district. **Sprint** on Shift (×1.6). `sprint` and `map_zoom` are in the rebinding screen.
+- Verified: unit tests (new `test_planet_districts`: size, districts tile the map, area kinds, solid areas off roads/buildings and solid in
+  the nav grid, every spot reachable; existing reachability/cover/schedule tests pass on the bigger maps), UI smoke (canal blocks,
+  bridge crosses, district label changes, M key zooms, sprint), menu smoke, sim 6/6 won. Screenshots of all five planets checked.
+- Gaps: no interiors for key buildings (ROADMAP item left open); new buildings are decoration only; every planet still uses a
+  two-by-two street grid, so the layouts differ by districts and landmarks more than by street shape.

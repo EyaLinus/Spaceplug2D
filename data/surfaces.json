@@ -1,38 +1,35 @@
 {
   "mireth": {
     "name": "Mireth · Cannery District",
-    "size": [50, 34],
+    "size": [84, 56],
     "tile": 32,
     "ground": "#2b4538",
     "ground_alt": "#2f4b3d",
     "road": "#45464f",
     "road_line": "#6b6c78",
     "spawn": [17.5, 12.5],
-    "roads": [
-      [0, 15, 50, 3],
-      [22, 0, 3, 34],
-      [6, 11, 3, 4],
-      [33, 12, 3, 3],
-      [8, 18, 3, 3],
-      [39, 18, 3, 3]
-    ],
-    "plazas": [
-      [19, 12, 9, 9]
-    ],
+    "roads": [[0, 15, 84, 3], [22, 0, 3, 56], [6, 11, 3, 4], [33, 12, 3, 3], [8, 18, 3, 3], [39, 18, 3, 3], [60, 0, 3, 56], [0, 42, 84, 2]],
+    "plazas": [[19, 12, 9, 9], [70, 26, 6, 6]],
     "pad": {"pos": [16.5, 6.5], "radius": 3.2, "label": "Your ship – take off"},
     "buildings": [
-      {"id": "spaceport", "name": "Spaceport Hangar", "rect": [2, 2, 10, 8], "door": [7.5, 10], "side": "bottom",
-       "wall": "#4b5d7a", "roof": "#2a3d5e", "sign": "SPACEPORT", "action": "shipyard", "label": "Hangar – Rusk's repairs"},
-      {"id": "market", "name": "Night Market", "rect": [28, 4, 13, 8], "door": [34.5, 12], "side": "bottom",
-       "wall": "#7a5a3a", "roof": "#a0472f", "sign": "NIGHT MARKET", "action": "market", "label": "Night Market"},
-      {"id": "cannery", "name": "Old Cannery", "rect": [3, 21, 13, 9], "door": [9.5, 21], "side": "top",
-       "wall": "#5d5a52", "roof": "#3b3a36", "sign": "CANNERY", "action": "estate", "estate": "cannery_rig", "label": "Old Cannery – your production line"},
-      {"id": "office", "name": "Ouroboros Consortium", "rect": [36, 21, 11, 8], "door": [40.5, 21], "side": "top",
-       "wall": "#2e2440", "roof": "#5a2d6e", "sign": "OUROBOROS", "action": "office", "label": "Consortium office"},
+      {"id": "spaceport", "name": "Spaceport Hangar", "rect": [2, 2, 10, 8], "door": [7.5, 10], "side": "bottom", "wall": "#4b5d7a", "roof": "#2a3d5e", "sign": "SPACEPORT", "action": "shipyard", "label": "Hangar – Rusk's repairs"},
+      {"id": "market", "name": "Night Market", "rect": [28, 4, 13, 8], "door": [34.5, 12], "side": "bottom", "wall": "#7a5a3a", "roof": "#a0472f", "sign": "NIGHT MARKET", "action": "market", "label": "Night Market"},
+      {"id": "cannery", "name": "Old Cannery", "rect": [3, 21, 13, 9], "door": [9.5, 21], "side": "top", "wall": "#5d5a52", "roof": "#3b3a36", "sign": "CANNERY", "action": "estate", "estate": "cannery_rig", "label": "Old Cannery – your production line"},
+      {"id": "office", "name": "Ouroboros Consortium", "rect": [36, 21, 11, 8], "door": [40.5, 21], "side": "top", "wall": "#2e2440", "roof": "#5a2d6e", "sign": "OUROBOROS", "action": "office", "label": "Consortium office"},
       {"id": "glasshouse", "name": "Ridge Glasshouse", "rect": [43, 3, 5, 6], "door": [45.5, 9], "side": "bottom", "wall": "#5a7a6a", "roof": "#8fd1c0", "sign": "FOR SALE", "action": "estate", "estate": "ridge_glasshouse", "label": "Ridge Glasshouse (estate)"},
       {"id": "house_b", "name": "Housing block", "rect": [27, 23, 6, 5], "wall": "#6f6458", "roof": "#7a3f3a"},
       {"id": "annex", "name": "Cannery Annex", "rect": [17, 24, 4, 5], "door": [19, 24], "side": "top", "wall": "#5f6a63", "roof": "#2f5d7a", "sign": "ANNEX", "action": "estate", "estate": "cannery_annex", "label": "Cannery Annex (estate)"},
-      {"id": "house_d", "name": "Housing block", "rect": [27, 29, 8, 4], "wall": "#6a6f7a", "roof": "#6b5a2e"}
+      {"id": "house_d", "name": "Housing block", "rect": [27, 29, 8, 4], "wall": "#6a6f7a", "roof": "#6b5a2e"},
+      {"id": "habtower_a", "name": "Hab Tower A", "rect": [51, 2, 7, 9], "wall": "#5a6070", "roof": "#3a4a5e", "sign": "HAB A"},
+      {"id": "habtower_b", "name": "Hab Tower B", "rect": [65, 2, 7, 8], "wall": "#5a6070", "roof": "#3a4a5e", "sign": "HAB B"},
+      {"id": "chapel", "name": "Chapel of the Drift", "rect": [74, 3, 8, 8], "wall": "#6a5a7a", "roof": "#8a6fc0", "sign": "CHAPEL"},
+      {"id": "pawn", "name": "Pawn & Parts", "rect": [51, 20, 8, 6], "wall": "#6b5a48", "roof": "#a0602f", "sign": "PAWN"},
+      {"id": "house_e", "name": "Housing block", "rect": [51, 28, 7, 6], "wall": "#6f6458", "roof": "#4a5a3a"},
+      {"id": "fishhall", "name": "Fish Hall", "rect": [3, 46, 12, 7], "wall": "#4a6070", "roof": "#2f6f7a", "sign": "FISH HALL"},
+      {"id": "dockbar", "name": "Dock Bar", "rect": [27, 46, 9, 6], "wall": "#5a3a3a", "roof": "#8a2f3a", "sign": "DOCK BAR"},
+      {"id": "warehouse7", "name": "Warehouse 7", "rect": [38, 46, 12, 8], "wall": "#5d5a52", "roof": "#4a4a40", "sign": "WH 7"},
+      {"id": "warehouse8", "name": "Warehouse 8", "rect": [52, 46, 7, 8], "wall": "#5d5a52", "roof": "#4a4a40", "sign": "WH 8"},
+      {"id": "pieroffice", "name": "Pier Office", "rect": [65, 46, 8, 6], "wall": "#4b5d7a", "roof": "#2a3d5e", "sign": "PIER"}
     ],
     "npcs": [
       {"id": "rusk", "name": "Rusk (mechanic)", "pos": [12.5, 11.5], "action": "shipyard", "color": "#ff9a4d", "label": "Rusk – ship upgrades"},
@@ -41,82 +38,154 @@
       {"id": "teo", "name": "Teo Brack", "pos": [27.5, 13.5], "action": "deal", "contact": "teo", "color": "#5fb6c9"},
       {"id": "vesna", "name": "Dr. Vesna Holt", "pos": [45.5, 19.5], "action": "deal", "contact": "vesna", "color": "#4fe3c1"}
     ],
-    "spots": {"Shipyard": [10.5, 13.8], "Night Market": [35.5, 13.5], "Home": [29.5, 22.4], "Plaza": [21.5, 19.5], "Dock club": [4.5, 11.5], "Cannery roof": [13.5, 19.5], "Clinic": [45.5, 19.5]},
+    "spots": {"Shipyard": [10.5, 13.8], "Night Market": [35.5, 13.5], "Home": [29.5, 22.4], "Plaza": [21.5, 19.5], "Dock club": [4.5, 11.5], "Cannery roof": [13.5, 19.5], "Clinic": [45.5, 19.5], "Fish hall": [9.5, 54.5], "Dock bar": [31.5, 44.8], "Pier": [70.5, 44.6], "Park": [69.5, 25.5], "Chapel": [78.5, 12.5], "Hab towers": [55.0, 12.5], "Canal bridge": [23.5, 36.5], "Quay": [45.5, 43.0], "Pawn shop": [55.0, 26.8]},
     "walkers": 6,
     "security": 1.0,
     "props": [
-      ["tree", 1, 13], ["tree", 3, 12.5], ["tree", 13, 2], ["tree", 20.5, 2], ["tree", 47, 12], ["tree", 45, 11],
-      ["tree", 2, 31], ["tree", 18, 21], ["tree", 48, 31], ["tree", 33, 21], ["tree", 21, 31], ["tree", 42, 32],
-      ["lamp", 21, 14.5], ["lamp", 26, 14.5], ["lamp", 21, 18.5], ["lamp", 26, 18.5], ["lamp", 10, 14.5], ["lamp", 37, 14.5],
-      ["crate", 4, 11], ["crate", 4.8, 11.3], ["crate", 16, 21], ["crate", 16.7, 21.6], ["crate", 41.5, 11.5],
-      ["stall", 29, 13], ["stall", 38.5, 13]
+      ["tree", 1, 13], ["tree", 3, 12.5], ["tree", 13, 2], ["tree", 20.5, 2], ["tree", 47, 12], ["tree", 45, 11], ["tree", 2, 31], ["tree", 18, 21],
+      ["tree", 48, 31], ["tree", 33, 21], ["tree", 21, 31], ["tree", 42, 32], ["lamp", 21, 14.5], ["lamp", 26, 14.5], ["lamp", 21, 18.5], ["lamp", 26, 18.5],
+      ["lamp", 10, 14.5], ["lamp", 37, 14.5], ["crate", 4, 11], ["crate", 4.8, 11.3], ["crate", 16, 21], ["crate", 16.7, 21.6], ["crate", 41.5, 11.5], ["stall", 29, 13],
+      ["stall", 38.5, 13], ["tree", 66, 22], ["tree", 80, 22], ["tree", 66, 34], ["tree", 80, 34], ["tree", 73, 21.5], ["tree", 73, 34.5], ["tree", 51, 13],
+      ["tree", 57, 13.5], ["tree", 64, 13], ["tree", 82, 14], ["tree", 2, 36.5], ["tree", 20, 36.5], ["tree", 45, 36.5], ["tree", 58, 36.5], ["lamp", 21, 41.5],
+      ["lamp", 26, 41.5], ["lamp", 59, 41.5], ["lamp", 64, 41.5], ["lamp", 40, 44.5], ["lamp", 59, 18.5], ["lamp", 64, 18.5], ["lamp", 59, 14.5], ["lamp", 64, 14.5],
+      ["crate", 16, 44.6], ["crate", 16.8, 45], ["crate", 50.6, 44.8], ["barrel", 36.5, 44.6], ["barrel", 37.1, 45.1], ["barrel", 74.5, 45], ["crate", 61, 54], ["crate", 61.8, 54.4],
+      ["stall", 20, 54], ["stall", 24, 54]
+    ],
+    "areas": [
+      [0, 38, 22, 3, "water"],
+      [25, 38, 35, 3, "water"],
+      [63, 38, 21, 3, "water"],
+      [76, 45, 8, 11, "water"],
+      [65, 21, 17, 14, "grass"],
+      [50, 0, 10, 15, "grass"]
+    ],
+    "districts": [
+      {"name": "Cannery Row", "rect": [0, 0, 50, 38]},
+      {"name": "Ridge Heights", "rect": [50, 0, 34, 38]},
+      {"name": "Canal Docks", "rect": [0, 38, 84, 18]}
     ]
   },
   "cinder": {
     "name": "Cinder Belt · Mining Camp 3",
-    "size": [36, 26],
+    "size": [64, 46],
     "tile": 32,
     "ground": "#4a3428",
     "ground_alt": "#4f382b",
     "road": "#5e4a3a",
     "road_line": "#7a6450",
     "spawn": [8.5, 10.5],
-    "roads": [[0, 12, 36, 3], [16, 0, 3, 26], [26, 10, 3, 2], [25, 15, 3, 2]],
+    "roads": [[0, 12, 64, 3], [16, 0, 3, 46], [26, 10, 3, 2], [25, 15, 3, 2], [44, 0, 3, 46], [0, 30, 64, 3]],
     "plazas": [],
     "pad": {"pos": [8, 5.5], "radius": 3.2, "label": "Your ship – take off"},
     "buildings": [
       {"id": "depot", "name": "Ore Depot", "rect": [22, 3, 11, 7], "door": [27.5, 10], "side": "bottom", "wall": "#6b5040", "roof": "#8a5a3c", "sign": "ORE DEPOT", "action": "market", "label": "Ore Depot – raws"},
       {"id": "canteen", "name": "Miners' Canteen", "rect": [21, 17, 10, 6], "wall": "#5a4a40", "roof": "#3a5a6b", "sign": "CANTEEN"},
       {"id": "shack", "name": "Shaft 9 Shack", "rect": [3, 17, 9, 6], "door": [7.5, 17], "side": "top", "wall": "#5d5048", "roof": "#6b3a2e", "sign": "SHAFT 9", "action": "estate", "estate": "shaft_shack", "label": "Shaft 9 Shack (estate)"},
-      {"id": "drill", "name": "Drill tower", "rect": [32, 16, 3, 8], "wall": "#3a3a40", "roof": "#c08a3a"}
+      {"id": "drill", "name": "Drill tower", "rect": [32, 16, 3, 8], "wall": "#3a3a40", "roof": "#c08a3a"},
+      {"id": "lift2", "name": "Lift House 2", "rect": [30, 36, 8, 6], "wall": "#5a4a40", "roof": "#8a5a3c", "sign": "LIFT 2"},
+      {"id": "assay", "name": "Assay Office", "rect": [48, 35, 9, 6], "wall": "#5d5048", "roof": "#3a5a6b", "sign": "ASSAY"},
+      {"id": "bunk_a", "name": "Bunkhouse A", "rect": [19, 41, 8, 4], "wall": "#5a4a40", "roof": "#6b3a2e", "sign": "BUNKS"},
+      {"id": "headframe", "name": "Shaft 3 headframe", "rect": [58, 36, 4, 7], "wall": "#3a3a40", "roof": "#c08a3a"},
+      {"id": "smelter", "name": "Smelter", "rect": [50, 18, 7, 8], "wall": "#4a3a34", "roof": "#c0502f", "sign": "SMELTER"},
+      {"id": "silo", "name": "Ore silo", "rect": [58, 3, 4, 6], "wall": "#5a5b6a", "roof": "#8a6a3a"}
     ],
     "npcs": [
       {"id": "dax", "name": "Foreman Dax", "pos": [20.5, 16.2], "action": "deal", "contact": "dax", "color": "#ffb347"},
       {"id": "marta", "name": "Marta Kell", "pos": [31.5, 15.6], "action": "deal", "contact": "marta", "color": "#ff6b5f"}
     ],
-    "spots": {"Drill tower": [33.5, 15.6], "Canteen": [25.5, 16.4], "Bunkhouse": [14.0, 19.5]},
+    "spots": {"Drill tower": [33.5, 15.6], "Canteen": [25.5, 16.4], "Bunkhouse": [14.0, 19.5], "Lift house": [34.0, 42.8], "Assay office": [52.5, 41.8], "Smelter": [53.5, 27.0], "Shaft row": [12.0, 34.2], "Slag edge": [53.0, 8.5]},
     "walkers": 4,
     "security": 0.5,
-    "props": [["rock", 2, 2], ["rock", 13, 3], ["rock", 14.5, 8], ["rock", 34, 2], ["rock", 1, 24], ["rock", 14, 24], ["rock", 34, 25], ["barrel", 21, 10.5], ["barrel", 21.7, 11], ["barrel", 33.5, 11], ["crate", 13, 16], ["crate", 13.8, 16.5], ["crate", 19.6, 22], ["lamp", 15.5, 11.5], ["lamp", 19.5, 11.5], ["lamp", 15.5, 15.5], ["lamp", 19.5, 15.5]]
+    "props": [
+      ["rock", 2, 2], ["rock", 13, 3], ["rock", 14.5, 8], ["rock", 34, 2], ["rock", 1, 24], ["rock", 14, 24], ["rock", 34, 25], ["barrel", 21, 10.5],
+      ["barrel", 21.7, 11], ["barrel", 33.5, 11], ["crate", 13, 16], ["crate", 13.8, 16.5], ["crate", 19.6, 22], ["lamp", 15.5, 11.5], ["lamp", 19.5, 11.5], ["lamp", 15.5, 15.5],
+      ["lamp", 19.5, 15.5], ["rock", 2, 44], ["rock", 40, 44], ["rock", 62, 44], ["rock", 46.5, 28], ["rock", 62, 14], ["rock", 30, 28], ["barrel", 47.6, 16.5],
+      ["barrel", 48.2, 17], ["crate", 42, 41], ["crate", 42.6, 41.6], ["barrel", 28.5, 43.5], ["lamp", 15.5, 29.5], ["lamp", 19.5, 29.5], ["lamp", 43.5, 29.5], ["lamp", 47.5, 29.5],
+      ["lamp", 43.5, 11.5], ["lamp", 47.5, 15.5]
+    ],
+    "areas": [
+      [4, 36, 4, 4, "pit"],
+      [10, 38, 3, 3, "pit"],
+      [24, 36, 4, 3, "pit"],
+      [50, 3, 6, 4, "slag"],
+      [58, 19, 4, 5, "slag"],
+      [0, 34, 16, 1, "rail"],
+      [19, 34, 25, 1, "rail"],
+      [47, 9, 17, 1, "rail"],
+      [47, 0, 17, 12, "rubble"],
+      [0, 33, 64, 13, "rubble"]
+    ],
+    "districts": [
+      {"name": "Camp 3", "rect": [0, 0, 44, 30]},
+      {"name": "Slag Fields", "rect": [44, 0, 20, 30]},
+      {"name": "Shaft Row", "rect": [0, 30, 64, 16]}
+    ]
   },
   "bazaar": {
     "name": "Drift Bazaar · Hull Deck",
-    "size": [36, 24],
+    "size": [64, 42],
     "tile": 32,
     "ground": "#2a2533",
     "ground_alt": "#2e2938",
     "road": "#3d3650",
     "road_line": "#9a6fc0",
     "spawn": [8.5, 9.8],
-    "roads": [[0, 11, 36, 3], [17, 0, 3, 24], [27, 9, 3, 2], [6, 14, 3, 2]],
+    "roads": [[0, 11, 64, 3], [17, 0, 3, 42], [27, 9, 3, 2], [6, 14, 3, 2], [46, 0, 3, 42], [0, 28, 64, 3]],
     "plazas": [],
     "pad": {"pos": [8, 4.8], "radius": 3.2, "label": "Docking bay – take off"},
     "buildings": [
       {"id": "hullmarket", "name": "Hull Market", "rect": [22, 2, 12, 7], "door": [28.5, 9], "side": "bottom", "wall": "#4a3a5a", "roof": "#7a4f9a", "sign": "HULL MARKET", "action": "market", "label": "Hull Market – additives & precursor"},
       {"id": "backroom", "name": "The Back Room", "rect": [3, 16, 9, 6], "door": [7.5, 16], "side": "top", "wall": "#3a2e2e", "roof": "#5a2e3e", "sign": "BACK ROOM", "action": "fence", "label": "The Fence – buys anything"},
       {"id": "cantina", "name": "Rust Cantina", "rect": [22, 16, 10, 6], "wall": "#3e3a4a", "roof": "#2e5a5a", "sign": "CANTINA"},
-      {"id": "locker", "name": "Hull Locker 13", "rect": [13, 17, 3, 5], "door": [14.5, 17], "side": "top", "wall": "#4a4a52", "roof": "#5a5a2e", "sign": "13", "action": "estate", "estate": "hull_locker", "label": "Hull Locker 13 (estate)"}
+      {"id": "locker", "name": "Hull Locker 13", "rect": [13, 17, 3, 5], "door": [14.5, 17], "side": "top", "wall": "#4a4a52", "roof": "#5a5a2e", "sign": "13", "action": "estate", "estate": "hull_locker", "label": "Hull Locker 13 (estate)"},
+      {"id": "stall_a", "name": "Spice stall", "rect": [22, 32, 4, 3], "wall": "#6a4a3a", "roof": "#c27447", "sign": "SPICE"},
+      {"id": "stall_b", "name": "Noodle stall", "rect": [27, 32, 4, 3], "wall": "#6a4a3a", "roof": "#c0a03a", "sign": "NOODLES"},
+      {"id": "stall_c", "name": "Parts stall", "rect": [32, 32, 4, 3], "wall": "#4a4a52", "roof": "#5a7a9a", "sign": "PARTS"},
+      {"id": "stall_d", "name": "Tattoo stall", "rect": [37, 32, 4, 3], "wall": "#4a3a5a", "roof": "#9a4f9a", "sign": "INK"},
+      {"id": "chapel", "name": "Chapel of Static", "rect": [3, 32, 9, 6], "wall": "#3e3a4a", "roof": "#5a5ac0", "sign": "STATIC"},
+      {"id": "medpod", "name": "Med Pod", "rect": [38, 3, 6, 5], "wall": "#5a6a7a", "roof": "#4fe3c1", "sign": "MED"},
+      {"id": "cont_a", "name": "Container", "rect": [50, 32, 5, 3], "wall": "#7a4a2e", "roof": "#a0602f"},
+      {"id": "cont_b", "name": "Container", "rect": [57, 32, 5, 3], "wall": "#2e5a7a", "roof": "#3a7aa0"},
+      {"id": "cont_c", "name": "Container", "rect": [50, 37, 5, 3], "wall": "#3a6a3a", "roof": "#4f8a4f"},
+      {"id": "cont_d", "name": "Container", "rect": [57, 37, 5, 3], "wall": "#7a7a2e", "roof": "#a0a03a"},
+      {"id": "hydro", "name": "Hydro Farm", "rect": [22, 37, 10, 4], "wall": "#3a5a4a", "roof": "#4f9a6a", "sign": "HYDRO"}
     ],
     "npcs": [
       {"id": "lira", "name": "Lira Nine", "pos": [21.5, 9.5], "action": "deal", "contact": "lira", "color": "#c9b8ff"},
       {"id": "grub", "name": "Old Grub", "pos": [16, 15.5], "action": "deal", "contact": "grub", "color": "#8fd18f"},
       {"id": "ozzy", "name": "Ozzy Fenn", "pos": [10.5, 9.5], "action": "deal", "contact": "ozzy", "color": "#8a8b9c"}
     ],
-    "spots": {"Cantina": [26.5, 15.4], "Hull Market": [29.5, 10.5], "Cargo hold": [16, 15.5], "Docking bay": [11.5, 6.5], "Vents": [33.5, 19.5]},
+    "spots": {"Cantina": [26.5, 15.4], "Hull Market": [29.5, 10.5], "Cargo hold": [16, 15.5], "Docking bay": [11.5, 6.5], "Vents": [33.5, 19.5], "Spice row": [30.0, 29.5], "Arena": [55.5, 20.0], "Container yard": [56.0, 36.0], "Chapel": [7.5, 38.8], "Viewport": [56.0, 6.5], "Med pod": [41.0, 9.0]},
     "walkers": 7,
     "security": 0.0,
-    "props": [["vent", 2, 2], ["vent", 14, 2], ["vent", 34, 12], ["vent", 2, 22], ["crate", 20.6, 3], ["crate", 21.3, 3.6], ["crate", 34, 22], ["barrel", 33, 15], ["barrel", 33.6, 15.5], ["lamp", 16.5, 10.5], ["lamp", 20.5, 10.5], ["lamp", 16.5, 14.5], ["lamp", 20.5, 14.5], ["stall", 25, 10.4], ["stall", 31, 10.4]]
-    },
+    "props": [
+      ["vent", 2, 2], ["vent", 14, 2], ["vent", 34, 12], ["vent", 2, 22], ["crate", 20.6, 3], ["crate", 21.3, 3.6], ["crate", 34, 22], ["barrel", 33, 15],
+      ["barrel", 33.6, 15.5], ["lamp", 16.5, 10.5], ["lamp", 20.5, 10.5], ["lamp", 16.5, 14.5], ["lamp", 20.5, 14.5], ["stall", 25, 10.4], ["stall", 31, 10.4], ["vent", 62, 26],
+      ["vent", 34, 40], ["vent", 14, 40], ["crate", 44, 34], ["crate", 44.6, 34.6], ["barrel", 62, 30], ["stall", 34, 36.5], ["stall", 14, 36], ["lamp", 16.5, 27.5],
+      ["lamp", 20.5, 27.5], ["lamp", 45.5, 27.5], ["lamp", 49.5, 27.5], ["lamp", 45.5, 14.5], ["lamp", 49.5, 10.5], ["barrel", 50.5, 26], ["barrel", 51, 26.5]
+    ],
+    "areas": [
+      [50, 2, 12, 3, "void"],
+      [2, 2, 10, 2, "void"],
+      [0, 31, 64, 11, "deck"],
+      [50, 15, 11, 10, "arena"]
+    ],
+    "districts": [
+      {"name": "Hull Deck", "rect": [0, 0, 46, 28]},
+      {"name": "Dock Ring", "rect": [46, 0, 18, 28]},
+      {"name": "Lower Deck", "rect": [0, 28, 64, 14]}
+    ]
+  },
   "varrow": {
     "name": "Varrow · Dust Town",
-    "size": [44, 30],
+    "size": [76, 50],
     "tile": 32,
     "ground": "#9a6a3e",
     "ground_alt": "#a3713f",
     "road": "#7a5434",
     "road_line": "#c29a62",
     "spawn": [8.5, 11.5],
-    "roads": [[0, 14, 44, 3], [21, 0, 3, 30], [31, 10, 3, 4], [30, 17, 3, 2], [7, 17, 3, 2], [39, 17, 3, 2]],
+    "roads": [[0, 14, 76, 3], [21, 0, 3, 50], [31, 10, 3, 4], [30, 17, 3, 2], [7, 17, 3, 2], [39, 17, 3, 2], [52, 0, 3, 50], [0, 34, 76, 3], [0, 46, 76, 2]],
     "plazas": [],
     "pad": {"pos": [8, 5.5], "radius": 3.2, "label": "Your ship – take off"},
     "buildings": [
@@ -125,29 +194,56 @@
       {"id": "yard", "name": "Caravan Yard", "rect": [37, 19, 6, 7], "wall": "#7a6a52", "roof": "#5a4a2e", "sign": "CARAVANS"},
       {"id": "cellar", "name": "Dune Cellar", "rect": [4, 19, 9, 6], "door": [8.5, 19], "side": "top", "wall": "#8a7050", "roof": "#6b5a3a", "sign": "FOR SALE", "action": "estate", "estate": "dune_cellar", "label": "Dune Cellar (estate)"},
       {"id": "tank", "name": "Water tower", "rect": [15, 20, 4, 5], "wall": "#5a5b6a", "roof": "#2b5f8a"},
-      {"id": "hut_a", "name": "Adobe hut", "rect": [13, 3, 5, 5], "wall": "#a07a50", "roof": "#8a5a3c"}
+      {"id": "hut_a", "name": "Adobe hut", "rect": [13, 3, 5, 5], "wall": "#a07a50", "roof": "#8a5a3c"},
+      {"id": "mission", "name": "Old Mission", "rect": [44, 20, 7, 9], "wall": "#a07a50", "roof": "#c2a070", "sign": "MISSION"},
+      {"id": "condenser", "name": "Condenser Plant", "rect": [58, 4, 8, 6], "wall": "#5a5b6a", "roof": "#2b5f8a", "sign": "CONDENSER"},
+      {"id": "stables", "name": "Caravan Stables", "rect": [66, 26, 8, 6], "wall": "#7a6a52", "roof": "#8a5a3c", "sign": "STABLES"},
+      {"id": "shrine", "name": "Dune Shrine", "rect": [70, 4, 4, 4], "wall": "#c2a070", "roof": "#e0c080"},
+      {"id": "gunshack", "name": "Gun Shack", "rect": [4, 38, 7, 3], "wall": "#6b4a32", "roof": "#4a3a2e", "sign": "GUNS"},
+      {"id": "saltworks", "name": "Salt Works", "rect": [30, 48, 10, 2], "wall": "#c8c0b0", "roof": "#8a8070"},
+      {"id": "prospector", "name": "Prospector hut", "rect": [60, 48, 5, 2], "wall": "#8a7050", "roof": "#6b5a3a"}
     ],
     "npcs": [
       {"id": "rhea", "name": "Rhea Dunmore", "pos": [36.5, 17.5], "action": "deal", "contact": "rhea", "color": "#c27447"},
       {"id": "kip", "name": "Kip Sallow", "pos": [24.5, 12.5], "action": "deal", "contact": "kip", "color": "#5f9a5e"}
     ],
-    "spots": {"Caravan yard": [40.5, 18.0], "Saltpan Market": [33.5, 12.5], "Home": [15.5, 9.0], "Condenser field": [15.5, 27.0], "Dust Cantina": [32.5, 18.0]},
+    "spots": {"Caravan yard": [40.5, 18.0], "Saltpan Market": [33.5, 12.5], "Home": [15.5, 9.0], "Condenser field": [15.5, 27.0], "Dust Cantina": [32.5, 18.0], "Mission": [47.5, 30.0], "Oasis": [63.0, 27.0], "Condenser plant": [62.0, 10.8], "Salt works": [35.0, 45.5], "Wash bridge": [22.5, 40.0], "Shrine": [72.0, 9.0]},
     "walkers": 4,
     "security": 0.3,
-    "props": [["cactus", 2, 2], ["cactus", 19.5, 4], ["cactus", 42, 3], ["cactus", 2, 28], ["cactus", 24, 27], ["cactus", 41, 28], ["cactus", 14, 27.5],
-      ["rock", 11, 11], ["rock", 42, 11], ["rock", 19, 28], ["barrel", 25, 10.5], ["barrel", 25.6, 11], ["barrel", 36, 26.5], ["crate", 39.5, 11.5], ["crate", 40.2, 12],
-      ["stall", 28, 11.4], ["stall", 36, 11.4], ["lamp", 20.5, 13.5], ["lamp", 24.5, 13.5], ["lamp", 20.5, 17.5], ["lamp", 24.5, 17.5]]
+    "props": [
+      ["cactus", 2, 2], ["cactus", 19.5, 4], ["cactus", 42, 3], ["cactus", 2, 28], ["cactus", 24, 27], ["cactus", 41, 28], ["cactus", 14, 27.5], ["rock", 11, 11],
+      ["rock", 42, 11], ["rock", 19, 28], ["barrel", 25, 10.5], ["barrel", 25.6, 11], ["barrel", 36, 26.5], ["crate", 39.5, 11.5], ["crate", 40.2, 12], ["stall", 28, 11.4],
+      ["stall", 36, 11.4], ["lamp", 20.5, 13.5], ["lamp", 24.5, 13.5], ["lamp", 20.5, 17.5], ["lamp", 24.5, 17.5], ["cactus", 57, 15], ["cactus", 74, 14], ["cactus", 45, 3],
+      ["cactus", 30, 38], ["cactus", 70, 38], ["cactus", 2, 36], ["tree", 59, 21], ["tree", 67, 21], ["tree", 59, 26.5], ["tree", 57.5, 23.5], ["rock", 74, 30],
+      ["rock", 46, 39], ["rock", 12, 39], ["barrel", 64.5, 32], ["barrel", 65, 32.5], ["crate", 56, 31], ["crate", 56.6, 31.6], ["lamp", 51.5, 13.5], ["lamp", 55.5, 13.5],
+      ["lamp", 51.5, 17.5], ["lamp", 55.5, 17.5], ["stall", 48, 32]
+    ],
+    "areas": [
+      [0, 42, 21, 3, "chasm"],
+      [24, 42, 28, 3, "chasm"],
+      [55, 42, 21, 3, "chasm"],
+      [56, 0, 20, 13, "sand"],
+      [60, 22, 6, 4, "water"],
+      [57, 19, 12, 10, "grass"],
+      [0, 45, 76, 5, "salt"]
+    ],
+    "districts": [
+      {"name": "Dust Town", "rect": [0, 0, 52, 34]},
+      {"name": "Caravan Road", "rect": [52, 0, 24, 34]},
+      {"name": "Dry Wash", "rect": [0, 34, 76, 11]},
+      {"name": "Salt Flats", "rect": [0, 45, 76, 5]}
+    ]
   },
   "glacis": {
     "name": "Glacis · Kessel Dome",
-    "size": [46, 32],
+    "size": [78, 52],
     "tile": 32,
     "ground": "#c8dce6",
     "ground_alt": "#d2e4ec",
     "road": "#5a5b6a",
     "road_line": "#8fd1e8",
     "spawn": [8.5, 11.5],
-    "roads": [[0, 15, 46, 3], [22, 0, 3, 32], [33, 11, 3, 4], [16, 18, 3, 5], [7, 18, 3, 3]],
+    "roads": [[0, 15, 78, 3], [22, 0, 3, 52], [33, 11, 3, 4], [16, 18, 3, 5], [7, 18, 3, 3], [56, 0, 3, 52], [0, 36, 78, 3]],
     "plazas": [[19, 12, 9, 9]],
     "pad": {"pos": [8, 5.5], "radius": 3.2, "label": "Landing pad – take off"},
     "buildings": [
@@ -156,17 +252,40 @@
       {"id": "tower", "name": "Kessel Tower", "rect": [2, 21, 10, 8], "wall": "#6a7080", "roof": "#3a3a4a", "sign": "KESSEL"},
       {"id": "vault", "name": "Cryo Vault 4", "rect": [15, 23, 5, 6], "door": [17.5, 23], "side": "top", "wall": "#7a8a9a", "roof": "#5fb6c9", "sign": "VAULT 4", "action": "estate", "estate": "cryo_vault", "label": "Cryo Vault 4 (estate)"},
       {"id": "lounge", "name": "Dome Lounge", "rect": [30, 22, 10, 7], "wall": "#4a3a5a", "roof": "#6a3a8a", "sign": "LOUNGE"},
-      {"id": "habitat", "name": "Habitat block", "rect": [13, 2, 5, 5], "wall": "#8a8b9c", "roof": "#5a5b6a"}
+      {"id": "habitat", "name": "Habitat block", "rect": [13, 2, 5, 5], "wall": "#8a8b9c", "roof": "#5a5b6a"},
+      {"id": "barracks", "name": "Authority Barracks", "rect": [60, 3, 12, 8], "wall": "#3a4a6a", "roof": "#3a6fd0", "sign": "BARRACKS"},
+      {"id": "clinic", "name": "Dome Clinic", "rect": [48, 4, 6, 5], "wall": "#7a8a9a", "roof": "#4fe3c1", "sign": "CLINIC"},
+      {"id": "icebar", "name": "Ice Bar", "rect": [44, 22, 9, 7], "wall": "#4a5a7a", "roof": "#8fd1e8", "sign": "ICE BAR"},
+      {"id": "green_a", "name": "Greenhouse", "rect": [4, 42, 6, 4], "wall": "#5a7a6a", "roof": "#8fd1c0"},
+      {"id": "green_b", "name": "Greenhouse", "rect": [12, 42, 6, 4], "wall": "#5a7a6a", "roof": "#8fd1c0"},
+      {"id": "resblock", "name": "Res Block C", "rect": [62, 41, 8, 6], "wall": "#8a8b9c", "roof": "#5a5b6a", "sign": "RES C"},
+      {"id": "maglev", "name": "Maglev Station", "rect": [30, 47, 12, 4], "wall": "#5a6a8a", "roof": "#2b5f8a", "sign": "MAGLEV"}
     ],
     "npcs": [
       {"id": "halden", "name": "Ivo Halden", "pos": [34.5, 20.5], "action": "deal", "contact": "halden", "color": "#5fb6c9"},
       {"id": "nadia", "name": "Nadia Frost", "pos": [26.5, 21.5], "action": "deal", "contact": "nadia", "color": "#4fe3c1"}
     ],
-    "spots": {"Kessel Tower": [13.8, 22.5], "Dome Lounge": [35.5, 20.5], "Cryo labs": [17.5, 21.5], "Habitat ring": [15.5, 8.5]},
+    "spots": {"Kessel Tower": [13.8, 22.5], "Dome Lounge": [35.5, 20.5], "Cryo labs": [17.5, 21.5], "Habitat ring": [15.5, 8.5], "Barracks gate": [66.0, 12.0], "Ice bar": [48.5, 29.8], "Frozen lake": [69.0, 26.0], "Hydro dome": [10.0, 48.0], "Maglev": [36.0, 46.6], "Dome clinic": [51.0, 10.5]},
     "walkers": 6,
     "security": 1.6,
-    "props": [["ice_rock", 2, 2], ["ice_rock", 20, 3], ["ice_rock", 44, 12], ["ice_rock", 2, 30], ["ice_rock", 24, 30], ["ice_rock", 44, 30], ["ice_rock", 13, 30],
-      ["lamp", 19.5, 14.5], ["lamp", 27.5, 14.5], ["lamp", 19.5, 20.5], ["lamp", 27.5, 20.5], ["lamp", 10, 14.5], ["lamp", 38, 14.5],
-      ["crate", 26.5, 3], ["crate", 27, 3.6], ["crate", 40.5, 11.5], ["vent", 12, 20], ["vent", 41, 20], ["stall", 30, 12.4], ["stall", 38, 12.4]]
+    "props": [
+      ["ice_rock", 2, 2], ["ice_rock", 20, 3], ["ice_rock", 44, 12], ["ice_rock", 2, 30], ["ice_rock", 24, 30], ["ice_rock", 44, 30], ["ice_rock", 13, 30], ["lamp", 19.5, 14.5],
+      ["lamp", 27.5, 14.5], ["lamp", 19.5, 20.5], ["lamp", 27.5, 20.5], ["lamp", 10, 14.5], ["lamp", 38, 14.5], ["crate", 26.5, 3], ["crate", 27, 3.6], ["crate", 40.5, 11.5],
+      ["vent", 12, 20], ["vent", 41, 20], ["stall", 30, 12.4], ["stall", 38, 12.4], ["ice_rock", 76, 40], ["ice_rock", 54, 50], ["ice_rock", 76, 50], ["ice_rock", 44, 40],
+      ["ice_rock", 63, 33], ["ice_rock", 75, 21], ["lamp", 21.5, 35.5], ["lamp", 25.5, 35.5], ["lamp", 55.5, 35.5], ["lamp", 59.5, 35.5], ["lamp", 55.5, 14.5], ["lamp", 59.5, 18.5],
+      ["tree", 6, 47.5], ["tree", 14, 47.5], ["tree", 18, 41.5], ["vent", 74, 12], ["crate", 72.5, 11.6], ["crate", 73, 12.2], ["stall", 46, 33]
+    ],
+    "areas": [
+      [62, 20, 14, 12, "ice"],
+      [2, 40, 18, 11, "dome"],
+      [3, 41, 16, 9, "grass"],
+      [26, 44, 12, 2, "chasm"],
+      [41, 44, 12, 2, "chasm"]
+    ],
+    "districts": [
+      {"name": "Kessel Dome", "rect": [0, 0, 56, 36]},
+      {"name": "Authority Quarter", "rect": [56, 0, 22, 36]},
+      {"name": "Lower Ring", "rect": [0, 36, 78, 16]}
+    ]
   }
 }
