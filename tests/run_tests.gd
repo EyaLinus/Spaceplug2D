@@ -26,6 +26,7 @@ func _init() -> void:
 		"test_data_references",
 		"test_surface_layouts",
 		"test_art_registry",
+		"test_art_pass4",
 		"test_police_on_foot",
 		"test_combat_weapons",
 		"test_combat_player",
@@ -154,6 +155,30 @@ func test_art_registry() -> void:
 		check(st_tex != null and st_tex.get_size() == Vector2(fp[0], fp[1]) * Art.TILE, "station %s has art matching its footprint" % id)
 	check(Art.tex("missing/nothing.png") == null, "missing art returns null (procedural fallback)")
 	check(Art.look_for_color(Color("#ff6b5f")) == "npc_red", "npc look follows data colour")
+
+
+## Art pass 4: icons for lab stations, ground weapons, combat HUD and map; fx, idle sheets, ground edges, starfield.
+func test_art_pass4() -> void:
+	var Art = load("res://scripts/core/art.gd")
+	for id in data.stations:
+		check(Art.icon_for("st_" + id) != null, "station %s has a menu icon" % id)
+	for w in data.combat.weapons:
+		check(Art.icon_for("wpn_" + w) != null, "weapon %s has an icon" % w)
+	for k in ["hud_hull", "hud_shield", "hud_missile", "hud_boost", "map_star", "map_gate", "map_ship", "map_hostile"]:
+		check(Art.icon_for(k) != null and Art.icon_for(k).get_size() == Vector2(32, 32), "icon %s is 32 px" % k)
+	for pair in [["bolt_laser", Vector2(32, 10)], ["bolt_pirate", Vector2(24, 10)], ["missile", Vector2(32, 16)], ["explosion", Vector2(128, 32)], ["hit", Vector2(48, 16)], ["shield", Vector2(192, 64)]]:
+		var t: Texture2D = Art.fx(pair[0])
+		check(t != null and t.get_size() == pair[1], "fx %s has the expected size" % pair[0])
+	for look in ["player", "officer"] + Art.NPC_LOOKS.keys():
+		var c: Texture2D = Art.idle_sheet(look)
+		check(c != null and c.get_size() == Vector2(Art.CHAR * Art.IDLE_FRAMES, Art.CHAR * 3), "idle sheet %s is %dx3 frames" % [look, Art.IDLE_FRAMES])
+	for set_name in Art.TILESETS.values():
+		var e: Texture2D = Art.edge_strip(set_name)
+		check(e != null and e.get_size() == Vector2(Art.TILE * Art.EDGE_ORDER.size(), Art.TILE), "tile set %s has an edge strip" % set_name)
+	var stars: Texture2D = Art.tex("space/stars.png")
+	check(stars != null and stars.get_size() == Vector2(128, 16), "starfield sprite strip (8 sprites of 16 px)")
+	var neb: Texture2D = Art.tex("space/nebula.png")
+	check(neb != null and neb.get_size() == Vector2(288, 96), "nebula strip (3 clouds of 96 px)")
 
 
 func test_surface_layouts() -> void:

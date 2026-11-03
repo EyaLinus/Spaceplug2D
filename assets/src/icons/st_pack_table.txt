@@ -1,0 +1,38 @@
+# Lab dropdown/minigame icon: Pack Table (taped box).
+legend:
+. = transparent
+k = ink
+S = slate_light
+s = slate
+d = slate_dark
+W = white
+Y = gold
+y = gold_dark
+L = gold_light
+R = red
+r = red_dark
+T = teal
+t = teal_dark
+b = blue_light
+B = blue
+G = leaf
+w = wood
+o = wood_dark
+n = rust_light
+---
+................
+................
+................
+..kkkkkkkkkkkk..
+..kwwwYYwwwwwk..
+..kwwwYYwwwwwk..
+..kwwwYYwwwwwk..
+..kkkkkkkkkkkk..
+..kooonnoooook..
+..kooonnoooook..
+..kooonnoooook..
+..kkkkkkkkkkkk..
+................
+................
+................
+................

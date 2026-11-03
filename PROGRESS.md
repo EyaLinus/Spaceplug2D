@@ -1,5 +1,22 @@
 # Progress log
 
+## Art pass 4 (2026-11-03)
+- **New art** (all from source grids / `tools/art/build_art.py`, palette-checked by the build): 7 lab station icons
+  `st_<station>`, 3 ground weapon icons `wpn_<weapon>`, combat HUD icons (`hud_hull/shield/missile/boost`), galaxy map
+  markers (`map_star/gate/ship/hostile`); combat fx strips in `gfx/fx/` (laser + pirate bolt, missile, 4-frame explosion,
+  3-frame hit spark, 3-frame shield bubble); idle sheets `chars/<look>_idle.png` (stand, breathe, stand, blink x
+  down/up/right, derived from the walk grids); `tiles/<set>_edge.png` (8 fringe tiles N,E,S,W,NE,SE,SW,NW built from each
+  ground tile's own pixels); `space/stars.png` (8 star/twinkle sprites) and `space/nebula.png` (3 neutral dithered clouds).
+- **Registry:** `art.gd` gets `idle_sheet()`, `edge_strip()`, `fx()` one-liners plus `IDLE_FRAMES`/`EDGE_ORDER`; the icons
+  work through the existing `Art.icon_for`/`with_icon`. Manifest and `changelog.d/art-pass-4.md` updated, new
+  `test_art_pass4` (2459 checks pass), UI smoke and menu smoke pass, 23 screenshots rendered.
+- Gaps: art-only task, so **nothing new is drawn in the game yet** (existing screenshots are unchanged): the station/weapon/
+  HUD/map icons need `Art.with_icon` calls in station_ui/hud/map_app, `combat_layer.gd` still draws bolts/missiles/explosions
+  procedurally, `surface.gd` does not draw edge fringes (it needs a neighbour check per road/plaza cell), walker/npc do not
+  play the idle sheet, `world.gd` still draws plain pixel stars. Previewed as contact sheets, not in-engine. Weapon icons
+  are the weakest (small silhouettes). Not covered: building interiors, menu art, ramp art, per-system star colour on
+  the map marker (tint at runtime).
+
 ## A6: Galaxy Map app + Jump Drive (2026-11-02)
 - **Core** `scripts/core/galaxy.gd`, one runtime field `Game.jump_plan` (not saved), one `Galaxy.tick` line in `Game.tick`.
   Lanes come from the gates of D1 (`jump_to`), `route()` is a breadth-first search (multi-hop works for any number of
