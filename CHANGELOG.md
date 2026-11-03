@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.10 – 2026-11-03
+- **Everyone is someone (B4):** the anonymous walkers are gone. Every person on a planet is a named local (65 in total, names and jobs fit their planet) with a drug habit, a liked trait, a daily budget and a day plan across the new districts. Strangers show their job up close and the prompt tells you what they want; talk to them to make them a contact who can text you deals. Happy customers sometimes refer you to someone new.
+- **Bigger planets (D4):** every planet surface is 2–3× larger with three to four named districts and its own landmarks: Mireth's canal with bridges and the Canal Docks, Cinder's mine pits, rail lines and slag fields, the Bazaar's lower deck with hull windows, stall row and fighting arena, Varrow's dry wash, oasis and salt flats, Glacis' frozen lake, hydro dome and Authority barracks. Canals, pits, slag, hull windows and chasms are walls; roads over them are bridges.
+- **Minimap zoom, district names and sprint:** M cycles the on-foot minimap between the whole planet, ×2 and ×4 around you; the district you are in shows above the minimap; hold Shift to sprint. Both keys are rebindable.
+
 ## v0.1.9 – 2026-11-03
 - **Main quest, chapter 1:** after the tutorial, seven missions around the Ouroboros debt: an installment for Mara Vesk (+2 days), a second estate, your first Cocaine batch, the jump to Kovar, ten units for Rhea Dunmore on Varrow, three Black Comet raiders shot down and the final payment. New contacts (Vesna, Kip) and credits as rewards. Paying the debt now ends chapter 1 instead of the game; old saves start straight into the main quest.
 - **Quests and tutorial:** a quest system with a HUD tracker, a gold waypoint (on screen, at the screen edge and on the minimap), messages from the quest giver and a Quests app on the Com-Phone. New games start with Okka's four-part tutorial: buy buds, cook and mix a batch on foot in the Old Cannery, price it in the Products app, close a texted deal and hire a street dealer. It can be skipped in the Quests app or switched off in Settings.

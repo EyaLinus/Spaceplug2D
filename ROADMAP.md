@@ -192,7 +192,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
 - **B4 Everyone is someone.** ✅ done (see PROGRESS.md). Every NPC on a surface is a named person from `people.gd` (generated names + look per
   planet), with a drug preference, budget and schedule: anyone can become a customer by talking to them or via
   referrals. Anonymous walkers are gone.
-- → **Release v0.1.11**.
+- → **Release v0.1.11** (shipped as v0.1.10).
 
 ### Wave 9 – cartels and influence (v0.1.12)
 - **I1 Enemy cartels + sector influence.** 3 rival cartels with home systems, colours and bosses; every location has an
