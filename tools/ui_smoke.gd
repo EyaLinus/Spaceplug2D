@@ -409,8 +409,10 @@ func _run() -> void:
 	step("cook and sell")
 
 	g.credits = 20000
-	for u in ["cargo", "engine", "stealth", "lab"]:
+	for u in ["cargo", "engine", "stealth", "lab", "laser", "missile", "shield", "hull"]:
 		gs.act(g.buy_upgrade(u))
+	_assert(g.upgrades.laser == 1 and g.upgrades.missile == 1 and g.upgrades.shield == 1 and g.upgrades.hull == 1, "weapon and shield modules bought at the mechanic")
+	_assert(g.combat.missiles == 4 and g.combat.shield == 40.0 and g.combat.hull == 130.0, "new modules arrive charged")
 	g.add_heat(30)
 	gs.act(g.bribe(10))
 	gs.act(g.pay_debt(1000))
@@ -486,6 +488,9 @@ func _run() -> void:
 	_assert(g.stats.busts > busts, "patrol scan busts the player")
 	step("bust")
 
+	await _space_combat(m, g)
+	step("space combat")
+
 	m.toggle_pause()
 	await frames(2)
 	_assert(gs.paused and m.pause_menu.visible, "paused")
@@ -537,3 +542,88 @@ func _assert(cond: bool, msg: String) -> void:
 	if not cond:
 		printerr("SMOKE FAIL: " + msg)
 		quit(1)
+
+
+## Pirates in deep space: auto spawn, lasers, missile, bounty, shield and hull damage, the dodge boost, the wreck.
+func _space_combat(m, g) -> void:
+	var w = m.world
+	var cb = w.combat
+	_assert(w.ship.modules.laser == g.upgrades.laser and w.ship.modules.shield == 1, "ship art follows the combat modules")
+	g.heat = 0.0
+	w.clear_patrols()
+	for pos in [Vector2(-3000, 3000), Vector2(3000, 3000), Vector2(3000, -3000), Vector2(-3000, -3000), Vector2.ZERO]:
+		w.ship.position = pos
+		if w.nearest_location_distance() > 1200.0:
+			break
+	_assert(w.nearest_location_distance() > float(g.data.combat.spawn.safe_radius), "test position is deep space")
+	w.ship.rotation = 0.0
+	w.ship.stop()
+	g.combat.hull = g.data.upgrades.hull.levels[g.upgrades.hull]
+	# a pirate shows up on its own after the spawn interval, and not near a planet
+	cb._spawn_clock = 999.0
+	await frames(3)
+	_assert(cb.pirates.size() >= 1, "pirate arrives in deep space")
+	cb.clear()
+	cb._spawn_clock = 0.0
+	# lasers: a pirate parked ahead is shot down and pays a bounty
+	var credits: int = g.credits
+	var kills: int = g.combat.kills
+	var p = cb.spawn_pirate(g, w.ship.position + Vector2(0, -260))
+	for i in 240:
+		p.position = w.ship.position + Vector2(0, -260)
+		p.velocity = Vector2.ZERO
+		cb.fire_laser(g)
+		await physics_frame
+		if g.combat.kills > kills:
+			break
+	_assert(g.combat.kills == kills + 1 and g.credits > credits and cb.pirates.is_empty(), "lasers shoot down a pirate and pay a bounty")
+	# missile: homes in on a pirate beside the flight line
+	var ammo: int = g.combat.missiles
+	p = cb.spawn_pirate(g, w.ship.position + Vector2(160, -420))
+	_assert(cb.fire_missile(g) and g.combat.missiles == ammo - 1, "missile launched, one round used")
+	for i in 240:
+		p.velocity = Vector2.ZERO
+		await physics_frame
+		if cb.pirates.is_empty():
+			break
+	_assert(cb.pirates.is_empty() and g.combat.kills == kills + 2, "homing missile destroys the pirate")
+	# damage: shield first, then hull, shown on the HUD
+	_assert(w.combat_hud.visible, "combat HUD visible in flight")
+	var shield: float = g.combat.shield
+	cb.hurt_player(g, 10.0)
+	_assert(g.combat.shield == shield - 10.0, "pirate bolt hits the shield first")
+	cb.hurt_player(g, 40.0)
+	_assert(g.combat.shield == 0.0 and g.combat.hull < g.data.upgrades.hull.levels[g.upgrades.hull], "overflow damages the hull")
+	# dodge: boosting makes the ship untouchable for a moment, then bolts hurt again
+	await frames(30)
+	_assert(w.ship.boost() and w.ship.boosting() and w.ship.invulnerable(), "boost starts a dodge")
+	var hull: float = g.combat.hull
+	var sh: float = g.combat.shield
+	cb._add_bolt(w.ship.position, Vector2.ZERO, 1.0, 20.0, false)
+	await physics_frame
+	await physics_frame
+	_assert(g.combat.hull == hull and g.combat.shield == sh, "a bolt passes through the dodging ship")
+	cb.bolts.clear()
+	for i in 45:
+		await physics_frame
+	_assert(not w.ship.invulnerable(), "dodge ends")
+	cb._add_bolt(w.ship.position, Vector2.ZERO, 1.0, 20.0, false)
+	await physics_frame
+	await physics_frame
+	_assert(g.combat.hull < hull or g.combat.shield < sh, "a bolt hits after the dodge")
+	# wreck: half the cargo and a fine, towed back to the patrol base at half hull
+	g.cargo["weed:glow"] = 6
+	g.credits = 1000
+	cb.hurt_player(g, 9999.0)
+	await frames(2)
+	_assert(g.cargo.get("weed:glow", 0) == 3 and g.credits == 900, "wreck loses half the hold and 10%% credits (%s, %d)" % [g.cargo, g.credits])
+	_assert(is_equal_approx(g.combat.hull, g.data.upgrades.hull.levels[g.upgrades.hull] * 0.5) and cb.pirates.is_empty(), "towed back at half hull")
+	_assert(w.nearest_location_distance() < 400.0, "wreck respawns next to a location")
+	# docking clears the fight; the mechanic repairs
+	w.active = false
+	cb.spawn_pirate(g, w.ship.position + Vector2(0, -300))
+	await frames(2)
+	_assert(cb.pirates.is_empty() and not w.combat_hud.visible, "no pirates or combat HUD while docked")
+	w.active = true
+	await frames(2)
+

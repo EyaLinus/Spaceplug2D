@@ -113,7 +113,7 @@ def build_sprites() -> list[Path]:
     out = []
     for name, folder in [("crate", "props"), ("barrel", "props"), ("rock", "props"), ("tree", "props"),
                          ("lamp", "props"), ("vent", "props"), ("stall", "props"), ("cactus", "props"), ("ice_rock", "props"), ("ship", "ships"),
-                         ("patrol", "ships"), ("beacon", "space")]:
+                         ("patrol", "ships"), ("pirate", "ships"), ("beacon", "space")]:
         legend, frames = parse_grid(SRC / "sprites" / f"{name}.txt")
         out.append(save(grid_image(frames[0], legend), f"{folder}/{name}.png"))
     return out
@@ -128,7 +128,7 @@ def build_stations() -> list[Path]:
     return out
 
 
-SHIP_MODULES = ("engine", "cargo", "stealth", "lab")
+SHIP_MODULES = ("engine", "cargo", "stealth", "lab", "hull", "laser", "missile", "shield")
 
 
 def build_ship_modules() -> list[Path]:
@@ -154,9 +154,9 @@ def ship_composite(levels: dict) -> Image.Image:
             lg, fr = mods[k]
             m = grid_image(fr[lvl - 1], lg)
             img.alpha_composite(m)
-    layer("engine"); layer("cargo")
+    layer("hull"); layer("engine"); layer("cargo")
     img.alpha_composite(grid_image(frames[0], legend), (4, 4))
-    layer("stealth"); layer("lab")
+    layer("stealth"); layer("lab"); layer("laser"); layer("missile"); layer("shield")
     return img
 
 

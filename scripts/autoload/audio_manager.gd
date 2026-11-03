@@ -29,6 +29,10 @@ func _ready() -> void:
 		"upgrade": _chord([392.0, 523.0, 659.0, 784.0], 0.6, 0.4),
 		"snip": _tone(1500.0, 0.03, 0.3, "square"),
 		"seal": _sweep(900.0, 300.0, 0.09, 0.4),
+		"laser": _sweep(1400.0, 500.0, 0.09, 0.25, "square"),
+		"hit": _sweep(260.0, 90.0, 0.18, 0.5, "square"),
+		"boom": _sweep(220.0, 40.0, 0.45, 0.55, "square"),
+		"boost": _sweep(300.0, 900.0, 0.22, 0.4),
 	}
 	for i in POOL:
 		var p := AudioStreamPlayer.new()

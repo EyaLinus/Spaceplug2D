@@ -34,6 +34,16 @@ matching part of the same core actions. Cinder Belt (mining camp: Ore Depot, For
 Bazaar (hull deck: Hull Market, the fence in the Back Room, Lira and Old Grub) are walkable too. Later: police on foot, estates with placeable production buildings, workers
 (ROADMAP P2–P5).
 
+## Space combat (E2)
+Pirates hunt in deep space only (farther than 750 px from any location), one arrival every ~30 s (faster in Kovar and with
+a hold full of product), max 3 alive. A raider has 40 hull, circles you at ~300 px and fires 8 damage bolts every 1.5 s.
+You fly with the existing inertial ship: lasers (J, bolts forward, fast, free), homing missiles (K, 55 damage with a blast, ammo
+bought at the mechanic) and the dodge boost (Shift: short burst, invulnerable for 0.45 s, 35 of 100 energy). Four modules
+(content.json upgrades, 3 levels each, all drawn on the ship via the E3 layers): Laser Cannons (damage 8 → 20), Missile Pods
+(0 → 14 rounds), Shield Generator (0 → 140, recharges after 3 s without a hit), Hull Armour (100 → 220). Hull is repaired for
+credits at the mechanic. At 0 hull the wreck is looted (half the hold), you pay a 10 % tow fine and respawn at half hull
+next to the system's patrol base. Rules: `scripts/core/spacecombat.gd`; numbers: content.json "combat".
+
 ## Planned systems (see ROADMAP)
 Growing your own raws (planting/harvest cycles), packaging tiers, hired runners and automated drones,
 multiple star systems with jump lanes, raids on bases at high heat, customer network with loyalty and referrals,

@@ -3,6 +3,7 @@ extends Node2D
 ## upgrade from the art registry (procedural fallback), engine flames procedural (one per nozzle of the engine level).
 
 const Art = preload("res://scripts/core/art.gd")
+const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 
 var velocity := Vector2.ZERO
 var thrusting := false
@@ -12,6 +13,9 @@ var modules: Dictionary = {}  ## upgrade key -> level (Game.upgrades); picks the
 var cfg: Dictionary = {}
 
 var _flame := 0.0
+var _boost_t := 0.0  ## seconds of dodge boost left
+var _invuln_t := 0.0  ## seconds of dodge invulnerability left
+var _boost_dir := Vector2.ZERO
 
 
 func setup(ship_cfg: Dictionary) -> void:
@@ -20,6 +24,9 @@ func setup(ship_cfg: Dictionary) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_boost_t = maxf(0.0, _boost_t - delta)
+	_invuln_t = maxf(0.0, _invuln_t - delta)
+	modulate.a = 0.55 + 0.3 * sin(Time.get_ticks_msec() / 25.0) if _invuln_t > 0.0 else 1.0
 	if frozen or cfg.is_empty():
 		thrusting = false
 		AudioManager.set_thrust(0.0)
@@ -28,6 +35,8 @@ func _physics_process(delta: float) -> void:
 	var turn := Input.get_axis("ship_left", "ship_right")
 	rotation += turn * float(cfg.turn_speed) * delta
 	thrusting = Input.is_action_pressed("ship_thrust")
+	if Input.is_action_just_pressed("ship_boost"):
+		boost(Input.is_action_pressed("ship_reverse") and not thrusting)
 	var reversing := Input.is_action_pressed("ship_reverse")
 	steer(delta, thrusting, Input.is_action_pressed("ship_brake"), reversing)
 	AudioManager.set_thrust(1.0 if thrusting else (0.5 if reversing else 0.0))
@@ -46,12 +55,43 @@ func steer(delta: float, thrust: bool, brake: bool, reverse := false) -> void:
 		velocity = velocity.lerp(Vector2.ZERO, clampf(float(cfg.brake) * delta, 0.0, 1.0))
 	velocity *= 1.0 - float(cfg.drag) * 0.1 * delta
 	var max_speed := float(cfg.max_speed) * engine_mult
-	if velocity.length() > max_speed:
+	if _boost_t > 0.0:
+		velocity = _boost_dir * _boost_speed()
+	elif velocity.length() > max_speed:
 		velocity = velocity.normalized() * max_speed
 	position += velocity * delta
 
 
+## Dodge boost: a short burst along the nose (or backwards) that also makes the ship untouchable for a moment.
+## Costs boost energy (core rules); returns false while docked, frozen or out of energy.
+func boost(backwards := false) -> bool:
+	var g = GameState.game
+	if g == null or frozen or _boost_t > 0.0 or not SpaceCombat.try_boost(g):
+		return false
+	var b: Dictionary = g.data.combat.boost
+	_boost_t = float(b.seconds)
+	_invuln_t = float(b.invuln)
+	_boost_dir = Vector2.UP.rotated(rotation) * (-1.0 if backwards else 1.0)
+	AudioManager.play("boost")
+	return true
+
+
+func boosting() -> bool:
+	return _boost_t > 0.0
+
+
+func invulnerable() -> bool:
+	return _invuln_t > 0.0
+
+
+func _boost_speed() -> float:
+	var g = GameState.game
+	return float(g.data.combat.boost.speed) * (0.8 + 0.2 * engine_mult) if g != null else 0.0
+
+
 func stop() -> void:
+	_boost_t = 0.0
+	_invuln_t = 0.0
 	velocity = Vector2.ZERO
 
 

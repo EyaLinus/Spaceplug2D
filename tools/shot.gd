@@ -166,6 +166,38 @@ func _run() -> void:
 		await physics_frame
 	await _save(out, "flight_upgraded")
 	Input.action_release("ship_thrust")
+	# space combat: pirates around a fully armed ship, bolts and a missile in the air, shield ring flashing
+	var w = m.world
+	w.clear_patrols()
+	w.ship.position = Vector2(-3000, 3000)
+	w.ship.rotation = 0.0
+	w.ship.stop()
+	w.camera.reset_smoothing()
+	g.heat = 0.0
+	g.combat.shield = 140.0
+	g.combat.missiles = 14
+	g.combat.hull = 150.0
+	for off in [Vector2(-120, -330), Vector2(200, -240), Vector2(0, -520)]:
+		var pr = w.combat.spawn_pirate(g, w.ship.position + off)
+		pr.velocity = Vector2.ZERO
+	for i in 6:
+		w.combat.fire_laser(g)
+		await physics_frame
+		await physics_frame
+		await physics_frame
+		await physics_frame
+		await physics_frame
+		await physics_frame
+		await physics_frame
+		await physics_frame
+		await physics_frame
+		await physics_frame
+	w.combat.fire_missile(g)
+	w.combat.hurt_player(g, 20.0)
+	for i in 4:
+		await physics_frame
+	await _save(out, "space_combat")
+	w.combat.clear()
 	g.upgrades = before
 	for loc in m.world.locations:
 		m.world.ship.position = m.world.locations[loc].position + Vector2(0, m.world.locations[loc].radius + 120)
