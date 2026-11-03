@@ -61,6 +61,7 @@ func _ready() -> void:
 	var root := Control.new()
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.theme = UI.build()
+	root.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # pixel-art UI frames
 	_ui_layer.add_child(root)
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	hud = HudScript.new()

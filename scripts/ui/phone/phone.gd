@@ -10,8 +10,8 @@ const People = preload("res://scripts/core/people.gd")
 const Registry = preload("res://scripts/ui/phone/registry.gd")
 
 const SIZE := Vector2(420, 640)
-const BEZEL := Color("#070913")
-const SCREEN := Color("#0f1430")
+const BEZEL := Color("#0c0a12")
+const SCREEN := Color("#191626")
 
 var apps: Array = []
 var _stack: Array = []  ## [{title, build: Callable(g) -> Control}], empty = home screen
@@ -48,7 +48,7 @@ func _ready() -> void:
 	v.add_child(bar)
 	# screen
 	var screen := PanelContainer.new()
-	screen.add_theme_stylebox_override("panel", _box(SCREEN, Color("#262b4d"), 1, 14, 12))
+	screen.add_theme_stylebox_override("panel", _box(SCREEN, Color("#2b2840"), 1, 14, 12))
 	screen.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(screen)
 	var sv := VBoxContainer.new()

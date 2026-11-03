@@ -8,12 +8,12 @@ extends Control
 signal finished(score: float)
 
 const AREA := Vector2(820, 330)
-const FG := Color("#e6e9ff")
-const MUTED := Color("#8a90b8")
+const FG := Color("#eef0ff")
+const MUTED := Color("#8a8b9c")
 const GOOD := Color("#4fe3c1")
 const BAD := Color("#ff6b5f")
 const GOLD := Color("#ffd166")
-const DARK := Color("#0a0d1c")
+const DARK := Color("#14121c")
 
 var ctx: Dictionary = {}  ## {base, tier, additives, qty, data, seed}
 var rng := RandomNumberGenerator.new()

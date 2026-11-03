@@ -66,12 +66,12 @@ func bot_input(_dt: float) -> void:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, AREA), Color("#1a1826"))
 	var c := Vector2(410, 190)
-	draw_rect(Rect2(c + Vector2(-150, 40), Vector2(300, 28)), Color("#3a3f66"))
-	draw_rect(Rect2(c + Vector2(-110, 24), Vector2(220, 16)), Color("#596094"))
+	draw_rect(Rect2(c + Vector2(-150, 40), Vector2(300, 28)), Color("#3a3a4a"))
+	draw_rect(Rect2(c + Vector2(-110, 24), Vector2(220, 16)), Color("#8a8b9c"))
 	var pile := clampf(weight / 80.0, 0.0, 1.4)
 	draw_colored_polygon(PackedVector2Array([c + Vector2(-90 * pile - 10, 24), c + Vector2(0, 24 - 70 * pile - 2), c + Vector2(90 * pile + 10, 24)]), Color("#f1efe6"))
 	var dial := Vector2(410, 110)
-	draw_arc(dial, 80.0, PI, TAU, 40, Color("#596094"), 6.0)
+	draw_arc(dial, 80.0, PI, TAU, 40, Color("#8a8b9c"), 6.0)
 	var ang := func(w: float) -> float: return PI + clampf(w / 80.0, 0.0, 1.0) * PI
 	var ta: float = ang.call(target)
 	draw_line(dial + Vector2.from_angle(ta) * 64.0, dial + Vector2.from_angle(ta) * 92.0, GOOD, 4.0)

@@ -109,9 +109,9 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
 ### Wave 3 – logistics & automation (needs wave 2)
 - [x] **A4 DeadDrop Logistics.** Request anonymous drop points on planets/stations; customers or couriers pick up from
   them (less heat than hand-to-hand, small chance of theft). Needs A2 + A3.
-- **B3 Workers & HR app** [P5]. Hire lab hands and stockers in the HR app (wage per day, skill, loyalty); assigned
+- [x] **B3 Workers & HR app** [P5]. Hire lab hands and stockers in the HR app (wage per day, skill, loyalty); assigned
   workers run stations in an estate and move items storage → station → storage. Needs #14, A1.
-- **A5 Dealers & couriers** (HR app part 2) [P5]. Dealers sell to your customers on their own (cut, bust risk), couriers
+- **A5 Dealers & couriers** (HR app part 2) [P5] → moved to phase 3 wave 6. Dealers sell to your customers on their own (cut, bust risk), couriers
   move goods between estates and drops. Needs A2, A4, B3.
 - [x] **A6 Galaxy Map app + Jump Drive.** Map app with heat overlay, price comparison per location and route planning;
   interstellar jump with charge-up, hyperspace VFX and loading transition. Needs D1, A1. Not parallel with E2 (world.gd).
@@ -125,17 +125,97 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
 - [x] **F1 Heat II + corruption.** Heat per system and personal "wanted" level; corrupt inspectors, customs officers and
   patrol captains as named NPCs (people.gd) you recruit with bribes: tip-offs before raids, cargo passes scanners.
   Replaces the office fixer bribe. Needs A1, D1.
-- **D3 Interdiction.** Jumps can be intercepted by pirates or the Authority: fight (E2), pay, dump cargo or flee.
+- **D3 Interdiction** → phase 3 wave 9. Jumps can be intercepted by pirates or the Authority: fight (E2), pay, dump cargo or flee.
   Needs A6, E2.
-- **F2 Rival gangs.** Cartels with territory per planet, robbing your dealers, demanding protection money, gang
+- **F2 Rival gangs** → phase 3 I1 (cartels). Cartels with territory per planet, robbing your dealers, demanding protection money, gang
   members as ground enemies. Needs E1, A5.
-- **D4 Larger planet maps.** Bigger hand-made sectors per planet (districts, alleys, interiors), procedural filler
+- **D4 Larger planet maps** → phase 3 wave 8. Bigger hand-made sectors per planet (districts, alleys, interiors), procedural filler
   props; minimap zoom. Run last among the surface.gd milestones.
 - → **Release v0.1.8** (phase 2 complete).
 
 ### Dependency graph (short)
 A1 → A2, A3, B1, B3, A6, F1 · #14 → A3, B2, B3 · A2 + A3 → A4 · A2 + A4 + B3 → A5 · D1 → A6, F1 · A6 + E2 → D3 ·
 E1 + A5 → F2
+
+# Phase 3 – Feel, flow & content (Linus, 2026-11-03)
+
+Linus's wishlist after v0.1.6: no blue prototype menus anywhere, production and mixing only through minigames (machines
+automate later), recipe/product-line app with your own sell price, contacts who text deals (amount, price, time), a quest
+system (tutorial → main quest), bigger and more unique maps where every NPC is a named character with demand, space
+combat with enemy cartels and sector influence, more content, customization, action feedback, tooltips and QoL.
+
+Same rules as phase 2: one milestone = one PR with green CI, patch versions only (0.1.x), a release closes each wave,
+price balance stays eyeballed. Phase-2 milestones still open are folded in where they fit (marked "was X").
+
+### Wave 3 – finish phase 2 logistics (v0.1.7)
+Finished work from earlier sessions that only had to be merged on top of each other.
+- [x] **A4 DeadDrops** (#36) · [x] **E1 Ground combat** (#37) · [x] **E2 Space combat** (#38)
+- [x] **A6 Galaxy Map + Jump Drive** (#33) · [x] **B3 Workers & HR** (#30) · [x] **F1 Heat II + corruption** (#29)
+- → **Release v0.1.7**.
+
+### Wave 5 – no more prototype menus (v0.1.8)
+- [x] **G1 UI skin.** One new look for every panel, button, tab, list and bar (`ui_theme.gd`): pixel-art frames from the
+  art pipeline, warm "contraband ledger" palette instead of the default blue, item cards with icons and rarity/grade
+  colours, shared tooltip style. Every existing menu and the phone change at once.
+- **G2 Lab on foot.** No lab dropdown menu any more. The cannery becomes your first rented estate with fixed stations;
+  a batch is a tray you carry from station to station on foot: put raws in at the prep station, choose additives at
+  the Mixing Station (ingredient shelf with live trait/value preview), play each station's minigame, finished product
+  lands in the estate stash. Quick batch survives only as the workers' automation (B3). Core: `scripts/core/bench.gd`.
+- **G3 Shop screens.** Market, fence, shipyard, mechanic and weapon dealer as shop screens: item cards (icon, price,
+  owned, tooltip with what it is for), basket with quantity slider and total, one checkout; ship upgrades as cards
+  with the module preview. Replaces the row/button grids of `station_ui.gd`.
+- → **Release v0.1.8**.
+
+### Wave 6 – your business on the phone (v0.1.9)
+- **H1 Products app (recipe book).** Every product you have made once: its recipe (base + additives in order), traits,
+  grade range, which estate can make it, and **your asking price** per product (default = suggested value). Unknown
+  mixes show as "?" until discovered. Walk-up buyers and the fence compare against your price.
+- **H2 Contacts set up deals.** Deal-O-Matic texts become concrete appointments: product, amount, price (based on your
+  asking price and their budget/affinity), **meeting time on the clock** and place; late or missed = affinity loss.
+  Counter-offers on amount, price and time. Phone calendar strip for today's meetings.
+- **A5 Dealers & couriers** (was A5). Hire dealers in the HR app, give them stock and a district; they sell at your
+  asking price minus their cut; couriers move goods between estates and drops.
+- → **Release v0.1.9**.
+
+### Wave 7 – quests (v0.1.10)
+- **Q1 Quest core + tutorial.** `scripts/core/quests.gd`: data-driven quests in `content.json` (steps with conditions
+  on game events: buy, cook, sell, dock, deliver, talk), tracker in the HUD, Quests app on the phone, waypoint arrow.
+  Tutorial chain from landing to first sale, first mix, first estate, first jump.
+- **Q2 Main quest, act 1.** Story around the Ouroboros debt and the cartels (see I1): 6–8 missions with named
+  characters, rewards (blueprints, contacts, estates); the debt goal becomes chapter 1 instead of the whole game.
+- → **Release v0.1.10**.
+
+### Wave 8 – bigger, unique worlds (v0.1.11)
+- **D4 Larger planet maps** (was D4). Each planet 2–3× bigger with its own districts and landmarks (Mireth canal
+  docks, Cinder mine shafts, Bazaar market decks, Varrow dune town, Glacis domes), interiors for key buildings,
+  procedural filler props, minimap zoom.
+- **B4 Everyone is someone.** Every NPC on a surface is a named person from `people.gd` (generated names + look per
+  planet), with a drug preference, budget and schedule: anyone can become a customer by talking to them or via
+  referrals. Anonymous walkers are gone.
+- → **Release v0.1.11**.
+
+### Wave 9 – cartels and influence (v0.1.12)
+- **I1 Enemy cartels + sector influence.** 3 rival cartels with home systems, colours and bosses; every location has an
+  influence share (you vs. cartels) that moves with sales, fights and drops; high influence = better prices and
+  fewer pirates, low = robberies. Influence overlay in the Map app. (was F2 rival gangs)
+- **E4 Space combat II.** Cartel fighter wings and gunships, escort missions, cartel stations you can raid,
+  new weapons (flak, ion), loot drops, ship classes at the shipyard.
+- **D3 Interdiction** (was D3). Jumps can be intercepted by cartel wings or the Authority: fight, pay, dump or flee.
+- → **Release v0.1.12**.
+
+### Wave 10 – feel and QoL (v0.1.13)
+- **K1 Feedback & tooltips.** Floating numbers (+cr, heat, damage), screen shake, hit flashes, sale/cook jingles,
+  tooltips on every icon, stat and button; HUD notifications stack.
+- **K2 Customization.** Player look (hair, jacket colours), ship paint and decals, estate decoration props.
+- **K3 QoL.** Hold-to-repeat buy, sort/filter in lists, compare prices tooltip, auto-route to marker, quick-save,
+  rebindable everything, settings for text size; long balance sims and a first real balance pass if Linus asks.
+- **C2 Automation machines.** Auto-trimmer, drip mixer, packing machine: estate buildings that run a station step on
+  their own (lower quality than a good minigame, but no worker needed).
+- → **Release v0.1.13**.
+
+### Order and parallel work
+Waves run in order; inside a wave milestones are sequential (max 2 threads in the project). G1 first because every
+later screen builds on it. Conflict hot spots as in phase 2, plus `ui_theme.gd` (G1 only).
 
 ## Carried over from the v0.1 roadmap (fold into the milestones above when they are picked up)
 - Patrol feel in space: warning before scan range, asteroid fields to break pursuit, screen shake on bust

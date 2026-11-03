@@ -177,7 +177,7 @@ class Portrait extends Control:
 		return p
 
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), Color("#1a1f3d"))
+		draw_rect(Rect2(Vector2.ZERO, size), Color("#1e1b2e"))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2(zoom, zoom))
 		ArtReg.draw_character(self, look, Vector2.DOWN, 0, Vector2(16, 30))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

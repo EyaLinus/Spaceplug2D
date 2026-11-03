@@ -52,7 +52,7 @@ func _draw() -> void:
 	var ty: float = gy.call(temp)
 	draw_rect(Rect2(g.position.x - 8, ty - 3, g.size.x + 16, 6), GOLD)
 	var pot := Rect2(270, 120, 200, 110)
-	draw_rect(pot, Color("#5a5f7a"))
+	draw_rect(pot, Color("#5a5b6a"))
 	draw_rect(Rect2(pot.position + Vector2(10, 10), Vector2(pot.size.x - 20, 30)), Color("#3d2b4f").lerp(Color("#ff9a4d"), temp))
 	for i in int(temp * 8.0):
 		var bx := pot.position.x + 20 + fmod(i * 37.0 + elapsed * 40.0, pot.size.x - 40)
@@ -61,7 +61,7 @@ func _draw() -> void:
 		for i in 5:
 			var fx := pot.position.x + 30 + i * 35
 			draw_colored_polygon(PackedVector2Array([Vector2(fx - 10, 262), Vector2(fx, 236 - sin(elapsed * 20.0 + i) * 8.0), Vector2(fx + 10, 262)]), Color("#ff9a4d"))
-	draw_rect(Rect2(250, 262, 240, 14), Color("#3a3f66"))
+	draw_rect(Rect2(250, 262, 240, 14), Color("#3a3a4a"))
 	text(Vector2(20, 28), "Keep the cook in the green", 18, GOOD)
 	text(Vector2(660, ty + 6), "%d°" % int(60 + temp * 180), 18, GOLD)
 	text(Vector2(20, AREA.y - 30), status_text(), 15, MUTED)

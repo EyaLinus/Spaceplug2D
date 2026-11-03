@@ -9,7 +9,7 @@ Sources:
   assets/src/stations/*.txt  lab station machines (estate interiors), sized to the buildable footprint
   assets/src/icons/*.txt     UI icons (items, upgrades, HUD), same grid format
   assets/src/characters.yaml role-letter -> palette swaps for the char_* grids
-  this file                  procedural tiles and building pieces (seeded, palette-locked)
+  this file                  procedural tiles, building pieces and UI nine-patch frames (palette-locked)
 
 Everything is drawn on a 16 px art grid and written pre-scaled by grid.pixel_art.scale (2),
 so Godot draws the textures 1:1 with texture_filter = nearest.
@@ -568,11 +568,74 @@ def contact_sheet(paths: list[Path], dest: Path) -> None:
     sheet.save(dest)
 
 
+# ---------------------------------------------------------------- UI frames (nine-patch)
+
+def frame(w: int, h: int, fill: str, hi: str, lo: str, outline: str = "ink", ring: str | None = None,
+          rivet: str | None = None, sunken: bool = False) -> Image.Image:
+    """A bevelled pixel frame for a StyleBoxTexture: outline, optional coloured ring, light top-left (or bottom-right
+    when sunken), fill, optional rivets in the corners. Corners stay inside a 4 art px margin."""
+    img = Image.new("RGBA", (w, h), color(fill))
+    px = img.putpixel
+    for x in range(w):
+        px((x, 0), color(outline))
+        px((x, h - 1), color(outline))
+    for y in range(h):
+        px((0, y), color(outline))
+        px((w - 1, y), color(outline))
+    o = 1
+    if ring:
+        for x in range(1, w - 1):
+            px((x, 1), color(ring))
+            px((x, h - 2), color(ring))
+        for y in range(1, h - 1):
+            px((1, y), color(ring))
+            px((w - 2, y), color(ring))
+        o = 2
+    a, b = (lo, hi) if sunken else (hi, lo)
+    for x in range(o, w - o):
+        px((x, o), color(a))
+        px((x, h - 1 - o), color(b))
+    for y in range(o, h - o):
+        px((o, y), color(a))
+        px((w - 1 - o, y), color(b))
+    # cut the outer corners so frames read as chunky pixel boxes, not rectangles
+    for cx, cy in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)):
+        px((cx, cy), CLEAR)
+    if rivet:
+        for cx, cy in ((o + 1, o + 1), (w - o - 2, o + 1), (o + 1, h - o - 2), (w - o - 2, h - o - 2)):
+            px((cx, cy), color(rivet))
+    return img
+
+
+def build_ui() -> list[Path]:
+    """Nine-patch frames for the UI theme (scripts/ui/ui_theme.gd), 12x12 art px, margin 4 art px (= 8 px in game)."""
+    specs = {
+        "panel": dict(fill="night", hi="shadow", lo="ink", ring="gold_dark", rivet="gold"),
+        "inset": dict(fill="ink", hi="shadow", lo="night", sunken=True, outline="shadow"),
+        "card": dict(fill="shadow", hi="slate_dark", lo="night"),
+        "card_hover": dict(fill="shadow", hi="slate_dark", lo="night", outline="gold_dark"),
+        "button": dict(fill="purple_dark", hi="purple", lo="ink"),
+        "button_hover": dict(fill="purple", hi="pink", lo="purple_dark", outline="gold_dark"),
+        "button_pressed": dict(fill="teal_dark", hi="ink", lo="teal", sunken=True),
+        "button_disabled": dict(fill="night", hi="shadow", lo="night", outline="shadow"),
+        "button_accent": dict(fill="gold_dark", hi="gold", lo="wood_dark"),
+        "button_accent_hover": dict(fill="gold", hi="gold_light", lo="gold_dark", outline="wood_dark"),
+        "tab": dict(fill="ink", hi="night", lo="ink", outline="shadow"),
+        "tab_selected": dict(fill="shadow", hi="gold_dark", lo="night", ring=None),
+        "tooltip": dict(fill="ink", hi="night", lo="ink", outline="gold_dark"),
+        "bar_bg": dict(fill="ink", hi="ink", lo="shadow", outline="shadow", sunken=True),
+    }
+    out = []
+    for name, spec in specs.items():
+        out.append(save(frame(12, 12, **spec), f"ui/{name}.png"))
+    return out
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--preview", help="also write a contact sheet of every output to this PNG")
     args = ap.parse_args()
-    paths = build_characters() + build_sprites() + build_stations() + build_tiles() + build_building_parts() + build_space() + build_icons() + build_ship_modules()
+    paths = build_characters() + build_sprites() + build_stations() + build_tiles() + build_building_parts() + build_space() + build_icons() + build_ship_modules() + build_ui()
     for p in paths:
         print(p.relative_to(ROOT))
     if args.preview:

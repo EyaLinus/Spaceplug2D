@@ -165,6 +165,7 @@ func _run() -> void:
 	m.phone.open_app("deaddrop")
 	await _save(out, "phone_deaddrop")
 	m.phone.close()
+	sf = m.surface  # the HR shots above rebuilt the surface
 	sf.place_player_at("okka")
 	for i in 5:
 		await physics_frame
