@@ -269,5 +269,27 @@
     "seconds": {"standard": 90, "express": 30}, "far_seconds": 60,
     "max_qty": 40, "max_open": 6, "cancel_refund": 0.8, "kit_price": 0.85
   },
-  "estate_refund": 0.5
+  "estate_refund": 0.5,
+  "combat": {
+    "player": {"hp": 100, "regen_per_second": 4.0, "regen_delay": 6.0, "radius": 10, "ko_hp_ratio": 0.5,
+      "ko_fine_ratio": 0.2, "ko_fine_min": 80, "ko_heat_drop": 20},
+    "weapons": {
+      "pistol": {"name": "Pistol", "price": 0, "damage": 14, "pellets": 1, "spread_deg": 2.0, "interval": 0.35, "auto": false,
+        "mag": 12, "reload": 1.1, "bullet_speed": 720, "range": 520, "noise_heat": 0.3},
+      "smg": {"name": "SMG", "price": 600, "damage": 6, "pellets": 1, "spread_deg": 6.0, "interval": 0.09, "auto": true,
+        "mag": 30, "reload": 1.7, "bullet_speed": 680, "range": 420, "noise_heat": 0.15},
+      "shotgun": {"name": "Shotgun", "price": 900, "damage": 7, "pellets": 7, "spread_deg": 16.0, "interval": 0.85, "auto": false,
+        "mag": 6, "reload": 2.3, "bullet_speed": 620, "range": 300, "noise_heat": 0.9}
+    },
+    "start_weapons": ["pistol"],
+    "officer": {"hp": 40, "draw_heat": 55, "damage": 9, "interval": 1.0, "spread_deg": 7.0, "bullet_speed": 460,
+      "range": 280, "radius": 10, "alert_seconds": 4.0, "kill_heat": 12, "hit_heat": 4, "respawn_seconds": 25, "witness_range": 340},
+    "cover": {
+      "mireth": [[36, 18, 2, 1, "barrier"], [25, 9, 1, 2, "crates"], [16, 18, 2, 1, "barrier"], [42, 14, 2, 1, "crates"], [4, 18, 2, 1, "barrier"], [25, 22, 1, 2, "crates"], [25, 30, 1, 2, "barrier"]],
+      "cinder": [[19, 7, 1, 2, "barrier"], [3, 11, 2, 1, "crates"], [10, 11, 2, 1, "barrier"], [29, 11, 2, 1, "crates"], [19, 18, 1, 2, "barrier"]],
+      "bazaar": [[12, 14, 2, 1, "barrier"], [4, 14, 2, 1, "crates"], [16, 6, 1, 2, "barrier"], [23, 14, 2, 1, "crates"], [20, 20, 1, 2, "barrier"]],
+      "varrow": [[12, 17, 2, 1, "barrier"], [28, 17, 2, 1, "crates"], [24, 4, 1, 2, "barrier"], [3, 17, 2, 1, "crates"], [24, 22, 1, 2, "barrier"]],
+      "glacis": [[13, 14, 2, 1, "barrier"], [21, 25, 1, 2, "crates"], [25, 7, 1, 2, "barrier"], [5, 14, 2, 1, "crates"], [40, 14, 2, 1, "barrier"], [29, 18, 2, 1, "crates"]]
+    }
+  }
 }

@@ -11,6 +11,8 @@ const OfficerScript = preload("res://scripts/planet/officer.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Nav = preload("res://scripts/planet/nav.gd")
 const People = preload("res://scripts/core/people.gd")
+const Combat = preload("res://scripts/core/combat.gd")
+const CombatHud = preload("res://scripts/planet/combat_hud.gd")
 
 const INPUT := {
 	"move_up": [KEY_W, KEY_UP],
@@ -19,6 +21,11 @@ const INPUT := {
 	"move_right": [KEY_D, KEY_RIGHT],
 	"interact": [KEY_E, KEY_ENTER],
 	"build_menu": [KEY_B],
+	"reload": [KEY_R],
+	"weapon_wheel": [KEY_Q],
+	"weapon_1": [KEY_1],
+	"weapon_2": [KEY_2],
+	"weapon_3": [KEY_3],
 }
 
 var loc_id := ""
@@ -46,6 +53,24 @@ var _daylight: CanvasModulate
 var placing := ""
 var can_place: Callable
 
+## Ground combat (rules in combat.gd): mouse aims, left button fires, Q opens the weapon wheel, R reloads.
+var use_mouse := true  ## false in tests: they set `aim_point` themselves
+var aim_point := Vector2.ZERO  ## world position the player aims at
+var bullets: Array = []  ## flying bullets (Combat.make_bullet dictionaries)
+var covers: Array = []  ## cover pieces as pixel rects: block walking and bullets, not sight
+var wheel_open := false
+var wheel_sel := -1  ## wheel sector under the mouse, -1 = none
+var hurt := 0.0  ## red flash after a hit (seconds)
+var _trigger := false
+var _trigger_fresh := false
+var _aim_t := 0.0  ## player shows the gun for a moment after shooting
+var _flash_t := 0.0
+var _impacts: Array = []  ## [{pos, t}] bullet sparks
+var _bullet_blockers: Array = []  ## buildings + cover
+var _fire_rng := RandomNumberGenerator.new()
+var _respawn_t := 0.0  ## officers shot down come back after a while
+var _hud: CanvasLayer
+
 
 static func register_input() -> void:
 	for action in INPUT:
@@ -63,6 +88,10 @@ func setup(id: String, surface_cfg: Dictionary) -> void:
 	cfg = surface_cfg
 	tile = float(cfg.get("tile", 32))
 	map_size = Vector2(cfg.size[0], cfg.size[1]) * tile
+	if not cfg.has("estate"):  # estate interiors have no cover
+		cfg = cfg.duplicate()
+		cfg.cover = Combat.cover_tiles(GameState.data, id)
+		covers = Combat.cover_rects(cfg.cover, tile)
 
 
 ## Spot (tile units) where the named npc `n` should be at the current hour, [] if their place isn't on this surface.
@@ -128,6 +157,7 @@ func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # pixel art; children inherit it
 	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED  # tinted roof/wall pieces are tiled
 	_rng.seed = hash(loc_id)
+	_fire_rng.seed = hash(loc_id) + 11
 	EventBus.game_event.connect(func(kind: String, _p: Dictionary):
 		if kind == "upgraded":
 			queue_redraw())  # the parked ship shows its new module
@@ -191,6 +221,14 @@ func _ready() -> void:
 	_overlay.z_index = 1
 	_overlay.draw.connect(_draw_overlay)
 	add_child(_overlay)
+	_hud = CombatHud.new()
+	_hud.surface = self
+	add_child(_hud)
+	Input.set_default_cursor_shape(Input.CURSOR_CROSS)
+
+
+func _exit_tree() -> void:
+	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 
 
 func _px(p: Array) -> Vector2:
@@ -211,6 +249,10 @@ func _build_collision() -> void:
 		solid.append(_rect(b.rect))
 		_blockers.append(_rect(b.rect))
 	var t := tile
+	_bullet_blockers = _blockers.duplicate()
+	for c in covers:
+		solid.append(c)
+		_bullet_blockers.append(c)
 	solid.append(Rect2(-t, -t, map_size.x + 2 * t, t))
 	solid.append(Rect2(-t, map_size.y, map_size.x + 2 * t, t))
 	solid.append(Rect2(-t, 0, t, map_size.y))
@@ -286,6 +328,7 @@ func _physics_process(delta: float) -> void:
 			it.pos = it.npc.position
 			it.stand = it.npc.position + Vector2(0, 26)
 	_update_police(delta)
+	_update_combat(delta)
 	if player.frozen or placing != "":
 		_overlay.queue_redraw()
 		return
@@ -306,8 +349,12 @@ func _update_police(delta: float) -> void:
 		return
 	var pc: Dictionary = GameState.data.police
 	var want: int = g.police_on_foot(float(cfg.get("security", 1.0)))
-	while officers.size() < want:
+	var oc: Dictionary = Combat.cfg(GameState.data).get("officer", {})
+	_respawn_t = maxf(0.0, _respawn_t - delta)
+	while officers.size() < want and _respawn_t <= 0.0:
 		var o := OfficerScript.new()
+		o.hp = float(oc.get("hp", 40))
+		o.max_hp = o.hp
 		o.vision = float(pc.vision)
 		o.cone = deg_to_rad(float(pc.cone_degrees))
 		o.speed = float(pc.speed)
@@ -321,24 +368,49 @@ func _update_police(delta: float) -> void:
 		return
 	var watched := false
 	var carrying: bool = g.has_contraband()
+	var drawn := Combat.officers_armed(g)
 	for o in officers:
 		var seen: bool = OfficerScript.sees(o.position, o.facing, player.position, o.vision, o.cone, _blockers)
-		if seen and carrying:
+		var dist: float = o.position.distance_to(player.position)
+		# armed officers (high heat, or shot at) shoot the player they can see; they stop to fire and need a clear line
+		o.armed = drawn or o.provoked
+		o.hostile_t = maxf(0.0, o.hostile_t - delta)
+		if o.armed and (seen or (o.provoked and dist <= float(oc.range) * 1.5 and Combat.line_clear(o.position, player.position, _blockers))):
+			o.hostile_t = float(oc.alert_seconds)
+		var hostile: bool = o.armed and o.hostile_t > 0.0
+		if hostile and not o.drew:
+			o.drew = true
+			EventBus.toast.emit("An officer draws a weapon!", false)
+			AudioManager.play("alarm")
+		o.fire_cd = maxf(0.0, o.fire_cd - delta)
+		o.hold = false
+		if hostile and dist <= float(oc.range):
+			o.facing = (player.position - o.position).normalized()
+			if Combat.line_clear(o.position, player.position, _bullet_blockers):
+				o.hold = true
+				if o.fire_cd <= 0.0 and not player.frozen:
+					o.fire_cd = float(oc.interval)
+					bullets.append(Combat.officer_bullet(g, o.position + o.facing * 12.0, player.position + Vector2(0, 2), _fire_rng))
+					EventBus.game_event.emit("shot", {"weapon": "officer"})
+		if seen and carrying and not hostile:
 			watched = true
 		if o.chasing:
-			if not carrying or o.position.distance_to(player.position) > float(pc.give_up_range):
+			if not (carrying or hostile) or dist > float(pc.give_up_range):
 				o.chasing = false
 				o.speed = float(pc.speed)
+				o.path = []
+			elif o.hold:
 				o.path = []
 			else:
 				_repath -= delta
 				if _repath <= 0.0 or o.path.is_empty():
 					o.path = Nav.path_between(nav, tile, o.position, player.position)
 				o.facing = (o.path[0] - o.position).normalized() if not o.path.is_empty() else o.facing
-		elif seen and carrying and g.heat >= float(pc.chase_heat):
+		elif (seen and carrying and g.heat >= float(pc.chase_heat)) or hostile:
 			o.chasing = true
 			o.speed = float(pc.chase_speed)
-			EventBus.toast.emit("An officer spotted you. Lose them!", false)
+			if not hostile:
+				EventBus.toast.emit("An officer spotted you. Lose them!", false)
 	if _repath <= 0.0:
 		_repath = 0.35
 	var old := suspicion
@@ -359,6 +431,191 @@ func _update_police(delta: float) -> void:
 		o.alert = suspicion
 	if old != suspicion:
 		EventBus.scan_progress.emit(suspicion)
+
+
+# ---------------------------------------------------------------- ground combat
+
+func _unhandled_input(event: InputEvent) -> void:
+	if player == null or GameState.game == null or GameState.paused:
+		return
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed and not player.frozen and placing == "":
+			if wheel_open:
+				return
+			_trigger = true
+			_trigger_fresh = true
+		elif mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed and not player.frozen:
+			Combat.cycle(GameState.game, -1)
+		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed and not player.frozen:
+			Combat.cycle(GameState.game, 1)
+	if player.frozen:
+		return
+	if event.is_action_pressed("reload"):
+		Combat.start_reload(GameState.game)
+	elif event.is_action_pressed("weapon_wheel"):
+		open_wheel()
+	for i in 3:
+		if event.is_action_pressed("weapon_%d" % (i + 1)):
+			var ids := Combat.weapon_ids(GameState.data)
+			if i < ids.size():
+				if Combat.owns(GameState.game, ids[i]):
+					Combat.select(GameState.game, ids[i])
+				else:
+					EventBus.toast.emit("%s is not yours yet: hold %s and pick it in the wheel to buy." % [Combat.weapon(GameState.data, ids[i]).name, Settings.key_label("weapon_wheel")], false)
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+		_trigger = false
+	elif event.is_action_released("weapon_wheel") and wheel_open:
+		close_wheel(true)
+
+
+func open_wheel() -> void:
+	if wheel_open or player.frozen:
+		return
+	wheel_open = true
+	wheel_sel = -1
+	_trigger = false
+
+
+## Closes the wheel; with `commit` the sector under the mouse is equipped, or bought first if you do not own it yet.
+func close_wheel(commit: bool) -> void:
+	if not wheel_open:
+		return
+	wheel_open = false
+	var ids := Combat.weapon_ids(GameState.data)
+	if commit and wheel_sel >= 0 and wheel_sel < ids.size():
+		var g = GameState.game
+		var id: String = ids[wheel_sel]
+		if not Combat.owns(g, id):
+			if not GameState.act(Combat.buy_weapon(g, id)).ok:
+				return
+		Combat.select(g, id)
+
+
+## Pulls the trigger once from code (the mouse button does the same through _unhandled_input).
+func shoot() -> bool:
+	var g = GameState.game
+	var dir: Vector2 = aim_point - (player.position + Vector2(0, -2))
+	if dir.length() < 1.0:
+		dir = player.facing
+	dir = dir.normalized()
+	var res := Combat.fire(g, player.position + Vector2(0, -2) + dir * 14.0, dir, _fire_rng)
+	if not res.ok:
+		return false
+	bullets.append_array(res.bullets)
+	_aim_t = 1.5
+	_flash_t = 0.06
+	player.aim_dir = dir
+	var dists: Array = []
+	for o in officers:
+		dists.append(o.position.distance_to(player.position))
+	g.add_heat(Combat.noise_heat(g, dists))
+	return true
+
+
+func _update_combat(delta: float) -> void:
+	var g = GameState.game
+	if g == null or GameState.paused:
+		return
+	hurt = maxf(0.0, hurt - delta)
+	_flash_t = maxf(0.0, _flash_t - delta)
+	for i in range(_impacts.size() - 1, -1, -1):
+		_impacts[i].t -= delta
+		if _impacts[i].t <= 0.0:
+			_impacts.remove_at(i)
+	if player.frozen or placing != "":
+		_trigger = false
+		close_wheel(false)
+	else:
+		if use_mouse:
+			aim_point = get_global_mouse_position()
+		if wheel_open:
+			var ids := Combat.weapon_ids(GameState.data)
+			wheel_sel = CombatHud.sector_at(get_viewport().get_mouse_position() - get_viewport_rect().size / 2.0, ids.size()) if use_mouse else wheel_sel
+		elif _trigger:
+			var auto: bool = Combat.weapon(GameState.data, g.weapon).get("auto", false)
+			if auto or _trigger_fresh:
+				if shoot():
+					_trigger_fresh = false
+	_aim_t = maxf(0.0, _aim_t - delta)
+	if _aim_t <= 0.0:
+		player.aim_dir = Vector2.ZERO
+	elif not wheel_open:
+		var d: Vector2 = aim_point - player.position
+		if d.length() > 1.0:
+			player.aim_dir = d.normalized()
+	_step_bullets(g, delta)
+
+
+func _step_bullets(g, delta: float) -> void:
+	var player_target := [{"pos": player.position + Vector2(0, 2), "r": float(Combat.cfg(GameState.data).player.radius)}]
+	var oc: Dictionary = Combat.cfg(GameState.data).officer
+	var alive: Array = []
+	for b in bullets:
+		var targets: Array = player_target
+		if b.owner == Combat.PLAYER_BULLET:
+			targets = []
+			for o in officers:
+				targets.append({"pos": o.position + Vector2(0, -2), "r": float(oc.radius)})
+		var res := Combat.step_bullet(b, delta, _bullet_blockers, targets)
+		if not map_rect().grow(8.0).has_point(b.pos):
+			continue
+		match res.hit:
+			"":
+				alive.append(b)
+			"wall":
+				_impacts.append({"pos": res.pos, "t": 0.15})
+			"range":
+				pass
+			"target":
+				_impacts.append({"pos": res.pos, "t": 0.15})
+				if b.owner == Combat.PLAYER_BULLET:
+					_hit_officer(g, officers[res.idx], float(b.damage))
+				elif Combat.damage_player(g, float(b.damage)):
+					_knocked_out(g)
+				else:
+					hurt = 0.4
+					player.flash = 0.25
+					AudioManager.play("hurt")
+	bullets = alive
+
+
+func map_rect() -> Rect2:
+	return Rect2(Vector2.ZERO, map_size)
+
+
+func _hit_officer(g, o: Node2D, damage: float) -> void:
+	if not o.provoked:
+		o.provoked = true
+		Combat.officer_hit(g)
+	o.hp -= damage
+	o.flash = 0.12
+	if o.hp <= 0.0:
+		officers.erase(o)
+		o.queue_free()
+		_respawn_t = float(Combat.cfg(GameState.data).officer.respawn_seconds)
+		Combat.officer_killed(g)
+		EventBus.toast.emit("Officer down. Heat is rising.", false)
+
+
+## The player ran out of health: Combat.knock_out charges the price, the surface wakes them up at the launch pad.
+func _knocked_out(g) -> void:
+	GameState.act(Combat.knock_out(g))
+	bullets.clear()
+	suspicion = 0.0
+	hurt = 0.8
+	for o in officers:
+		o.chasing = false
+		o.hostile_t = 0.0
+		o.provoked = false
+		o.speed = float(GameState.data.police.speed)
+		o.path = []
+	if interactable("pad").is_empty():
+		return
+	place_player_at("pad")
 
 
 ## Text for the HUD prompt, "" when nothing is in reach.
@@ -460,6 +717,8 @@ func _draw() -> void:
 		_draw_building(b)
 	for p in cfg.get("props", []):
 		_draw_prop(p[0], Vector2(float(p[1]), float(p[2])) * tile)
+	for i in covers.size():
+		_draw_cover(covers[i], str(cfg.cover[i][4]) if cfg.cover[i].size() > 4 else "barrier")
 	var font := ThemeDB.fallback_font
 	draw_string(font, Vector2(tile * 0.5, map_size.y - tile * 0.4), cfg.get("name", ""), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1, 1, 1, 0.35))
 
@@ -673,7 +932,43 @@ func _draw_prop(kind: String, p: Vector2) -> void:
 			draw_circle(p + Vector2(4, 1), 4.0, Color("#ff9ad5"))
 
 
+## Low cover: concrete barrier or stacked crates. Solid for walking and bullets, not for sight.
+func _draw_cover(r: Rect2, kind: String) -> void:
+	draw_rect(Rect2(r.position + Vector2(3, 5), r.size), Color(0, 0, 0, 0.3))
+	if kind == "crates":
+		draw_rect(r.grow(-2), Color("#8a6a3e"))
+		draw_rect(r.grow(-2), Color("#4e3a1e"), false, 2.0)
+		var n := maxi(1, int(round(maxf(r.size.x, r.size.y) / tile)))
+		for i in n:
+			var cell := Rect2(r.position + (Vector2(i * tile, 0) if r.size.x >= r.size.y else Vector2(0, i * tile)), Vector2(tile, tile)).grow(-3)
+			draw_line(cell.position, cell.end, Color("#4e3a1e"), 1.5)
+			draw_line(Vector2(cell.end.x, cell.position.y), Vector2(cell.position.x, cell.end.y), Color("#4e3a1e"), 1.5)
+	else:
+		draw_rect(r.grow(-2), Color("#7b7e89"))
+		draw_rect(Rect2(r.position + Vector2(2, 2), Vector2(r.size.x - 4, 6)), Color("#a6a9b4"))
+		draw_rect(r.grow(-2), Color("#2a2d36"), false, 2.0)
+		var stripe := Color("#e8c547")
+		var i := 4.0
+		while i < maxf(r.size.x, r.size.y) - 6.0:
+			var a := r.position + (Vector2(i, 12) if r.size.x >= r.size.y else Vector2(6, i))
+			draw_line(a, a + Vector2(6, 6), stripe, 2.0)
+			i += 12.0
+
+
 func _draw_overlay() -> void:
+	for b in bullets:
+		var v: Vector2 = b.vel
+		var col := Color("#ffe8a3") if b.owner == Combat.PLAYER_BULLET else Color("#ff6b5f")
+		_overlay.draw_line(b.pos - v.normalized() * 9.0, b.pos, col, 2.0)
+	for im in _impacts:
+		_overlay.draw_circle(im.pos, 3.0 + 6.0 * (0.15 - float(im.t)) / 0.15, Color(1, 0.9, 0.6, float(im.t) * 5.0))
+	if _aim_t > 0.0 and player != null:
+		var d: Vector2 = player.aim_dir if player.aim_dir != Vector2.ZERO else player.facing
+		var o: Vector2 = player.position + Vector2(0, -2)
+		_overlay.draw_line(o + d * 6.0, o + d * 17.0, Color("#1a1a22"), 4.0)
+		_overlay.draw_line(o + d * 12.0, o + d * 17.0, Color("#9aa0ad"), 2.0)
+		if _flash_t > 0.0:
+			_overlay.draw_circle(o + d * 21.0, 5.0, Color(1, 0.85, 0.4, 0.9))
 	if placing != "" and GameState.data.buildables.has(placing):
 		var c := ghost_cell()
 		var size: Array = GameState.data.buildables[placing].size

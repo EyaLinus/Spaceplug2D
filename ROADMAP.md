@@ -118,7 +118,7 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
 - → **Release v0.1.7**.
 
 ### Wave 4 – combat & factions (mostly needs wave 1 only, but large)
-- **E1 Ground combat.** Player health, twin-stick aiming (mouse), 2–3 weapons (pistol, SMG, shotgun), weapon wheel,
+- [x] **E1 Ground combat.** Player health, twin-stick aiming (mouse), 2–3 weapons (pistol, SMG, shotgun), weapon wheel,
   cover objects on surfaces, officers can draw weapons at high heat. Not parallel with B1 (surface.gd).
 - **E2 Space combat.** Hull + shield, lasers and missiles, dodge (boost), pirate ships that attack in deep space,
   weapon/shield modules at the mechanic (visible via E3). Not parallel with A6 (world.gd).
