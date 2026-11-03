@@ -7,6 +7,7 @@ const UI = preload("res://scripts/ui/ui_theme.gd")
 const WorldScript = preload("res://scripts/world/world.gd")
 const HudScript = preload("res://scripts/ui/hud.gd")
 const StationScript = preload("res://scripts/ui/station_ui.gd")
+const BenchScript = preload("res://scripts/ui/bench_ui.gd")
 const SurfaceScript = preload("res://scripts/planet/surface.gd")
 const EstateLayout = preload("res://scripts/planet/estate_layout.gd")
 const MainMenuScript = preload("res://scripts/ui/menu/main_menu.gd")
@@ -19,7 +20,7 @@ const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 
 ## Which station tab a surface interaction opens.
-const SURFACE_TABS := {"market": "Market", "lab": "Lab", "shipyard": "Shipyard", "office": "Office", "deal": "Deals", "fence": "Deals"}
+const SURFACE_TABS := {"market": "Market", "shipyard": "Shipyard", "office": "Office", "deal": "Deals", "fence": "Deals"}
 
 const ACTIONS := {
 	"ship_thrust": [KEY_W, KEY_UP],
@@ -39,6 +40,7 @@ var world: Node2D
 var surface: Node2D  ## current planet surface instance, null in space
 var hud: Control
 var station: Control
+var bench: Control  ## station overlay on foot: start a tray, mix, play the station minigame (G2)
 var hyper: Control  ## jump-drive charge streaks and the hyperspace transition
 var phone: Control  ## Com-Phone overlay (scripts/ui/phone), usable in flight and on foot
 var menu: Control
@@ -70,6 +72,11 @@ func _ready() -> void:
 	station = StationScript.new()
 	root.add_child(station)
 	station.close_requested.connect(station.close)
+	bench = BenchScript.new()
+	root.add_child(bench)
+	bench.take_down_requested.connect(func(i: int):
+		if surface != null and surface.cfg.has("estate") and GameState.act(GameState.game.remove_building(surface.cfg.estate, i)).ok:
+			enter_estate(surface.cfg.estate, surface.player.position))
 	phone = PhoneScript.new()
 	root.add_child(phone)
 	hyper = HyperspaceScript.new()
@@ -124,6 +131,7 @@ func _input(event: InputEvent) -> void:
 func toggle_phone() -> void:
 	if not phone.visible:
 		station.close()
+		bench.close()
 		if surface != null:
 			surface.placing = ""
 	phone.toggle()
@@ -184,7 +192,7 @@ func load_slot(i: int) -> void:
 
 func _process(_delta: float) -> void:
 	if surface != null:
-		surface.player.frozen = GameState.paused or station.visible or end_screen.visible or phone.visible
+		surface.player.frozen = GameState.paused or station.visible or bench.visible or end_screen.visible or phone.visible
 	world.input_blocked = phone.visible
 	var gm = GameState.game
 	hyper.charge = Galaxy.progress(gm) if gm != null and Galaxy.charging(gm) else 0.0
@@ -330,12 +338,15 @@ func _on_surface_action(action: String, p: Dictionary) -> void:
 		"exit_estate":
 			leave_estate()
 			return
+		"stash":
+			station.open({"tabs": ["Stash"], "title": "Stash crate", "estate": surface.cfg.estate})
+			return
 		"enter_ship_bay":
 			enter_ship_bay()
 			return
 		"station":
 			var bd: Dictionary = surface.cfg.buildings.filter(func(b): return b.id == p.id)[0]
-			station.open({"tabs": ["Lab", "Station"], "title": bd.name, "estate": surface.cfg.estate, "index": bd.index})
+			bench.open_station(bd.station, bd.index)
 			return
 		"place":
 			if GameState.act(g.place_building(surface.cfg.estate, p.station, p.x, p.y)).ok:

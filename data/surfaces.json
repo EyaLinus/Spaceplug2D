@@ -26,7 +26,7 @@
       {"id": "market", "name": "Night Market", "rect": [28, 4, 13, 8], "door": [34.5, 12], "side": "bottom",
        "wall": "#7a5a3a", "roof": "#a0472f", "sign": "NIGHT MARKET", "action": "market", "label": "Night Market"},
       {"id": "cannery", "name": "Old Cannery", "rect": [3, 21, 13, 9], "door": [9.5, 21], "side": "top",
-       "wall": "#5d5a52", "roof": "#3b3a36", "sign": "CANNERY", "action": "lab", "label": "Old Cannery – your hydro rig"},
+       "wall": "#5d5a52", "roof": "#3b3a36", "sign": "CANNERY", "action": "estate", "estate": "cannery_rig", "label": "Old Cannery – your production line"},
       {"id": "office", "name": "Ouroboros Consortium", "rect": [36, 21, 11, 8], "door": [40.5, 21], "side": "top",
        "wall": "#2e2440", "roof": "#5a2d6e", "sign": "OUROBOROS", "action": "office", "label": "Consortium office"},
       {"id": "glasshouse", "name": "Ridge Glasshouse", "rect": [43, 3, 5, 6], "door": [45.5, 9], "side": "bottom", "wall": "#5a7a6a", "roof": "#8fd1c0", "sign": "FOR SALE", "action": "estate", "estate": "ridge_glasshouse", "label": "Ridge Glasshouse (estate)"},

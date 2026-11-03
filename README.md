@@ -64,6 +64,7 @@ shows "Windows protected your PC" → *More info* → *Run anyway*).
 scripts/core/       headless simulation, no Node dependencies (testable)
   galaxy.gd         lanes, route planning, heat/price overlays and the jump drive charge (phone Map app)
   combat.gd         ground combat rules: health, weapons, officer draw, bullet and cover geometry
+  bench.gd          production on foot: the batch tray carried from station to station inside an estate
   game.gd           state + actions (buy, cook, sell, upgrade, bribe, bust, debt), tick(), save/load
   mixing.gd         recipe → traits → product key/value
   spacecombat.gd    space combat: hull/shield damage, boost, missiles, pirate pressure, defeat, mechanic repairs

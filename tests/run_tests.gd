@@ -9,6 +9,7 @@ const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const Corruption = preload("res://scripts/core/corruption.gd")
 const Workers = preload("res://scripts/core/workers.gd")
+const Bench = preload("res://scripts/core/bench.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Orders = preload("res://scripts/core/orders.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
@@ -36,6 +37,9 @@ func _init() -> void:
 		"test_combat_cover_layout",
 		"test_combat_save",
 		"test_estates",
+		"test_bench_line",
+		"test_bench_mixing",
+		"test_bench_save",
 		"test_workers",
 		"test_ship_bay",
 		"test_orders",
@@ -210,7 +214,8 @@ func test_surface_layouts() -> void:
 			reachable.append(n.action)
 		var ld: Dictionary = data.locations[loc]
 		check("market" in reachable, "%s market reachable" % loc)
-		check(not ld.get("lab", false) or "lab" in reachable, "%s lab reachable" % loc)
+		var starter_here: bool = s.buildings.any(func(b): return data.estates.get(b.get("estate", ""), {}).get("starter", false))
+		check(not ld.get("lab", false) or starter_here, "%s production line (starter estate) reachable" % loc)
 		check(not ld.get("shipyard", false) or "shipyard" in reachable, "%s shipyard reachable" % loc)
 		check(not ld.get("office", false) or "office" in reachable, "%s office reachable" % loc)
 		check(not ld.get("fence", false) or "fence" in reachable, "%s fence reachable" % loc)
@@ -734,7 +739,7 @@ func test_orders() -> void:
 	g.location = "mireth"
 	g.buy_estate("cannery_annex")
 	g.location = ""
-	check(Orders.destinations(g).size() == 2, "stash plus the owned estate")
+	check(Orders.destinations(g).size() == 3, "stash plus the cannery rig plus the owned estate")
 	var far: Dictionary = Orders.quote(g, "nanoflux", 5, "cannery_annex", false)
 	check(far.ok, "estate destination accepted")
 	check(Orders.place(g, "nanoflux", 5, "cannery_annex", true).ok, "order to the estate")
@@ -1947,3 +1952,101 @@ func test_corruption_save() -> void:
 	var o := Game.new()
 	o.from_dict(data, JSON.parse_string(JSON.stringify(old)))
 	check(o.corruption.wanted == 0.0 and not People.official_state(o, "vell").hired, "old saves load with a clean record")
+## A fresh game standing inside the starter Old Cannery rig with raws and additives in the hold.
+func bench_game() -> Game:
+	var g := new_game()
+	g.inside_estate = "cannery_rig"
+	g.cargo = {"cannabis": 10, "pseudo": 10, "nanoflux": 10, "ion_syrup": 10}
+	return g
+
+
+func test_bench_line() -> void:
+	var g := new_game()
+	check(g.estate_owned("cannery_rig") and g.estates.cannery_rig.buildings.size() == 7, "the cannery rig is yours from day one with all 7 stations")
+	check(not g.remove_building("cannery_rig", 0).ok, "starter stations are bolted down")
+	g = bench_game()
+	check(Bench.use_mode(g, "cook_stove").mode == "wait", "no tray: the stove waits")
+	check(Bench.use_mode(g, "trim_table").mode == "start", "the trim table starts weed")
+	check(Bench.bases_starting_at(data, "precursor_scale").size() == 3, "the scale starts cocaine, meth, fentanyl")
+	check(not Bench.begin(g, "precursor_scale", "weed", 5).ok, "weed does not start on the scale")
+	check(not Bench.begin(g, "trim_table", "weed", 99).ok, "rig capacity limits the tray")
+	check(Bench.begin(g, "trim_table", "weed", 5).ok and g.cargo.cannabis == 5, "tray started, raws leave the hold")
+	check(not Bench.begin(g, "trim_table", "weed", 5).ok, "one tray per estate")
+	check(Bench.use_mode(g, "trim_table").mode == "play", "first the trim table")
+	check(Bench.use_mode(g, "cook_stove").mode == "wait", "the stove is not next yet")
+	check(not Bench.record(g, "cook_stove", 1.0).ok, "stations go in line order")
+	check(Bench.record(g, "trim_table", 0.9).ok and Bench.next_station(g, Bench.tray(g)) == "extractor", "weed goes to the extractor next")
+	check(Bench.use_mode(g, "mixing_station").mode == "wait", "mixing only after the extractor")
+	Bench.record(g, "extractor", 0.9)
+	check(Bench.use_mode(g, "mixing_station").mode == "mix", "now additives can go in")
+	check(Bench.next_station(g, Bench.tray(g)) == "cook_stove", "mixing is an optional stop")
+	Bench.record(g, "cook_stove", 0.9)
+	check(Bench.tray(g).mixed and Bench.use_mode(g, "mixing_station").mode == "wait", "past the stove there is no mixing any more")
+	var r: Dictionary = Bench.record(g, "pack_table", 0.9)
+	check(r.ok and Bench.tray(g).is_empty(), "the last station finishes the tray")
+	check(g.lab_queue.size() == 1 and str(g.lab_queue[0].product).begins_with("weed") and not "+" in str(g.lab_queue[0].product).split(":")[1], "plain weed queued: %s" % [g.lab_queue])
+	var grade: int = Production.outcome(data, {"trim_table": 0.9, "extractor": 0.9, "cook_stove": 0.9, "pack_table": 0.9}).grade
+	check(str(g.lab_queue[0].product).ends_with("@%d" % grade) or grade == 1, "the minigame scores set the grade")
+	# abandon gives the raws back via the stash
+	Bench.begin(g, "trim_table", "weed", 3)
+	check(Bench.abandon(g).ok and g.stash.get("cannabis", 0) == 3 and Bench.tray(g).is_empty(), "scrapping a tray keeps the ingredients")
+	# outside an estate nothing starts
+	g.inside_estate = ""
+	check(not Bench.begin(g, "trim_table", "weed", 1).ok, "no bench outside estates")
+
+
+func test_bench_mixing() -> void:
+	var g := bench_game()
+	Bench.begin(g, "trim_table", "weed", 4)
+	Bench.record(g, "trim_table", 0.5)
+	Bench.record(g, "extractor", 0.5)
+	check(not Bench.mix(g, ["nanoflux", "ion_syrup", "nanoflux", "ion_syrup"]).ok, "max 3 additives")
+	check(not Bench.mix(g, ["void_salt"]).ok, "missing additive refused")
+	var pv: Dictionary = Bench.preview(g, "weed", ["nanoflux"])
+	check(pv.value > 0 and pv.traits.size() >= 1, "preview shows the result")
+	check(Bench.mix(g, ["nanoflux"]).ok and g.cargo.nanoflux == 6, "additives leave the hold per unit")
+	check(Bench.next_station(g, Bench.tray(g)) == "mixing_station" and Bench.use_mode(g, "mixing_station").mode == "play", "then the pour minigame")
+	check(not Bench.mix(g, ["ion_syrup"]).ok, "mixed once only")
+	for st in ["mixing_station", "cook_stove", "pack_table"]:
+		Bench.record(g, st, 0.5)
+	check(g.lab_queue.size() == 1 and g.lab_queue[0].product.begins_with(pv.product.split("@")[0]), "mixed product queued: %s vs %s" % [g.lab_queue, pv.product])
+	# meth goes scale -> mixing? (no extractor) -> cook -> refiner -> pack
+	var m := bench_game()
+	Bench.begin(m, "precursor_scale", "meth", 3)
+	check(Bench.use_mode(m, "mixing_station").mode == "wait", "meth: scale first")
+	Bench.record(m, "precursor_scale", 0.5)
+	check(Bench.use_mode(m, "mixing_station").mode == "mix" and Bench.next_station(m, Bench.tray(m)) == "cook_stove", "meth can mix right after the scale")
+	# an estate without a mixing station: no mixing, still cooks plain
+	var e := new_game()
+	e.credits = 20000
+	e.location = "cinder"
+	e.buy_estate("shaft_shack")
+	e.inside_estate = "shaft_shack"
+	for b in [["trim_table", 0, 0], ["extractor", 2, 0], ["cook_stove", 4, 0], ["pack_table", 6, 0]]:
+		e.place_building("shaft_shack", b[0], b[1], b[2])
+	e.cargo = {"cannabis": 5, "nanoflux": 5}
+	check(Bench.begin(e, "trim_table", "weed", 5).ok, "shack line starts")
+	for st in ["trim_table", "extractor", "cook_stove", "pack_table"]:
+		Bench.record(e, st, 0.6)
+	check(e.lab_queue.size() == 1, "shack batch queued without mixing")
+
+
+func test_bench_save() -> void:
+	var g := bench_game()
+	Bench.begin(g, "trim_table", "weed", 4)
+	Bench.record(g, "trim_table", 0.7)
+	Bench.record(g, "extractor", 0.4)
+	Bench.mix(g, ["ion_syrup"])
+	var json := JSON.stringify(g.to_dict())
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(json))
+	h.inside_estate = "cannery_rig"
+	check(Bench.tray(h).qty == 4 and Bench.tray(h).additives == ["ion_syrup"] and Bench.tray(h).done == ["trim_table", "extractor"], "tray survives save/load")
+	check(JSON.stringify(h.to_dict()) == json, "save with a tray is stable")
+	check(h.estates.cannery_rig.buildings[0].get("fixed", false), "fixed stations stay fixed after load")
+	var d := new_game().to_dict()
+	d.erase("bench")
+	d.estates.erase("cannery_rig")
+	var old := Game.new()
+	old.from_dict(data, d)
+	check(old.estate_owned("cannery_rig") and old.bench.is_empty(), "old saves get the cannery rig and no tray")

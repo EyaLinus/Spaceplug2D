@@ -281,6 +281,10 @@
   },
   "estates": {
     "ship_bay": {"name": "Cargo Bay", "ship": true, "size": [7, 4], "desc": "The hold of your own ship, fitted out as a cramped workshop. Only usable while docked."},
+    "cannery_rig": {"name": "Old Cannery", "location": "mireth", "price": 0, "size": [11, 6], "starter": true,
+      "desc": "Your rented hydro rig in the old cannery: a full production line, bolted to the floor. Carry a batch from table to table.",
+      "stations": [["trim_table", 0, 0], ["precursor_scale", 3, 0], ["extractor", 5, 0], ["mixing_station", 8, 0],
+        ["cook_stove", 0, 2], ["refiner", 3, 2], ["pack_table", 6, 2]]},
     "cannery_annex": {"name": "Cannery Annex", "location": "mireth", "price": 1500, "size": [9, 6], "desc": "Damp storage hall behind the cannery. Room for a small line."},
     "ridge_glasshouse": {"name": "Ridge Glasshouse", "location": "mireth", "price": 4500, "size": [13, 8], "desc": "Old hydro glasshouse on the ridge. Big, bright, discreet."},
     "shaft_shack": {"name": "Shaft 9 Shack", "location": "cinder", "price": 1200, "size": [8, 5], "desc": "Abandoned miners' shack next to a dry shaft."},

@@ -11,6 +11,7 @@ const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const Corruption = preload("res://scripts/core/corruption.gd")
 const Workers = preload("res://scripts/core/workers.gd")
+const Bench = preload("res://scripts/core/bench.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Orders = preload("res://scripts/core/orders.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
@@ -65,6 +66,7 @@ var drops: Array = []  ## dead drops you requested (see deaddrops.gd)
 var next_drop_id: int = 0
 var drops_unseen: int = 0  ## finished drop jobs since the DeadDrop app was opened (runtime only)
 var workers: Array = []  ## hired staff [{id, loyalty, estate, hired_day}] (see workers.gd)
+var bench: Dictionary = {}  ## estate id -> batch tray carried between stations on foot (see bench.gd), saved
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 
 
@@ -108,6 +110,8 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	drops_unseen = 0
 	workers = []
 	Workers.ensure(estates[SHIP_BAY])
+	bench = {}
+	_add_starter_estates()
 	demand = {}
 	for loc in data.locations:
 		demand[loc] = {}
@@ -479,6 +483,13 @@ func start_batch(base: String, additives: Array, qty: int, scores: Dictionary = 
 	var need := batch_needs(base, additives, qty)
 	for k in need:
 		_add(cargo, k, -need[k])
+	return queue_batch(base, additives, qty, scores)
+
+
+## Puts a batch whose ingredients are already used up into the cook queue (start_batch, the bench on foot).
+func queue_batch(base: String, additives: Array, qty: int, scores: Dictionary = {}) -> Dictionary:
+	if lab_queue.size() >= 3:
+		return _fail("Lab queue is full.")
 	var res := Production.outcome(data, scores)
 	var out_qty := Production.output_qty(qty, res.yield_mult)
 	var product := Mixing.key(base, Mixing.traits_for(data, base, additives), res.grade)
@@ -616,6 +627,20 @@ func bust() -> Dictionary:
 
 # ---------------------------------------------------------------- estates
 
+## Estates you start with (content.json estates flagged "starter", e.g. the Old Cannery rig): owned from the first
+## day with their stations bolted down ("fixed"). Old saves get them on load.
+func _add_starter_estates() -> void:
+	for id in data.estates:
+		var e: Dictionary = data.estates[id]
+		if not e.get("starter", false) or estates.has(id):
+			continue
+		var list: Array = []
+		for b in e.get("stations", []):
+			list.append({"id": str(b[0]), "x": int(b[1]), "y": int(b[2]), "fixed": true})
+		estates[id] = {"buildings": list}
+		Workers.ensure(estates[id])
+
+
 func estate_owned(id: String) -> bool:
 	return estates.has(id)
 
@@ -702,6 +727,8 @@ func remove_building(estate_id: String, index: int) -> Dictionary:
 	if not estate_reachable(estate_id) or index < 0 or index >= estates[estate_id].buildings.size():
 		return _fail("Nothing to remove.")
 	var b: Dictionary = estates[estate_id].buildings[index]
+	if b.get("fixed", false):
+		return _fail("The %s came with the place and stays." % data.stations[b.id].name)
 	var refund := int(round(int(data.buildables[b.id].cost) * float(data.estate_refund)))
 	estates[estate_id].buildings.remove_at(index)
 	credits += refund
@@ -721,7 +748,7 @@ func to_dict() -> Dictionary:
 		"next_offer_id": next_offer_id, "offer_clock": snappedf(offer_clock, 0.01), "upgrades": upgrades.duplicate(),
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
-		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers),
+		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
 	}
 
 
@@ -773,9 +800,12 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 		if data.estates.has(e):
 			var list: Array = []
 			for b in d.estates[e].get("buildings", []):
-				list.append({"id": str(b.id), "x": int(b.x), "y": int(b.y)})
+				var nb := {"id": str(b.id), "x": int(b.x), "y": int(b.y)}
+				if b.get("fixed", false):
+					nb.fixed = true
+				list.append(nb)
 			estates[e] = {"buildings": list}
-		Workers.load_estate(d.estates[e], estates[e])
+			Workers.load_estate(d.estates[e], estates[e])
 	if not estates.has(SHIP_BAY):
 		estates[SHIP_BAY] = {"buildings": []}
 		Workers.ensure(estates[SHIP_BAY])
@@ -784,6 +814,8 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Combat.from_save(self, d)
 	Deaddrops.from_save(self, d)
 	workers = Workers.from_save(self, d.get("workers", []))
+	_add_starter_estates()
+	Bench.from_save(self, d)
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

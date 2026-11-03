@@ -1,5 +1,24 @@
 # Progress log
 
+## G2: lab on foot (phase 3, 2026-11-03)
+- **No lab menu any more.** The Old Cannery door now enters `cannery_rig`, a starter estate (content.json `estates`,
+  `"starter": true`, owned from day one, old saves get it on load) with all 7 stations bolted down (`fixed`, can't be
+  taken down). Any estate works the same way.
+- **Core** `scripts/core/bench.gd`, state `Game.bench` (estate id -> tray, saved): `begin` at the drug's prep station
+  (raws leave the hold), optional `mix` at the Mixing Station (only after the pre-mix stations, before any later one;
+  walking on past it means no additives), `record` each station's minigame score in line order, the last station calls
+  `Game.queue_batch` (new; `start_batch` = check + consume + queue_batch). `abandon` puts raws/additives in the stash.
+- **UI** `scripts/ui/bench_ui.gd` opens on [E] at a station: start (raw cards, units stepper), ingredient shelf
+  (additive cards with tooltips, order, live trait/value preview), the station minigame, result; line strip with
+  ✓/▶/± per station, Scrap tray, Take down for non-fixed stations. Estates got a stash crate (cook queue, stash,
+  load into hold). The next station pulses gold on the floor (teal = optional mixing).
+- `station_ui.gd` lost the Lab tab and the minigame runner; `minigame_runner.gd` stays for `effect_text()`.
+- Verified: 2581 unit checks (new `test_bench_line`, `test_bench_mixing`, `test_bench_save`), UI smoke walks the
+  cannery line with the minigame bots (start, extractor, shelf + pour, cook, pack), Esc/scrap/stash crate; menu smoke,
+  sim; screenshots of the rig, start overlay, shelf, minigame, result and stash crate reviewed.
+- Gaps: no hand-batch shortcut for players any more (workers automate, C2 machines later); the stash crate can be
+  covered by a station placed in the bottom-left cell; the balance bot still uses the core quick batch.
+
 ## G1: UI skin (phase 3, 2026-11-03)
 - **Art:** `build_ui()` in `tools/art/build_art.py` draws 14 bevelled 12×12 nine-patch frames (panel, inset, card,
   button states, gold accent button, tabs, tooltip, bar) from the art_profile palette → `assets/gfx/ui/*.png`.

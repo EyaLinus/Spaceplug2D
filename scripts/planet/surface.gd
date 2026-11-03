@@ -11,6 +11,7 @@ const OfficerScript = preload("res://scripts/planet/officer.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Nav = preload("res://scripts/planet/nav.gd")
 const People = preload("res://scripts/core/people.gd")
+const Bench = preload("res://scripts/core/bench.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const CombatHud = preload("res://scripts/planet/combat_hud.gd")
 
@@ -955,7 +956,28 @@ func _draw_cover(r: Rect2, kind: String) -> void:
 			i += 12.0
 
 
+## Inside an estate: a pulsing gold frame around the station the batch tray goes to next (G2, bench.gd).
+func _draw_next_station() -> void:
+	if not cfg.has("estate") or GameState.game == null:
+		return
+	var g = GameState.game
+	var t: Dictionary = Bench.tray(g, str(cfg.estate))
+	if t.is_empty():
+		return
+	var targets: Array = [Bench.next_station(g, t)]
+	if Bench.can_mix(g, t):
+		targets.append(Bench.MIX)
+	var pulse := 0.55 + 0.45 * sin(Time.get_ticks_msec() / 180.0)
+	for b in cfg.buildings:
+		if b.get("station", "") in targets:
+			var r := _rect(b.rect).grow(3.0)
+			var col := Color("#ffd166") if b.station == targets[0] else Color("#4fe3c1")
+			col.a = pulse
+			_overlay.draw_rect(r, col, false, 2.0)
+
+
 func _draw_overlay() -> void:
+	_draw_next_station()
 	for b in bullets:
 		var v: Vector2 = b.vel
 		var col := Color("#ffe8a3") if b.owner == Combat.PLAYER_BULLET else Color("#ff6b5f")

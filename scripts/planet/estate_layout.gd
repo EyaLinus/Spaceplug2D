@@ -15,10 +15,11 @@ static func build_cfg(data: Dictionary, estate_id: String, buildings: Array) -> 
 	var cfg := {
 		"name": e.name, "size": [w + 2 * WALL, h + 2 * WALL], "tile": 32,
 		"ground": "#3a3328", "ground_alt": "#40382c", "road": "#45464f", "road_line": "#6b6c78",
-		"roads": [], "plazas": [], "walkers": 0, "security": 0.0, "props": [], "npcs": [],
+		"roads": [], "plazas": [], "walkers": 0, "security": 0.0, "props": [["crate", WALL + 0.5, h + WALL - 0.4]], "npcs": [],
 		"spawn": [door.x + WALL + 0.5, door.y + WALL + 0.3],
 		"estate": estate_id, "estate_size": [w, h], "estate_offset": WALL, "zoom": 2.0, "grass": false,
-		"exits": [{"id": "exit", "pos": [door.x + WALL + 0.5, door.y + WALL + 0.75], "label": "Leave %s" % e.name, "action": "exit_estate"}],
+		"exits": [{"id": "exit", "pos": [door.x + WALL + 0.5, door.y + WALL + 0.75], "label": "Leave %s" % e.name, "action": "exit_estate"},
+			{"id": "stash", "pos": [WALL + 0.5, h + WALL - 0.5], "label": "Stash crate", "action": "stash"}],
 		"buildings": [],
 	}
 	var wall := {"wall": "#2a2622", "roof": "#2a2622", "style": "wall"}

@@ -157,7 +157,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
 - [x] **G1 UI skin.** One new look for every panel, button, tab, list and bar (`ui_theme.gd`): pixel-art frames from the
   art pipeline, warm "contraband ledger" palette instead of the default blue, item cards with icons and rarity/grade
   colours, shared tooltip style. Every existing menu and the phone change at once.
-- **G2 Lab on foot.** No lab dropdown menu any more. The cannery becomes your first rented estate with fixed stations;
+- [x] **G2 Lab on foot.** No lab dropdown menu any more. The cannery becomes your first rented estate with fixed stations;
   a batch is a tray you carry from station to station on foot: put raws in at the prep station, choose additives at
   the Mixing Station (ingredient shelf with live trait/value preview), play each station's minigame, finished product
   lands in the estate stash. Quick batch survives only as the workers' automation (B3). Core: `scripts/core/bench.gd`.
