@@ -1,1 +1,0 @@
-- **New UI look:** every menu, tab, list, phone screen and button now uses pixel-art frames in the game's own palette (dusk purple panels with brass rims, gold buttons for the main action) instead of the blue prototype boxes. Tooltips and scroll bars got the same style.

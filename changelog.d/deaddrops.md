@@ -1,1 +1,0 @@
-- **DeadDrop app:** request anonymous drop points on planets, stations and outposts. Leave an agreed Deal-O-Matic deal there (30 % of the heat, customer collects and pays later, small theft risk) or send goods to your hub stash by courier.
