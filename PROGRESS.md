@@ -1,5 +1,17 @@
 # Progress log
 
+## Q2: main quest, chapter 1 (phase 3 wave 7, 2026-11-03)
+- 7 missions in `data/quests.json` (`main: true, chapter: 1`), chained after the tutorial (and started by Skip tutorial
+  or by loading a pre-quest save): The Collector (Mara Vesk, Ouroboros: pay 1,000 cr → +2 debt days), Room to Grow
+  (second estate, 300 cr), Heavier Product (Coca Leaf at Cinder, cook Cocaine or stronger → 400 cr + Vesna), Out of
+  Reach (Rhea Dunmore: jump to Kovar, land on Varrow → 300 cr), Desert Friends (sell 10 units to Rhea → 500 cr + Kip),
+  Black Comets (3 raiders → 600 cr), Clean Slate (debt 0). Steps with an extra state check complete on their own
+  when the condition already holds (old saves that paid down the debt).
+- `pirate_down` and `ship_destroyed` now go through `Game._emit`, so quests see them. Win screen: "DEBT CLEARED ·
+  CHAPTER 1 COMPLETE", button "Keep playing"; tracker tag "MAIN QUEST · CH.1".
+- Verified: 2898 unit checks (whole chapter played through the core incl. jump routing of the waypoint), UI smoke,
+  menu smoke. Gaps: the cartels are only story text until I1; numbers eyeballed; not played by a human.
+
 ## Q1: quest core + tutorial (phase 3 wave 7, 2026-11-03)
 - **Core** `scripts/core/quests.gd`, quests in `data/quests.json` (merged into content as `quests`), state `Game.quests`
   {active, done, step, count, tracked} (saved). Steps complete on an event (`on` + `match` payload filter, `min`, `sum`,

@@ -181,7 +181,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
 - **Q1 Quest core + tutorial.** ✅ done (see PROGRESS.md). `scripts/core/quests.gd`: data-driven quests in `content.json` (steps with conditions
   on game events: buy, cook, sell, dock, deliver, talk), tracker in the HUD, Quests app on the phone, waypoint arrow.
   Tutorial chain from landing to first sale, first mix, first estate, first jump.
-- **Q2 Main quest, act 1.** Story around the Ouroboros debt and the cartels (see I1): 6–8 missions with named
+- **Q2 Main quest, act 1.** ✅ done (see PROGRESS.md). Story around the Ouroboros debt and the cartels (see I1): 6–8 missions with named
   characters, rewards (blueprints, contacts, estates); the debt goal becomes chapter 1 instead of the whole game.
 - → **Release v0.1.10**.
 

@@ -294,13 +294,12 @@ static func to_save(g) -> Dictionary:
 	return g.quests.duplicate(true)
 
 
-## Saves from before the quest system: the tutorial counts as done (the player knows the loop already).
+## Saves from before the quest system: the tutorial counts as done (the player knows the loop already) and the main
+## quest starts; its steps that already hold (debt paid down, estates owned) complete on their own.
 static func from_save(g, d: Dictionary, has_key: bool) -> void:
 	g.quests = empty_state()
 	if not has_key:
-		for qid in defs(g):
-			if defs(g)[qid].get("tutorial", false):
-				g.quests.done.append(qid)
+		skip_tutorial(g)  # straight into the main quest
 		return
 	for qid in d.get("done", []):
 		if defs(g).has(str(qid)) and not is_done(g, str(qid)):

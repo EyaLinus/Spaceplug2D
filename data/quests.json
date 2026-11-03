@@ -6,23 +6,95 @@
 		"start": true,
 		"intro": "So you're the one the Consortium staked a ship to. Six grand by day twelve, huh? Then quit standing on my pad. Buds at the market, the old cannery is yours to use. Let's see if you can cook.",
 		"steps": [
-			{"text": "Buy 5 Cannabis Buds at the Mireth market", "check": {"type": "cargo", "item": "cannabis", "min": 5},
-				"target": {"loc": "mireth", "building": "market"}, "hint": "Walk to the market door and press E. Put the buds in the basket, then Checkout."},
-			{"text": "Walk into the Old Cannery", "check": {"type": "inside", "id": "cannery_rig"},
-				"target": {"loc": "mireth", "estate": "cannery_rig"}, "hint": "The cannery is your free starter lab. Press E at its door."},
-			{"text": "Start a tray of Weed at the Trim Table", "on": "tray_started", "match": {"base": "weed"},
-				"target": {"loc": "mireth", "estate": "cannery_rig", "station": "trim_table"}, "hint": "Press E at the Trim Table, pick an amount and snip the fan leaves."},
-			{"text": "Mix Ion Syrup into the batch at the Mixing Station", "on": "tray_mixed", "min": {"additives": 1},
-				"on_start": {"tray_additive": "ion_syrup", "tray_fallback": 5},
-				"target": {"loc": "mireth", "estate": "cannery_rig", "station": "mixing_station"}, "hint": "Okka slipped you a jar of Ion Syrup. Additives change the traits and the price."},
-			{"text": "Carry the tray through the rest of the line", "on": "lab_started", "match": {"base": "weed"},
-				"target": {"loc": "mireth", "estate": "cannery_rig", "station": "@next"}, "hint": "The glowing frame marks the next station. Each minigame decides yield, grade or heat."},
-			{"text": "Collect the cooked batch from the stash crate", "on": "collected", "min": {"qty": 1},
-				"target": {"loc": "mireth", "estate": "cannery_rig", "stash": true}, "hint": "Cooking takes a little while. The HUD shows the lab progress."}
+			{
+				"text": "Buy 5 Cannabis Buds at the Mireth market",
+				"check": {
+					"type": "cargo",
+					"item": "cannabis",
+					"min": 5
+				},
+				"target": {
+					"loc": "mireth",
+					"building": "market"
+				},
+				"hint": "Walk to the market door and press E. Put the buds in the basket, then Checkout."
+			},
+			{
+				"text": "Walk into the Old Cannery",
+				"check": {
+					"type": "inside",
+					"id": "cannery_rig"
+				},
+				"target": {
+					"loc": "mireth",
+					"estate": "cannery_rig"
+				},
+				"hint": "The cannery is your free starter lab. Press E at its door."
+			},
+			{
+				"text": "Start a tray of Weed at the Trim Table",
+				"on": "tray_started",
+				"match": {
+					"base": "weed"
+				},
+				"target": {
+					"loc": "mireth",
+					"estate": "cannery_rig",
+					"station": "trim_table"
+				},
+				"hint": "Press E at the Trim Table, pick an amount and snip the fan leaves."
+			},
+			{
+				"text": "Mix Ion Syrup into the batch at the Mixing Station",
+				"on": "tray_mixed",
+				"min": {
+					"additives": 1
+				},
+				"on_start": {
+					"tray_additive": "ion_syrup",
+					"tray_fallback": 5
+				},
+				"target": {
+					"loc": "mireth",
+					"estate": "cannery_rig",
+					"station": "mixing_station"
+				},
+				"hint": "Okka slipped you a jar of Ion Syrup. Additives change the traits and the price."
+			},
+			{
+				"text": "Carry the tray through the rest of the line",
+				"on": "lab_started",
+				"match": {
+					"base": "weed"
+				},
+				"target": {
+					"loc": "mireth",
+					"estate": "cannery_rig",
+					"station": "@next"
+				},
+				"hint": "The glowing frame marks the next station. Each minigame decides yield, grade or heat."
+			},
+			{
+				"text": "Collect the cooked batch from the stash crate",
+				"on": "collected",
+				"min": {
+					"qty": 1
+				},
+				"target": {
+					"loc": "mireth",
+					"estate": "cannery_rig",
+					"stash": true
+				},
+				"hint": "Cooking takes a little while. The HUD shows the lab progress."
+			}
 		],
-		"reward": {"credits": 120},
+		"reward": {
+			"credits": 120
+		},
 		"outro": "Not bad for a pilot. Now let's talk about what that stuff is worth.",
-		"next": ["tut_price"]
+		"next": [
+			"tut_price"
+		]
 	},
 	"tut_price": {
 		"title": "Know Your Product",
@@ -30,13 +102,32 @@
 		"tutorial": true,
 		"intro": "Every mix you cook lands in the Products app on your Com-Phone. Look it up and put a price on it. Too greedy and nobody bites.",
 		"steps": [
-			{"text": "Open the Products app on your Com-Phone", "on": "app_opened", "match": {"app": "products"},
-				"target": {"app": "products"}, "hint": "Press the phone key, then tap Products."},
-			{"text": "Set an asking price for your new Weed", "on": "price_set",
-				"target": {"app": "products"}, "hint": "Tap the product, then use the price buttons. Market = buyers pay what they offer."}
+			{
+				"text": "Open the Products app on your Com-Phone",
+				"on": "app_opened",
+				"match": {
+					"app": "products"
+				},
+				"target": {
+					"app": "products"
+				},
+				"hint": "Press the phone key, then tap Products."
+			},
+			{
+				"text": "Set an asking price for your new Weed",
+				"on": "price_set",
+				"target": {
+					"app": "products"
+				},
+				"hint": "Tap the product, then use the price buttons. Market = buyers pay what they offer."
+			}
 		],
-		"reward": {"credits": 60},
-		"next": ["tut_deal"]
+		"reward": {
+			"credits": 60
+		},
+		"next": [
+			"tut_deal"
+		]
 	},
 	"tut_deal": {
 		"title": "Street Business",
@@ -44,17 +135,61 @@
 		"tutorial": true,
 		"intro": "Customers text you on the Deal-O-Matic: how much, what price, when. I'll go first. Check your phone.",
 		"steps": [
-			{"text": "Accept Okka's request in the Deal-O-Matic", "on": "offer_accepted", "match": {"contact": "okka"},
-				"on_start": {"offer": "okka"}, "retry_on": ["offer_expired", "offer_declined"], "retry_match": {"contact": "okka"}, "retry_to": 0,
+			{
+				"text": "Accept Okka's request in the Deal-O-Matic",
+				"on": "offer_accepted",
+				"match": {
+					"contact": "okka"
+				},
+				"on_start": {
+					"offer": "okka"
+				},
+				"retry_on": [
+					"offer_expired",
+					"offer_declined"
+				],
+				"retry_match": {
+					"contact": "okka"
+				},
+				"retry_to": 0,
 				"retry_text": "Missed that one? I'll text again.",
-				"target": {"app": "deals"}, "hint": "Accept, or counter the amount or the time if you can't make it."},
-			{"text": "Meet Okka at the agreed time and hand it over", "on": "sold", "match": {"contact": "okka", "offer": "*"},
-				"retry_on": ["offer_expired"], "retry_match": {"contact": "okka"}, "retry_to": 0, "retry_text": "You stood me up. Let's try that again.",
-				"target": {"loc": "mireth", "contact": "okka"}, "hint": "Be there inside the time window. A marker shows over the buyer."}
+				"target": {
+					"app": "deals"
+				},
+				"hint": "Accept, or counter the amount or the time if you can't make it."
+			},
+			{
+				"text": "Meet Okka at the agreed time and hand it over",
+				"on": "sold",
+				"match": {
+					"contact": "okka",
+					"offer": "*"
+				},
+				"retry_on": [
+					"offer_expired"
+				],
+				"retry_match": {
+					"contact": "okka"
+				},
+				"retry_to": 0,
+				"retry_text": "You stood me up. Let's try that again.",
+				"target": {
+					"loc": "mireth",
+					"contact": "okka"
+				},
+				"hint": "Be there inside the time window. A marker shows over the buyer."
+			}
 		],
-		"reward": {"credits": 150, "meet": ["teo"]},
+		"reward": {
+			"credits": 150,
+			"meet": [
+				"teo"
+			]
+		},
 		"outro": "Pleasure. Teo Brack down the street wants in too, I gave him your number.",
-		"next": ["tut_dealer"]
+		"next": [
+			"tut_dealer"
+		]
 	},
 	"tut_dealer": {
 		"title": "Let Others Sell",
@@ -62,12 +197,263 @@
 		"tutorial": true,
 		"intro": "You can't stand on every corner yourself. Hire a street dealer in the HR app, give them product, and collect the cash later.",
 		"steps": [
-			{"text": "Hire a street dealer in the HR app", "on": "dealer_hired", "check": {"type": "dealers", "min": 1},
-				"target": {"app": "hr"}, "hint": "Dealers take a cut and can get busted, but they sell while you fly."},
-			{"text": "Give your dealer product to sell", "on": "dealer_stocked",
-				"target": {"app": "hr"}, "hint": "Open the dealer, pick a district and hand over some units."}
+			{
+				"text": "Hire a street dealer in the HR app",
+				"on": "dealer_hired",
+				"check": {
+					"type": "dealers",
+					"min": 1
+				},
+				"target": {
+					"app": "hr"
+				},
+				"hint": "Dealers take a cut and can get busted, but they sell while you fly."
+			},
+			{
+				"text": "Give your dealer product to sell",
+				"on": "dealer_stocked",
+				"target": {
+					"app": "hr"
+				},
+				"hint": "Open the dealer, pick a district and hand over some units."
+			}
 		],
-		"reward": {"credits": 100},
-		"outro": "That's the whole trade, kid. Cook, price, deal, delegate. The Consortium will want its money. Don't make them come for it."
+		"reward": {
+			"credits": 100
+		},
+		"outro": "That's the whole trade, kid. Cook, price, deal, delegate. The Consortium will want its money. Don't make them come for it.",
+		"next": [
+			"main_collector"
+		]
+	},
+	"main_collector": {
+		"title": "The Collector",
+		"giver": "Mara Vesk (Ouroboros)",
+		"main": true,
+		"chapter": 1,
+		"intro": "Mara Vesk here, Ouroboros Consortium, accounts receivable. The Consortium is patient, not generous. Show me good faith: one thousand credits at the Mireth office, and I'll tell my people you are worth the wait.",
+		"steps": [
+			{
+				"text": "Pay 1,000 cr of your debt at the Mireth office",
+				"on": "debt_paid",
+				"sum": "amount",
+				"need": 1000,
+				"check": {
+					"type": "debt_max",
+					"max": 5000
+				},
+				"target": {
+					"loc": "mireth",
+					"building": "office"
+				},
+				"hint": "Office → Debt. Partial payments count."
+			}
+		],
+		"reward": {
+			"days": 2
+		},
+		"outro": "Good faith noted. Two more days on your clock. Don't make me regret it.",
+		"next": [
+			"main_annex"
+		]
+	},
+	"main_annex": {
+		"title": "Room to Grow",
+		"giver": "Okka the Welder",
+		"main": true,
+		"chapter": 1,
+		"intro": "One cannery won't pay off Vesk. The annex behind it is for sale, or look on other planets. More rooms, more lines, more product.",
+		"steps": [
+			{
+				"text": "Buy a second estate",
+				"on": "estate_bought",
+				"check": {
+					"type": "estates",
+					"min": 2
+				},
+				"target": {
+					"loc": "mireth",
+					"estate": "cannery_annex"
+				},
+				"hint": "Walk to an estate door and press E to see the price. Build stations inside with the build menu."
+			}
+		],
+		"reward": {
+			"credits": 300
+		},
+		"next": [
+			"main_heavier"
+		]
+	},
+	"main_heavier": {
+		"title": "Heavier Product",
+		"giver": "Okka the Welder",
+		"main": true,
+		"chapter": 1,
+		"intro": "Weed pays the rent, not the Consortium. Coca Leaf comes from the Cinder Belt. Cook a tray of Cocaine on the Precursor Scale line and Dr. Vesna Holt will want to meet you.",
+		"steps": [
+			{
+				"text": "Buy Coca Leaf at the Cinder Belt",
+				"check": {
+					"type": "cargo",
+					"item": "coca_leaf",
+					"min": 1
+				},
+				"target": {
+					"loc": "cinder",
+					"building": "depot"
+				},
+				"hint": "Fly to the Cinder Belt Outpost and land."
+			},
+			{
+				"text": "Cook a batch of Cocaine or something stronger",
+				"on": "lab_started",
+				"match": {
+					"base": [
+						"cocaine",
+						"meth",
+						"fentanyl"
+					]
+				},
+				"target": {
+					"loc": "mireth",
+					"estate": "cannery_rig",
+					"station": "precursor_scale"
+				},
+				"hint": "Cocaine starts on the Precursor Scale in the Old Cannery."
+			}
+		],
+		"reward": {
+			"credits": 400,
+			"meet": [
+				"vesna"
+			]
+		},
+		"outro": "Vesna Holt's number is on your phone now. Doctors pay well and ask nothing.",
+		"next": [
+			"main_kovar"
+		]
+	},
+	"main_kovar": {
+		"title": "Out of Reach",
+		"giver": "Rhea Dunmore",
+		"main": true,
+		"chapter": 1,
+		"intro": "Rhea Dunmore, Varrow. Word travels: you cook clean. The Authority barely patrols Kovar and I have buyers who never see good stuff. Jump through the Halvane gate and land at Varrow.",
+		"steps": [
+			{
+				"text": "Jump to the Kovar system",
+				"on": "jumped",
+				"match": {
+					"to": "kovar"
+				},
+				"check": {
+					"type": "system",
+					"id": "kovar"
+				},
+				"target": {
+					"loc": "varrow"
+				},
+				"hint": "Fly to the jump gate (toll 80 cr) or plan a jump in the Map app."
+			},
+			{
+				"text": "Land on Varrow",
+				"on": "landed",
+				"match": {
+					"location": "varrow"
+				},
+				"target": {
+					"loc": "varrow"
+				},
+				"hint": "Varrow is lawless: no fence, few patrols."
+			}
+		],
+		"reward": {
+			"credits": 300
+		},
+		"next": [
+			"main_rhea"
+		]
+	},
+	"main_rhea": {
+		"title": "Desert Friends",
+		"giver": "Rhea Dunmore",
+		"main": true,
+		"chapter": 1,
+		"intro": "Bring me something with a kick, Meth or Cocaine. Ten units, and you'll meet my runner Kip.",
+		"steps": [
+			{
+				"text": "Sell 10 units to Rhea Dunmore",
+				"on": "sold",
+				"match": {
+					"contact": "rhea"
+				},
+				"sum": "qty",
+				"need": 10,
+				"target": {
+					"loc": "varrow",
+					"contact": "rhea"
+				},
+				"hint": "Talk to her on Varrow, or accept her texts in the Deal-O-Matic."
+			}
+		],
+		"reward": {
+			"credits": 500,
+			"meet": [
+				"kip"
+			]
+		},
+		"outro": "Kip runs my errands. Use him. And watch the lanes, the Black Comets have been jumping traders.",
+		"next": [
+			"main_comets"
+		]
+	},
+	"main_comets": {
+		"title": "Black Comets",
+		"giver": "Rhea Dunmore",
+		"main": true,
+		"chapter": 1,
+		"intro": "The Black Comets are a cartel crew raiding the lanes between our systems. Every wreck is a bounty and a message. Shoot down three of their raiders.",
+		"steps": [
+			{
+				"text": "Shoot down 3 Black Comet raiders",
+				"on": "pirate_down",
+				"need": 3,
+				"hint": "Raiders show up in flight. Laser and missiles, upgrades at a shipyard mechanic."
+			}
+		],
+		"reward": {
+			"credits": 600
+		},
+		"outro": "Three less. They'll remember your ship. Good, let them be afraid.",
+		"next": [
+			"main_clear"
+		]
+	},
+	"main_clear": {
+		"title": "Clean Slate",
+		"giver": "Mara Vesk (Ouroboros)",
+		"main": true,
+		"chapter": 1,
+		"intro": "I hear about you everywhere now, which is bad for business. Settle the account and the Consortium forgets your name.",
+		"steps": [
+			{
+				"text": "Pay off the whole debt",
+				"check": {
+					"type": "debt_max",
+					"max": 0
+				},
+				"on": "debt_paid",
+				"target": {
+					"loc": "mireth",
+					"building": "office"
+				},
+				"hint": "Office → Debt."
+			}
+		],
+		"reward": {
+			"credits": 0
+		},
+		"outro": "Account closed. A word of advice: the Black Comets are not the only cartel out there, and they all want what you just built. Chapter 2 is coming."
 	}
 }

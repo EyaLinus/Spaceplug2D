@@ -449,7 +449,9 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		phone.close()
 		var g = GameState.game
 		if p.won:
-			_end_label.text = "DEBT CLEARED\n\nThe Consortium tips its hat. Day %d, %d cr earned, %d units moved, busted %d×.\nThe Reach is yours to grow (more systems coming in the next builds)." % [g.day, g.stats.earned, g.stats.units_sold, g.stats.busts]
+			var left: int = (g.quests.active as Array).filter(func(q): return Quests.defs(g).get(q, {}).get("main", false)).size()
+			_end_label.text = "DEBT CLEARED · CHAPTER 1 COMPLETE\n\nThe Consortium closes your account. Day %d, %d cr earned, %d units moved, busted %d×.\n%s" % [g.day, g.stats.earned, g.stats.units_sold, g.stats.busts,
+				"Your main quest goes on: check the Quests app." if left > 0 else "Chapter 2, the cartel war, arrives in a later build. The Reach is yours to grow."]
 		else:
 			_end_label.text = "THE CONSORTIUM CAME TO COLLECT\n\nYou still owed %d cr on day %d.\nEarned %d cr, moved %d units, busted %d×." % [g.debt, g.day, g.stats.earned, g.stats.units_sold, g.stats.busts]
 		end_screen.visible = true
@@ -582,7 +584,7 @@ func _build_end_screen() -> Control:
 	_end_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_end_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(_end_label)
-	v.add_child(UI.button("Keep flying (sandbox)", func():
+	v.add_child(UI.button("Keep playing", func():
 		end_screen.visible = false
 		if GameState.game.state == "won":
 			GameState.game.state = "playing"

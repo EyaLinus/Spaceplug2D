@@ -356,7 +356,7 @@ func _update_quest_ui(g, delta: float) -> void:
 	if qid != "":
 		var q: Dictionary = Quests.defs(g)[qid]
 		var s: Dictionary = Quests.current(g, qid)
-		var tag := "TUTORIAL" if q.get("tutorial", false) else ("MAIN QUEST" if q.get("main", false) else "QUEST")
+		var tag := "TUTORIAL" if q.get("tutorial", false) else (("MAIN QUEST · CH.%d" % int(q.get("chapter", 1))) if q.get("main", false) else "QUEST")
 		_quest_title.text = "%s · %s" % [tag, q.get("title", qid)]
 		var prog := Quests.progress_text(g, qid)
 		_quest_step.text = "▸ " + str(s.get("text", "")) + ("  (%s)" % prog if prog != "" else "")
