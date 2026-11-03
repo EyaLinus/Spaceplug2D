@@ -459,6 +459,8 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		EventBus.toast.emit(("Drop cleared: %s paid %d cr." % [GameState.game.contact(p.contact).name, p.credits]) if p.kind == "deal" else "Courier delivered %d × %s to your stash." % [p.qty, GameState.game.item_name(p.item)], true)
 	elif kind == "drop_stolen":
 		EventBus.toast.emit("A drop was cleaned out: %d units stolen." % p.qty, false)
+	elif kind == "product_discovered":
+		EventBus.toast.emit("New product: %s. Price it in the Products app [%s]." % [GameState.game.item_name(p.product), Settings.key_label("phone")], true)
 	elif kind == "met":
 		EventBus.toast.emit("New contact: %s. Open the Com-Phone [%s]." % [GameState.game.contact(p.contact).name, Settings.key_label("phone")], true)
 	elif kind == "notice":

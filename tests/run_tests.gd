@@ -17,6 +17,7 @@ const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const ArtReg = preload("res://scripts/core/art.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
+const Products = preload("res://scripts/core/products.gd")
 
 var data: Dictionary
 var failures := 0
@@ -57,6 +58,8 @@ func _init() -> void:
 		"test_quality_grade_keys",
 		"test_station_minigames",
 		"test_sell_contact_and_fence",
+		"test_products_recipe_book",
+		"test_products_asking_price",
 		"test_people_profiles",
 		"test_people_deals",
 		"test_people_save",
@@ -1323,6 +1326,68 @@ func test_sell_contact_and_fence() -> void:
 	g.tick(float(data.market.contact_cooldown) + 1.0)
 	check(g.sell(p, 1, "okka").ok, "okka buys again after cooldown")
 	check(not g.sell(p, 5, "okka").ok, "contact max units")
+
+
+func test_products_recipe_book() -> void:
+	var g := new_game()
+	check(g.recipes.is_empty(), "new game: empty recipe book")
+	var adds := ["energy_drink"] if data.additives.has("energy_drink") else [data.additives.keys()[0]]
+	g.cargo["cannabis"] = 10
+	for a in adds:
+		g.cargo[a] = 10
+	var base := "weed"
+	var rk := Mixing.key(base, Mixing.traits_for(data, base, adds))
+	check(g.queue_batch(base, adds, 4).ok, "queue a batch")
+	check(Products.known(g, rk), "batch discovers the product")
+	check((g.recipes[rk].additives as Array) == adds, "recipe stores the additive order")
+	check(int(g.recipes[rk].made) >= 1, "made units counted")
+	check(not Products.discover(g, base, adds, 2, 3), "second batch is not new")
+	check(int(g.recipes[rk].best) == 2, "best grade tracked")
+	check(Products.list(g).has(rk), "listed")
+	# old saves: carried products are adopted without a recipe
+	var g2 := new_game()
+	g2.cargo["cocaine:euphoric@2"] = 3
+	var d := g2.to_dict()
+	d.erase("products")
+	var g3 := Game.new()
+	g3.from_dict(data, d)
+	check(g3.recipes.has("cocaine:euphoric") and (g3.recipes["cocaine:euphoric"].additives as Array).is_empty(), "legacy product adopted with unknown recipe")
+	# save roundtrip
+	Products.set_price(g, rk, 77)
+	var g4 := Game.new()
+	g4.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(g4.recipes.has(rk) and int(g4.prices[rk]) == 77, "recipes and prices survive a save")
+
+
+func test_products_asking_price() -> void:
+	var g := new_game()
+	var p := "weed:overclock+radiant"
+	g.cargo[p] = 20
+	check(not Products.set_price(g, p, 50).ok, "unknown products can't be priced")
+	Products.adopt_items(g, g.cargo)
+	var market: int = g.sell_price(p, "okka")
+	check(g.unit_price(p, "okka") == market, "market mode = their offer")
+	check(Products.set_price(g, p, 100000).ok and Products.price(g, p) == Products.max_price(g, p), "price capped")
+	check(g.unit_price(p, "okka") == -1, "too steep: refused")
+	var r: Dictionary = g.sell(p, 1, "okka")
+	check(not r.ok and str(r.msg).contains("won't pay"), "sell refuses a steep price")
+	check(People.units_wanted(g, "okka", p) == 0, "nobody wants it that steep")
+	Products.set_price(g, p, int(market * 0.5))
+	check(g.unit_price(p, "okka") == int(market * 0.5), "cheap price is paid as asked")
+	check(Products.is_bargain(g, p, "okka"), "cheap = bargain")
+	var aff := float(People.state(g, "okka").affinity)
+	var c0 := g.credits
+	check(g.sell(p, 2, "okka").ok and g.credits - c0 == 2 * int(market * 0.5), "sold at asking price")
+	check(float(People.state(g, "okka").affinity) > aff, "affinity rises")
+	# grade scales the asking price
+	Products.set_price(g, p, 100)
+	var prem := p + "@2"
+	check(Products.asking(g, prem) == int(round(100 * float(Mixing.grade_info(data, 2).value_mult))), "premium asks more")
+	check(Products.clear_price(g, p).ok and Products.asking(g, p) == -1, "back to market")
+	# hooked customers tolerate more
+	var t0 := Products.tolerance(g, "okka")
+	People.state(g, "okka").addiction = 1.0
+	check(Products.tolerance(g, "okka") > t0, "addiction raises tolerance")
 
 
 func test_deaddrops() -> void:

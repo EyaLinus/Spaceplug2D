@@ -1,5 +1,18 @@
 # Progress log
 
+## H1: Products app (phase 3 wave 6, 2026-11-03)
+- **Core** `scripts/core/products.gd`: `Game.recipes` (recipe key without grade -> base, additives in order, made,
+  best grade, first day) filled by `Products.discover` from `Game.queue_batch` and worker batches; old saves adopt
+  carried products with an unknown recipe. `Game.prices` (recipe key -> cr per Standard unit, no entry = Market).
+  `Game.unit_price(key, contact)` = their offer on Market, else your asking price × grade if it is within
+  `ceiling` (offer × (1 + tolerance from affinity/addiction)), else -1 (refused). Bargains (≤ 90 % of offer) add
+  affinity. The fence ignores your prices. Numbers in content.json `products`.
+- **UI** `scripts/ui/phone/apps/products_app.gd` (icon `app_products`): list per drug with "???" for unknown drugs,
+  detail with recipe steps, traits, estates that can cook it (`Game.missing_stations_in`), price editor (±1/5/25,
+  Worth, Market), per-grade prices and every known buyer with offer / max. The Deals panel shows "won't pay N".
+  Toast on a new product.
+- Verified: unit tests (recipe book, asking price), UI smoke (price from the phone), menu smoke, sim; screenshots.
+
 ## Release v0.1.7 (2026-11-03)
 - Phase 2 leftovers merged (A4 DeadDrops, E1 ground combat, E2 space combat, A6 galaxy map + jump drive, B3 workers,
   F1 heat II + corruption) plus phase 3 wave 5: G1 UI skin, G2 production on foot, G3 shop screens. Changelog folded,

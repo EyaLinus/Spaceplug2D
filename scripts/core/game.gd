@@ -18,6 +18,7 @@ const Galaxy = preload("res://scripts/core/galaxy.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
+const Products = preload("res://scripts/core/products.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -67,6 +68,8 @@ var next_drop_id: int = 0
 var drops_unseen: int = 0  ## finished drop jobs since the DeadDrop app was opened (runtime only)
 var workers: Array = []  ## hired staff [{id, loyalty, estate, hired_day}] (see workers.gd)
 var bench: Dictionary = {}  ## estate id -> batch tray carried between stations on foot (see bench.gd), saved
+var recipes: Dictionary = {}  ## recipe book: recipe key -> {base, additives, made, best, day} (see products.gd), saved
+var prices: Dictionary = {}  ## your asking price per Standard unit, recipe key -> cr; no entry = market price, saved
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 
 
@@ -111,6 +114,8 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	workers = []
 	Workers.ensure(estates[SHIP_BAY])
 	bench = {}
+	recipes = {}
+	prices = {}
 	_add_starter_estates()
 	demand = {}
 	for loc in data.locations:
@@ -248,6 +253,11 @@ func sell_price(product_key: String, contact_id: String = "", loc: String = loca
 	if p.traits.has(c.get("likes", "")):
 		v *= 1.0 + float(data.market.liked_trait_bonus)
 	return int(round(v))
+
+
+## What a contact (or the fence, "") pays per unit with your asking prices applied; -1 = your price is too steep.
+func unit_price(product_key: String, contact_id: String = "", loc: String = location) -> int:
+	return Products.unit_price(self, product_key, contact_id, loc)
 
 
 ## Stronger drugs draw more attention: heat from cooking and selling scales with the product tier.
@@ -435,8 +445,13 @@ func lab_here() -> bool:
 func missing_stations(base: String, additives: Array) -> Array:
 	if loc_data().get("lab", false) or not estates.has(inside_estate):
 		return []
+	return missing_stations_in(inside_estate, base, additives)
+
+
+## Station ids a batch needs that the owned estate `estate_id` does not have.
+func missing_stations_in(estate_id: String, base: String, additives: Array) -> Array:
 	var have: Array = []
-	for b in estates[inside_estate].buildings:
+	for b in estates.get(estate_id, {}).get("buildings", []):
 		have.append(b.id)
 	var r: Array = []
 	for st in Production.stations_for(data, base, additives):
@@ -494,6 +509,7 @@ func queue_batch(base: String, additives: Array, qty: int, scores: Dictionary = 
 	var out_qty := Production.output_qty(qty, res.yield_mult)
 	var product := Mixing.key(base, Mixing.traits_for(data, base, additives), res.grade)
 	var t := batch_seconds(qty)
+	Products.discover(self, base, additives, res.grade, out_qty)
 	lab_queue.append({"product": product, "qty": out_qty, "remaining": t, "total": t})
 	add_heat(float(data.heat.per_lab_unit) * qty * heat_mult(base) * res.heat_mult)
 	_emit("lab_started", {"product": product, "qty": out_qty, "grade": res.grade})
@@ -549,11 +565,15 @@ func sell(product_key: String, qty: int, contact_id: String = "") -> Dictionary:
 			return _fail("%s isn't buying yet." % c.name)
 		if qty > People.max_units(self, contact_id):
 			return _fail("%s takes at most %d." % [c.name, People.max_units(self, contact_id)])
-		if sell_price(product_key, contact_id) * qty > People.budget_left(self, contact_id):
+		var unit := Products.unit_price(self, product_key, contact_id)
+		if unit < 0:
+			return _fail("%s won't pay %d cr a unit." % [c.name, Products.asking(self, product_key)])
+		if unit * qty > People.budget_left(self, contact_id):
 			return _fail("%s can't afford that today (%d cr left)." % [c.name, People.budget_left(self, contact_id)])
+	var bargain := contact_id != "" and Products.is_bargain(self, product_key, contact_id)
 	var total := 0
 	for i in qty:
-		total += sell_price(product_key, contact_id)
+		total += Products.unit_price(self, product_key, contact_id)
 		demand[location][p.base] = maxf(demand[location][p.base] - float(data.market.saturation_per_unit), float(data.market.min_demand))
 	_add(cargo, product_key, -qty)
 	credits += total
@@ -562,6 +582,9 @@ func sell(product_key: String, qty: int, contact_id: String = "") -> Dictionary:
 	if contact_id != "":
 		contact_ready_at[contact_id] = total_time + float(data.market.contact_cooldown)
 		People.record_deal(self, contact_id, product_key, qty, total, p)
+		if bargain:
+			var s: Dictionary = People.state(self, contact_id)
+			s.affinity = clampf(float(s.affinity) + float(data.get("products", {}).get("affinity_bargain", 0.0)), -1.0, 1.0)
 	add_heat(float(loc_data().heat_per_unit) * qty * heat_mult(p.base))
 	_emit("sold", {"product": product_key, "qty": qty, "credits": total, "contact": contact_id})
 	return _ok("Sold %d for %d cr." % [qty, total])
@@ -749,6 +772,7 @@ func to_dict() -> Dictionary:
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
 		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
+		"products": Products.to_save(self),
 	}
 
 
@@ -816,6 +840,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	workers = Workers.from_save(self, d.get("workers", []))
 	_add_starter_estates()
 	Bench.from_save(self, d)
+	Products.from_save(self, d.get("products", {}))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

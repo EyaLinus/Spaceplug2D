@@ -224,6 +224,16 @@ func _run() -> void:
 	g.cargo[okey] = int(o2.qty)
 	m.phone.open_app("deaddrop")
 	await _save(out, "phone_deaddrop")
+	var Products = load("res://scripts/core/products.gd")
+	Products.discover(g, "weed", ["energy_drink", "glowcap"] if g.data.additives.has("glowcap") else g.data.additives.keys().slice(0, 2), 2, 12)
+	Products.discover(g, "weed", [], 1, 20)
+	Products.discover(g, "cocaine", g.data.additives.keys().slice(1, 2), 1, 6)
+	var pk: String = Products.list(g, "weed")[0]
+	Products.set_price(g, pk, Products.suggested(g, pk) + 15)
+	m.phone.open_app("products")
+	await _save(out, "phone_products")
+	m.phone.push("Weed", func(gg): return m.phone.app_by_id("products").detail(gg, m.phone, pk))
+	await _save(out, "phone_product_detail")
 	m.phone.close()
 	sf = m.surface  # the HR shots above rebuilt the surface
 	sf.place_player_at("okka")
