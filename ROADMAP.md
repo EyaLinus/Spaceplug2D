@@ -120,7 +120,7 @@ The phone registry (`scripts/ui/phone/registry.gd`) is one line per app and is s
 ### Wave 4 – combat & factions (mostly needs wave 1 only, but large)
 - [x] **E1 Ground combat.** Player health, twin-stick aiming (mouse), 2–3 weapons (pistol, SMG, shotgun), weapon wheel,
   cover objects on surfaces, officers can draw weapons at high heat. Not parallel with B1 (surface.gd).
-- **E2 Space combat.** Hull + shield, lasers and missiles, dodge (boost), pirate ships that attack in deep space,
+- [x] **E2 Space combat.** Hull + shield, lasers and missiles, dodge (boost), pirate ships that attack in deep space,
   weapon/shield modules at the mechanic (visible via E3). Not parallel with A6 (world.gd).
 - **F1 Heat II + corruption.** Heat per system and personal "wanted" level; corrupt inspectors, customs officers and
   patrol captains as named NPCs (people.gd) you recruit with bribes: tip-offs before raids, cargo passes scanners.

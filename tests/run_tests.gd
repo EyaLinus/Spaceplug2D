@@ -12,6 +12,7 @@ const Orders = preload("res://scripts/core/orders.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const ArtReg = preload("res://scripts/core/art.gd")
+const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 
 var data: Dictionary
 var failures := 0
@@ -58,6 +59,12 @@ func _init() -> void:
 		"test_galaxy_and_jump",
 		"test_bust",
 		"test_upgrades",
+		"test_space_combat_stats",
+		"test_space_combat_damage",
+		"test_space_combat_pirates",
+		"test_space_combat_mechanic",
+		"test_space_combat_save",
+		"test_space_combat_balance",
 		"test_bribe",
 		"test_debt_win_and_loss",
 		"test_save_roundtrip",
@@ -1239,6 +1246,182 @@ func test_upgrades() -> void:
 	var t0 := g.batch_seconds(5)
 	g.buy_upgrade("lab")
 	check(g.lab_capacity() == 10 and g.batch_seconds(5) < t0, "lab upgrade: capacity and speed")
+
+
+func fly_game() -> Game:
+	var g := new_game()
+	g.undock()
+	return g
+
+
+func test_space_combat_stats() -> void:
+	for k in ["laser", "missile", "shield", "hull"]:
+		check(data.upgrades.has(k) and data.upgrades[k].levels.size() == 4, "combat module %s has 4 levels" % k)
+		check(ArtReg.SHIP_UNDER.has(k) or ArtReg.SHIP_OVER.has(k), "combat module %s is drawn on the ship" % k)
+	var c: Dictionary = data.space_combat
+	for k in ["laser", "missile", "shield", "boost", "pirate", "spawn", "defeat"]:
+		check(c.has(k), "combat config %s" % k)
+	var g := fly_game()
+	check(SpaceCombat.max_hull(g) == 100.0 and g.combat.hull == 100.0, "new ship has the base hull")
+	check(SpaceCombat.max_shield(g) == 0.0 and not SpaceCombat.has_missiles(g), "new ship has no shield and no missiles")
+	check(SpaceCombat.laser_damage(g) == 8.0, "stock laser damage")
+	g.credits = 100000
+	g.dock("mireth")
+	for k in ["laser", "missile", "shield", "hull"]:
+		for i in 3:
+			check(g.buy_upgrade(k).ok, "buy %s Mk%d" % [k, i + 2])
+		check(not g.buy_upgrade(k).ok, "%s maxes out" % k)
+	check(SpaceCombat.max_hull(g) == 220.0 and g.combat.hull == 220.0, "hull armour raises max and current hull")
+	check(SpaceCombat.max_shield(g) == 140.0 and g.combat.shield == 140.0, "shield generator arrives charged")
+	check(SpaceCombat.missile_cap(g) == 14 and g.combat.missiles == 14, "missile pods arrive loaded")
+	check(SpaceCombat.laser_damage(g) == 20.0, "laser damage upgrade")
+	var lvls := {}
+	for k in ArtReg.SHIP_UNDER + ArtReg.SHIP_OVER:
+		lvls[k] = g.upgrades.get(k, 0)
+	check(lvls.laser == 3 and lvls.shield == 3, "ship art levels follow the bought modules")
+
+
+func test_space_combat_damage() -> void:
+	var g := fly_game()
+	g.upgrades.shield = 1
+	SpaceCombat.reset(g)
+	check(g.combat.shield == 40.0, "reset fills the shield")
+	var r := SpaceCombat.damage(g, 25.0)
+	check(r.shield == 25.0 and r.hull == 0.0 and g.combat.shield == 15.0 and g.combat.hull == 100.0, "shield soaks damage first")
+	r = SpaceCombat.damage(g, 35.0)
+	check(r.shield == 15.0 and r.hull == 20.0 and g.combat.hull == 80.0 and not r.destroyed, "overflow hits the hull")
+	# shield regen waits for the delay, only while flying
+	var s0: float = g.combat.shield
+	g.tick(1.0)
+	check(g.combat.shield == s0, "no shield regen right after a hit")
+	g.tick(float(data.space_combat.shield.delay))
+	var s1: float = g.combat.shield
+	check(s1 > s0, "shield regenerates after the delay")
+	g.tick(100.0)
+	check(g.combat.shield == 40.0, "shield regen stops at the maximum")
+	check(g.combat.hull == 80.0, "hull does not regenerate")
+	r = SpaceCombat.damage(g, 500.0)
+	check(r.destroyed and g.combat.hull == 0.0, "hull at zero is destroyed")
+	# docking recharges the shield for free, not the hull
+	var h := fly_game()
+	h.upgrades.shield = 2
+	SpaceCombat.reset(h)
+	SpaceCombat.damage(h, 70.0)
+	h.dock("mireth")
+	check(h.combat.shield == 80.0 and h.combat.hull == 100.0, "docking recharges the shield, not the hull")
+	# boost
+	var b := fly_game()
+	var cost: float = data.space_combat.boost.cost
+	check(SpaceCombat.try_boost(b) and b.combat.boost == float(data.space_combat.boost.max) - cost, "boost spends energy")
+	check(SpaceCombat.try_boost(b), "boost can be chained while energy lasts")
+	check(not SpaceCombat.try_boost(b), "boost refused without energy")
+	b.tick(2.0)
+	check(b.combat.boost > 0.0, "boost energy regenerates")
+	b.tick(60.0)
+	check(b.combat.boost == float(data.space_combat.boost.max), "boost refills")
+	b.dock("mireth")
+	check(not SpaceCombat.try_boost(b), "no boost while docked")
+
+
+func test_space_combat_pirates() -> void:
+	var g := fly_game()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var credits: int = g.credits
+	var bounty := SpaceCombat.collect_bounty(g, rng)
+	var br: Array = data.space_combat.pirate.bounty
+	check(bounty >= int(br[0]) and bounty <= int(br[1]) and g.credits == credits + bounty and g.combat.kills == 1, "bounty pays and counts the kill")
+	var base_interval := SpaceCombat.spawn_interval(g)
+	check(base_interval == float(data.space_combat.spawn.interval), "empty hold in Halvane: base spawn interval")
+	g.cargo = {"weed:overclock@standard": 30}
+	check(SpaceCombat.spawn_interval(g) < base_interval and SpaceCombat.max_pirates(g) >= int(data.space_combat.spawn.max), "hauling product attracts pirates")
+	var k := fly_game()
+	k.system = "kovar"
+	check(SpaceCombat.spawn_interval(k) < base_interval, "lawless Kovar has more pirates than Halvane")
+	check(SpaceCombat.max_pirates(k) >= 1 and SpaceCombat.max_pirates(k) <= int(data.space_combat.spawn.max) + 2, "pirate cap stays bounded")
+	check(not SpaceCombat.is_deep_space(g, 400.0) and SpaceCombat.is_deep_space(g, 2000.0), "pirates only in deep space")
+	# defeat
+	g.cargo = {"weed:overclock@standard": 11, "cannabis": 4}
+	g.credits = 1000
+	var res := SpaceCombat.defeat(g)
+	check(g.cargo["weed:overclock@standard"] == 5 and g.cargo["cannabis"] == 2, "wreck loses half the hold (rounded up per item): %s" % g.cargo)
+	check(res.fine == 100 and g.credits == 900, "tow fine is 10%% of the credits")
+	check(g.combat.hull == 50.0 and g.combat.shield == 0.0, "wreck is towed back at half hull")
+	g.credits = 5
+	check(SpaceCombat.defeat(g).fine == 5, "fine is capped by credits")
+
+
+func test_space_combat_mechanic() -> void:
+	var g := fly_game()
+	g.combat.hull = 40.0
+	check(not SpaceCombat.repair(g).ok, "no repairs in flight")
+	g.dock("mireth")
+	var cost := SpaceCombat.repair_cost(g)
+	check(cost == int(ceil(60.0 * float(data.space_combat.repair_per_hull))), "repair cost scales with the damage (%d)" % cost)
+	g.credits = cost - 1
+	check(not SpaceCombat.repair(g).ok and g.combat.hull == 40.0, "repair needs credits")
+	g.credits = cost + 7
+	check(SpaceCombat.repair(g).ok and g.combat.hull == 100.0 and g.credits == 7, "repair restores the hull")
+	check(not SpaceCombat.repair(g).ok, "nothing to repair")
+	check(not SpaceCombat.restock(g).ok, "no restock without pods")
+	g.upgrades.missile = 2
+	SpaceCombat.reset(g)
+	check(SpaceCombat.take_missile(g) and SpaceCombat.take_missile(g) and g.combat.missiles == 6, "missiles are used up one by one")
+	check(SpaceCombat.restock_cost(g) == 2 * int(data.space_combat.missile.price), "restock costs per missile")
+	g.credits = 1000
+	check(SpaceCombat.restock(g).ok and g.combat.missiles == 8 and g.credits == 1000 - 2 * int(data.space_combat.missile.price), "restock fills the pods")
+	g.combat.missiles = 0
+	check(not SpaceCombat.take_missile(g), "no missile when empty")
+	var c := new_game()
+	c.undock()
+	c.dock("cinder")
+	c.combat.hull = 10.0
+	check(not SpaceCombat.repair(c).ok, "only the shipyard repairs")
+
+
+func test_space_combat_save() -> void:
+	var g := fly_game()
+	g.upgrades.missile = 1
+	g.upgrades.shield = 1
+	SpaceCombat.reset(g)
+	SpaceCombat.damage(g, 55.0)
+	SpaceCombat.take_missile(g)
+	g.combat.kills = 3
+	var json := JSON.stringify(g.to_dict())
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(json))
+	check(JSON.stringify(h.to_dict()) == json, "combat save round-trip is stable")
+	check(h.combat.hull == 85.0 and h.combat.shield == 0.0 and h.combat.missiles == 3 and h.combat.kills == 3, "damage, ammo and kills restored: %s" % h.combat)
+	var old: Dictionary = JSON.parse_string(json)
+	old.erase("space")
+	for k in ["laser", "missile", "shield", "hull"]:
+		old.upgrades.erase(k)
+	var o := Game.new()
+	o.from_dict(data, old)
+	check(o.combat.hull == 100.0 and o.combat.missiles == 0 and o.combat.kills == 0 and o.upgrades.laser == 0, "old save without combat state starts with an undamaged stock ship")
+	var bad: Dictionary = JSON.parse_string(json)
+	bad.combat = {"hull": -5, "shield": 9999, "missiles": 99}
+	var b := Game.new()
+	b.from_dict(data, bad)
+	check(b.combat.hull >= 1.0 and b.combat.shield <= 40.0 and b.combat.missiles <= 4, "broken combat values are clamped")
+
+
+func test_space_combat_balance() -> void:
+	var stock := fly_game()
+	var full := fly_game()
+	for k in ["laser", "missile", "shield", "hull"]:
+		full.upgrades[k] = 3
+	SpaceCombat.reset(full)
+	var ttk0 := SpaceCombat.seconds_to_kill(stock, 0.5)
+	var ttk3 := SpaceCombat.seconds_to_kill(full, 0.5)
+	check(ttk0 < 4.0 and ttk3 < ttk0 * 0.6, "stock laser kills a pirate in %.1fs, Mk4 in %.1fs at 50%% hits" % [ttk0, ttk3])
+	var d1 := SpaceCombat.seconds_to_die(stock, 1, 0.5)
+	var d3 := SpaceCombat.seconds_to_die(stock, 3, 0.5)
+	check(d1 > 4.0 * ttk0, "a stock ship wins a 1v1 comfortably (%.0fs to die vs %.1fs to kill)" % [d1, ttk0])
+	check(d3 > 3.0 * ttk0 * 0.9 and d3 < 20.0, "three pirates are a real threat to a stock ship (%.0fs to die, %.1fs per kill)" % [d3, ttk0])
+	var f3 := SpaceCombat.seconds_to_die(full, 3, 0.5)
+	check(f3 > 2.5 * d3, "armour + shield roughly triple the survival time (%.0fs vs %.0fs)" % [f3, d3])
+	check(f3 > 3.0 * ttk3 * 4.0, "a full kit clears three pirates with room to spare")
 
 
 func test_bribe() -> void:

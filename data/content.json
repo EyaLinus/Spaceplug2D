@@ -182,7 +182,11 @@
     "cargo": {"name": "Cargo Hold", "levels": [20, 35, 55, 80], "costs": [600, 1500, 3500]},
     "engine": {"name": "Ion Engine", "levels": [1.0, 1.25, 1.5, 1.8], "costs": [500, 1400, 3000]},
     "stealth": {"name": "Stealth Plating", "levels": [0.0, 0.15, 0.3, 0.45], "costs": [700, 1800, 4000]},
-    "lab": {"name": "Hydro Rig", "levels": [5, 10, 20, 35], "costs": [800, 2000, 4500]}
+    "lab": {"name": "Hydro Rig", "levels": [5, 10, 20, 35], "costs": [800, 2000, 4500]},
+    "laser": {"name": "Laser Cannons", "levels": [8, 11, 15, 20], "costs": [500, 1300, 2800]},
+    "missile": {"name": "Missile Pods", "levels": [0, 4, 8, 14], "costs": [700, 1500, 3200]},
+    "shield": {"name": "Shield Generator", "levels": [0, 40, 80, 140], "costs": [800, 1800, 3800]},
+    "hull": {"name": "Hull Armour", "levels": [100, 130, 170, 220], "costs": [600, 1400, 3000]}
   },
   "lab": {
     "base_seconds": 3.0,
@@ -233,6 +237,18 @@
     "speed": 300,
     "chase_speed": 470,
     "wander_radius": 2200
+  },
+  "space_combat": {
+    "laser": {"cooldown": 0.28, "speed": 1000, "range": 760},
+    "missile": {"damage": 55, "speed": 540, "turn": 4.5, "range": 1200, "cooldown": 1.0, "blast": 75, "price": 35},
+    "shield": {"regen": 12.0, "delay": 3.0},
+    "boost": {"max": 100.0, "cost": 35.0, "regen": 18.0, "speed": 1250, "seconds": 0.32, "invuln": 0.45},
+    "repair_per_hull": 1.5,
+    "pirate": {"hull": 40, "speed": 330, "turn": 2.6, "orbit": 300, "detect": 1300, "fire_cooldown": 1.5, "damage": 8,
+      "bolt_speed": 600, "bolt_range": 900, "spread_degrees": 7, "bounty": [35, 65], "radius": 18},
+    "spawn": {"interval": 30.0, "max": 3, "min_dist": 1000, "max_dist": 1300, "despawn_dist": 2800, "safe_radius": 750,
+      "cargo_units": 20, "cargo_pressure": 0.8, "system_mult": {"halvane": 1.0, "kovar": 1.6}},
+    "defeat": {"cargo_lost": 0.5, "fine_ratio": 0.1, "fine_min": 40, "respawn_hull": 0.5}
   },
   "police": {
     "base": 1,
