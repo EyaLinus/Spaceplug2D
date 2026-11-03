@@ -1,5 +1,29 @@
 # Progress log
 
+## E4: space combat II (phase 3 wave 9, 2026-11-03)
+- **Enemies** `space_combat.enemies` (fighter, gunship with `shots`/`fan_degrees`, interceptor for D3); pirate.gd
+  is now the generic enemy (kind, cartel, tint, ion `stun`). Sprites ships/fighter.png, ships/gunship.png (neutral
+  stone ramp, tinted with the cartel colour at runtime), space/loot.png.
+- **Wings**: `SpaceCombat.pick_spawn` → a cartel present in the system sends its `wing` (content cartels.gangs.*.wing)
+  with chance from hostility + system share (`space_combat.wings`), gunship from hostility 45, extra fighter from 70;
+  weakened cartels send none. `enemy_down` pays the kind's bounty, counts kills, Cartels.on_kill, rolls loot and
+  emits `pirate_down` {kind, cartel} (quests unchanged).
+- **Loot**: `space_combat.loot` per kind (credits, missiles, a raw/additive/"product" = plain batch of a random drug);
+  crates drift for 25 s, picked up within 46 px (`collect_loot`, hold and pods capped, event `loot`).
+- **Secondaries**: upgrades `flak` (pellet cone, no ammo) and `ion` (stun in a blast radius, ×2 vs gunships and bases);
+  `secondary` saved in combat state, K fires it, new action `ship_cycle` (Q, rebindable) switches. HUD shows it.
+- **Cartel bases**: locations comet_nest (halvane), tide_rig, veil_spire (kovar), kind `cartel_base`, not dockable,
+  space art `fortress()` in build_art.py. Within `aggro` they wake up (toast), fire 4 turrets, launch `defenders`
+  once; hull is runtime (resets when you leave). Destroyed → `SpaceCombat.raid_base` (reward, loot, Cartels.on_raid,
+  event `base_raided`). Weakened bases smoulder and stay quiet until rebuilt.
+- **Ship classes** `ship_classes` (courier, runner, hauler, corvette: cargo/hull/shield/speed/laser multipliers,
+  drawn scale and paint stripe). `Game.buy_ship` / `switch_ship` at a shipyard (hold must fit, hull damage carries
+  over as a share), `ship_class` + `hulls` saved. Shipyard tab: "Hulls" cards, flak/ion cards.
+- Verified: 10417 unit checks, UI smoke (wing spawn, flak kill, ion stun, loot pickup, HUD, base raid by a laser hit,
+  shipyard cards), menu smoke, screenshots (space_wing, space_base_raid). Sim 8/8, avg win day 4.6 (bot never flies
+  combat).
+- Gaps: escort missions not built; numbers eyeballed; not played by a human; base hull resets when you leave.
+
 ## I1: enemy cartels + sector influence (phase 3 wave 9, 2026-11-03)
 - **Core** `scripts/core/cartels.gd`, data `content.json` "cartels" (3 gangs: Black Comets/halvane, Saltglass
   Tide/kovar, Ninth Veil/kovar, with boss, colour, home, base id for E4, start hostility; start shares per trade

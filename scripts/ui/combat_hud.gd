@@ -71,7 +71,16 @@ func _process(_delta: float) -> void:
 	_shield.value = g.combat.shield
 	_boost.max_value = float(g.data.space_combat.boost.max)
 	_boost.value = g.combat.boost
-	_missiles.visible = SpaceCombat.has_missiles(g)
-	_missiles.text = "Missiles %d / %d" % [int(g.combat.missiles), SpaceCombat.missile_cap(g)]
-	_hint.text = "%s fire   %s missile   %s dodge boost" % [Settings.key_label("ship_fire"), Settings.key_label("ship_missile"), Settings.key_label("ship_boost")]
+	var sec := SpaceCombat.secondary(g)
+	_missiles.visible = sec != ""
+	match sec:
+		"missile":
+			_missiles.text = "Missiles %d / %d" % [int(g.combat.missiles), SpaceCombat.missile_cap(g)]
+		"flak":
+			_missiles.text = "Flak battery · %d dmg x%d" % [int(SpaceCombat.flak_damage(g)), int(g.data.space_combat.flak.pellets)]
+		"ion":
+			_missiles.text = "Ion emitter · stuns"
+	if SpaceCombat.secondaries(g).size() > 1:
+		_missiles.text += "   [%s] switch" % Settings.key_label("ship_cycle")
+	_hint.text = "%s fire   %s %s   %s dodge boost" % [Settings.key_label("ship_fire"), Settings.key_label("ship_missile"), sec if sec != "" else "secondary", Settings.key_label("ship_boost")]
 	_flash.color.a = 0.28 * (layer_ref.hit_flash if layer_ref != null else 0.0)

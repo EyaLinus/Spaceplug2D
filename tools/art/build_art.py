@@ -113,7 +113,7 @@ def build_sprites() -> list[Path]:
     out = []
     for name, folder in [("crate", "props"), ("barrel", "props"), ("rock", "props"), ("tree", "props"),
                          ("lamp", "props"), ("vent", "props"), ("stall", "props"), ("cactus", "props"), ("ice_rock", "props"), ("ship", "ships"),
-                         ("patrol", "ships"), ("pirate", "ships"), ("beacon", "space")]:
+                         ("patrol", "ships"), ("pirate", "ships"), ("fighter", "ships"), ("gunship", "ships"), ("loot", "space"), ("beacon", "space")]:
         legend, frames = parse_grid(SRC / "sprites" / f"{name}.txt")
         out.append(save(grid_image(frames[0], legend), f"{folder}/{name}.png"))
     return out
@@ -506,6 +506,41 @@ def station(d: int, accent: str) -> Image.Image:
     return img
 
 
+def fortress(d: int, accent: str) -> Image.Image:
+    """Cartel base seen from above: armoured octagon hull, four turret blisters, a glowing core in the cartel accent."""
+    import math
+    img = Image.new("RGBA", (d, d), CLEAR)
+    c = (d - 1) / 2.0
+    R = d / 2.0
+    for y in range(d):
+        for x in range(d):
+            dx, dy = x - c, y - c
+            oct_d = max(abs(dx), abs(dy), (abs(dx) + abs(dy)) / 1.35)
+            dist = math.hypot(dx, dy)
+            lit = 0.5 + 0.5 * (-(dx * 0.6 + dy * 0.7) / max(dist, 1))
+            col = None
+            for k in range(4):  # turret blisters on the diagonals
+                a = k * math.pi / 2 + math.pi / 4
+                tx, ty = c + math.cos(a) * R * 0.72, c + math.sin(a) * R * 0.72
+                td = math.hypot(x - tx, y - ty)
+                if td < R * 0.2:
+                    col = "ink" if td >= R * 0.2 - 1.2 else ("red" if td < R * 0.07 else shade(["slate_dark", "slate", "slate_light"], lit, x, y))
+            if col is None and oct_d < R * 0.78:
+                if oct_d >= R * 0.78 - 1.3:
+                    col = "ink"
+                elif dist < R * 0.22:
+                    col = "ink" if dist >= R * 0.22 - 1.2 else (accent if dist < R * 0.14 else "white")
+                elif abs(oct_d - R * 0.5) < 0.8:
+                    col = "slate_dark"
+                elif (int(dx + 64) // 5 + int(dy + 64) // 5) % 2 == 0 and oct_d > R * 0.5:
+                    col = shade(["slate_dark", "slate", "slate_light"], lit, x, y)
+                else:
+                    col = shade(["ink", "slate_dark", "slate", "slate_light"], lit, x, y)
+            if col:
+                img.putpixel((x, y), color(col))
+    return img
+
+
 def gate(d: int) -> Image.Image:
     """Jump gate seen from above: thick segmented ring with four clamps and teal emitters on the inner edge."""
     import math
@@ -542,6 +577,8 @@ def build_space() -> list[Path]:
     out.append(save(station(70, "purple"), "space/bazaar.png"))
     out.append(save(planet(150, 23, ["dirt_dark", "rust", "rust_light"], ["rust_light", "sand", "gold_light"], "night"), "space/varrow.png"))
     out.append(save(planet(160, 31, ["slate_light", "stone", "white"], ["blue", "blue_light", "stone"], "night"), "space/glacis.png"))  # ice sheet, blue melt lakes
+    for loc, accent in (("comet_nest", "rust_light"), ("tide_rig", "blue_light"), ("veil_spire", "purple")):  # cartel bases (E4)
+        out.append(save(fortress(64, accent), f"space/{loc}.png"))
     for g in ("halvane_gate", "kovar_gate"):  # one gate design, one file per location id (registry rule)
         out.append(save(gate(60), f"space/{g}.png"))
     return out

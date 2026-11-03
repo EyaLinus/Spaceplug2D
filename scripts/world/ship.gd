@@ -11,6 +11,7 @@ var frozen := false  ## true while docked or paused
 var engine_mult := 1.0
 var modules: Dictionary = {}  ## upgrade key -> level (Game.upgrades); picks the module sprites and nozzles
 var cfg: Dictionary = {}
+var hull_cfg: Dictionary = {}  ## hull class (content.json "ship_classes"): drawn size and paint stripe
 
 var _flame := 0.0
 var _boost_t := 0.0  ## seconds of dodge boost left
@@ -96,6 +97,9 @@ func stop() -> void:
 
 
 func _draw() -> void:
+	var sc := float(hull_cfg.get("scale", 1.0))
+	if not is_equal_approx(sc, 1.0):
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2(sc, sc))
 	if _flame > 0.05:
 		var lvl := int(modules.get("engine", 0))
 		# upgraded engines burn hotter: ion-teal core instead of yellow
@@ -107,6 +111,11 @@ func _draw() -> void:
 			draw_colored_polygon(PackedVector2Array([o + Vector2(-w, 0), o + Vector2(w, 0), o + Vector2(0, f)]), Color(1.0, 0.6, 0.2, 0.85))
 			draw_colored_polygon(PackedVector2Array([o + Vector2(-w / 2, 0), o + Vector2(w / 2, 0), o + Vector2(0, f * 0.6)]), core)
 	if Art.draw_ship(self, modules):
+		var stripe := str(hull_cfg.get("stripe", ""))
+		if stripe != "":  # class paint: two wing stripes
+			var c := Color(stripe)
+			draw_line(Vector2(-14, 6), Vector2(-6, 2), c, 2.0)
+			draw_line(Vector2(14, 6), Vector2(6, 2), c, 2.0)
 		return
 	var hull := PackedVector2Array([Vector2(0, -20), Vector2(13, 14), Vector2(0, 8), Vector2(-13, 14)])
 	draw_colored_polygon(hull, Color("#ffd166"))

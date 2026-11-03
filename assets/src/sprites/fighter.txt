@@ -1,0 +1,25 @@
+# Cartel fighter, nose up (32x32 texture). Neutral stone ramp, tinted at runtime with the cartel colour.
+legend:
+. = transparent
+k = ink
+w = white
+S = stone
+s = slate_light
+d = slate
+---
+.......kk.......
+.......kk.......
+......kwSk......
+......kwSk......
+.k....kwSk....k.
+.kk..kwSSsk..kk.
+.kSk.kwkksk.kSk.
+.kSSkkwkksdkkSk.
+.kSwSSwSSssssdk.
+.kSwwSSSSsssddk.
+.kSSkkSSssdkkdk.
+.kdk..kSsdk..kk.
+.kk...kdddk...k.
+......kk.kk.....
+................
+................

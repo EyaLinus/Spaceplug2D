@@ -14,7 +14,7 @@ static func cfg(g) -> Dictionary:
 
 
 static func fresh(g) -> Dictionary:
-	return {"hull": max_hull(g), "shield": max_shield(g), "missiles": missile_cap(g), "kills": 0, "boost": float(cfg(g).boost.max), "idle": 0.0}
+	return {"hull": max_hull(g), "shield": max_shield(g), "missiles": missile_cap(g), "kills": 0, "boost": float(cfg(g).boost.max), "idle": 0.0, "secondary": "missile"}
 
 
 ## Full hull, shield, ammo and boost (new game).
@@ -24,16 +24,66 @@ static func reset(g) -> void:
 
 # ---------------------------------------------------------------- stats from modules
 
+## The hull class the player flies (content.json "ship_classes"); multiplies hold, armour, shield, speed and lasers.
+static func ship_class(g) -> Dictionary:
+	return g.data.get("ship_classes", {}).get(g.ship_class, {})
+
+
+static func class_mult(g, stat: String) -> float:
+	return float(ship_class(g).get(stat, 1.0))
+
+
 static func max_hull(g) -> float:
-	return float(g.data.upgrades.hull.levels[g.upgrades.hull])
+	return float(g.data.upgrades.hull.levels[g.upgrades.hull]) * class_mult(g, "hull")
 
 
 static func max_shield(g) -> float:
-	return float(g.data.upgrades.shield.levels[g.upgrades.shield])
+	return float(g.data.upgrades.shield.levels[g.upgrades.shield]) * class_mult(g, "shield")
 
 
 static func laser_damage(g) -> float:
-	return float(g.data.upgrades.laser.levels[g.upgrades.laser])
+	return float(g.data.upgrades.laser.levels[g.upgrades.laser]) * class_mult(g, "laser")
+
+
+## Damage per flak pellet (0 = no battery).
+static func flak_damage(g) -> float:
+	return float(g.data.upgrades.get("flak", {}).get("levels", [0])[int(g.upgrades.get("flak", 0))])
+
+
+## Damage of an ion bolt (0 = no emitter). Ion bolts also stun and hit gunships and bases harder.
+static func ion_damage(g) -> float:
+	return float(g.data.upgrades.get("ion", {}).get("levels", [0])[int(g.upgrades.get("ion", 0))])
+
+
+## Secondary weapons you own, in cycle order: missile pods, flak battery, ion emitter.
+static func secondaries(g) -> Array:
+	var r: Array = []
+	if missile_cap(g) > 0:
+		r.append("missile")
+	if flak_damage(g) > 0.0:
+		r.append("flak")
+	if ion_damage(g) > 0.0:
+		r.append("ion")
+	return r
+
+
+## The selected secondary weapon ("" without any). Falls back to the first one you own.
+static func secondary(g) -> String:
+	var own := secondaries(g)
+	if own.is_empty():
+		return ""
+	var cur := str(g.combat.get("secondary", ""))
+	return cur if own.has(cur) else str(own[0])
+
+
+## Selects the next secondary weapon; returns it.
+static func cycle_secondary(g) -> String:
+	var own := secondaries(g)
+	if own.is_empty():
+		return ""
+	var i := own.find(secondary(g))
+	g.combat.secondary = own[(i + 1) % own.size()]
+	return g.combat.secondary
 
 
 static func missile_cap(g) -> int:
@@ -132,6 +182,143 @@ static func collect_bounty(g, rng: RandomNumberGenerator) -> int:
 	return amount
 
 
+## Rules of an enemy kind: "pirate" (the lone raider) or one of space_combat.enemies (fighter, gunship, interceptor).
+static func enemy_cfg(g, kind: String) -> Dictionary:
+	if kind == "pirate":
+		return cfg(g).pirate
+	return cfg(g).get("enemies", {}).get(kind, cfg(g).pirate)
+
+
+## An enemy ship went down: bounty, kill count, cartel ground (cartel ships), loot roll. Emits "pirate_down" for every
+## enemy (quests count it) plus the kind and cartel. Returns {bounty, loot: [{item, qty}]}.
+static func enemy_down(g, kind: String, cartel: String, rng: RandomNumberGenerator) -> Dictionary:
+	var r: Array = enemy_cfg(g, kind).get("bounty", [0, 0])
+	var amount := rng.randi_range(int(r[0]), int(r[1]))
+	g.credits += amount
+	g.combat.kills = int(g.combat.kills) + 1
+	if cartel != "":
+		Cartels.on_kill(g, cartel)
+	var loot := roll_loot(g, kind, rng)
+	g._emit("pirate_down", {"bounty": amount, "kind": kind, "cartel": cartel})
+	return {"bounty": amount, "loot": loot}
+
+
+## What a wreck drops: [{item, qty}] with item = a raw, an additive, a product key, "credits" or "missiles".
+static func roll_loot(g, kind: String, rng: RandomNumberGenerator) -> Array:
+	var t: Dictionary = cfg(g).get("loot", {}).get(kind, {})
+	var out: Array = []
+	if t.is_empty() or rng.randf() >= float(t.get("chance", 0.0)):
+		return out
+	var c: Array = t.get("credits", [0, 0])
+	var cr := rng.randi_range(int(c[0]), int(c[1]))
+	if cr > 0:
+		out.append({"item": "credits", "qty": cr})
+	if rng.randf() < float(t.get("missiles", 0.0)):
+		out.append({"item": "missiles", "qty": rng.randi_range(1, 2)})
+	var items: Dictionary = t.get("items", {})
+	if not items.is_empty():
+		var keys: Array = items.keys()
+		var k: String = keys[rng.randi() % keys.size()]
+		var n := rng.randi_range(1, maxi(1, int(items[k])))
+		if k == "product":
+			var bases: Array = g.data.bases.keys()
+			var b: String = bases[rng.randi() % bases.size()]
+			k = Mixing.key(b, [g.data.bases[b].innate])
+		out.append({"item": k, "qty": n})
+	return out
+
+
+## Picks up one floating loot crate: credits, missiles (up to the pods' capacity) and cargo (up to the free hold).
+## Returns {ok, msg, taken: [{item, qty}]}; ok = false only when nothing fit.
+static func collect_loot(g, loot: Array) -> Dictionary:
+	var taken: Array = []
+	var parts: Array = []
+	for l in loot:
+		var item: String = l.item
+		var n := int(l.qty)
+		if item == "credits":
+			g.credits += n
+			taken.append(l)
+			parts.append("+%d cr" % n)
+		elif item == "missiles":
+			var m := mini(n, missile_cap(g) - int(g.combat.missiles))
+			if m > 0:
+				g.combat.missiles = int(g.combat.missiles) + m
+				taken.append({"item": item, "qty": m})
+				parts.append("+%d missile%s" % [m, "" if m == 1 else "s"])
+		else:
+			var m := mini(n, g.cargo_free())
+			if m > 0:
+				g._add(g.cargo, item, m)
+				taken.append({"item": item, "qty": m})
+				parts.append("+%d %s" % [m, g.item_name(item)])
+	if taken.is_empty():
+		return {"ok": false, "msg": "Loot crate: no room in the hold.", "taken": []}
+	g._emit("loot", {"taken": taken})
+	return {"ok": true, "msg": "Loot: " + ", ".join(PackedStringArray(parts)), "taken": taken}
+
+
+## Chance that the next arrival in the current system is a cartel wing of `id` instead of a lone raider.
+static func wing_chance(g, id: String) -> float:
+	var w: Dictionary = cfg(g).get("wings", {})
+	if id == "" or Cartels.weakened(g, id):
+		return 0.0
+	var c := Cartels.hostility(g, id) / 100.0 * float(w.get("chance_hostility", 0.0)) + Cartels.system_share(g, g.system, id) * float(w.get("chance_share", 0.0))
+	return clampf(c, 0.0, float(w.get("max_chance", 0.75)))
+
+
+## Ships of a cartel wing: the gang's wing, a gunship once it is angry enough, one extra fighter when at war.
+static func wing_units(g, id: String) -> Array:
+	var w: Dictionary = cfg(g).get("wings", {})
+	var units: Array = []
+	var base: Dictionary = Cartels.gang(g, id).get("wing", {"fighter": 2})
+	for k in base:
+		for i in int(base[k]):
+			units.append(str(k))
+	var h := Cartels.hostility(g, id)
+	if h >= float(w.get("gunship_hostility", 999.0)) and not units.has("gunship"):
+		units.append("gunship")
+	if h >= float(w.get("extra_fighter_hostility", 999.0)):
+		units.append("fighter")
+	return units
+
+
+## What arrives next in the current system: {"cartel": "", "units": ["pirate"]} or a cartel wing.
+static func pick_spawn(g, rng: RandomNumberGenerator) -> Dictionary:
+	for p in Cartels.present(g, g.system):
+		if rng.randf() < wing_chance(g, p.id):
+			return {"cartel": p.id, "units": wing_units(g, p.id)}
+	return {"cartel": "", "units": ["pirate"]}
+
+
+# ---------------------------------------------------------------- cartel bases (raids)
+
+## The cartel that runs a base location ("" if `loc` is no cartel base).
+static func base_cartel(g, loc: String) -> String:
+	return str(g.data.locations.get(loc, {}).get("cartel", ""))
+
+
+## A base fights while its cartel is not rebuilding after a raid.
+static func base_active(g, loc: String) -> bool:
+	var c := base_cartel(g, loc)
+	return c != "" and not Cartels.weakened(g, c)
+
+
+## The base of `cartel` was destroyed: reward credits, a big influence swing (Cartels.on_raid), loot.
+## Returns {credits, loot}.
+static func raid_base(g, loc: String, rng: RandomNumberGenerator) -> Dictionary:
+	var c := base_cartel(g, loc)
+	if c == "" or Cartels.weakened(g, c):
+		return {"credits": 0, "loot": []}
+	var r: Array = cfg(g).get("bases", {}).get("reward", [0, 0])
+	var amount := rng.randi_range(int(r[0]), int(r[1]))
+	g.credits += amount
+	Cartels.on_raid(g, c)
+	var loot := roll_loot(g, "base", rng)
+	g._emit("base_raided", {"loc": loc, "cartel": c, "credits": amount})
+	return {"credits": amount, "loot": loot}
+
+
 ## How hard pirates press in the current system: lawless systems and a hold full of product attract more.
 static func pressure(g) -> float:
 	var s: Dictionary = cfg(g).spawn
@@ -222,7 +409,7 @@ static func restock(g) -> Dictionary:
 
 static func to_save(g) -> Dictionary:
 	var c: Dictionary = g.combat
-	return {"hull": snappedf(float(c.hull), 0.1), "shield": snappedf(float(c.shield), 0.1), "missiles": int(c.missiles), "kills": int(c.kills)}
+	return {"hull": snappedf(float(c.hull), 0.1), "shield": snappedf(float(c.shield), 0.1), "missiles": int(c.missiles), "kills": int(c.kills), "secondary": str(c.get("secondary", "missile"))}
 
 
 ## Old saves have no "space": the ship starts undamaged.
@@ -235,6 +422,7 @@ static func from_save(g, d: Dictionary) -> void:
 	g.combat.shield = clampf(float(s.get("shield", max_shield(g))), 0.0, max_shield(g))
 	g.combat.missiles = clampi(int(s.get("missiles", missile_cap(g))), 0, missile_cap(g))
 	g.combat.kills = maxi(0, int(s.get("kills", 0)))
+	g.combat.secondary = str(s.get("secondary", "missile"))
 
 
 ## Seconds to shoot down one pirate with lasers at `hit_rate` (share of shots that land).
