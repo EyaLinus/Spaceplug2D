@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.9 – 2026-11-03
+- **Main quest, chapter 1:** after the tutorial, seven missions around the Ouroboros debt: an installment for Mara Vesk (+2 days), a second estate, your first Cocaine batch, the jump to Kovar, ten units for Rhea Dunmore on Varrow, three Black Comet raiders shot down and the final payment. New contacts (Vesna, Kip) and credits as rewards. Paying the debt now ends chapter 1 instead of the game; old saves start straight into the main quest.
+- **Quests and tutorial:** a quest system with a HUD tracker, a gold waypoint (on screen, at the screen edge and on the minimap), messages from the quest giver and a Quests app on the Com-Phone. New games start with Okka's four-part tutorial: buy buds, cook and mix a batch on foot in the Old Cannery, price it in the Products app, close a texted deal and hire a street dealer. It can be skipped in the Quests app or switched off in Settings.
+
 ## v0.1.8 – 2026-11-03
 - **Deal appointments:** customers now text a concrete deal with the product (often one from your recipe book), amount, price and a meeting time on the clock at a place. Hand over from two hours before the meeting; late costs affinity, on time earns some, and after the window the deal is missed. Requests use your asking price when the customer accepts it.
 - **Haggle on everything:** before you agree, haggle once each on price (+10/+25 %), amount (fewer or more) and time (2 h earlier or 3 h later).

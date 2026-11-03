@@ -183,7 +183,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
   Tutorial chain from landing to first sale, first mix, first estate, first jump.
 - **Q2 Main quest, act 1.** ✅ done (see PROGRESS.md). Story around the Ouroboros debt and the cartels (see I1): 6–8 missions with named
   characters, rewards (blueprints, contacts, estates); the debt goal becomes chapter 1 instead of the whole game.
-- → **Release v0.1.10**.
+- → **Release v0.1.10** (shipped as v0.1.9).
 
 ### Wave 8 – bigger, unique worlds (v0.1.11)
 - **D4 Larger planet maps** (was D4). Each planet 2–3× bigger with its own districts and landmarks (Mireth canal
