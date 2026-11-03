@@ -66,6 +66,7 @@ func _init() -> void:
 		"test_people_schedules_on_surfaces",
 		"test_deal_requests",
 		"test_deal_answers",
+		"test_deal_appointments",
 		"test_deal_fulfill",
 		"test_deaddrops",
 		"test_deaddrops_save",
@@ -1273,6 +1274,100 @@ func test_deal_answers() -> void:
 	var a3: float = g3.people.okka.affinity
 	g3.tick(float(data.deals.meet_seconds) + 1.0)
 	check(o3.state == "expired" and g3.people.okka.affinity < a3 + float(data.deals.affinity_noshow) * 0.5, "no-show hurts")
+
+
+func test_deal_appointments() -> void:
+	var g := new_game()
+	g.location = "mireth"
+	var hs := Deals.hour_seconds(g)
+	check(absf(hs - 7.5) < 0.001, "one in-game hour is day_seconds / 24")
+	var o: Dictionary = Deals.request(g, "okka")
+	var lead := (float(o.meet_at) - g.total_time) / hs
+	check(lead >= float(data.deals.lead_hours[0]) - 0.01 and lead <= float(data.deals.lead_hours[1]) + 0.01, "meeting proposed inside the lead window")
+	check(str(Deals.when_text(g, float(o.meet_at))).length() >= 5, "meeting time reads as a clock time")
+	# the hour at now matches the phone clock
+	check(absf(Deals.hour_at(g, g.total_time) - People.hour(g)) < 0.001, "hour_at(now) is the phone clock")
+	# asking price drives the offer, capped by what the customer pays
+	var key := Mixing.key(o.base, [data.bases[o.base].innate])
+	var market := Deals.offer_price(g, "okka", o.base)
+	g.prices.erase(key)
+	check(Deals.offer_price(g, "okka", o.base) == market, "no asking price: market offer")
+	g.prices[key] = maxi(market - 5, 1)
+	check(Deals.offer_price(g, "okka", o.base) == maxi(market - 5, 1), "a cheaper asking price is used")
+	g.prices[key] = market * 50
+	check(Deals.offer_price(g, "okka", o.base) <= int(floor(market * (1.0 + Products.tolerance(g, "okka")))), "a steep asking price is capped at their limit")
+	g.prices.erase(key)
+	# counters: amount
+	var q0: int = o.qty
+	check(Deals.counter_qty(g, o.id, 1).ok and o.qty == 1, "fewer units always works")
+	check(not Deals.counter_qty(g, o.id, 5).ok and o.countered_qty, "one amount counter per request")
+	var o2: Dictionary = Deals.request(g, "sen")
+	check(not Deals.counter_qty(g, o2.id, 100000).ok and o2.qty != 100000, "far too many units refused")
+	check(q0 >= 1, "request had a quantity")
+	# counters: time
+	var o3: Dictionary = Deals.request(g, "okka") if Deals.open_for(g, "okka").is_empty() else Deals.request(g, "teo")
+	var m0 := float(o3.meet_at)
+	var pat := Deals.patience_hours(g, o3.contact)
+	var r: Dictionary = Deals.counter_time(g, o3.id, 2.0)
+	if pat >= 2.0:
+		check(r.ok and absf(float(o3.meet_at) - (m0 + 2.0 * hs)) < 0.01, "later meeting accepted within patience")
+	else:
+		check(not r.ok and float(o3.meet_at) == m0, "later meeting refused beyond patience")
+	check(not Deals.counter_time(g, o3.id, 2.0).ok, "one time counter per request")
+	g.people[o3.contact].affinity = 1.0
+	g.people[o3.contact].addiction = 0.0
+	check(Deals.patience_hours(g, o3.contact) > 4.0, "a friend waits longer")
+	g.people[o3.contact].affinity = -1.0
+	g.people[o3.contact].addiction = 1.0
+	check(Deals.patience_hours(g, o3.contact) <= 0.5 + 0.001, "an addict does not wait")
+	# accepting fixes the appointment and the no-show deadline
+	var g2 := new_game()
+	g2.location = "mireth"
+	var a: Dictionary = Deals.request(g2, "okka")
+	a.meet_at = g2.total_time - 10.0  # proposed time already passed while thinking
+	check(Deals.accept(g2, a.id).ok, "accept")
+	check(float(a.meet_at) >= g2.total_time + float(data.deals.min_lead_hours) * Deals.hour_seconds(g2) - 0.01, "a stale proposal is moved ahead")
+	check(absf(float(a.expires_at) - (float(a.meet_at) + float(data.deals.late_hours) * Deals.hour_seconds(g2))) < 0.01, "deadline = meet time + late window")
+	check(Deals.today(g2).has(a) or float(a.meet_at) >= Deals.day_end(g2), "calendar lists today's meetings")
+	check(Deals.timing(g2, a) == "early", "before the time: early")
+	# on time vs late
+	var key2 := Mixing.key(a.base, [data.bases[a.base].innate])
+	g2.cargo[key2] = int(a.qty)
+	g2.total_time = float(a.meet_at) + 0.5 * Deals.hour_seconds(g2)
+	check(Deals.timing(g2, a) == "ontime" and Deals.pay_price(g2, a) == int(a.price), "within the grace hour: full price")
+	g2.total_time = float(a.meet_at) + 2.0 * Deals.hour_seconds(g2)
+	check(Deals.timing(g2, a) == "late" and Deals.pay_price(g2, a) < int(a.price), "late: discounted")
+	var cr: int = g2.credits
+	check(Deals.fulfill(g2, a.id, key2).ok, "late hand-over still works")
+	check(g2.credits - cr == Deals.pay_price(g2, a) * int(a.qty), "paid the discounted price")
+	# missed = expired + affinity loss
+	var g3 := new_game()
+	g3.location = "mireth"
+	var m: Dictionary = Deals.request(g3, "okka")
+	Deals.accept(g3, m.id)
+	var aff3: float = g3.people.okka.affinity
+	g3.total_time = float(m.meet_at) + (float(data.deals.late_hours) - 0.5) * Deals.hour_seconds(g3)
+	Deals.tick(g3, 0.1)
+	check(m.state == "accepted", "still open inside the late window")
+	g3.total_time = float(m.meet_at) + (float(data.deals.late_hours) + 0.5) * Deals.hour_seconds(g3)
+	Deals.tick(g3, 0.1)
+	check(m.state == "expired" and g3.people.okka.affinity < aff3, "missed meeting expires and costs affinity")
+	# save round trip keeps the appointment; an old save gets one
+	var g4 := new_game()
+	var s: Dictionary = Deals.request(g4, "okka")
+	Deals.accept(g4, s.id)
+	var d: Dictionary = JSON.parse_string(JSON.stringify(g4.to_dict()))
+	var g5 := Game.new()
+	g5.from_dict(data, d)
+	check(absf(float(Deals.find(g5, s.id).meet_at) - float(s.meet_at)) < 0.1, "meet time survives a save")
+	for od in d.offers:
+		od.erase("meet_at")
+		od.erase("countered_qty")
+		od.erase("countered_time")
+	var g6 := Game.new()
+	g6.from_dict(data, d)
+	var old: Dictionary = Deals.find(g6, s.id)
+	check(old.has("meet_at") and old.state == "accepted" and Deals.fulfill(g6, s.id, "none").ok == false, "old save: appointment fields filled in")
 
 
 func test_deal_fulfill() -> void:

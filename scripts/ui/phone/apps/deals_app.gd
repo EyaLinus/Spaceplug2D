@@ -24,6 +24,7 @@ func badge(g) -> int:
 func home(g, phone) -> Control:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
+	v.add_child(calendar_strip(g))
 	if g.offers.is_empty():
 		var l := UI.label("No messages yet. Customers you've met text you when they want something.", 14, UI.MUTED)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -33,6 +34,26 @@ func home(g, phone) -> Control:
 	for o in list:
 		v.add_child(_row(g, phone, o))
 	return v
+
+
+## Today's agreed meetings in clock order ("14:30 Okka · Mireth"), or a hint when the day is free.
+static func calendar_strip(g) -> Control:
+	var p := PanelContainer.new()
+	p.name = "Calendar"
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	p.add_child(v)
+	v.add_child(UI.label("TODAY", 12, UI.MUTED))
+	var meets: Array = Deals.today(g)
+	if meets.is_empty():
+		v.add_child(UI.label("No meetings today.", 13, UI.MUTED))
+	for o in meets:
+		var c: Dictionary = g.contact(o.contact)
+		var col := UI.ACCENT if Deals.timing(g, o) != "late" else UI.WARN
+		var l := UI.label("%s  %s · %d × %s · %s" % [Deals.when_text(g, float(o.meet_at)), c.name, o.qty, g.data.bases[o.base].name, g.loc_data(c.location).get("name", "")], 13, col)
+		l.name = "Meet_%d" % int(o.id)
+		v.add_child(l)
+	return p
 
 
 static func _rank(o: Dictionary) -> int:
@@ -83,6 +104,11 @@ func thread(g, offer_id: int) -> Control:
 	v.add_child(Art.with_icon(o.base, UI.label("%d × %s · %d cr each · %d cr total" % [o.qty, g.data.bases[o.base].name, o.price, int(o.price) * int(o.qty)], 14, UI.GOLD)))
 	for m in o.msgs:
 		v.add_child(_bubble(m.text, m.me))
+	if o.state in Deals.OPEN:
+		var w := UI.label("Meet: %s on %s%s" % [Deals.when_text(g, float(o.meet_at)), g.loc_data(c.location).get("name", ""), (" · " + str(o.place)) if str(o.place) != "" else ""], 14, UI.ACCENT)
+		w.name = "MeetInfo"
+		w.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(w)
 	var left := int(ceil(float(o.expires_at) - g.total_time))
 	match o.state:
 		"new":
@@ -102,11 +128,31 @@ func thread(g, offer_id: int) -> Control:
 			dec.name = "Decline"
 			row.add_child(dec)
 			v.add_child(row)
+			var row2 := HBoxContainer.new()
+			row2.add_theme_constant_override("separation", 6)
+			if not o.countered_qty:
+				for f in Deals.rules(g).get("qty_options", [0.5, 1.5]):
+					var q := maxi(int(round(float(o.qty) * float(f))), 1)
+					var qb := UI.button("%d units" % q, func(): GameState.act(Deals.counter_qty(g, offer_id, q)), 84)
+					qb.name = "CounterQty%d" % int(float(f) * 100.0)
+					qb.disabled = q == int(o.qty)
+					qb.tooltip_text = "Ask for %d units (max about %d)" % [q, Deals.qty_cap(g, o.contact, int(o.price))]
+					row2.add_child(qb)
+			if not o.countered_time:
+				for hrs in Deals.rules(g).get("time_options", [2, 4]):
+					var hh := float(hrs)
+					var tb := UI.button("+%dh" % int(hh), func(): GameState.act(Deals.counter_time(g, offer_id, hh)), 56)
+					tb.name = "CounterTime%d" % int(hh)
+					tb.tooltip_text = "Meet %d hours later (they wait up to about %.1fh)" % [int(hh), Deals.patience_hours(g, o.contact)]
+					row2.add_child(tb)
+			if row2.get_child_count() > 0:
+				v.add_child(row2)
 			if not o.countered:
 				v.add_child(UI.label("Haggle odds: +10%% → %d%%, +25%% → %d%%" % [int(Deals.counter_chance(g, o.contact, 0.1) * 100.0), int(Deals.counter_chance(g, o.contact, 0.25) * 100.0)], 13, UI.MUTED))
 		"accepted":
 			var where: String = g.loc_data(c.location).get("name", "")
-			var info := UI.label("Meet %s on %s within %ds and hand over %d × %s." % [c.name, where, left, o.qty, g.data.bases[o.base].name], 14, UI.ACCENT)
+			var tm := Deals.timing(g, o)
+			var info := UI.label("Meet %s on %s at %s and hand over %d × %s. %s" % [c.name, where, Deals.when_text(g, float(o.meet_at)), o.qty, g.data.bases[o.base].name, {"early": "Early is fine.", "ontime": "On time: now.", "late": "You are late: -%d%% and they mind." % int(float(Deals.rules(g).get("late_discount", 0.0)) * 100.0)}[tm]], 14, UI.ACCENT if tm != "late" else UI.WARN)
 			info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			v.add_child(info)
 			var have: Array = Deals.matching_products(g, o)

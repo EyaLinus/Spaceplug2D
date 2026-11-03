@@ -8,6 +8,7 @@ const UI = preload("res://scripts/ui/ui_theme.gd")
 const Art = preload("res://scripts/core/art.gd")
 const People = preload("res://scripts/core/people.gd")
 const Registry = preload("res://scripts/ui/phone/registry.gd")
+const DealsApp = preload("res://scripts/ui/phone/apps/deals_app.gd")
 
 const SIZE := Vector2(420, 640)
 const BEZEL := Color("#0c0a12")
@@ -171,6 +172,14 @@ func refresh() -> void:
 
 
 func _home_grid(g) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	box.add_child(DealsApp.calendar_strip(g))
+	box.add_child(_app_grid(g))
+	return box
+
+
+func _app_grid(g) -> Control:
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 10)

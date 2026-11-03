@@ -812,6 +812,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 		od.id = int(od.id)
 		od.qty = int(od.qty)
 		od.price = int(od.price)
+		Deals.migrate(self, od)
 		offers.append(od)
 	next_offer_id = int(d.get("next_offer_id", offers.size()))
 	offer_clock = float(d.get("offer_clock", 0.0))

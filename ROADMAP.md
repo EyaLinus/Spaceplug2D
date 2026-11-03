@@ -170,7 +170,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
 - **H1 Products app (recipe book).** ✅ done (H1 PR). Every product you have made once: its recipe (base + additives in order), traits,
   grade range, which estate can make it, and **your asking price** per product (default = suggested value). Unknown
   mixes show as "?" until discovered. Walk-up buyers and the fence compare against your price.
-- **H2 Contacts set up deals.** Deal-O-Matic texts become concrete appointments: product, amount, price (based on your
+- [x] **H2 Contacts set up deals.** ✅ done (H2 PR). Deal-O-Matic texts become concrete appointments: product, amount, price (based on your
   asking price and their budget/affinity), **meeting time on the clock** and place; late or missed = affinity loss.
   Counter-offers on amount, price and time. Phone calendar strip for today's meetings.
 - **A5 Dealers & couriers** (was A5). Hire dealers in the HR app, give them stock and a district; they sell at your

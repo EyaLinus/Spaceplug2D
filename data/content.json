@@ -170,7 +170,11 @@
   "deals": {
     "interval": 40, "chance": 0.3, "max_open": 3, "answer_seconds": 90, "meet_seconds": 150, "premium": 0.15,
     "accept_base": 0.8, "accept_per_raise": 2.6, "accept_affinity": 0.4, "accept_addiction": 0.4,
-    "affinity_decline": -0.02, "affinity_counter_fail": -0.03, "affinity_noshow": -0.08, "heat_mult": 0.8, "history": 12
+    "affinity_decline": -0.02, "affinity_counter_fail": -0.03, "affinity_noshow": -0.08, "heat_mult": 0.8, "history": 12,
+    "lead_hours": [6, 14], "min_lead_hours": 2, "ontime_hours": 1.0, "late_hours": 4.0,
+    "late_affinity": -0.03, "late_discount": 0.1,
+    "qty_options": [0.5, 1.5], "qty_cap": 1.5, "time_options": [2, 4],
+    "time_base": 3.0, "time_affinity": 3.0, "time_addiction": 3.0
   },
   "deaddrops": {
     "kinds": ["planet", "station", "asteroid"], "fee": 60, "max_open": 3, "ttl": 600, "pickup_seconds": 25,

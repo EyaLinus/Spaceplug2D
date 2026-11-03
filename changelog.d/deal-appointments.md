@@ -1,0 +1,1 @@
+- **Deal appointments:** Deal-O-Matic requests are now meetings with a time on the phone clock and a place on the customer's planet. Prices start from your asking price. Be on time (an hour of grace) or lose a tenth of the price and some goodwill, miss it and they walk. Counter on price, amount or time; a calendar strip on the phone shows today's meetings.

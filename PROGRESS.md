@@ -1,5 +1,21 @@
 # Progress log
 
+## H2: contacts set up deals (phase 3 wave 6, 2026-11-03)
+- **Core** `scripts/core/deals.gd`: every request now carries an appointment `meet_at` (total_time, proposed 6-14 in-game
+  hours ahead; 1 h = day_seconds / 24) and a `place` taken from the customer's schedule at that hour. Price starts from
+  your asking price (H1) for the plain product, capped at what the customer pays (`Products.tolerance`). Accepting fixes
+  the time (a stale proposal moves to at least `min_lead_hours` ahead); deadline `expires_at` = meet + `late_hours`.
+  Handing over early or within `ontime_hours` pays in full; later pays `late_discount` less and costs `late_affinity`;
+  past the deadline the deal expires with the old no-show affinity loss. Counter-offers: price (existing, closes the deal),
+  amount (`counter_qty`, fewer always, more capped by `qty_cap` x usual and budget) and time (`counter_time`, later by
+  2/4 h within `patience_hours` from affinity/addiction); one of each kind per request, amount/time keep the deal open.
+  `today`, `when_text`, `timing`, `pay_price`; old saves get `meet_at` via `Deals.migrate`. Numbers in content.json `deals`.
+- **UI** Deal-O-Matic thread shows time and place, amount/time counter buttons, on time/late hint; `calendar_strip` (today's
+  meetings in clock order) on top of the Deal-O-Matic list and on the phone home screen.
+- Verified: NOT RUN in the authoring session - no Godot binary was installed and fetching one was blocked. New
+  `test_deal_appointments`, ui_smoke asserts (MeetInfo, Calendar) and everything else must go through CI.
+- Gaps: the dead-drop settlement ignores lateness; no map marker for the meeting time; customers do not walk to the meet.
+
 ## H1: Products app (phase 3 wave 6, 2026-11-03)
 - **Core** `scripts/core/products.gd`: `Game.recipes` (recipe key without grade -> base, additives in order, made,
   best grade, first day) filled by `Products.discover` from `Game.queue_batch` and worker batches; old saves adopt
