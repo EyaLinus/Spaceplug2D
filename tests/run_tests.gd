@@ -75,6 +75,7 @@ func _init() -> void:
 		"test_people_deals",
 		"test_people_save",
 		"test_people_schedules_on_surfaces",
+		"test_planet_districts",
 		"test_deal_requests",
 		"test_deal_answers",
 		"test_deal_fulfill",
@@ -1187,6 +1188,47 @@ func test_people_save() -> void:
 	var g3 := Game.new()
 	g3.from_dict(data, d)
 	check(g3.people.has("marta") and g3.people.okka.history.is_empty(), "old save without people gets defaults")
+
+
+## D4: every planet is a big map split into named districts, with landmarks (areas) that are either paint or walls.
+func test_planet_districts() -> void:
+	var Nav = load("res://scripts/planet/nav.gd")
+	var kinds := ["water", "pit", "slag", "void", "chasm", "grass", "sand", "salt", "ice", "rubble", "rail", "deck", "arena", "dome"]
+	for loc in data.surfaces:
+		var s: Dictionary = data.surfaces[loc]
+		if s.has("estate"):
+			continue
+		check(int(s.size[0]) * int(s.size[1]) >= 2500, "%s is a big map (%d tiles)" % [loc, int(s.size[0]) * int(s.size[1])])
+		var map := Rect2(0, 0, s.size[0], s.size[1])
+		var districts: Array = s.get("districts", [])
+		check(districts.size() >= 3, "%s has at least three districts" % loc)
+		var covered := 0.0
+		for d in districts:
+			var r := Rect2(d.rect[0], d.rect[1], d.rect[2], d.rect[3])
+			check(map.encloses(r) and str(d.name) != "", "%s district %s inside the map" % [loc, d.name])
+			covered += r.get_area()
+		check(is_equal_approx(covered, map.get_area()), "%s districts tile the whole map" % loc)
+		var solid: Array = Nav.solid_areas(s)
+		check(not solid.is_empty(), "%s has a landmark you can't walk through" % loc)
+		for a in s.get("areas", []):
+			check(str(a[4]) in kinds, "%s area kind %s known" % [loc, a[4]])
+			check(map.encloses(Rect2(a[0], a[1], a[2], a[3])), "%s area %s inside the map" % [loc, str(a)])
+		var blocked: Array = []
+		for b in s.buildings:
+			blocked.append(Rect2(b.rect[0], b.rect[1], b.rect[2], b.rect[3]))
+		for r in s.roads:
+			blocked.append(Rect2(r[0], r[1], r[2], r[3]))
+		for a in solid:
+			var ar := Rect2(a[0], a[1], a[2], a[3])
+			check(not blocked.any(func(o): return o.intersects(ar)), "%s solid area %s stays off roads and buildings" % [loc, str(a)])
+		var nav: AStarGrid2D = Nav.build(s)
+		for a in solid:
+			check(nav.is_point_solid(Vector2i(int(a[0]), int(a[1]))), "%s solid area is a wall in the nav grid" % loc)
+		var start := Vector2i(int(s.spawn[0]), int(s.spawn[1]))
+		for k in s.spots:
+			var cell := Vector2i(int(floor(s.spots[k][0])), int(floor(s.spots[k][1])))
+			check(not nav.is_point_solid(cell) and not nav.get_id_path(start, cell).is_empty(), "%s spot %s reachable" % [loc, k])
+		check(s.spots.size() >= 8, "%s has places for people to be (%d)" % [loc, s.spots.size()])
 
 
 func test_people_schedules_on_surfaces() -> void:

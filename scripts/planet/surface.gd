@@ -27,6 +27,8 @@ const INPUT := {
 	"weapon_1": [KEY_1],
 	"weapon_2": [KEY_2],
 	"weapon_3": [KEY_3],
+	"sprint": [KEY_SHIFT],
+	"map_zoom": [KEY_M],
 }
 
 var loc_id := ""
@@ -254,6 +256,8 @@ func _build_collision() -> void:
 	for c in covers:
 		solid.append(c)
 		_bullet_blockers.append(c)
+	for a in Nav.solid_areas(cfg):  # canals, pits, chasms: no walking, but bullets fly over them
+		solid.append(_rect(a))
 	solid.append(Rect2(-t, -t, map_size.x + 2 * t, t))
 	solid.append(Rect2(-t, map_size.y, map_size.x + 2 * t, t))
 	solid.append(Rect2(-t, 0, t, map_size.y))
@@ -682,6 +686,9 @@ func _draw() -> void:
 		Art.fill_tiles(self, "tiles/%s_ground.png" % tiles, Rect2(Vector2.ZERO, map_size), 1)
 	else:
 		_draw_ground_fallback()
+	var areas: Array = cfg.get("areas", [])
+	for i in areas.size():
+		_draw_area(areas[i], i)
 	var road := Color(cfg.get("road", "#45464f"))
 	var line := Color(cfg.get("road_line", "#6b6c78"))
 	for r in cfg.roads:
@@ -722,6 +729,110 @@ func _draw() -> void:
 		_draw_cover(covers[i], str(cfg.cover[i][4]) if cfg.cover[i].size() > 4 else "barrier")
 	var font := ThemeDB.fallback_font
 	draw_string(font, Vector2(tile * 0.5, map_size.y - tile * 0.4), cfg.get("name", ""), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1, 1, 1, 0.35))
+
+
+## Ground paint and landmarks from surfaces.json "areas" ([x, y, w, h, kind], tile units), drawn under the roads.
+## Solid kinds (Nav.SOLID_AREAS) are also walls for walking; roads drawn over a gap read as bridges.
+func _draw_area(a: Array, index: int) -> void:
+	var r := _rect(a)
+	var kind := str(a[4])
+	var n := RandomNumberGenerator.new()
+	n.seed = hash(loc_id) + index * 31
+	var count := int(r.get_area() / (tile * tile))
+	match kind:
+		"water":
+			draw_rect(r.grow(4), Color("#5a5b63"))
+			draw_rect(r, Color("#1d4a5e"))
+			draw_rect(Rect2(r.position, Vector2(r.size.x, 6)), Color(0, 0, 0, 0.25))
+			for i in count:
+				var p := Vector2(n.randf_range(r.position.x + 6, r.end.x - 20), n.randf_range(r.position.y + 10, r.end.y - 6))
+				draw_line(p, p + Vector2(12, 0), Color("#5fb6c9", 0.5), 2.0)
+		"pit":
+			draw_rect(r.grow(5), Color("#3a2a20"))
+			draw_rect(r, Color("#120d0a"))
+			draw_rect(r.grow(-tile * 0.5), Color("#050403"))
+			for i in 3:
+				var y := r.position.y + 6 + i * 8.0
+				draw_line(Vector2(r.position.x + 6, y), Vector2(r.end.x - 6, y), Color("#c08a3a", 0.35), 2.0)
+		"slag":
+			draw_rect(r.grow(4), Color("#2a1a12"))
+			draw_rect(r, Color("#5a1e0a"))
+			for i in count:
+				var p := Vector2(n.randf_range(r.position.x + 8, r.end.x - 8), n.randf_range(r.position.y + 8, r.end.y - 8))
+				draw_circle(p, n.randf_range(4.0, 10.0), Color("#ff7a2a", 0.55))
+				draw_circle(p, 3.0, Color("#ffd166", 0.7))
+		"void":
+			draw_rect(r.grow(6), Color("#4a4a52"))
+			draw_rect(r, Color("#05060c"))
+			for i in count * 3:
+				var p := Vector2(n.randf_range(r.position.x, r.end.x), n.randf_range(r.position.y, r.end.y))
+				draw_circle(p, n.randf_range(0.6, 1.6), Color(1, 1, 1, n.randf_range(0.3, 0.9)))
+			draw_rect(r, Color("#8fd1e8", 0.5), false, 2.0)
+		"chasm":
+			draw_rect(r, Color("#1a120c"))
+			draw_rect(Rect2(r.position, Vector2(r.size.x, 8)), Color(cfg.get("road", "#7a5434")).darkened(0.2))
+			draw_rect(Rect2(Vector2(r.position.x, r.end.y - 4), Vector2(r.size.x, 4)), Color(0, 0, 0, 0.5))
+			for i in count:
+				var p := Vector2(n.randf_range(r.position.x, r.end.x), n.randf_range(r.position.y + 10, r.end.y - 4))
+				draw_line(p, p + Vector2(n.randf_range(-8, 8), 6), Color("#3a2a20"), 2.0)
+		"grass", "sand", "salt", "ice", "rubble":
+			var tint: Color = {"grass": Color("#3f6a3a", 0.6), "sand": Color("#d8b070", 0.35), "salt": Color("#ece8dc", 0.6),
+				"ice": Color("#bfe6f5", 0.55), "rubble": Color(0, 0, 0, 0.14)}[kind]
+			draw_rect(r, tint)
+			for i in count:
+				var p := Vector2(n.randf_range(r.position.x, r.end.x), n.randf_range(r.position.y, r.end.y))
+				match kind:
+					"grass":
+						draw_line(p, p + Vector2(n.randf_range(-2, 2), -6), Color("#7fb86a", 0.8), 1.5)
+					"sand":
+						draw_arc(p, 10.0, PI * 1.15, PI * 1.85, 6, Color("#a07a50", 0.5), 1.5)
+					"salt":
+						draw_line(p, p + Vector2(n.randf_range(-14, 14), n.randf_range(-6, 6)), Color("#b0a890", 0.6), 1.0)
+					"ice":
+						draw_line(p, p + Vector2(10, -4), Color(1, 1, 1, 0.6), 1.5)
+					"rubble":
+						draw_circle(p, n.randf_range(1.0, 2.5), Color("#2a1d16", 0.7))
+		"rail":
+			var horizontal := r.size.x >= r.size.y
+			var c := r.get_center()
+			var length := r.size.x if horizontal else r.size.y
+			var i := 0.0
+			while i < length:
+				var at := Vector2(r.position.x + i, c.y) if horizontal else Vector2(c.x, r.position.y + i)
+				var across := Vector2(0, 9) if horizontal else Vector2(9, 0)
+				draw_line(at - across, at + across, Color("#4a3426"), 4.0)
+				i += 12.0
+			for side in [-5.0, 5.0]:
+				var off := Vector2(0, side) if horizontal else Vector2(side, 0)
+				var a0 := Vector2(r.position.x, c.y) if horizontal else Vector2(c.x, r.position.y)
+				var a1 := Vector2(r.end.x, c.y) if horizontal else Vector2(c.x, r.end.y)
+				draw_line(a0 + off, a1 + off, Color("#9a9aa8"), 2.0)
+		"deck":
+			draw_rect(r, Color(1, 1, 1, 0.04))
+			var x := r.position.x
+			while x <= r.end.x:
+				draw_line(Vector2(x, r.position.y), Vector2(x, r.end.y), Color(0, 0, 0, 0.25), 1.0)
+				x += tile * 2
+			var y := r.position.y
+			while y <= r.end.y:
+				draw_line(Vector2(r.position.x, y), Vector2(r.end.x, y), Color(0, 0, 0, 0.25), 1.0)
+				y += tile * 2
+		"arena":
+			draw_rect(r, Color("#c29a62", 0.3))
+			draw_rect(r, Color("#c27447"), false, 4.0)
+			draw_rect(r.grow(-tile * 0.5), Color("#ffd166", 0.4), false, 2.0)
+		"dome":
+			draw_rect(r, Color("#8fd1e8", 0.08))
+			draw_rect(r, Color("#8fd1e8", 0.55), false, 4.0)
+			draw_rect(r.grow(-6), Color(1, 1, 1, 0.2), false, 1.5)
+
+
+## Name of the district `pos` (pixels) lies in, "" if the surface has none there.
+func district_at(pos: Vector2) -> String:
+	for d in cfg.get("districts", []):
+		if _rect(d.rect).has_point(pos):
+			return d.name
+	return ""
 
 
 func _draw_ground_fallback() -> void:

@@ -25,6 +25,15 @@ var _scan_bar: ProgressBar
 var _scan_label: Label
 var _toasts: VBoxContainer
 var _minimap: Control
+## On foot the minimap can zoom in around the player (map_zoom key cycles): 1 = whole planet, 2 and 4 = closer.
+const MAP_ZOOMS := [1.0, 2.0, 4.0]
+const MINIMAP_AREAS := {"water": Color("#2f6f8a"), "pit": Color("#0a0806"), "slag": Color("#c0502f"), "void": Color("#05060c"),
+	"chasm": Color("#1a120c"), "grass": Color("#3f6a3a"), "ice": Color("#bfe6f5", 0.6), "dome": Color("#8fd1e8", 0.15),
+	"arena": Color("#c27447", 0.5), "salt": Color("#ece8dc", 0.4)}
+var map_zoom := 0  ## index into MAP_ZOOMS
+var _district: Label  ## name of the district you stand in, above the minimap
+var _district_name := ""
+var _district_t := 0.0  ## seconds the "you entered" highlight still shows
 var _nav: Control  ## edge arrows pointing at off-screen locations
 var _quest_box: PanelContainer  ## tracker of the followed quest (top left)
 var _quest_title: Label
@@ -111,7 +120,18 @@ func _ready() -> void:
 	_minimap.offset_right = -12
 	_minimap.offset_bottom = -12
 	_minimap.draw.connect(_draw_minimap)
+	_minimap.clip_contents = true  # zoomed-in surface maps draw past the frame
 	add_child(_minimap)
+	_district = UI.label("", 15, UI.MUTED)
+	_district.name = "District"
+	_district.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_district.offset_left = -200
+	_district.offset_right = -12
+	_district.offset_top = -226
+	_district.offset_bottom = -202
+	_district.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_district.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_district)
 
 	var help := UI.label("", 14, UI.MUTED)
 	help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
@@ -167,9 +187,35 @@ func _process(_delta: float) -> void:
 			_prompt.text = "[%s] Dock at %s" % [Settings.key_label("ship_dock"), nl.name]
 	else:
 		_prompt.text = ""
+	_update_district(_delta)
 	_minimap.queue_redraw()
 	_nav.queue_redraw()
 	_update_quest_ui(g, _delta)
+
+
+## District label above the minimap; it lights up for a few seconds when you walk into a new one.
+func _update_district(delta: float) -> void:
+	var d := ""
+	if surface != null and surface.player != null and surface.has_method("district_at"):
+		d = surface.district_at(surface.player.position)
+	if d != _district_name:
+		_district_name = d
+		_district_t = 3.0 if d != "" else 0.0
+	_district_t = maxf(0.0, _district_t - delta)
+	_district.visible = d != ""
+	var zoom_hint := "" if map_zoom == 0 else "  ×%d" % int(MAP_ZOOMS[map_zoom])
+	_district.text = d.to_upper() + zoom_hint
+	_district.add_theme_color_override("font_color", UI.GOLD if _district_t > 0.0 else UI.MUTED)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if surface != null and event.is_action_pressed("map_zoom"):
+		cycle_map_zoom()
+		get_viewport().set_input_as_handled()
+
+
+func cycle_map_zoom() -> void:
+	map_zoom = (map_zoom + 1) % MAP_ZOOMS.size()
 
 
 func show_toast(text: String, good: bool = true) -> void:
@@ -261,12 +307,20 @@ func _draw_nav() -> void:
 func _draw_surface_map() -> void:
 	var size := _minimap.size
 	_minimap.draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.08, 0.07, 0.85))
-	var scale: float = minf(size.x / surface.map_size.x, size.y / surface.map_size.y)
+	var scale: float = minf(size.x / surface.map_size.x, size.y / surface.map_size.y) * float(MAP_ZOOMS[map_zoom])
 	var map_px: Vector2 = surface.map_size
 	var off: Vector2 = (size - map_px * scale) / 2.0
+	if map_zoom > 0:  # zoomed in: follow the player, but keep the map edge in view instead of empty space
+		var half := size / 2.0 / scale
+		var c: Vector2 = surface.player.position.clamp(half, map_px - half) if map_px.x > half.x * 2.0 and map_px.y > half.y * 2.0 else map_px / 2.0
+		off = size / 2.0 - c * scale
 	var cfg: Dictionary = surface.cfg
 	var t: float = surface.tile * scale
 	_minimap.draw_rect(Rect2(off, surface.map_size * scale), Color(cfg.get("ground", "#2b4538")))
+	for a in cfg.get("areas", []):
+		var ac = MINIMAP_AREAS.get(str(a[4]))
+		if ac != null:
+			_minimap.draw_rect(Rect2(off + Vector2(a[0], a[1]) * t, Vector2(a[2], a[3]) * t), ac)
 	for r in cfg.roads:
 		_minimap.draw_rect(Rect2(off + Vector2(r[0], r[1]) * t, Vector2(r[2], r[3]) * t), Color(cfg.get("road", "#45464f")).lightened(0.2))
 	for b in cfg.buildings:
@@ -288,8 +342,8 @@ func _refresh_help() -> void:
 	var k := func(a: String) -> String: return Settings.key_label(a)
 	_flight_help.text = "%s thrust   %s reverse   %s/%s turn   %s brake   %s dock   %s phone   %s menu" % [k.call("ship_thrust"),
 		k.call("ship_reverse"), k.call("ship_left"), k.call("ship_right"), k.call("ship_brake"), k.call("ship_dock"), k.call("phone"), k.call("ui_menu")]
-	_foot_help.text = "%s%s%s%s/arrows walk   %s use / talk   mouse aim + fire   %s weapons   %s reload   %s phone   %s menu" % [k.call("move_up"),
-		k.call("move_left"), k.call("move_down"), k.call("move_right"), k.call("interact"), k.call("weapon_wheel"), k.call("reload"), k.call("phone"), k.call("ui_menu")]
+	_foot_help.text = "%s%s%s%s/arrows walk   %s sprint   %s use / talk   mouse aim + fire   %s weapons   %s reload   %s map zoom   %s phone   %s menu" % [k.call("move_up"),
+		k.call("move_left"), k.call("move_down"), k.call("move_right"), k.call("sprint"), k.call("interact"), k.call("weapon_wheel"), k.call("reload"), k.call("map_zoom"), k.call("phone"), k.call("ui_menu")]
 
 
 # ---------------------------------------------------------------- quests

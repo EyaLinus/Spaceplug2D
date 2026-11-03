@@ -4,12 +4,14 @@ extends CharacterBody2D
 
 const Art = preload("res://scripts/core/art.gd")
 const SPEED := 170.0
+const SPRINT := 1.6  ## speed factor while the sprint key is held (planets are big)
 const RADIUS := 9.0
 
 var frozen := false  ## true while a panel is open or the game is paused
 var facing := Vector2.DOWN
 var aim_dir := Vector2.ZERO  ## set while shooting: the sprite looks at the mouse instead of the walking direction
 var flash := 0.0  ## hurt flash (seconds)
+var sprinting := false
 var _step := 0.0
 var _moving := false
 
@@ -31,6 +33,7 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector2.ZERO
 		queue_redraw()
 		return
+	sprinting = InputMap.has_action("sprint") and Input.is_action_pressed("sprint")
 	walk(delta, Input.get_vector("move_left", "move_right", "move_up", "move_down"))
 
 
@@ -39,8 +42,8 @@ func walk(delta: float, dir: Vector2) -> void:
 	_moving = dir.length() > 0.1
 	if _moving:
 		facing = dir.normalized()
-		_step += delta * 11.0
-	velocity = dir.limit_length(1.0) * SPEED
+		_step += delta * (11.0 * (SPRINT if sprinting else 1.0))
+	velocity = dir.limit_length(1.0) * SPEED * (SPRINT if sprinting else 1.0)
 	move_and_slide()
 	queue_redraw()
 

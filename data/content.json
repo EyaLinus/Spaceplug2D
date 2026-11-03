@@ -338,11 +338,11 @@
     "officer": {"hp": 40, "draw_heat": 55, "damage": 9, "interval": 1.0, "spread_deg": 7.0, "bullet_speed": 460,
       "range": 280, "radius": 10, "alert_seconds": 4.0, "kill_heat": 12, "hit_heat": 4, "respawn_seconds": 25, "witness_range": 340},
     "cover": {
-      "mireth": [[36, 18, 2, 1, "barrier"], [25, 9, 1, 2, "crates"], [16, 18, 2, 1, "barrier"], [42, 14, 2, 1, "crates"], [4, 18, 2, 1, "barrier"], [25, 22, 1, 2, "crates"], [25, 30, 1, 2, "barrier"]],
-      "cinder": [[19, 7, 1, 2, "barrier"], [3, 11, 2, 1, "crates"], [10, 11, 2, 1, "barrier"], [29, 11, 2, 1, "crates"], [19, 18, 1, 2, "barrier"]],
-      "bazaar": [[12, 14, 2, 1, "barrier"], [4, 14, 2, 1, "crates"], [16, 6, 1, 2, "barrier"], [23, 14, 2, 1, "crates"], [20, 20, 1, 2, "barrier"]],
-      "varrow": [[12, 17, 2, 1, "barrier"], [28, 17, 2, 1, "crates"], [24, 4, 1, 2, "barrier"], [3, 17, 2, 1, "crates"], [24, 22, 1, 2, "barrier"]],
-      "glacis": [[13, 14, 2, 1, "barrier"], [21, 25, 1, 2, "crates"], [25, 7, 1, 2, "barrier"], [5, 14, 2, 1, "crates"], [40, 14, 2, 1, "barrier"], [29, 18, 2, 1, "crates"]]
+      "mireth": [[36, 18, 2, 1, "barrier"], [25, 9, 1, 2, "crates"], [16, 18, 2, 1, "barrier"], [42, 14, 2, 1, "crates"], [4, 18, 2, 1, "barrier"], [25, 22, 1, 2, "crates"], [25, 30, 1, 2, "barrier"], [66, 18, 2, 1, "barrier"], [47, 44, 2, 1, "crates"], [12, 44, 2, 1, "crates"], [75, 18, 2, 1, "barrier"], [63, 53, 2, 1, "crates"]],
+      "cinder": [[19, 7, 1, 2, "barrier"], [3, 11, 2, 1, "crates"], [10, 11, 2, 1, "barrier"], [29, 11, 2, 1, "crates"], [19, 18, 1, 2, "barrier"], [40, 34, 2, 1, "crates"], [8, 27, 2, 1, "barrier"], [57, 28, 2, 1, "crates"], [50, 16, 2, 1, "barrier"]],
+      "bazaar": [[12, 14, 2, 1, "barrier"], [4, 14, 2, 1, "crates"], [16, 6, 1, 2, "barrier"], [23, 14, 2, 1, "crates"], [20, 20, 1, 2, "barrier"], [43, 22, 1, 2, "crates"], [12, 34, 2, 1, "barrier"], [62, 17, 1, 2, "barrier"], [41, 38, 2, 1, "crates"]],
+      "varrow": [[12, 17, 2, 1, "barrier"], [28, 17, 2, 1, "crates"], [24, 4, 1, 2, "barrier"], [3, 17, 2, 1, "crates"], [24, 22, 1, 2, "barrier"], [45, 18, 2, 1, "crates"], [60, 17, 2, 1, "barrier"], [14, 38, 2, 1, "crates"], [36, 39, 2, 1, "barrier"]],
+      "glacis": [[13, 14, 2, 1, "barrier"], [21, 25, 1, 2, "crates"], [25, 7, 1, 2, "barrier"], [5, 14, 2, 1, "crates"], [40, 14, 2, 1, "barrier"], [29, 18, 2, 1, "crates"], [70, 18, 2, 1, "barrier"], [64, 13, 2, 1, "barrier"], [28, 41, 2, 1, "crates"], [72, 44, 1, 2, "crates"]]
     }
   },
   "corruption": {

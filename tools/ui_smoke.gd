@@ -96,6 +96,33 @@ func _run() -> void:
 	_assert(sf.player.position.y >= hangar.end.y - 2.0, "building walls block the player (y=%.0f, wall=%.0f)" % [sf.player.position.y, hangar.end.y])
 	step("walk and collide")
 
+	# D4: canals are walls, districts show above the minimap, M zooms the minimap, Shift sprints
+	sf.player.position = sf._px([23.5, 36.5])  # north end of the canal bridge
+	await pframes(2)
+	_assert(m.hud._district.text.begins_with("CANNERY ROW"), "district label (got %s)" % m.hud._district.text)
+	var bank := Vector2(10.5 * sf.tile, 37.2 * sf.tile)
+	sf.player.position = bank
+	for i in 30:
+		sf.player.walk(1.0 / 60.0, Vector2.DOWN)
+		await physics_frame
+	_assert(sf.player.position.y < 38.0 * sf.tile, "the canal blocks walking (y=%.0f)" % sf.player.position.y)
+	sf.player.position = sf._px([23.5, 36.5])
+	for i in 60:
+		sf.player.walk(1.0 / 60.0, Vector2.DOWN)
+		await physics_frame
+	_assert(sf.player.position.y > 41.0 * sf.tile, "the bridge crosses the canal (y=%.0f)" % sf.player.position.y)
+	await pframes(1)
+	_assert(m.hud._district.text.begins_with("CANAL DOCKS"), "district changes on the docks (got %s)" % m.hud._district.text)
+	var z0: int = m.hud.map_zoom
+	await key(KEY_M)
+	_assert(m.hud.map_zoom == z0 + 1 and m.hud._district.text.ends_with("×2"), "M zooms the minimap (%d)" % m.hud.map_zoom)
+	m.hud.map_zoom = 0
+	sf.player.sprinting = true
+	sf.player.walk(1.0 / 60.0, Vector2.RIGHT)
+	_assert(sf.player.velocity.length() > sf.player.SPEED * 1.3, "sprint is faster than walking")
+	sf.player.sprinting = false
+	step("districts, canal, minimap zoom, sprint")
+
 	# every door and person opens exactly its own panel
 	var expect := {"spaceport": "Shipyard", "market": "Market", "office": "Office",
 		"rusk": "Shipyard", "okka": "Deals", "sen": "Deals"}
