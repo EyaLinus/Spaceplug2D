@@ -31,8 +31,17 @@ static func fly(g: Game, to: String, rng: RandomNumberGenerator, log: Array) -> 
 	g.dock(to)
 
 
+## Townsfolk (locals.gd) have to be found on foot; the bot reaches only a few of them per stop.
+const LOCALS_PER_STOP := 4
+
+
 static func sell_here(g: Game) -> void:
+	var locals := 0
 	for c in g.contacts_at():
+		if c.get("local", false):
+			locals += 1
+			if locals > LOCALS_PER_STOP:
+				continue
 		for k in g.cargo.keys():
 			if Mixing.is_product(k) and g.contact_ready(c.id):
 				var n := mini(int(g.cargo[k]), People.units_wanted(g, c.id, k))

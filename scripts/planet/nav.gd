@@ -47,3 +47,13 @@ static func path_between(g: AStarGrid2D, tile_px: float, from: Vector2, to: Vect
 		r.append((Vector2(ids[i]) + Vector2(0.5, 0.5)) * tile_px)
 	r.append(to)
 	return r
+
+
+## A person's schedule spot (tile units) nudged out of a crowd, or the unnudged place spot if the nudge lands on a wall.
+static func free_spot(g: AStarGrid2D, nudged: Array, place: Array) -> Array:
+	if nudged.is_empty():
+		return nudged
+	var cell := Vector2i(int(floor(nudged[0])), int(floor(nudged[1])))
+	if g != null and (not g.region.has_point(cell) or g.is_point_solid(cell)):
+		return [float(place[0]), float(place[1])]
+	return nudged

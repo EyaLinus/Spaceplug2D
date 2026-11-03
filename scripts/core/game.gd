@@ -248,6 +248,23 @@ func contact_ready(id: String) -> bool:
 	return total_time >= float(contact_ready_at.get(id, 0.0))
 
 
+## B4 referrals: a happy customer sometimes puts you in touch with someone on the same planet you haven't met.
+func _maybe_referral(from_id: String) -> void:
+	if rng.randf() >= float(data.get("locals", {}).get("referral_chance", 0.0)):
+		return
+	var c := contact(from_id)
+	var strangers: Array = []
+	for o in data.contacts:
+		if o.location == c.location and o.id != from_id and not People.state(self, o.id).known:
+			strangers.append(o)
+	if strangers.is_empty():
+		return
+	var n: Dictionary = strangers[rng.randi() % strangers.size()]
+	People.meet(self, n.id)
+	_emit("referral", {"contact": n.id, "by": from_id, "text": "%s gave you %s's number (%s, wants %s)." % [c.name, n.name,
+		str(n.get("job", "")).to_lower(), data.bases[n.prefers[0]].name if not n.get("prefers", []).is_empty() else "anything"]})
+
+
 ## Price per unit for selling `product_key` here, to a contact (id) or the fence ("").
 func sell_price(product_key: String, contact_id: String = "", loc: String = location) -> int:
 	var p := Mixing.parse_key(product_key)
@@ -589,6 +606,7 @@ func sell(product_key: String, qty: int, contact_id: String = "") -> Dictionary:
 	if contact_id != "":
 		contact_ready_at[contact_id] = total_time + float(data.market.contact_cooldown)
 		People.record_deal(self, contact_id, product_key, qty, total, p)
+		_maybe_referral(contact_id)
 		if bargain:
 			var s: Dictionary = People.state(self, contact_id)
 			s.affinity = clampf(float(s.affinity) + float(data.get("products", {}).get("affinity_bargain", 0.0)), -1.0, 1.0)

@@ -95,7 +95,7 @@ static func hour(g) -> float:
 
 
 ## Where on its surface a person stands at `at_hour`: the surface's spot for the current schedule place (tile units),
-## nudged sideways by `slot` (the person's index on the surface) so people sharing a place stand side by side.
+## nudged by `slot` (the person's index on the surface) so people sharing a place stand side by side.
 ## [] when the surface has no spot for it.
 static func spot(c: Dictionary, spots: Dictionary, at_hour: float, slot := 0) -> Array:
 	var e := whereabouts(c, at_hour)
@@ -103,7 +103,8 @@ static func spot(c: Dictionary, spots: Dictionary, at_hour: float, slot := 0) ->
 		return []
 	var p: Array = spots[e.place]
 	var nudge := (float(posmod(slot, 4)) - 1.5) * 0.8
-	return [float(p[0]) + nudge, float(p[1])]
+	var row := (float(posmod(slot / 4, 3)) - 1.0) * 0.45  # a crowd stands in rows, not on top of each other
+	return [float(p[0]) + nudge, float(p[1]) + row]
 
 
 ## Day/night colour for `at_hour` from time.daylight keys [[hour, "#rrggbb"], ...], blended and wrapping at midnight.

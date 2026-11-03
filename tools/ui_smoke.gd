@@ -1,4 +1,6 @@
 extends SceneTree
+
+const People = preload("res://scripts/core/people.gd")
 ## UI smoke test: boots the real main scene headless, lands on Mireth and walks the planet surface (collision,
 ## every door and person, take-off), plays the core loop through the UI layer
 ## (buy, cook, hand-made batch through every station minigame, sell, upgrade, bribe, pay), flies between locations, triggers a patrol bust,
@@ -140,6 +142,26 @@ func _run() -> void:
 		await frames(1)
 		_assert(not m.station.visible, "panel closes")
 	step("doors and people")
+
+	# B4: the townsfolk are named customers; unknown ones show their job, talking makes them a contact
+	var g0 = gs.game
+	var local_ids: Array = sf.npcs.keys().filter(func(k): return k.begins_with("mireth_local_"))
+	_assert(local_ids.size() == int(gs.data.locals.count.mireth), "all Mireth townsfolk walk the surface (%d)" % local_ids.size())
+	_assert(sf.cfg.npcs.all(func(n): return str(n.get("contact", "")) != "" or n.action == "shipyard"), "no anonymous people left")
+	var lid: String = local_ids[0]
+	var lc: Dictionary = g0.contact(lid)
+	sf.place_player_at(lid)
+	await pframes(2)
+	_assert(sf.npcs[lid].display_name == "" and sf.npcs[lid].subtitle == lc.job, "stranger shows the job (got '%s'/'%s')" % [sf.npcs[lid].display_name, sf.npcs[lid].subtitle])
+	_assert(sf.focus.get("payload", {}).get("id", "") == lid and "wants" in m.hud._prompt.text, "prompt says what they want (%s)" % m.hud._prompt.text)
+	_assert(sf.interact(), "talk to %s" % lid)
+	await frames(2)
+	_assert(m.station.visible and m.station.tab_names() == ["Deals"], "a local opens Deals")
+	_assert(People.state(g0, lid).known, "talking makes them a contact")
+	m.station.close_requested.emit()
+	await pframes(2)
+	_assert(sf.npcs[lid].display_name == lc.name, "met local shows the name")
+	step("named townsfolk")
 
 	# market shop screen: item cards fill a basket, one checkout buys it all
 	sf.place_player_at("market")
