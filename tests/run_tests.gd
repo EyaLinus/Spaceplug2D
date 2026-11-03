@@ -23,6 +23,7 @@ const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Machines = preload("res://scripts/core/machines.gd")
 
 var data: Dictionary
 var failures := 0
@@ -46,6 +47,13 @@ func _init() -> void:
 		"test_bench_line",
 		"test_bench_mixing",
 		"test_bench_save",
+		"test_machines_data",
+		"test_machines_provide_stations",
+		"test_machines_run",
+		"test_machines_mixer_and_packer",
+		"test_machines_quality_below_hands",
+		"test_machines_workers",
+		"test_machines_save",
 		"test_workers",
 		"test_ship_bay",
 		"test_orders",
@@ -1026,6 +1034,8 @@ func test_production_stations() -> void:
 	var Runner = load("res://scripts/ui/minigames/registry.gd")
 	for id in data.stations:
 		var st: Dictionary = data.stations[id]
+		if st.get("machine", false):
+			continue  # automation machines have no minigame (test_machines_data)
 		check(Runner.MINIGAMES.has(st.minigame), "station %s minigame %s is registered" % [id, st.minigame])
 		check(st.affects in ["yield", "quality", "purity", "heat"], "station %s affects a known stat" % id)
 		check(id in data.station_order, "station %s is in station_order" % id)
@@ -1102,6 +1112,8 @@ func test_station_minigames() -> void:
 		return {"base": base, "tier": int(data.bases[base].tier), "additives": ["nanoflux", "ion_syrup"], "qty": 5, "data": data, "seed": seed_value}
 	for id in data.stations:
 		var st: Dictionary = data.stations[id]
+		if st.get("machine", false):
+			continue
 		var base: String = st.get("bases", ["meth"])[0]
 		for s in 4:
 			for skilled in [true, false]:
@@ -2478,6 +2490,196 @@ func test_bench_save() -> void:
 	var old := Game.new()
 	old.from_dict(data, d)
 	check(old.estate_owned("cannery_rig") and old.bench.is_empty(), "old saves get the cannery rig and no tray")
+
+
+# ---------------------------------------------------------------- C2 automation machines
+
+## Annex with machines for the trim, mix and pack steps and a hand-operated extractor + stove; weed and additives in the hold.
+func machine_game() -> Game:
+	var g := new_game()
+	g.credits = 50000
+	g.buy_estate("cannery_annex")
+	g.inside_estate = "cannery_annex"
+	g.place_building("cannery_annex", "auto_trimmer", 0, 0)
+	g.place_building("cannery_annex", "extractor", 2, 0)
+	g.place_building("cannery_annex", "drip_mixer", 4, 0)
+	g.place_building("cannery_annex", "cook_stove", 0, 2)
+	g.place_building("cannery_annex", "packing_machine", 4, 2)
+	g.cargo = {"cannabis": 10, "nanoflux": 10, "ion_syrup": 10}
+	return g
+
+
+func test_machines_data() -> void:
+	var ms: Dictionary = data.machines
+	check(ms.size() == 3 and ms.has("auto_trimmer") and ms.has("drip_mixer") and ms.has("packing_machine"), "three machines")
+	var premium: float = data.quality.grades[2].min
+	for id in ms:
+		var m: Dictionary = ms[id]
+		check(Machines.is_machine(data, id) and data.stations.has(id) and data.buildables.has(id), "machine %s is a station and a buildable" % id)
+		check(data.stations.has(m.station) and m.station in data.station_order, "machine %s automates a real line station" % id)
+		check(data.stations[id].get("machine", false) and not id in data.station_order, "machine %s is flagged and off the line" % id)
+		check(data.stations[id].affects == data.stations[m.station].affects, "machine %s affects what its station affects" % id)
+		check(float(m.score) > 0.3 and float(m.score) < premium, "machine %s scores below a good minigame" % id)
+		check(int(m.run_cost) > 0, "machine %s costs money per unit" % id)
+		check(int(data.buildables[id].cost) > int(data.buildables[m.station].cost), "machine %s costs more than the table" % id)
+		check(Machines.station_of(data, id) == m.station and Machines.station_of(data, m.station) == m.station, "station_of")
+	check(not Machines.is_machine(data, "trim_table") and Machines.provides(data, "trim_table") == ["trim_table"], "tables provide only themselves")
+	check(Machines.provides(data, "auto_trimmer") == ["auto_trimmer", "trim_table"], "a machine provides its station")
+
+
+func test_machines_provide_stations() -> void:
+	var g := new_game()
+	g.credits = 50000
+	g.buy_estate("cannery_annex")
+	check(g.missing_stations_in("cannery_annex", "weed", []).size() == 4, "empty annex misses the whole weed line")
+	g.place_building("cannery_annex", "auto_trimmer", 0, 0)
+	g.place_building("cannery_annex", "extractor", 2, 0)
+	g.place_building("cannery_annex", "cook_stove", 0, 2)
+	check(g.missing_stations_in("cannery_annex", "weed", []) == ["pack_table"], "the trimmer stands in for the trim table")
+	g.place_building("cannery_annex", "packing_machine", 4, 2)
+	check(g.missing_stations_in("cannery_annex", "weed", []).is_empty(), "the packing machine stands in for the packaging table")
+	check(g.missing_stations_in("cannery_annex", "weed", ["nanoflux"]) == ["mixing_station"], "mixing needs a station or a drip mixer")
+	g.place_building("cannery_annex", "drip_mixer", 4, 0)
+	check(g.missing_stations_in("cannery_annex", "weed", ["nanoflux"]).is_empty(), "the drip mixer stands in for the mixing station")
+	check(not g.place_building("cannery_annex", "auto_trimmer", 0, 0).ok, "machines take room like any building")
+	var cr := g.credits
+	check(g.remove_building("cannery_annex", 0).ok and g.credits > cr, "machines can be taken down for a refund")
+	check(Orders.known(g, "kit:auto_trimmer"), "machines come as kits in the phone catalog")
+
+
+func test_machines_run() -> void:
+	var g := machine_game()
+	check(Bench.use_mode(g, "auto_trimmer").mode == "start" and Bench.use_mode(g, "auto_trimmer").get("auto", false), "the trimmer starts a tray, automatically")
+	check(Bench.use_mode(g, "drip_mixer").mode == "wait", "the mixer waits for a tray")
+	check(not Machines.run(g, "auto_trimmer").ok, "no tray, no base: nothing to run")
+	check(not Machines.run(g, "cook_stove", "weed", 5).ok, "only machines run")
+	check(not Machines.run(g, "packing_machine", "weed", 5).ok, "the packer does not start trays")
+	var cr := g.credits
+	g.credits = 2
+	check(not Machines.run(g, "auto_trimmer", "weed", 5).ok and g.cargo.cannabis == 10 and Bench.tray(g).is_empty(), "too poor: nothing is taken, no tray")
+	g.credits = cr
+	g.inside_estate = ""
+	check(not Machines.run(g, "auto_trimmer", "weed", 5).ok, "machines run inside the estate")
+	g.inside_estate = "cannery_annex"
+	var cost := Machines.cost_for(data, "auto_trimmer", 5)
+	check(cost == 5 * int(data.machines.auto_trimmer.run_cost), "cost is per unit")
+	var runs: int = g.stats.machine_runs
+	var r: Dictionary = Machines.run(g, "auto_trimmer", "weed", 5)
+	check(r.ok and g.credits == cr - cost and g.cargo.cannabis == 5, "trimmer runs: pays %d, raws leave the hold: %s" % [cost, r.msg])
+	check(Bench.tray(g).done == ["trim_table"] and is_equal_approx(Bench.tray(g).scores.trim_table, float(data.machines.auto_trimmer.score)), "the trimmer records its fixed score")
+	check(g.stats.machine_runs == runs + 1 and g.estates.cannery_annex.buildings[0].runs == 1, "runs are counted")
+	check(Bench.next_station(g, Bench.tray(g)) == "extractor", "the extractor is hand-operated and next")
+	check(not Machines.run(g, "auto_trimmer", "weed", 5).ok and not Machines.run(g, "drip_mixer").ok, "machines only run their own step")
+	Bench.record(g, "extractor", 0.9)
+	check(Bench.use_mode(g, "drip_mixer").mode == "mix" and Bench.use_mode(g, "drip_mixer").get("auto", false), "past the extractor the mixer takes additives")
+	check(not Machines.run(g, "drip_mixer").ok, "choose additives (or skip) first")
+
+
+func test_machines_mixer_and_packer() -> void:
+	var g := machine_game()
+	Machines.run(g, "auto_trimmer", "weed", 4)
+	Bench.record(g, "extractor", 0.9)
+	check(Bench.mix(g, ["nanoflux"]).ok, "pour additives into the tray")
+	check(Bench.next_station(g, Bench.tray(g)) == "mixing_station", "the pour comes next")
+	var cr := g.credits
+	var r: Dictionary = Machines.run(g, "drip_mixer")
+	check(r.ok and g.credits == cr - Machines.cost_for(data, "drip_mixer", 4), "the drip mixer pours for money: %s" % r.msg)
+	check(is_equal_approx(Bench.tray(g).scores.mixing_station, float(data.machines.drip_mixer.score)), "mixer score recorded")
+	Bench.record(g, "cook_stove", 0.9)
+	check(not Machines.run(g, "drip_mixer").ok, "the mixer is done with this tray")
+	var ev := []
+	g.event.connect(func(n, _p): ev.append(n))
+	r = Machines.run(g, "packing_machine")
+	check(r.ok and Bench.tray(g).is_empty() and g.lab_queue.size() == 1, "the packing machine finishes the tray into the cooker")
+	check("machine_run" in ev and "lab_started" in ev, "machine_run and lab_started events")
+	# skipping additives still works: a tray without a mix step
+	var h := machine_game()
+	Machines.run(h, "auto_trimmer", "weed", 3)
+	Bench.record(h, "extractor", 0.5)
+	Bench.mix(h, [])
+	Bench.record(h, "cook_stove", 0.5)
+	check(Machines.run(h, "packing_machine").ok and h.lab_queue.size() == 1, "plain batch: trimmer, extractor, stove, packer")
+
+
+func test_machines_quality_below_hands() -> void:
+	var hands := {}
+	var auto := {}
+	for st in ["trim_table", "extractor", "mixing_station", "cook_stove", "pack_table"]:
+		hands[st] = 0.95
+		auto[st] = 0.95
+	var all_auto := {}
+	for id in data.machines:
+		auto[data.machines[id].station] = float(data.machines[id].score)
+		all_auto[data.machines[id].station] = float(data.machines[id].score)
+	var a := Production.outcome(data, auto)
+	var b := Production.outcome(data, hands)
+	check(a.grade <= b.grade and a.quality < b.quality, "machine batches grade lower than perfect hands (%.2f vs %.2f)" % [a.quality, b.quality])
+	check(a.yield_mult < b.yield_mult and a.heat_mult > b.heat_mult, "machine batches yield less and run hotter than perfect hands")
+	check(Production.outcome(data, all_auto).grade <= Mixing.STANDARD, "machines alone never reach Premium")
+	check(float(Production.outcome(data, all_auto).yield_mult) > float(Production.outcome(data, {"trim_table": 0.0}).yield_mult), "but they beat a botched minigame")
+
+
+func machine_shack(machine_cash: int = 50000) -> Game:
+	var g := new_game()
+	g.credits = 50000
+	g.dock("cinder")
+	g.buy_estate("shaft_shack")
+	g.inside_estate = "shaft_shack"
+	for b in [["auto_trimmer", 0, 0], ["cook_stove", 2, 0], ["packing_machine", 4, 0], ["extractor", 6, 0]]:
+		g.place_building("shaft_shack", b[0], b[1], b[2])
+	Workers.hire(g, "hollis")
+	Workers.assign(g, "hollis", "shaft_shack")
+	Workers.set_recipe(g, "shaft_shack", "weed", [], 5)
+	g.cargo = {"cannabis": 5}
+	Workers.deposit(g, "shaft_shack", "cannabis", 5)
+	g.credits = machine_cash
+	return g
+
+
+func test_machines_workers() -> void:
+	var g := machine_shack()
+	var blds: Array = g.estates.shaft_shack.buildings
+	check(Workers.blocker(g, "shaft_shack") == "", "a worker can run a line made of machines")
+	var cost := Machines.worker_cost(g.data, blds, ["trim_table", "extractor", "cook_stove", "pack_table"], 5)
+	check(cost == Machines.cost_for(data, "auto_trimmer", 5) + Machines.cost_for(data, "packing_machine", 5), "workers pay machine runs for machine-only steps")
+	var cr: int = g.credits
+	g.tick(1.0)
+	check(not g.estates.shaft_shack.job.is_empty(), "the batch starts")
+	check(cr - g.credits >= cost and g.stats.machine_runs == 2, "the machines were paid and counted")
+	check(is_equal_approx(Machines.worker_score(g.data, blds, "trim_table", 0.9), float(data.machines.auto_trimmer.score)), "machine-only step scores the machine's value")
+	check(Machines.worker_score(g.data, blds, "extractor", 0.9) < 0.0, "hand-operated steps use the worker's skill")
+	# too poor to run the machines: the lab hand waits with the ingredients
+	var p := machine_shack(0)
+	p.tick(1.0)
+	check(p.estates.shaft_shack.job.is_empty() and p.estates.shaft_shack.storage.get("cannabis", 0) == 5, "no money for the machines: nothing starts, raws stay")
+
+
+func test_machines_save() -> void:
+	var g := machine_game()
+	Machines.run(g, "auto_trimmer", "weed", 4)
+	Bench.record(g, "extractor", 0.6)
+	var json := JSON.stringify(g.to_dict())
+	var d: Dictionary = JSON.parse_string(json)
+	check(int(d.version) >= 2, "save version bumped for machines")
+	var h := Game.new()
+	h.from_dict(data, d)
+	h.inside_estate = "cannery_annex"
+	check(h.stats.machine_runs == 1 and h.estates.cannery_annex.buildings[0].runs == 1, "run counters survive save/load")
+	check(JSON.stringify(h.to_dict()) == json, "save with machines is stable")
+	check(Machines.find(h, "cannery_annex", "drip_mixer") == 2 and Machines.find(h, "cannery_annex", "auto_trimmer") == 0, "find locates machines after load")
+	# a version 1 save (no machine counters, buildings without runs) still loads
+	var old: Dictionary = JSON.parse_string(JSON.stringify(new_game().to_dict()))
+	old.version = 1
+	old.stats.erase("machine_runs")
+	var o := Game.new()
+	o.from_dict(data, old)
+	check(o.stats.machine_runs == 0 and o.estate_owned("cannery_rig"), "version 1 saves load with zeroed machine stats")
+	# a building the data no longer knows is dropped, not a crash
+	var bad: Dictionary = JSON.parse_string(json)
+	bad.estates.cannery_annex.buildings.append({"id": "ghost_machine", "x": 8, "y": 5})
+	var b := Game.new()
+	b.from_dict(data, bad)
+	check(b.estates.cannery_annex.buildings.size() == 5, "unknown buildings in a save are dropped")
 
 
 # ---------------------------------------------------------------- quests

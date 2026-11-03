@@ -13,6 +13,8 @@ const Art = preload("res://scripts/core/art.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
+const Machines = preload("res://scripts/core/machines.gd")
+const MachinesUI = preload("res://scripts/ui/machines_ui.gd")
 const Registry = preload("res://scripts/ui/minigames/registry.gd")
 const Runner = preload("res://scripts/ui/minigames/minigame_runner.gd")
 
@@ -22,6 +24,7 @@ var autoplay := false  ## tests: minigame bots play, results continue on their o
 var station_id := ""
 var building_index := -1
 var mode := ""
+var auto := false  ## the station is an automation machine (C2): no minigame, Machines.run does the step
 var current: Control  ## running minigame
 var last_result: Dictionary = {}
 var _base := ""
@@ -81,6 +84,7 @@ func open_station(id: String, index: int) -> void:
 	_sub.text = "%s  ·  improves %s" % [st.get("hint", ""), st.affects]
 	var m: Dictionary = Bench.use_mode(g, id)
 	mode = m.mode
+	auto = bool(m.get("auto", false))
 	if mode == "start":
 		var bases: Array = _startable(g)
 		if _base == "" or not _base in bases:
@@ -101,7 +105,7 @@ func close() -> void:
 
 
 func _startable(g) -> Array:
-	return Bench.bases_starting_at(g.data, station_id)
+	return Bench.bases_starting_at(g.data, Machines.station_of(g.data, station_id))
 
 
 func _rebuild() -> void:
@@ -164,6 +168,14 @@ func _build_start(g) -> void:
 	var go := UI.accent_button("Start & work the %s [E]" % g.data.stations[station_id].name, _confirm, 0)
 	go.name = "StartBatch"
 	go.disabled = cap <= 0
+	if auto:
+		var cost := Machines.cost_for(g.data, station_id, _qty)
+		go.text = "Start & run the %s · %d cr [E]" % [g.data.stations[station_id].name, cost]
+		go.tooltip_text = "%s This run costs %d cr." % [MachinesUI.summary(g, station_id), cost]
+		go.disabled = cap <= 0 or g.credits < cost
+		_body.add_child(UI.label(MachinesUI.summary(g, station_id), 14, UI.MUTED))
+	else:
+		go.tooltip_text = "Take the raws onto the tray and play the station's minigame."
 	_body.add_child(go)
 
 
@@ -301,7 +313,9 @@ func _footer(g) -> Control:
 
 func _confirm() -> void:
 	var g = GameState.game
-	if mode == "start":
+	if mode == "start" and auto:
+		_run_machine(g)
+	elif mode == "start":
 		if GameState.act(Bench.begin(g, station_id, _base, _qty)).ok:
 			_play()
 	elif mode == "mix":
@@ -314,6 +328,9 @@ func _confirm() -> void:
 func _play() -> void:
 	var g = GameState.game
 	var t: Dictionary = Bench.tray(g)
+	if auto and not t.is_empty() and Bench.next_station(g, t) == Machines.station_of(g.data, station_id):
+		_run_machine(g)
+		return
 	if t.is_empty() or Bench.next_station(g, t) != station_id:
 		mode = "wait"
 		_rebuild()
@@ -333,6 +350,21 @@ func _play() -> void:
 	current.finished.connect(_on_finished)
 	holder.add_child(current)
 	_body.add_child(UI.label("Esc stops without a score: the station stays next on the tray.", 14, UI.MUTED))
+
+
+## Automation machine (C2): runs its step at once (starting the tray first at a prep machine) and shows the result.
+func _run_machine(g) -> void:
+	var r: Dictionary = GameState.act(Machines.run(g, station_id, _base, _qty))
+	var st: Dictionary = g.data.stations[station_id]
+	var title := "Machine ran" if r.ok else "Can't run it"
+	if r.ok and Bench.tray(g).is_empty():
+		title = "Batch in the cooker"
+	AudioManager.play("click" if r.ok else "error")
+	last_result = {"title": title, "text": str(r.msg), "score": Machines.score(g.data, station_id), "ok": r.ok}
+	_clear_minigame()
+	mode = "result"
+	_title.text = st.name
+	_rebuild()
 
 
 func _on_finished(score: float) -> void:

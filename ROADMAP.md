@@ -209,7 +209,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
 - **K2 Customization.** Player look (hair, jacket colours), ship paint and decals, estate decoration props.
 - **K3 QoL.** Hold-to-repeat buy, sort/filter in lists, compare prices tooltip, auto-route to marker, quick-save,
   rebindable everything, settings for text size; long balance sims and a first real balance pass if Linus asks.
-- **C2 Automation machines.** Auto-trimmer, drip mixer, packing machine: estate buildings that run a station step on
+- **C2 Automation machines.** ✅ done (see PROGRESS.md; machines run on interaction or for lab hands, no timers). Auto-trimmer, drip mixer, packing machine: estate buildings that run a station step on
   their own (lower quality than a good minigame, but no worker needed).
 - → **Release v0.1.13**.
 

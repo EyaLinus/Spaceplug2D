@@ -12,6 +12,7 @@ extends RefCounted
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const Products = preload("res://scripts/core/products.gd")
+const Machines = preload("res://scripts/core/machines.gd")
 
 
 static func cfg(g) -> Dictionary:
@@ -176,7 +177,7 @@ static func blocker(g, estate_id: String) -> String:
 		return "No recipe set."
 	var have: Array = []
 	for b in e.buildings:
-		have.append(b.id)
+		have.append_array(Machines.provides(g.data, b.id))  # machines (C2) cover the station they automate
 	for st in Production.stations_for(g.data, e.recipe.base, e.recipe.additives):
 		if not st in have:
 			return "Missing station: %s." % g.data.stations[st].name
@@ -223,13 +224,21 @@ static func _tick_cook(g, id: String, e: Dictionary, hand: Dictionary, stocked: 
 	for k in need:
 		if int(src.get(k, 0)) < need[k]:
 			return
+	var line: Array = Production.stations_for(g.data, r.base, r.additives)
+	var machine_cost := Machines.worker_cost(g.data, e.buildings, line, qty)  # machine-only steps cost credits per unit
+	if g.credits < machine_cost:
+		return
 	for k in need:
 		g._add(src, k, -need[k])
+	if machine_cost > 0:
+		g.credits -= machine_cost
+		Machines.worker_ran(g, e.buildings, line)
 	var skill := float(candidate(g, hand.id).skill)
 	var noise := float(cfg(g).score_noise)
 	var scores := {}
-	for st in Production.stations_for(g.data, r.base, r.additives):
-		scores[st] = clampf(skill + g.rng.randf_range(-noise, noise), 0.0, 1.0)
+	for st in line:
+		var ms := Machines.worker_score(g.data, e.buildings, st, skill)
+		scores[st] = ms if ms >= 0.0 else clampf(skill + g.rng.randf_range(-noise, noise), 0.0, 1.0)
 	var res := Production.outcome(g.data, scores)
 	var product := Mixing.key(r.base, Mixing.traits_for(g.data, r.base, r.additives), res.grade)
 	Products.discover(g, r.base, r.additives, res.grade, Production.output_qty(qty, res.yield_mult))

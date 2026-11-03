@@ -16,6 +16,7 @@ const ShipPreview = preload("res://scripts/ui/ship_preview.gd")
 const OfficialsApp = preload("res://scripts/ui/phone/apps/officials_app.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Style = preload("res://scripts/core/style.gd")
+const MachinesUI = preload("res://scripts/ui/machines_ui.gd")
 
 var tabs: TabContainer
 var _title: Label
@@ -442,6 +443,8 @@ func _build_build_menu(g) -> Control:
 	for k in g.data.buildables:
 		var bd: Dictionary = g.data.buildables[k]
 		var st: Dictionary = g.data.stations[k]
+		if st.get("machine", false):
+			continue  # shown in the Machines section below (machines_ui.gd)
 		var kit_n := int(g.kits.get(k, 0))
 		var card := Button.new()
 		card.name = "Build_" + k
@@ -463,6 +466,7 @@ func _build_build_menu(g) -> Control:
 	v.add_theme_constant_override("separation", 8)
 	v.add_child(UI.heading("Stations"))
 	v.add_child(grid)
+	v.add_child(MachinesUI.section(g, func(k): place_requested.emit(k)))
 	v.add_child(UI.label("Pick a station, then walk to a free spot: it goes on the cells in front of you. Station kits ordered in the phone's Orders app are placed for free.", 14, UI.MUTED))
 	return v
 

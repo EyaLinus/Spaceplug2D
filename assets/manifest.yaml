@@ -621,6 +621,36 @@ assets:
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
+  station_auto_trimmer:
+    created: '2026-11-03'
+    kind: prop
+    method: pixel
+    note: 'Auto-Trimmer 2x1: steel hopper of buds, a blade drum and an output tray, teal status light. Top-down, front face at the bottom.'
+    outputs:
+    - assets/gfx/stations/auto_trimmer.png
+    source: assets/src/stations/auto_trimmer.txt
+    status: done
+    updated: '2026-11-03'
+  station_drip_mixer:
+    created: '2026-11-03'
+    kind: prop
+    method: pixel
+    note: 'Drip Mixer 2x1: three additive bottles dripping into a steel mixing bowl. Top-down, front face at the bottom.'
+    outputs:
+    - assets/gfx/stations/drip_mixer.png
+    source: assets/src/stations/drip_mixer.txt
+    status: done
+    updated: '2026-11-03'
+  station_packing_machine:
+    created: '2026-11-03'
+    kind: prop
+    method: pixel
+    note: 'Packing Machine 2x1: conveyor belt with sealed bags and a press head that seals them. Top-down, front face at the bottom.'
+    outputs:
+    - assets/gfx/stations/packing_machine.png
+    source: assets/src/stations/packing_machine.txt
+    status: done
+    updated: '2026-11-03'
   station_cook_stove:
     created: '2026-10-30'
     kind: prop

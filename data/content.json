@@ -249,7 +249,18 @@
     "refiner": {"name": "Refiner", "minigame": "equilibrium", "affects": "purity", "bases": ["cocaine", "meth", "fentanyl"],
       "hint": "Space/left click doses acid (needle up), Backspace/right click doses base (needle down). Doses act with a delay: keep the reaction in the green band and don't overdose."},
     "pack_table": {"name": "Packaging Table", "minigame": "pack", "affects": "heat",
-      "hint": "Press Space/click when the sealer is over the bag. Tight seals smell less (less heat)."}
+      "hint": "Press Space/click when the sealer is over the bag. Tight seals smell less (less heat)."},
+    "auto_trimmer": {"name": "Auto-Trimmer", "machine": true, "minigame": "", "affects": "yield", "bases": ["weed"],
+      "hint": "Automation (C2): runs the trim step on its own for a few credits per unit. No minigame, a steady Standard-grade result."},
+    "drip_mixer": {"name": "Drip Mixer", "machine": true, "minigame": "", "affects": "quality",
+      "hint": "Automation (C2): pours the additives you picked on its own for a few credits per unit. No minigame, a steady Standard-grade result."},
+    "packing_machine": {"name": "Packing Machine", "machine": true, "minigame": "", "affects": "heat",
+      "hint": "Automation (C2): seals and packs the batch on its own for a few credits per unit. Looser seals than a good hand, so a bit more heat."}
+  },
+  "machines": {
+    "auto_trimmer": {"station": "trim_table", "score": 0.55, "run_cost": 2},
+    "drip_mixer": {"station": "mixing_station", "score": 0.6, "run_cost": 3},
+    "packing_machine": {"station": "pack_table", "score": 0.5, "run_cost": 1}
   },
   "workers": {
     "max_staff": 6, "hire_days": 2, "paid_loyalty_gain": 0.02, "unpaid_loyalty_loss": 0.3,
@@ -357,7 +368,10 @@
     "mixing_station": {"cost": 350, "size": [2, 1]},
     "cook_stove": {"cost": 400, "size": [2, 2]},
     "refiner": {"cost": 550, "size": [2, 2]},
-    "pack_table": {"cost": 250, "size": [2, 1]}
+    "pack_table": {"cost": 250, "size": [2, 1]},
+    "auto_trimmer": {"cost": 900, "size": [2, 1]},
+    "drip_mixer": {"cost": 1100, "size": [2, 1]},
+    "packing_machine": {"cost": 800, "size": [2, 1]}
   },
   "orders": {
     "markup": 0.35, "fee_pct": 0.06, "fee_min": 12, "express_fee_mult": 2.0,

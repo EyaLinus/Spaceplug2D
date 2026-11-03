@@ -24,7 +24,8 @@ const Quests = preload("res://scripts/core/quests.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Style = preload("res://scripts/core/style.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
-const SAVE_VERSION := 1
+const Machines = preload("res://scripts/core/machines.gd")
+const SAVE_VERSION := 2  ## 2: automation machines (C2): stats.machine_runs, building "runs"; version 1 saves load
 
 var data: Dictionary
 var rng := RandomNumberGenerator.new()
@@ -53,7 +54,7 @@ var ship_class: String = "courier"  ## hull class you fly (content.json "ship_cl
 var hulls: Array = ["courier"]  ## hull classes you own; switch between them at a shipyard, saved
 var combat: Dictionary = {}  ## space combat state: hull, shield, missiles, kills (saved), boost, idle (runtime); see spacecombat.gd
 var state: String = "playing"  ## playing | won | lost
-var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0}
+var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0, "machine_runs": 0}
 const SHIP_BAY := "ship_bay"  ## id of the ship's own estate (content.json "estates", flagged "ship"): always owned
 
 var estates: Dictionary = {}  ## owned estate id -> {"buildings": [{"id": station id, "x": int, "y": int}]}
@@ -114,7 +115,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	hulls = ["courier"]
 	SpaceCombat.reset(self)
 	state = "playing"
-	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0}
+	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0, "machine_runs": 0}
 	estates = {SHIP_BAY: {"buildings": []}}
 	orders = []
 	order_seq = 0
@@ -493,7 +494,7 @@ func missing_stations(base: String, additives: Array) -> Array:
 func missing_stations_in(estate_id: String, base: String, additives: Array) -> Array:
 	var have: Array = []
 	for b in estates.get(estate_id, {}).get("buildings", []):
-		have.append(b.id)
+		have.append_array(Machines.provides(data, b.id))  # a machine (C2) counts as the station it automates
 	var r: Array = []
 	for st in Production.stations_for(data, base, additives):
 		if not st in have:
@@ -918,9 +919,13 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 		if data.estates.has(e):
 			var list: Array = []
 			for b in d.estates[e].get("buildings", []):
+				if not data.buildables.has(str(b.id)):
+					continue  # a building the data no longer knows
 				var nb := {"id": str(b.id), "x": int(b.x), "y": int(b.y)}
 				if b.get("fixed", false):
 					nb.fixed = true
+				if int(b.get("runs", 0)) > 0:
+					nb.runs = int(b.runs)
 				list.append(nb)
 			estates[e] = {"buildings": list}
 			Workers.load_estate(d.estates[e], estates[e])
