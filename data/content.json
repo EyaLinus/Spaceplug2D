@@ -167,6 +167,16 @@
     "tolerance_base": 0.05, "tolerance_affinity": 0.15, "tolerance_addiction": 0.3,
     "bargain_ratio": 0.9, "affinity_bargain": 0.02, "max_price_mult": 4.0, "price_steps": [1, 5, 25]
   },
+  "dealers": {
+    "max_dealers": 3, "sell_seconds": 20, "units_base": 1, "units_skill": 3, "tolerance": 0.1, "max_cash": 2500,
+    "bust_base": 0.008, "bust_per_heat": 0.0006, "jail_seconds": 240, "heat_mult": 0.5,
+    "candidates": [
+      {"id": "rook", "name": "Rook Daley", "fee": 150, "cut": 0.35, "skill": 0.25, "capacity": 20, "bio": "Corner kid with big plans and a bigger mouth."},
+      {"id": "nyx", "name": "Nyx Calder", "fee": 400, "cut": 0.28, "skill": 0.55, "capacity": 35, "bio": "Bartender who knows every regular by their poison."},
+      {"id": "ferro", "name": "Ferro Quill", "fee": 900, "cut": 0.22, "skill": 0.8, "capacity": 50, "bio": "Ran a crew on Varrow until the crew ran out. Careful, quick."},
+      {"id": "sable", "name": "Sable Ortiga", "fee": 600, "cut": 0.3, "skill": 0.65, "capacity": 40, "bio": "Station medic with a side business in 'prescriptions'."}
+    ]
+  },
   "deals": {
     "interval": 40, "chance": 0.3, "max_open": 3, "answer_seconds": 90, "meet_seconds": 150, "premium": 0.15,
     "accept_base": 0.8, "accept_per_raise": 2.6, "accept_affinity": 0.4, "accept_addiction": 0.4,

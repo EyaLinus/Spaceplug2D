@@ -1,5 +1,18 @@
 # Progress log
 
+## A5: dealers (phase 3 wave 6, 2026-11-03)
+- **Core** `scripts/core/dealers.gd`, state `Game.dealers` [{id, loc, stock, cash, sold, jail}] (saved), candidates and
+  numbers in content.json `dealers` (fee, cut, skill, bag capacity). `hire/fire/assign/give/take_back/collect`
+  (stock and cash only in person, docked in the district). Every `sell_seconds` a dealer sells 1 + skill × 3 units of
+  the best-paying product: `street_price` = your asking price if ≤ local value × demand × (1 + tolerance), Market =
+  value × demand; they keep `cut`; demand saturates; heat in the current system. `bust_chance` from heat (also parked
+  heat of other systems), location heat and skill: stock and cash lost, `jail_seconds`. Stops at `max_cash`.
+- **UI** HR app: DEALERS section (`Dealer_<id>`, `DHire_<id>`), dealer screen with stats, bust risk, district buttons,
+  bag, Collect, +5 / All from your hold, Take stock back, Let go. Toasts for bust / cash full / released.
+  HR auto recipe menu now lists the mixes from the recipe book.
+- Couriers between estates and drops were not built (DeadDrop couriers already move goods to the stash).
+- Verified: unit tests (dealers, bust + save), UI smoke (hire, district, stock, collect), menu smoke, sim; screenshots.
+
 ## H1: Products app (phase 3 wave 6, 2026-11-03)
 - **Core** `scripts/core/products.gd`: `Game.recipes` (recipe key without grade -> base, additives in order, made,
   best grade, first day) filled by `Products.discover` from `Game.queue_batch` and worker batches; old saves adopt

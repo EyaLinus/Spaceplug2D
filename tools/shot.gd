@@ -236,6 +236,18 @@ func _run() -> void:
 	Products.set_price(g, pk, Products.suggested(g, pk) + 15)
 	m.phone.open_app("products")
 	await _save(out, "phone_products")
+	var Dealers = load("res://scripts/core/dealers.gd")
+	g.credits = maxi(g.credits, 3000)
+	Dealers.hire(g, "nyx")
+	Dealers.assign(g, "nyx", g.location)
+	g.cargo["weed:glow"] = int(g.cargo.get("weed:glow", 0)) + 12
+	Dealers.give(g, "nyx", "weed:glow", 8)
+	Dealers.find(g, "nyx").cash = 340
+	m.phone.open_app("hr")
+	await _save(out, "phone_hr_dealers")
+	m.phone.push("Nyx Calder", func(gg): return m.phone.app_by_id("hr").dealer(gg, "nyx"))
+	await _save(out, "phone_dealer")
+	m.phone.open_app("products")
 	m.phone.push("Weed", func(gg): return m.phone.app_by_id("products").detail(gg, m.phone, pk))
 	await _save(out, "phone_product_detail")
 	m.phone.close()

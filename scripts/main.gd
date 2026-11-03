@@ -18,6 +18,7 @@ const PhoneScript = preload("res://scripts/ui/phone/phone.gd")
 const HyperspaceScript = preload("res://scripts/ui/hyperspace.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Deals = preload("res://scripts/core/deals.gd")
+const Dealers = preload("res://scripts/core/dealers.gd")
 
 ## Which station tab a surface interaction opens.
 const SURFACE_TABS := {"market": "Market", "shipyard": "Shipyard", "office": "Office", "deal": "Deals", "fence": "Deals"}
@@ -464,6 +465,12 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		EventBus.toast.emit("A drop was cleaned out: %d units stolen." % p.qty, false)
 	elif kind == "product_discovered":
 		EventBus.toast.emit("New product: %s. Price it in the Products app [%s]." % [GameState.game.item_name(p.product), Settings.key_label("phone")], true)
+	elif kind == "dealer_busted":
+		EventBus.toast.emit("%s got busted on %s: %d units and %d cr gone." % [Dealers.candidate(GameState.game, p.dealer).name, GameState.game.loc_data(p.loc).get("name", ""), p.units, p.credits], false)
+	elif kind == "dealer_cash_full":
+		EventBus.toast.emit("%s is holding max cash. Pick it up." % Dealers.candidate(GameState.game, p.dealer).name, true)
+	elif kind == "dealer_free":
+		EventBus.toast.emit("%s is out of jail." % Dealers.candidate(GameState.game, p.dealer).name, true)
 	elif kind == "met":
 		EventBus.toast.emit("New contact: %s. Open the Com-Phone [%s]." % [GameState.game.contact(p.contact).name, Settings.key_label("phone")], true)
 	elif kind == "notice":

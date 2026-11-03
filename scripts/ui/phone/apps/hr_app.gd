@@ -1,9 +1,11 @@
 extends "res://scripts/ui/phone/phone_app.gd"
-## HR: hire lab hands and stockers (wage per day, skill, loyalty), assign them to your estates, set the auto recipe and
+## HR: hire lab hands and stockers and street dealers (dealers.gd) (wage per day, skill, loyalty), assign them to your estates, set the auto recipe and
 ## look after the estate storage. All rules live in scripts/core/workers.gd; this is only the view.
 
 const Workers = preload("res://scripts/core/workers.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
+const Dealers = preload("res://scripts/core/dealers.gd")
+const Products = preload("res://scripts/core/products.gd")
 
 
 func _init() -> void:
@@ -40,12 +42,141 @@ func home(g, phone) -> Control:
 		b.name = "EstateRow_" + eid
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		v.add_child(b)
+	v.add_child(UI.label("DEALERS %d/%d" % [g.dealers.size(), int(Dealers.cfg(g).get("max_dealers", 3))], 13, UI.MUTED))
+	if g.dealers.is_empty():
+		v.add_child(_wrap("No dealers yet. They sell your product in a district while you're away and keep a cut.", 14, UI.MUTED))
+	for d in g.dealers:
+		v.add_child(_dealer_row(g, phone, Dealers.candidate(g, d.id), d))
 	v.add_child(UI.label("FOR HIRE", 13, UI.MUTED))
 	var open: Array = Workers.available(g)
 	if open.is_empty():
 		v.add_child(UI.label("Nobody left to hire.", 14, UI.MUTED))
 	for cand in open:
 		v.add_child(_worker_row(g, phone, cand, {}, "Hire_"))
+	for cand in Dealers.available(g):
+		v.add_child(_dealer_row(g, phone, cand, {}))
+	return v
+
+
+func _dealer_row(g, phone, cand: Dictionary, d: Dictionary) -> Control:
+	var b := Button.new()
+	b.name = ("Dealer_" if not d.is_empty() else "DHire_") + cand.id
+	b.custom_minimum_size = Vector2(0, 54)
+	b.pressed.connect(func():
+		AudioManager.play("click")
+		phone.push(cand.name, func(gg): return dealer(gg, cand.id)))
+	var h := HBoxContainer.new()
+	h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	h.offset_left = 6
+	h.offset_right = -6
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 0)
+	col.add_child(UI.label(cand.name, 16))
+	var sub := "Dealer · skill %d%% · cut %d%%" % [int(round(float(cand.skill) * 100.0)), int(round(float(cand.cut) * 100.0))]
+	var right := "%d cr fee" % int(cand.fee)
+	var right_col := UI.GOLD
+	if not d.is_empty():
+		var st := Dealers.status(g, d)
+		sub = "%s · %d units · %s" % [g.loc_data(d.loc).get("name", "no district") if d.loc != "" else "no district", Dealers.units(d), st if st != "" else "selling"]
+		right = "%d cr" % int(d.cash)
+		right_col = UI.GOLD if int(d.cash) > 0 else UI.MUTED
+	var sl := UI.label(sub, 13, UI.MUTED)
+	sl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	sl.custom_minimum_size.x = 10
+	col.add_child(sl)
+	h.add_child(col)
+	h.add_child(UI.label(right, 14, right_col))
+	b.add_child(h)
+	for ch in [h, col] + col.get_children() + h.get_children():
+		ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return b
+
+
+## A dealer: hire, district, stock, cash.
+func dealer(g, did: String) -> Control:
+	var cand: Dictionary = Dealers.candidate(g, did)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	if cand.is_empty():
+		return v
+	v.add_child(_wrap(cand.get("bio", ""), 14))
+	v.add_child(_meter("Skill", "%d%%" % int(round(float(cand.skill) * 100.0)), float(cand.skill), UI.ACCENT))
+	v.add_child(_pair("Cut", "%d%% of every sale" % int(round(float(cand.cut) * 100.0))))
+	v.add_child(_pair("Bag", "%d units" % int(cand.get("capacity", 30))))
+	var d: Dictionary = Dealers.find(g, did)
+	if d.is_empty():
+		var hb := UI.accent_button("Hire (%d cr up front)" % int(cand.fee), func(): GameState.act(Dealers.hire(g, did)))
+		hb.name = "DealerHire"
+		hb.disabled = g.credits < int(cand.fee) or g.dealers.size() >= int(Dealers.cfg(g).get("max_dealers", 3))
+		v.add_child(hb)
+		v.add_child(_wrap("Dealers sell at your asking price from the Products app (Market = local value). Busts take their stock and cash; heat makes busts likelier.", 13, UI.MUTED))
+		return v
+	var st := Dealers.status(g, d)
+	v.add_child(_pair("Status", st if st != "" else "Selling"))
+	if d.loc != "":
+		v.add_child(_pair("Bust risk", "%.1f%% per sale" % (Dealers.bust_chance(g, d) * 100.0)))
+	v.add_child(_pair("Sold", "%d units" % int(d.sold)))
+	v.add_child(UI.label("DISTRICT", 13, UI.MUTED))
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
+	for loc in Dealers.districts(g):
+		var here: bool = d.loc == loc
+		var db := UI.button(("✓ " if here else "") + str(g.loc_data(loc).get("name", loc)), func(): GameState.act(Dealers.assign(g, did, loc)), 100)
+		db.name = "District_%s_%s" % [did, loc]
+		db.disabled = here
+		db.clip_text = true
+		db.custom_minimum_size.x = 150
+		db.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(db)
+	v.add_child(grid)
+	var present: bool = d.loc != "" and g.location == d.loc
+	v.add_child(UI.label("STOCK", 13, UI.MUTED))
+	_items(g, v, "Bag", d.stock)
+	var cash_row := HBoxContainer.new()
+	cash_row.add_theme_constant_override("separation", 6)
+	var cl := UI.label("Cash: %d cr" % int(d.cash), 16, UI.GOLD)
+	cl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cash_row.add_child(cl)
+	var cb := UI.accent_button("Collect", func(): GameState.act(Dealers.collect(g, did)), 90)
+	cb.name = "Collect_" + did
+	cb.disabled = not present or int(d.cash) <= 0
+	cash_row.add_child(cb)
+	v.add_child(cash_row)
+	if present:
+		v.add_child(UI.label("FROM YOUR HOLD", 13, UI.MUTED))
+		var any := false
+		for k in g.cargo:
+			if not Mixing.is_product(k):
+				continue
+			any = true
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 4)
+			var pr := Dealers.street_price(g, k, d.loc)
+			var nl := UI.label("%d × %s · %s" % [int(g.cargo[k]), g.item_name(k), ("%d cr" % pr) if pr > 0 else "too steep"], 13, UI.TEXT if pr > 0 else UI.WARN)
+			nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			row.add_child(nl)
+			var g5 := UI.button("+5", func(): GameState.act(Dealers.give(g, did, k, 5)), 44)
+			g5.name = "Give5_" + did
+			row.add_child(g5)
+			var ga := UI.button("All", func(): GameState.act(Dealers.give(g, did, k, int(g.cargo.get(k, 0)))), 50)
+			ga.name = "GiveAll_" + did
+			row.add_child(ga)
+			v.add_child(row)
+		if not any:
+			v.add_child(UI.label("You carry no product.", 13, UI.MUTED))
+		var tb := UI.button("Take stock back", func(): GameState.act(Dealers.take_back(g, did)))
+		tb.name = "TakeBack_" + did
+		tb.disabled = Dealers.units(d) == 0
+		v.add_child(tb)
+	elif d.loc != "":
+		v.add_child(_wrap("Dock on %s to hand over product and collect cash." % g.loc_data(d.loc).get("name", ""), 13, UI.MUTED))
+	var fb := UI.button("Let go", func(): GameState.act(Dealers.fire(g, did)))
+	fb.name = "DealerFire_" + did
+	v.add_child(fb)
 	return v
 
 
@@ -138,15 +269,23 @@ func estate(g, _phone, eid: String) -> Control:
 	opt.name = "Recipe_" + eid
 	opt.add_item("Off")
 	var cur := 0
-	var bases: Array = g.data.bases.keys()
-	for k in bases.size():
-		opt.add_item(g.data.bases[bases[k]].name)
-		if not e.recipe.is_empty() and e.recipe.base == bases[k]:
+	var choices: Array = []  # [base, additives] per menu entry: plain drugs, then mixes from the Products app
+	for b in g.data.bases:
+		choices.append([b, []])
+		opt.add_item(g.data.bases[b].name)
+	for rk in Products.list(g):
+		var r: Dictionary = g.recipes[rk]
+		if (r.additives as Array).is_empty():
+			continue
+		choices.append([r.base, (r.additives as Array).duplicate()])
+		opt.add_item(Mixing.display_name(g.data, rk))
+	for k in choices.size():
+		if not e.recipe.is_empty() and e.recipe.base == choices[k][0] and Array(e.recipe.get("additives", [])) == choices[k][1]:
 			cur = k + 1
 	opt.select(cur)
 	opt.item_selected.connect(func(idx: int):
 		var q: int = int(e.recipe.get("qty", g.lab_capacity()))
-		Workers.set_recipe(g, eid, "" if idx == 0 else bases[idx - 1], [], q))
+		GameState.act(Workers.set_recipe(g, eid, "" if idx == 0 else choices[idx - 1][0], [] if idx == 0 else choices[idx - 1][1], q)))
 	v.add_child(opt)
 	if not e.recipe.is_empty():
 		var qrow := HBoxContainer.new()

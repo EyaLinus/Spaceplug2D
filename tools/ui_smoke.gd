@@ -326,6 +326,43 @@ func _run() -> void:
 	await key(KEY_TAB)
 	step("products app")
 
+	# Dealers: hire one in the HR app, give them a district and stock, they sell, collect the cash in person
+	var Dealers = load("res://scripts/core/dealers.gd")
+	g.credits = maxi(g.credits, 2000)
+	await key(KEY_TAB)
+	m.phone.open_app("hr")
+	await frames(2)
+	var drow: Button = m.phone.find_child("DHire_nyx", true, false)
+	_assert(drow != null, "dealer listed for hire")
+	drow.pressed.emit()
+	await frames(2)
+	m.phone.find_child("DealerHire", true, false).pressed.emit()
+	await frames(2)
+	_assert(not Dealers.find(g, "nyx").is_empty(), "dealer hired from the phone")
+	var home_loc: String = g.location
+	var dist: Button = m.phone.find_child("District_nyx_" + home_loc, true, false)
+	_assert(dist != null, "district buttons")
+	dist.pressed.emit()
+	await frames(2)
+	g.cargo["weed:glow"] = int(g.cargo.get("weed:glow", 0)) + 10
+	m.phone.refresh()
+	await frames(2)
+	var give: Button = m.phone.find_child("GiveAll_nyx", true, false)
+	_assert(give != null, "give buttons while docked in the district")
+	give.pressed.emit()
+	await frames(2)
+	var nyx: Dictionary = Dealers.find(g, "nyx")
+	_assert(Dealers.units(nyx) > 0, "dealer stocked")
+	nyx.cash = 120
+	m.phone.refresh()
+	await frames(2)
+	var c_before: int = g.credits
+	m.phone.find_child("Collect_nyx", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.credits == c_before + 120, "cash collected from the phone")
+	await key(KEY_TAB)
+	step("dealers")
+
 	# NPC schedules: when the hour moves Okka to her next place she walks there; the light follows the clock
 	var People = load("res://scripts/core/people.gd")
 	sf.place_player_at("pad")
