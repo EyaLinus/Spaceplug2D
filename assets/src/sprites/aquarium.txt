@@ -1,0 +1,28 @@
+# Decor: aquarium with two glowfish on a wooden stand.
+legend:
+. = transparent
+k = ink
+b = blue
+B = blue_light
+t = teal
+y = gold
+w = wood
+W = wood_dark
+g = leaf
+---
+................................
+................................
+..kkkkkkkkkkkkkkkkkkkkkkkkkkkk..
+..kBBBBBBBBBBBBBBBBBBBBBBBBBBk..
+..kbbbbbbbbbbbbbbbbbbbbbbbbbbk..
+..kbbbbbtttbbbbbbbbbbbbbbbbbbk..
+..kbbbbttttkbbbbbbbbbyyybbbbbk..
+..kbbbbbtttbbbbbbbbbkyyyybbbbk..
+..kbbbgbbbbbbbbbbbbbbyyybbbbbk..
+..kbbggbbbbbbbbbbbbbbbbbbgbbbk..
+..kbbgbbbbbbbbbbbbbbbbbbggbbbk..
+..kkkkkkkkkkkkkkkkkkkkkkkkkkkk..
+..kwwwwwwwwwwwwwwwwwwwwwwwwwwk..
+..kWWWWWWWWWWWWWWWWWWWWWWWWWWk..
+..kWk......................kWk..
+..kkk......................kkk..

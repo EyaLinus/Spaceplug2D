@@ -113,7 +113,8 @@ def build_sprites() -> list[Path]:
     out = []
     for name, folder in [("crate", "props"), ("barrel", "props"), ("rock", "props"), ("tree", "props"),
                          ("lamp", "props"), ("vent", "props"), ("stall", "props"), ("cactus", "props"), ("ice_rock", "props"), ("ship", "ships"),
-                         ("patrol", "ships"), ("pirate", "ships"), ("fighter", "ships"), ("gunship", "ships"), ("loot", "space"), ("beacon", "space")]:
+                         ("patrol", "ships"), ("pirate", "ships"), ("fighter", "ships"), ("gunship", "ships"), ("loot", "space"), ("beacon", "space"),
+                         ("plant", "props"), ("rug", "props"), ("sofa", "props"), ("neon", "props"), ("aquarium", "props"), ("trophy", "props")]:
         legend, frames = parse_grid(SRC / "sprites" / f"{name}.txt")
         out.append(save(grid_image(frames[0], legend), f"{folder}/{name}.png"))
     return out

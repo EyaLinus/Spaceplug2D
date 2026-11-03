@@ -15,6 +15,7 @@ const Bench = preload("res://scripts/core/bench.gd")
 const ShipPreview = preload("res://scripts/ui/ship_preview.gd")
 const OfficialsApp = preload("res://scripts/ui/phone/apps/officials_app.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
+const Style = preload("res://scripts/core/style.gd")
 
 var tabs: TabContainer
 var _title: Label
@@ -502,7 +503,11 @@ func _build_shipyard(g) -> Control:
 	h.add_theme_constant_override("separation", 16)
 	var lv := VBoxContainer.new()
 	lv.add_child(UI.heading("Your ship", 16))
-	lv.add_child(ShipPreview.new(g.upgrades))
+	var prev := ShipPreview.new(g.upgrades)
+	prev.paint = Style.hull_swaps(g.data, g.style)
+	prev.decal = str(g.style.get("decal", ""))
+	prev.tooltip_text = "Your ship with every module you bought. Paint and decals: Style app on the Com-Phone."
+	lv.add_child(prev)
 	lv.add_child(UI.label("Credits %d cr" % g.credits, 15, UI.GOLD))
 	h.add_child(lv)
 	h.add_child(right)

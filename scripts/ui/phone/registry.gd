@@ -11,6 +11,7 @@ const APPS := [
 	preload("res://scripts/ui/phone/apps/orders_app.gd"),
 	preload("res://scripts/ui/phone/apps/map_app.gd"),
 	preload("res://scripts/ui/phone/apps/deaddrop_app.gd"),
+	preload("res://scripts/ui/phone/apps/style_app.gd"),
 ]
 
 

@@ -5,9 +5,10 @@ extends RefCounted
 ## No autoload references, so tests can build layouts headless.
 
 const WALL := 1
+const Style = preload("res://scripts/core/style.gd")
 
 
-static func build_cfg(data: Dictionary, estate_id: String, buildings: Array) -> Dictionary:
+static func build_cfg(data: Dictionary, estate_id: String, buildings: Array, decor: Array = []) -> Dictionary:
 	var e: Dictionary = data.estates[estate_id]
 	var w := int(e.size[0])
 	var h := int(e.size[1])
@@ -43,4 +44,13 @@ static func build_cfg(data: Dictionary, estate_id: String, buildings: Array) -> 
 			"rect": [x, y, int(size[0]), int(size[1])], "door": [x + int(size[0]) / 2.0, y + int(size[1])], "side": "bottom",
 			"action": "station", "label": data.stations[b.id].name,
 		})
+	cfg.props.append_array(decor_props(data, estate_id, buildings, decor))
 	return cfg
+
+
+## K2: decor you switched on, as surface props [kind, x, y, "decor"] in map tiles.
+static func decor_props(data: Dictionary, estate_id: String, buildings: Array, decor: Array) -> Array:
+	var out: Array = []
+	for s in Style.decor_spots(data, estate_id, buildings, decor):
+		out.append([s[0], float(s[1]) + WALL, float(s[2]) + WALL + 0.3, "decor"])
+	return out

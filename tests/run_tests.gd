@@ -119,6 +119,7 @@ func _init() -> void:
 		"test_corruption_save",
 		"test_debt_win_and_loss",
 		"test_save_roundtrip",
+		"test_style",
 		"test_drug_ladder",
 		"test_old_save_names_migrate",
 		"test_core_loop_is_profitable",
@@ -2114,6 +2115,69 @@ func test_save_roundtrip() -> void:
 	h.from_dict(data, JSON.parse_string(json))
 	check(JSON.stringify(h.to_dict()) == json, "save round-trip is stable")
 	check(h.lab_queue.size() == 1 and h.upgrades.engine == 2, "lab queue and upgrades restored")
+
+
+func test_style() -> void:
+	const Style = preload("res://scripts/core/style.gd")
+	const EstateLayout = preload("res://scripts/planet/estate_layout.gd")
+	var g := new_game()
+	for cat in Style.SLOTS:
+		check(Style.owns(g, cat, str(g.style[cat])), "style %s starts on an owned free item" % cat)
+	check(Style.player_swaps(data, g.style).is_empty(), "stock look = no recolour")
+	check(Style.hull_swaps(data, g.style).is_empty(), "stock paint = no recolour")
+	g.credits = 100
+	var r := Style.buy(g, "jacket", "violet")
+	check(not r.ok and g.credits == 100 and g.style.jacket == "gold", "can't buy a jacket you can't afford")
+	g.credits = 1000
+	r = Style.buy(g, "jacket", "violet")
+	check(r.ok and g.credits == 1000 - int(data.style.jacket.violet.cost) and g.style.jacket == "violet", "bought jacket is worn")
+	var sw := Style.player_swaps(data, g.style)
+	check(sw.get(Color("#ffd166")) == Color(data.style.jacket.violet.ramp[0]), "jacket recolours the gold coat")
+	var before: int = g.credits
+	check(Style.buy(g, "jacket", "gold").ok and g.credits == before and g.style.jacket == "gold", "switching back to an owned item is free")
+	check(not Style.equip(g, "paint", "violet").ok, "can't equip unowned paint")
+	g.credits = 5000
+	Style.buy(g, "paint", "crimson")
+	Style.buy(g, "decal", "skull")
+	check(not Style.hull_swaps(data, g.style).is_empty() and g.style.decal == "skull", "paint and decal set")
+	Style.buy(g, "decor", "plant")
+	Style.buy(g, "decor", "sofa")
+	check(g.style.decor == ["plant", "sofa"], "bought decor switches on")
+	Style.equip(g, "decor", "plant")
+	check(g.style.decor == ["sofa"], "equip toggles decor off")
+	Style.equip(g, "decor", "plant")
+	# decor spots stay inside the estate, off stations, the door and the stash
+	for eid in data.estates:
+		var e: Dictionary = data.estates[eid]
+		var bl: Array = []
+		for st in e.get("stations", []):
+			bl.append({"id": st[0], "x": st[1], "y": st[2]})
+		var spots := Style.decor_spots(data, eid, bl, data.style.decor.keys())
+		var seen := {}
+		for sp in spots:
+			var c := Vector2i(int(sp[1]), int(sp[2]))
+			check(c.x >= 0 and c.y >= 0 and c.x < int(e.size[0]) and c.y < int(e.size[1]), "%s decor inside the room" % eid)
+			check(c != Vector2i(int(e.size[0]) / 2, int(e.size[1]) - 1) and c != Vector2i(0, int(e.size[1]) - 1), "%s decor off door and stash" % eid)
+			check(not seen.has(c), "%s one decor per cell" % eid)
+			seen[c] = true
+			for b in bl:
+				var sz: Array = data.buildables[b.id].size
+				check(not Rect2i(int(b.x), int(b.y), int(sz[0]), int(sz[1]) + 1).has_point(c), "%s decor off stations" % eid)
+	var cfg := EstateLayout.build_cfg(data, "cannery_annex", [], g.style.decor)
+	check(cfg.props.filter(func(p): return p.size() > 3 and p[3] == "decor").size() == 2, "estate layout carries the decor props")
+	# save round trip keeps the style, junk ids are dropped
+	var d := g.to_dict()
+	d.style.owned.append("jacket:nope")
+	d.style.hair = "nope"
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(d)))
+	check(h.style.paint == "crimson" and h.style.decal == "skull" and h.style.decor == ["sofa", "plant"], "style survives a save")
+	check(not h.style.owned.has("jacket:nope") and h.style.hair == data.style.hair.keys()[0], "unknown style ids are dropped")
+	var old := g.to_dict()
+	old.erase("style")
+	var o := Game.new()
+	o.from_dict(data, JSON.parse_string(JSON.stringify(old)))
+	check(o.style.jacket == "gold" and o.style.decor.is_empty(), "old saves get the stock look")
 
 
 func test_drug_ladder() -> void:

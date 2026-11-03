@@ -399,7 +399,7 @@ func enter_estate(eid: String, at = null) -> void:
 	station.close()
 	_leave_surface()
 	surface = SurfaceScript.new()
-	surface.setup("estate:" + eid, EstateLayout.build_cfg(GameState.data, eid, g.estates[eid].buildings))
+	surface.setup("estate:" + eid, EstateLayout.build_cfg(GameState.data, eid, g.estates[eid].buildings, g.style.get("decor", [])))
 	g.inside_estate = eid
 	g.note("entered_estate", {"estate": eid})
 	surface.can_place = func(st: String, x: int, y: int) -> bool: return g.can_place(eid, st, x, y)

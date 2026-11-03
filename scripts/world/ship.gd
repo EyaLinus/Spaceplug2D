@@ -11,6 +11,8 @@ var frozen := false  ## true while docked or paused
 var engine_mult := 1.0
 var modules: Dictionary = {}  ## upgrade key -> level (Game.upgrades); picks the module sprites and nozzles
 var cfg: Dictionary = {}
+var paint: Dictionary = {}  ## K2: hull palette swaps from Style.hull_swaps
+var decal := ""  ## K2: decal id (content.json style.decal)
 var hull_cfg: Dictionary = {}  ## hull class (content.json "ship_classes"): drawn size and paint stripe
 
 var _flame := 0.0
@@ -110,7 +112,7 @@ func _draw() -> void:
 			var f := (18.0 + 14.0 * _flame + randf() * 6.0) * float(n[1])
 			draw_colored_polygon(PackedVector2Array([o + Vector2(-w, 0), o + Vector2(w, 0), o + Vector2(0, f)]), Color(1.0, 0.6, 0.2, 0.85))
 			draw_colored_polygon(PackedVector2Array([o + Vector2(-w / 2, 0), o + Vector2(w / 2, 0), o + Vector2(0, f * 0.6)]), core)
-	if Art.draw_ship(self, modules):
+	if Art.draw_ship(self, modules, Vector2.ZERO, paint, decal):
 		var stripe := str(hull_cfg.get("stripe", ""))
 		if stripe != "":  # class paint: two wing stripes
 			var c := Color(stripe)
