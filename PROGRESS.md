@@ -1,5 +1,10 @@
 # Progress log
 
+## Release v0.1.10 (2026-11-03)
+- Phase 3 wave 8: D4 bigger planet maps with districts and landmarks (#55), B4 every person a named customer (#56).
+  Changelog folded, version 0.1.10. Next: wave 9 (I1 cartels + sector influence, E4 space combat II, D3 interdiction)
+  in a fresh thread.
+
 ## Release v0.1.9 (2026-11-03)
 - Phase 3 wave 7: Q1 quest core + tutorial (#52), Q2 main quest chapter 1 (#53). Changelog folded, version 0.1.9.
   Next: wave 8 (D4 bigger planet maps, B4 every NPC a named person) in a fresh thread.
