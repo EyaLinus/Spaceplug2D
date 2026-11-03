@@ -1,0 +1,2 @@
+- **Dealers:** hire street dealers in the HR app (one-off fee, then they keep a cut). Give them a district, hand them product in person, and they sell to the locals at your asking price while you're away. Collect the cash when you're back in their district. Heat raises their bust risk, skill lowers it, and a bust costs their stock and cash and puts them in jail for a while.
+- **Auto recipes from your book:** the HR estate screen can now set a worker's auto recipe to any mix from the Products app, not only plain drugs.

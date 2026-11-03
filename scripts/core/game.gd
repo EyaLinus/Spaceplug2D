@@ -19,6 +19,7 @@ const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const Products = preload("res://scripts/core/products.gd")
+const Dealers = preload("res://scripts/core/dealers.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -70,6 +71,7 @@ var workers: Array = []  ## hired staff [{id, loyalty, estate, hired_day}] (see 
 var bench: Dictionary = {}  ## estate id -> batch tray carried between stations on foot (see bench.gd), saved
 var recipes: Dictionary = {}  ## recipe book: recipe key -> {base, additives, made, best, day} (see products.gd), saved
 var prices: Dictionary = {}  ## your asking price per Standard unit, recipe key -> cr; no entry = market price, saved
+var dealers: Array = []  ## hired street dealers [{id, loc, stock, cash, sold, jail}] (see dealers.gd), saved
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 
 
@@ -116,6 +118,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	bench = {}
 	recipes = {}
 	prices = {}
+	dealers = []
 	_add_starter_estates()
 	demand = {}
 	for loc in data.locations:
@@ -297,6 +300,7 @@ func tick(dt: float) -> void:
 	Workers.tick(self, dt)
 	_tick_demand(dt)
 	Deals.tick(self, dt)
+	Dealers.tick(self, dt)
 	Orders.tick(self)
 	Galaxy.tick(self, dt)
 	SpaceCombat.tick(self, dt)
@@ -772,7 +776,7 @@ func to_dict() -> Dictionary:
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
 		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
-		"products": Products.to_save(self),
+		"products": Products.to_save(self), "dealers": Dealers.to_save(self),
 	}
 
 
@@ -841,6 +845,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	_add_starter_estates()
 	Bench.from_save(self, d)
 	Products.from_save(self, d.get("products", {}))
+	Dealers.from_save(self, d.get("dealers", []))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

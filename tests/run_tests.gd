@@ -18,6 +18,7 @@ const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const ArtReg = preload("res://scripts/core/art.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Products = preload("res://scripts/core/products.gd")
+const Dealers = preload("res://scripts/core/dealers.gd")
 
 var data: Dictionary
 var failures := 0
@@ -62,6 +63,8 @@ func _init() -> void:
 		"test_products_asking_price",
 		"test_deal_appointments",
 		"test_deal_haggle_qty_time",
+		"test_dealers",
+		"test_dealers_bust_and_save",
 		"test_people_profiles",
 		"test_people_deals",
 		"test_people_save",
@@ -1485,6 +1488,91 @@ func test_deal_haggle_qty_time() -> void:
 	check(moved > 0, "time changes are usually accepted (%d/20)" % moved)
 	check(not Deals.counter_time(g, o.id, -48).ok and is_equal_approx(float(o.meet_at), t0), "can't move into the past")
 	check(Deals.accept(g, o.id).ok, "still answerable after haggling")
+
+
+func test_dealers() -> void:
+	var g := new_game()
+	g.credits = 5000
+	check(Dealers.available(g).size() == data.dealers.candidates.size(), "all dealers for hire")
+	check(Dealers.hire(g, "nyx").ok and g.credits == 5000 - int(Dealers.candidate(g, "nyx").fee), "hire costs the fee")
+	check(not Dealers.hire(g, "nyx").ok, "can't hire twice")
+	var p := "weed:glow"
+	g.cargo[p] = 30
+	check(not Dealers.give(g, "nyx", p, 10).ok, "needs a district first")
+	check(not Dealers.assign(g, "nyx", "halvane_gate").ok, "gates are no district")
+	check(Dealers.assign(g, "nyx", "mireth").ok, "district set")
+	g.location = "cinder"
+	check(not Dealers.give(g, "nyx", p, 10).ok, "give in person only")
+	g.location = "mireth"
+	check(Dealers.give(g, "nyx", p, 10).ok and int(g.cargo[p]) == 20, "stock handed over")
+	var d: Dictionary = Dealers.find(g, "nyx")
+	check(Dealers.units(d) == 10 and Dealers.status(g, d) == "", "selling")
+	g.cargo[p] = 99
+	check(Dealers.give(g, "nyx", p, 999).ok and Dealers.units(d) == int(Dealers.candidate(g, "nyx").capacity), "bag capacity caps stock")
+	# selling with no heat: no busts at bust_base this low over a few rounds is likely but not certain; force zero risk
+	g.data = data.duplicate(true)
+	g.data.dealers.bust_base = 0.0
+	g.data.dealers.bust_per_heat = 0.0
+	var u0 := Dealers.units(d)
+	g.tick(float(data.dealers.sell_seconds) * 3.0 + 0.1)
+	check(Dealers.units(d) < u0 and int(d.cash) > 0 and int(d.sold) == u0 - Dealers.units(d), "dealer sells over time")
+	var c0 := g.credits
+	var cash := int(d.cash)
+	check(Dealers.collect(g, "nyx").ok and g.credits == c0 + cash and int(d.cash) == 0, "collect in person")
+	# your price: too steep stops sales, the cut is kept by the dealer
+	Products.adopt_items(g, {p: 1})
+	Products.set_price(g, p, Products.max_price(g, p))
+	check(Dealers.street_price(g, p, "mireth") == -1 and Dealers.status(g, d) != "", "too steep: no sales")
+	var left := Dealers.units(d)
+	g.tick(float(data.dealers.sell_seconds) * 2.0)
+	check(Dealers.units(d) == left, "nothing sold at a steep price")
+	Products.set_price(g, p, 10)
+	g.tick(float(data.dealers.sell_seconds) + 0.1)
+	var sold := left - Dealers.units(d)
+	check(sold > 0 and int(d.cash) == int(round(10 * sold * (1.0 - float(Dealers.candidate(g, "nyx").cut)))), "dealer pays your price minus the cut")
+	g.cargo.clear()
+	g.upgrades.cargo = 3
+	check(Dealers.take_back(g, "nyx").ok and Dealers.units(d) == 0, "stock taken back")
+	check(Dealers.fire(g, "nyx").ok and g.dealers.is_empty(), "fired")
+
+
+func test_dealers_bust_and_save() -> void:
+	var g := new_game()
+	g.credits = 5000
+	g.data = data.duplicate(true)
+	g.data.dealers.bust_base = 1.0
+	Dealers.hire(g, "rook")
+	Dealers.assign(g, "rook", "mireth")
+	g.cargo["weed:glow"] = 10
+	Dealers.give(g, "rook", "weed:glow", 10)
+	var d: Dictionary = Dealers.find(g, "rook")
+	d.cash = 100
+	var busted := [false]
+	g.event.connect(func(k, _p): if k == "dealer_busted": busted[0] = true)
+	for i in 40:
+		if busted[0]:
+			break
+		d.stock = {"weed:glow": 10}
+		d.cash = 100
+		g.tick(float(data.dealers.sell_seconds) + 0.01)
+	check(busted[0] and Dealers.units(d) == 0 and int(d.cash) == 0 and float(d.jail) > 0.0, "bust loses stock and cash, jail time")
+	check(Dealers.status(g, d).begins_with("In jail"), "jailed status")
+	check(not Dealers.give(g, "rook", "weed:glow", 1).ok, "can't stock a jailed dealer")
+	g.tick(float(data.dealers.jail_seconds))
+	check(float(d.jail) == 0.0, "released")
+	d.stock = {"weed:glow": 4}
+	d.cash = 77
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	var e: Dictionary = Dealers.find(h, "rook")
+	check(not e.is_empty() and e.loc == "mireth" and int(e.stock["weed:glow"]) == 4 and int(e.cash) == 77, "dealers survive a save")
+	# heat makes busts likelier, skill less
+	var g2 := new_game()
+	g2.dealers = [{"id": "rook", "loc": "mireth", "stock": {}, "cash": 0, "sold": 0, "jail": 0.0}, {"id": "ferro", "loc": "mireth", "stock": {}, "cash": 0, "sold": 0, "jail": 0.0}]
+	var b0 := Dealers.bust_chance(g2, g2.dealers[0])
+	check(Dealers.bust_chance(g2, g2.dealers[1]) < b0, "skilled dealers get busted less")
+	g2.heat = 80.0
+	check(Dealers.bust_chance(g2, g2.dealers[0]) > b0, "heat raises the bust risk")
 
 
 func test_deaddrops() -> void:
