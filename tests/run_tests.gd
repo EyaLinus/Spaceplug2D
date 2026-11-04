@@ -5,6 +5,7 @@ extends SceneTree
 const Game = preload("res://scripts/core/game.gd")
 const Data = preload("res://scripts/core/data.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
+const Packaging = preload("res://scripts/core/packaging.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const Corruption = preload("res://scripts/core/corruption.gd")
@@ -61,6 +62,7 @@ func _init() -> void:
 		"test_production_stations",
 		"test_production_outcome",
 		"test_quality_grade_keys",
+		"test_packaging_tiers",
 		"test_station_minigames",
 		"test_sell_contact_and_fence",
 		"test_products_recipe_book",
@@ -1068,7 +1070,7 @@ func test_production_outcome() -> void:
 	q.buy("nanoflux", 5)
 	q.start_batch("weed", ["nanoflux"], 5)
 	check(a.lab_queue[0].qty == 6 and q.lab_queue[0].qty == 5, "yield bonus: %d vs %d" % [a.lab_queue[0].qty, q.lab_queue[0].qty])
-	check(a.lab_queue[0].product == "weed:overclock+radiant@3", "pristine key: %s" % a.lab_queue[0].product)
+	check(str(a.lab_queue[0].product).begins_with("weed:overclock+radiant@3"), "pristine key: %s" % a.lab_queue[0].product)
 	check(a.heat < q.heat, "good packaging means less heat")
 	check(Mixing.value(data, a.lab_queue[0].product) > Mixing.value(data, q.lab_queue[0].product) * 1.3, "pristine is worth more")
 	var tiny := new_game()
@@ -1093,6 +1095,39 @@ func test_quality_grade_keys() -> void:
 	var h := Game.new()
 	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
 	check(h.cargo.get("weed:overclock+radiant", 0) == 2 and h.cargo.size() == 1, "graded cargo survives save")
+
+
+func test_packaging_tiers() -> void:
+	check(Packaging.tier_for(data, 0.0) == 0 and Packaging.tier_for(data, 0.5) == 1 and Packaging.tier_for(data, 0.95) == 2, "tier thresholds")
+	check(Production.outcome(data, {}).pack == 0, "quick batch is loose")
+	check(Production.outcome(data, {"pack_table": 0.95}).pack == 2, "tight seals are shielded")
+	var k := Mixing.key("weed", ["glow"], 2, 2)
+	check(k == "weed:glow@2#2", "packed key: %s" % k)
+	var p := Mixing.parse_key(k)
+	check(p.base == "weed" and p.traits == ["glow"] and p.grade == 2 and p.pack == 2, "parse packed key: %s" % [p])
+	check(Mixing.key("weed", ["glow"], 1, 0) == "weed:glow" and Mixing.parse_key("weed:glow@2").pack == 0, "old keys are loose")
+	check(Mixing.display_name(data, k).ends_with("(Shielded)"), "tier in name: %s" % Mixing.display_name(data, k))
+	check(Mixing.value(data, k) == Mixing.value(data, "weed:glow@2"), "tier does not change value")
+	var g := new_game()
+	g.credits = 1000
+	g.cargo.clear()
+	g.cargo["weed:glow#2"] = 400
+	g.cargo["weed:glow"] = 50
+	g.cargo["fuel"] = 3
+	g.corruption.hired = {}
+	var r := g.bust()
+	var kept: int = g.cargo.get("weed:glow#2", 0)
+	var expect := 400.0 * Packaging.survive_chance(data, 2)
+	check(absf(kept - expect) < 60.0 and kept > 0 and kept < 400, "shielded survives with a chance: kept %d of 400" % kept)
+	check(not g.cargo.has("weed:glow") and g.cargo.get("fuel", 0) == 3, "loose product lost, non-products untouched")
+	check(r.msg.contains("hid"), "bust message mentions packaging: %s" % r.msg)
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(h.cargo.get("weed:glow#2", 0) == kept, "packed cargo survives save")
+	var b := new_game()
+	b.buy("cannabis", 1)
+	var res := b.start_batch("weed", [], 1, {"pack_table": 0.95})
+	check(res.ok and b.lab_queue[0].product.ends_with("#2"), "batch stores the tier: %s" % [res])
 
 
 ## Every registered minigame: a skilled bot scores high, doing nothing scores low, and each run ends on its own.
@@ -2417,7 +2452,7 @@ func test_bench_line() -> void:
 	check(r.ok and Bench.tray(g).is_empty(), "the last station finishes the tray")
 	check(g.lab_queue.size() == 1 and str(g.lab_queue[0].product).begins_with("weed") and not "+" in str(g.lab_queue[0].product).split(":")[1], "plain weed queued: %s" % [g.lab_queue])
 	var grade: int = Production.outcome(data, {"trim_table": 0.9, "extractor": 0.9, "cook_stove": 0.9, "pack_table": 0.9}).grade
-	check(str(g.lab_queue[0].product).ends_with("@%d" % grade) or grade == 1, "the minigame scores set the grade")
+	check(str(g.lab_queue[0].product).split("#")[0].ends_with("@%d" % grade) or grade == 1, "the minigame scores set the grade")
 	# abandon gives the raws back via the stash
 	Bench.begin(g, "trim_table", "weed", 3)
 	check(Bench.abandon(g).ok and g.stash.get("cannabis", 0) == 3 and Bench.tray(g).is_empty(), "scrapping a tray keeps the ingredients")

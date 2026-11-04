@@ -6,6 +6,7 @@ extends Control
 
 const UI = preload("res://scripts/ui/ui_theme.gd")
 const Production = preload("res://scripts/core/production.gd")
+const Packaging = preload("res://scripts/core/packaging.gd")
 
 const Registry = preload("res://scripts/ui/minigames/registry.gd")
 
@@ -120,7 +121,9 @@ static func effect_text(id: String, score: float) -> String:
 	var o := Production.outcome(d, {id: score})
 	match d.stations[id].affects:
 		"yield": return "yield ×%.2f" % o.yield_mult
-		"heat": return "heat ×%.2f" % o.heat_mult
+		"heat":
+			var pk: String = " · %s packaging" % Packaging.tier_name(d, int(o.pack)) if id == "pack_table" else ""
+			return "heat ×%.2f%s" % [o.heat_mult, pk]
 		"purity": return "purity %d%%" % int(o.purity * 100.0)
 	return "quality %s" % d.quality.grades[o.grade].name
 
@@ -134,6 +137,8 @@ func _complete() -> void:
 	var grade: Dictionary = g.data.quality.grades[o.grade]
 	_info.text = "Grade %s (value ×%.2f) · purity %d%% · yield ×%.2f → %d units · heat ×%.2f" % [grade.name,
 		float(grade.value_mult), int(o.purity * 100.0), o.yield_mult, Production.output_qty(_batch.qty, o.yield_mult), o.heat_mult]
+	if scores.has("pack_table"):
+		_info.text += " · %s packaging" % Packaging.tier_name(g.data, int(o.pack))
 	_status.text = "Skipped stations count as Standard." if scores.size() < plan.size() else ""
 	_btn.text = "Back to the lab [Esc]"
 

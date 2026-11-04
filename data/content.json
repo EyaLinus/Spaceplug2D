@@ -249,7 +249,14 @@
     "refiner": {"name": "Refiner", "minigame": "equilibrium", "affects": "purity", "bases": ["cocaine", "meth", "fentanyl"],
       "hint": "Space/left click doses acid (needle up), Backspace/right click doses base (needle down). Doses act with a delay: keep the reaction in the green band and don't overdose."},
     "pack_table": {"name": "Packaging Table", "minigame": "pack", "affects": "heat",
-      "hint": "Press Space/click when the sealer is over the bag. Tight seals smell less (less heat)."}
+      "hint": "Press Space/click when the sealer is over the bag. Tight seals smell less (less heat); very tight ones shield the batch in patrol scans."}
+  },
+  "packaging": {
+    "tiers": [
+      {"name": "Loose", "min": 0.0, "scan_survive": 0.0, "color": "#9a9a9a"},
+      {"name": "Sealed", "min": 0.45, "scan_survive": 0.15, "color": "#e6e9ff"},
+      {"name": "Shielded", "min": 0.8, "scan_survive": 0.55, "color": "#4fe3c1"}
+    ]
   },
   "workers": {
     "max_staff": 6, "hire_days": 2, "paid_loyalty_gain": 0.02, "unpaid_loyalty_loss": 0.3,
