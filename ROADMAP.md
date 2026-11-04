@@ -41,7 +41,7 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [x] Carrying product in an officer's sight → frisk bar; at high heat they chase you; bust on foot = confiscation + fine (same core bust)
 - [x] Officers path around buildings (AStarGrid2D on the tile grid, `scripts/planet/nav.gd`)
 - [ ] Running away raises heat
-- [ ] Curfew at night, hiding spots, bribable officers
+- [x] Curfew at night + bribable officers (hiding spots still open)
 - [ ] Planet heat zones: dealing in the plaza is hotter than in the back alleys
 
 ## P4 – Estates & production buildings

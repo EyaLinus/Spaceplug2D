@@ -18,6 +18,7 @@ const Bench = preload("res://scripts/core/bench.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const CombatHud = preload("res://scripts/planet/combat_hud.gd")
 const Locals = preload("res://scripts/core/locals.gd")
+const Curfew = preload("res://scripts/core/curfew.gd")
 
 const INPUT := {
 	"move_up": [KEY_W, KEY_UP],
@@ -26,6 +27,7 @@ const INPUT := {
 	"move_right": [KEY_D, KEY_RIGHT],
 	"interact": [KEY_E, KEY_ENTER],
 	"build_menu": [KEY_B],
+	"bribe_officer": [KEY_G],
 	"reload": [KEY_R],
 	"weapon_wheel": [KEY_Q],
 	"weapon_1": [KEY_1],
@@ -379,7 +381,7 @@ func _update_police(delta: float) -> void:
 		var o := OfficerScript.new()
 		o.hp = float(oc.get("hp", 40))
 		o.max_hp = o.hp
-		o.vision = float(pc.vision)
+		o.vision = float(pc.vision) * Curfew.vision_mult(g)
 		o.cone = deg_to_rad(float(pc.cone_degrees))
 		o.speed = float(pc.speed)
 		o.position = _random_road_point()

@@ -325,6 +325,7 @@
     "corvette": {"name": "Corvette", "price": 6500, "cargo": 0.9, "hull": 1.6, "shield": 1.4, "speed": 1.05, "laser": 1.25, "scale": 1.12, "stripe": "#ff6b5f",
       "desc": "An ex-navy gun boat: heavy armour, strong shield emitters, hotter lasers. Built to take a cartel base apart."}
   },
+  "curfew": {"start": 22, "end": 5, "extra_officers": 2, "vision_mult": 1.3, "bribe_base": 60, "bribe_per_heat": 2, "bribe_heat_cut": 10, "pass_hours": 3},
   "police": {
     "base": 1,
     "per_heat": 20,

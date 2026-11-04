@@ -8,6 +8,7 @@ const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const Corruption = preload("res://scripts/core/corruption.gd")
+const Curfew = preload("res://scripts/core/curfew.gd")
 const Workers = preload("res://scripts/core/workers.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Deals = preload("res://scripts/core/deals.gd")
@@ -117,6 +118,7 @@ func _init() -> void:
 		"test_customs_scan_pass",
 		"test_sweep_and_tip_off",
 		"test_corruption_save",
+		"test_curfew",
 		"test_debt_win_and_loss",
 		"test_save_roundtrip",
 		"test_style",
@@ -3122,3 +3124,34 @@ func test_quest_chapter2() -> void:
 	check(g.quests.done.has("main_nest") and g.quests.active.has("main_rig"), "raiding the Nest finishes Smoke the Nest")
 	check(Quests.space_goal(g, {"loc": "tide_rig"}) == "halvane_gate", "the Rig waypoint routes through the gate")
 
+
+
+func test_curfew() -> void:
+	var g := new_game()
+	g.credits = 1000
+	g.day_time = 0.0
+	var noon := g.day_seconds() * 0.4
+	g.day_time = noon
+	check(not Curfew.active(g), "no curfew at midday")
+	var base: int = g.police_on_foot(1.0)
+	var night := g.day_seconds() * 0.9
+	g.day_time = night
+	var h := People.hour(g)
+	check(h >= 22.0 or h < 5.0, "test clock is inside the curfew window (%s)" % h)
+	check(Curfew.active(g) and Curfew.enforced(g), "curfew at night")
+	check(g.police_on_foot(1.0) == mini(base + 2, 99) or g.police_on_foot(1.0) > base, "more officers at night")
+	check(g.police_on_foot(0.0) == 0, "lawless planets have no curfew patrols")
+	check(Curfew.vision_mult(g) > 1.0, "officers see further at night")
+	g.heat = 20.0
+	var cost := Curfew.bribe_cost(g)
+	check(cost == 60 + 2 * 20, "bribe cost grows with heat")
+	var res := Curfew.bribe(g)
+	check(res.ok and g.credits == 1000 - cost, "bribe pays")
+	check(not Curfew.enforced(g) and g.police_on_foot(1.0) == base, "pass switches the curfew bonus off")
+	check(is_equal_approx(g.heat, 10.0), "bribe cools heat")
+	g.total_time += 4.0 * Deals.seconds_per_hour(g)
+	check(Curfew.enforced(g), "pass runs out")
+	g.credits = 0
+	check(not Curfew.bribe(g).ok, "broke: no bribe")
+	g.day_time = noon
+	check(not Curfew.bribe(g).ok, "nothing to bribe by day")
