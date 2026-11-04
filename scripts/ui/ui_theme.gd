@@ -188,6 +188,7 @@ const BUTTON_TIPS := [
 	["Cancel jump", "Stop charging the jump drive."], ["Price comparison", "Compare prices at every market you know."],
 	["Market", "Set your asking price to what the market pays."], ["Worth", "Set your asking price to the product's worth."],
 	["Cartels", "Who runs which street, how angry they are."],
+	["Ask +", "Ask for more per unit. One try: if they refuse, they are annoyed."], ["Walk away", "Turn the customer down."],
 ]
 
 

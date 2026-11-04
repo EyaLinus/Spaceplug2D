@@ -13,6 +13,7 @@ const Corruption = preload("res://scripts/core/corruption.gd")
 const Workers = preload("res://scripts/core/workers.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Deals = preload("res://scripts/core/deals.gd")
+const Walkups = preload("res://scripts/core/walkups.gd")
 const Orders = preload("res://scripts/core/orders.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
@@ -47,6 +48,7 @@ var contact_ready_at: Dictionary = {}  ## contact id -> total_time when they buy
 var offers: Array = []  ## Deal-O-Matic requests and agreed deals (see deals.gd)
 var next_offer_id: int = 0
 var offer_clock: float = 0.0  ## seconds since the last round of customer texts
+var walkups: Dictionary = {}  ## customers on foot (walkups.gd), momentary, not saved
 var people: Dictionary = {}  ## contact id -> addiction, affinity, spent today, known, history (see people.gd)
 var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "flak": 0, "ion": 0, "shield": 0, "hull": 0}
 var ship_class: String = "courier"  ## hull class you fly (content.json "ship_classes"), saved
@@ -109,6 +111,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	offers = []
 	next_offer_id = 0
 	offer_clock = 0.0
+	walkups = {}
 	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "flak": 0, "ion": 0, "shield": 0, "hull": 0}
 	ship_class = "courier"
 	hulls = ["courier"]
@@ -335,6 +338,7 @@ func tick(dt: float) -> void:
 	Workers.tick(self, dt)
 	_tick_demand(dt)
 	Deals.tick(self, dt)
+	Walkups.tick(self, dt)
 	Dealers.tick(self, dt)
 	Orders.tick(self)
 	Galaxy.tick(self, dt)
@@ -909,6 +913,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 		offers.append(od)
 	next_offer_id = int(d.get("next_offer_id", offers.size()))
 	offer_clock = float(d.get("offer_clock", 0.0))
+	walkups = {}
 	for k in upgrades:
 		upgrades[k] = int(d.get("upgrades", {}).get(k, 0))
 	state = str(d.get("state", "playing"))

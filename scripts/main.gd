@@ -17,6 +17,7 @@ const SettingsPanelScript = preload("res://scripts/ui/menu/settings_panel.gd")
 const PhoneScript = preload("res://scripts/ui/phone/phone.gd")
 const HyperspaceScript = preload("res://scripts/ui/hyperspace.gd")
 const InterdictCardScript = preload("res://scripts/ui/interdict_card.gd")
+const WalkupCardScript = preload("res://scripts/ui/walkup_card.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Deals = preload("res://scripts/core/deals.gd")
@@ -51,6 +52,7 @@ var station: Control
 var bench: Control  ## station overlay on foot: start a tray, mix, play the station minigame (G2)
 var hyper: Control  ## jump-drive charge streaks and the hyperspace transition
 var interdict: Control  ## interdiction card after a jump (D3)
+var walkup: Control  ## deal card for a customer on foot (P2)
 var phone: Control  ## Com-Phone overlay (scripts/ui/phone), usable in flight and on foot
 var menu: Control
 var pause_menu: Control
@@ -98,6 +100,8 @@ func _ready() -> void:
 	interdict = InterdictCardScript.new()
 	root.add_child(interdict)
 	interdict.resolved.connect(_on_interdiction_resolved)
+	walkup = WalkupCardScript.new()
+	root.add_child(walkup)
 	station.estate_enter_requested.connect(func(eid: String): enter_estate(eid))
 	station.place_requested.connect(func(st: String):
 		station.close()
@@ -158,6 +162,7 @@ func _input(event: InputEvent) -> void:
 func toggle_phone() -> void:
 	if not phone.visible:
 		station.close()
+		walkup.close()
 		bench.close()
 		if surface != null:
 			surface.placing = ""
@@ -183,13 +188,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			surface.placing = ""
 		elif surface != null and station.visible and not GameState.paused:
 			station.close()
+		elif walkup.visible and not GameState.paused:
+			walkup.close()
 		else:
 			toggle_pause()
 	elif surface != null:
 		if event.is_action_pressed("interact") and not GameState.paused:
 			if station.visible:
 				station.close()
-			else:
+			elif not walkup.visible:
 				surface.interact()
 		elif event.is_action_pressed("build_menu") and not GameState.paused and surface.cfg.has("estate") and not station.visible:
 			open_build_menu()
@@ -250,7 +257,7 @@ func load_slot(i: int) -> void:
 
 func _process(_delta: float) -> void:
 	if surface != null:
-		surface.player.frozen = GameState.paused or station.visible or bench.visible or end_screen.visible or phone.visible
+		surface.player.frozen = GameState.paused or station.visible or bench.visible or end_screen.visible or phone.visible or walkup.visible
 	world.input_blocked = phone.visible
 	var gm = GameState.game
 	hyper.charge = Galaxy.progress(gm) if gm != null and Galaxy.charging(gm) else 0.0
@@ -396,6 +403,7 @@ func _leave_surface() -> void:
 	if surface == null:
 		return
 	station.close()
+	walkup.close()
 	surface.queue_free()
 	remove_child(surface)
 	surface = null
@@ -429,6 +437,10 @@ func _on_surface_action(action: String, p: Dictionary) -> void:
 		"station":
 			var bd: Dictionary = surface.cfg.buildings.filter(func(b): return b.id == p.id)[0]
 			bench.open_station(bd.station, bd.index)
+			return
+		"walkup":
+			g.meet(p.contact)
+			walkup.open(p.contact)
 			return
 		"place":
 			if GameState.act(g.place_building(surface.cfg.estate, p.station, p.x, p.y)).ok:

@@ -5,6 +5,7 @@ extends SceneTree
 ## godot --headless --path . -s res://tools/tip_audit.gd
 
 const Deals = preload("res://scripts/core/deals.gd")
+const Walkups = preload("res://scripts/core/walkups.gd")
 
 var UI  # loaded at runtime: ui_theme.gd uses autoloads, which a SceneTree script cannot see at compile time
 
@@ -76,6 +77,13 @@ func _run() -> void:
 	m.leave_estate()
 	await _frames(3)
 	Deals.request(g, "okka")
+	g.cargo["weed:glow"] = 6
+	Walkups.active(g)["okka"] = Walkups.offer_for(g, "okka")
+	m.walkup.open("okka")
+	await _audit("customer on foot", m.walkup)
+	m.walkup.close()
+	Walkups.decline(g, "okka")
+	g.cargo.erase("weed:glow")
 	m.toggle_phone()
 	await _audit("phone home", m.phone)
 	for app in m.phone.apps:
