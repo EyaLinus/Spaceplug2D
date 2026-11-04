@@ -122,6 +122,37 @@ static func mix(g, additives: Array) -> Dictionary:
 	return g._ok("Mixed in %s." % ", ".join(PackedStringArray(additives.map(func(a): return g.item_name(a)))))
 
 
+## One-click re-cook from the mixing journal: pours the recipe `recipe_key` (Game.recipes) into the tray.
+static func recook(g, recipe_key: String) -> Dictionary:
+	var e: Dictionary = g.recipes.get(recipe_key, {})
+	var t := tray(g)
+	if e.is_empty() or (e.additives as Array).is_empty():
+		return g._fail("That recipe is not in your journal.")
+	if t.is_empty() or e.base != t.base:
+		return g._fail("That recipe is for another drug.")
+	return mix(g, e.additives)
+
+
+## Why the tray cannot take journal recipe `recipe_key` right now ("" = it can): missing additives or stations.
+static func recook_block(g, recipe_key: String) -> String:
+	var e: Dictionary = g.recipes.get(recipe_key, {})
+	var t := tray(g)
+	if e.is_empty() or t.is_empty():
+		return "No tray."
+	if not can_mix(g, t):
+		return "Nothing to mix right now."
+	var need := {}
+	for a in e.additives:
+		need[a] = int(need.get(a, 0)) + int(t.qty)
+	for a in need:
+		if int(g.cargo.get(a, 0)) < need[a]:
+			return "Missing %s (need %d)." % [g.item_name(a), need[a]]
+	var miss: Array = g.missing_stations(t.base, e.additives)
+	if not miss.is_empty():
+		return "Set up first: %s." % g.data.stations[miss[0]].name
+	return ""
+
+
 ## Records the minigame score of `station` for the tray; after the last station the batch is queued.
 static func record(g, station: String, score: float) -> Dictionary:
 	var t := tray(g)
@@ -161,7 +192,10 @@ static func abandon(g) -> Dictionary:
 static func preview(g, base: String, additives: Array) -> Dictionary:
 	var traits: Array = Mixing.traits_for(g.data, base, additives)
 	var key := Mixing.key(base, traits)
-	return {"product": key, "traits": traits, "value": int(Mixing.value(g.data, key))}
+	var vals := {}
+	for tr in traits:
+		vals[tr] = float(g.data.traits[tr].value)
+	return {"product": key, "traits": traits, "value": int(Mixing.value(g.data, key)), "trait_values": vals}
 
 
 static func to_save(g) -> Dictionary:

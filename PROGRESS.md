@@ -755,3 +755,13 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
   so placement and readability are unseen); a customer who cannot path to the player just stands still; numbers (interval, chance,
   linger) are eyeballed and the balance bot does not use walk-ups; walk-ups only appear on planet surfaces, not inside estates or on
   stations without a surface; no dialogue variety beyond one quote line.
+
+## Mixing journal + trait values (2026-11-04, wave 12)
+- **Core:** the recipe book (`Game.recipes`, `scripts/core/products.gd`) is the journal: entries now also store `last` (day last cooked) and `runs`
+  (batches); `Products.journal(g, base)` returns recipes with a known additive list, newest first. `Bench.recook(g, key)` pours a journal mix into
+  the tray (same checks as `Bench.mix`), `Bench.recook_block` gives the reason it cannot. `Bench.preview` returns `trait_values`.
+- **UI** (`bench_ui.gd`): Mixing Station shows a "Mixing journal" (up to 4 recipes for the tray's drug, price, units made, Re-cook button with tooltip)
+  and the preview chips carry the trait value (`Overclock +35%`).
+- Old saves: new fields default from `day`/0, so nothing breaks. Verified: see PR (unit test `test_mixing_journal`, ui_smoke step "journal re-cook").
+- Gaps: only the last 4 recipes show; no re-cook from the start screen (additives are poured at the Mixing Station); mixes cooked by workers are
+  journaled too (shared recipe book).
