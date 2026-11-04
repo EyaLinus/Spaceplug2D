@@ -382,6 +382,23 @@ func _run() -> void:
 	m.phone.find_child("TakeProducts", true, false).pressed.emit()
 	await frames(2)
 	_assert(g.has_contraband(), "take button loads the products")
+	# courier drone: buy one in the estate screen, it flies finished product to the hub stash
+	var DronesM = load("res://scripts/core/drones.gd")
+	g.estates.cannery_annex.out = {"weed:glow": 4}
+	g.credits = maxi(g.credits, 1000)
+	g._emit("storage_changed", {})
+	await frames(2)
+	var dbuy: Button = m.phone.find_child("DroneBuy_cannery_annex_to_port", true, false)
+	_assert(dbuy != null and not dbuy.disabled and dbuy.tooltip_text != "", "drone buy button with a tooltip")
+	dbuy.pressed.emit()
+	await frames(2)
+	_assert(g.drones.size() == 1 and m.phone.find_child("DroneRoute_%d" % g.drones[0].id, true, false) != null, "drone bought from the phone")
+	var stash0: int = int(g.stash.get("weed:glow", 0))
+	g.tick(DronesM.trip_seconds(g, "cannery_annex") + 0.5)
+	_assert(int(g.stash.get("weed:glow", 0)) == stash0 + 4, "the drone delivered the product to the hub stash")
+	m.phone.find_child("DroneScrap_%d" % g.drones[0].id, true, false).pressed.emit()
+	await frames(2)
+	_assert(g.drones.is_empty(), "drone scrapped from the phone")
 	g.inside_estate = ""
 	var c1: int = g.credits
 	var w1: int = int(g.stats.get("wages", 0))

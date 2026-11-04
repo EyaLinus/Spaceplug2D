@@ -20,6 +20,7 @@ const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
+const Drones = preload("res://scripts/core/drones.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Style = preload("res://scripts/core/style.gd")
@@ -77,6 +78,8 @@ var workers: Array = []  ## hired staff [{id, loyalty, estate, hired_day}] (see 
 var bench: Dictionary = {}  ## estate id -> batch tray carried between stations on foot (see bench.gd), saved
 var recipes: Dictionary = {}  ## recipe book: recipe key -> {base, additives, made, best, day} (see products.gd), saved
 var prices: Dictionary = {}  ## your asking price per Standard unit, recipe key -> cr; no entry = market price, saved
+var drones: Array = []  ## courier drones [{id, estate, route, t, grounded}] (see drones.gd), saved
+var drone_seq: int = 0
 var dealers: Array = []  ## hired street dealers [{id, loc, stock, cash, sold, jail}] (see dealers.gd), saved
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 var quests: Dictionary = {"active": [], "done": [], "step": {}, "count": {}, "tracked": ""}  ## quest log (see quests.gd), saved
@@ -132,6 +135,8 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	recipes = {}
 	prices = {}
 	dealers = []
+	drones = []
+	drone_seq = 0
 	quests = Quests.empty_state()  # the opening quests start in GameState.new_game (tests and sims run without)
 	cartels = Cartels.init_state(data)
 	style = Style.init_state(data)
@@ -336,6 +341,7 @@ func tick(dt: float) -> void:
 	_tick_demand(dt)
 	Deals.tick(self, dt)
 	Dealers.tick(self, dt)
+	Drones.tick(self, dt)
 	Orders.tick(self)
 	Galaxy.tick(self, dt)
 	SpaceCombat.tick(self, dt)
@@ -384,6 +390,7 @@ func _new_day() -> void:
 	People.new_day(self)
 	Corruption.new_day(self)
 	Workers.new_day(self)
+	Drones.new_day(self)
 	Cartels.new_day(self)
 	_emit("new_day", {"day": day})
 	if debt > 0 and day > debt_due_day:
@@ -864,7 +871,7 @@ func to_dict() -> Dictionary:
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
 		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
-		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "quests": Quests.to_save(self),
+		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "drones": Drones.to_save(self), "quests": Quests.to_save(self),
 		"cartels": Cartels.to_save(self), "ship_class": ship_class, "hulls": hulls.duplicate(),
 		"style": Style.to_save(self),
 	}
@@ -943,6 +950,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Bench.from_save(self, d)
 	Products.from_save(self, d.get("products", {}))
 	Dealers.from_save(self, d.get("dealers", []))
+	Drones.from_save(self, d.get("drones", []))
 	Quests.from_save(self, d.get("quests", {}), d.has("quests"))
 	Cartels.from_save(self, d.get("cartels", {}))
 	Style.from_save(self, d.get("style", {}))

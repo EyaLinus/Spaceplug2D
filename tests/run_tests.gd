@@ -19,6 +19,7 @@ const ArtReg = preload("res://scripts/core/art.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
+const Drones = preload("res://scripts/core/drones.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
@@ -69,6 +70,8 @@ func _init() -> void:
 		"test_deal_haggle_qty_time",
 		"test_dealers",
 		"test_dealers_bust_and_save",
+		"test_drones",
+		"test_drones_loss_upkeep_save",
 		"test_quest_data",
 		"test_quest_tutorial_flow",
 		"test_quest_retry_and_skip",
@@ -1649,6 +1652,139 @@ func test_dealers() -> void:
 	g.upgrades.cargo = 3
 	check(Dealers.take_back(g, "nyx").ok and Dealers.units(d) == 0, "stock taken back")
 	check(Dealers.fire(g, "nyx").ok and g.dealers.is_empty(), "fired")
+
+
+func _drone_game() -> Game:
+	var g := new_game()
+	g.credits = 5000
+	g.data = data.duplicate(true)
+	g.data.drones.loss_base = 0.0
+	g.data.drones.loss_per_heat = 0.0
+	return g
+
+
+func test_drones() -> void:
+	var rl: Dictionary = data.drones
+	for k in ["price", "upkeep", "max_total", "max_per_estate", "capacity", "trip_seconds", "far_seconds", "loss_base", "loss_per_heat", "scrap_refund"]:
+		check(rl.has(k), "drones rule %s exists" % k)
+	var g := _drone_game()
+	var eid := "cannery_rig"
+	var e: Dictionary = g.estates[eid]
+	check(not Drones.buy(g, "ship_bay", "to_port").ok and not Drones.buy(g, "nope", "to_port").ok, "no drones for the ship bay or strangers' estates")
+	check(not Drones.buy(g, eid, "sideways").ok, "unknown route refused")
+	var c0 := g.credits
+	check(Drones.buy(g, eid, "to_port").ok and g.credits == c0 - int(rl.price) and g.drones.size() == 1, "buying costs the price")
+	var d: Dictionary = g.drones[0]
+	check(Drones.status(g, d) == "Waiting for finished product.", "idle without product")
+	# export: output tray first, then shelf, capped by capacity, only finished product
+	e.out = {"weed:glow": 5}
+	e.storage = {"weed:glow": 20, "water": 9}
+	var trip := Drones.trip_seconds(g, eid)
+	g.tick(trip - 1.0)
+	check(int(g.stash.get("weed:glow", 0)) == 0, "no delivery before the trip is done")
+	g.tick(1.1)
+	var cap := int(rl.capacity)
+	check(int(g.stash.get("weed:glow", 0)) == cap and not e.out.has("weed:glow") and int(e.storage["weed:glow"]) == 25 - cap, "trip moves capacity units, tray first")
+	check(int(e.storage.get("water", 0)) == 9 and not g.stash.has("water"), "raws stay on the shelf")
+	g.tick(trip + 0.1)
+	check(int(g.stash["weed:glow"]) == cap * 2, "second trip is full again")
+	g.tick(trip + 0.1)
+	check(int(g.stash["weed:glow"]) == 25, "third trip takes the rest")
+	check(int(g.stats.get("drone_trips", 0)) == 3 and int(g.stats.drone_units) == 25, "trip stats")
+	g.tick(trip * 3.0)
+	check(int(g.stash["weed:glow"]) == 25, "empty estate: drone stays parked")
+	e.out = {"weed:glow": 3}
+	g.tick(0.1)
+	check(int(g.stash["weed:glow"]) == 28, "parked drone leaves the moment there is cargo")
+	# the spaceport stash is what collect_stash loads
+	g.location = g.data.start.location
+	var held0 := int(g.cargo.get("weed:glow", 0))
+	check(g.collect_stash().ok and int(g.cargo.get("weed:glow", 0)) > held0, "stash drops end up in the hold")
+	# import: only what the recipe lacks, from the stash
+	check(Drones.set_route(g, int(d.id), "to_estate").ok and d.route == "to_estate", "route flipped")
+	check(Drones.status(g, d) == "No auto recipe set.", "import needs a recipe")
+	Workers.set_recipe(g, eid, "weed", [], 5)
+	var need: Dictionary = g.batch_needs("weed", [], 5)
+	check(Drones.status(g, d) == "Waiting for supplies in the stash.", "import waits for supplies")
+	for k in need:
+		g.stash[k] = int(need[k]) * 3
+	e.bench = {}
+	e.storage = {}
+	for k in need:
+		e.bench[k] = 1
+	g.tick(trip + 0.1)
+	check(not e.storage.is_empty(), "import tops the shelf up")
+	var total := 0
+	for k in need:
+		total += int(e.storage.get(k, 0)) + int(e.bench.get(k, 0)) - 1
+		check(int(e.storage.get(k, 0)) + int(e.bench.get(k, 0)) <= int(need[k]), "never more than the recipe needs (%s)" % k)
+	check(total <= cap, "trip capacity respected")
+	# limits and scrapping
+	check(Drones.buy(g, eid, "to_port").ok and not Drones.buy(g, eid, "to_port").ok, "two pads per estate")
+	g.buy_estate("cannery_annex")
+	check(Drones.buy(g, "cannery_annex", "to_port").ok and Drones.buy(g, "cannery_annex", "to_port").ok and g.drones.size() == int(rl.max_total), "up to max_total")
+	check(not Drones.buy(g, "cannery_annex", "to_port").ok, "fleet capped")
+	var c1 := g.credits
+	check(Drones.scrap(g, int(d.id)).ok and g.credits == c1 + int(round(int(rl.price) * float(rl.scrap_refund))) and Drones.find(g, int(d.id)).is_empty(), "scrap refunds part of the price")
+	check(not Drones.scrap(g, 9999).ok, "no such drone")
+	var poor := _drone_game()
+	poor.credits = 10
+	check(not Drones.buy(poor, "cannery_rig", "to_port").ok, "can't afford a drone")
+
+
+func test_drones_loss_upkeep_save() -> void:
+	var g := _drone_game()
+	var eid := "cannery_rig"
+	Drones.buy(g, eid, "to_port")
+	var d: Dictionary = g.drones[0]
+	check(Drones.loss_chance(g) == 0.0, "no loss at zero risk")
+	g.heat = 50.0
+	g.data.drones.loss_per_heat = 0.01
+	check(is_equal_approx(Drones.loss_chance(g), 0.5), "heat raises the loss chance")
+	g.data.drones.loss_base = 5.0
+	check(Drones.loss_chance(g) <= 0.9, "loss chance is capped")
+	g.estates[eid].out = {"weed:glow": 4}
+	var lost := [false]
+	g.event.connect(func(k, _p): if k == "drone_lost": lost[0] = true)
+	g.data.drones.loss_base = 1.0
+	g.data.drones.loss_per_heat = 0.0
+	g.heat = 0.0
+	g.data.drones.loss_base = 2.0
+	g.rng.seed = 1
+	for i in 60:
+		if lost[0]:
+			break
+		g.estates[eid].out = {"weed:glow": 4}
+		g.tick(Drones.trip_seconds(g, eid) + 0.1)
+	check(lost[0] and g.drones.is_empty() and int(g.stats.get("drones_lost", 0)) == 1, "a shot-down drone is gone")
+	check(not g.stash.has("weed:glow") and not g.estates[eid].out.has("weed:glow"), "its cargo is lost with it")
+	# upkeep, grounding
+	var h := _drone_game()
+	Drones.buy(h, eid, "to_port")
+	var up := int(h.data.drones.upkeep)
+	h.credits = up + 1
+	h._new_day()
+	check(h.credits == 1 and not h.drones[0].grounded, "upkeep charged each day")
+	h._new_day()
+	check(h.drones[0].grounded and h.credits == 1 and Drones.status(h, h.drones[0]).begins_with("Grounded"), "unpaid drone is grounded")
+	h.estates[eid].out = {"weed:glow": 4}
+	h.tick(Drones.trip_seconds(h, eid) * 2.0)
+	check(not h.stash.has("weed:glow"), "grounded drones don't fly")
+	h.credits = 100
+	h._new_day()
+	check(not h.drones[0].grounded, "paying frees it again")
+	# save round trip, junk entries, old saves
+	h.drones[0].route = "to_estate"
+	var f := Game.new()
+	f.from_dict(data, JSON.parse_string(JSON.stringify(h.to_dict())))
+	check(f.drones.size() == 1 and f.drones[0].route == "to_estate" and f.drones[0].estate == eid and f.drone_seq == h.drone_seq, "drones survive a save")
+	Drones.from_save(f, [{"id": 3, "estate": "nope", "route": "to_port"}, {"id": 4, "estate": eid, "route": "x"}, {"id": 5, "estate": "ship_bay", "route": "to_port"}])
+	check(f.drones.is_empty(), "junk drone entries are dropped")
+	var old := h.to_dict()
+	old.erase("drones")
+	var o := Game.new()
+	o.from_dict(data, old)
+	check(o.drones.is_empty(), "old saves have no drones")
 
 
 func test_dealers_bust_and_save() -> void:
