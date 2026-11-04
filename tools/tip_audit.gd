@@ -53,8 +53,20 @@ func _run() -> void:
 		for i in 4:
 			await physics_frame
 		sf.interact()
+		if spot == "market":  # D4: the door leads into the room; the counter opens the panel
+			var room = m.surface
+			room.place_player_at("counter")
+			for i in 4:
+				await physics_frame
+			room.interact()
 		await _audit("station " + spot, m.station)
 		m.station.close()
+		if spot == "market":
+			m.surface.place_player_at("exit")
+			for i in 4:
+				await physics_frame
+			m.surface.interact()
+			sf = m.surface
 	g.buy("cannabis", 5)
 	g.buy("nanoflux", 5)
 	sf.place_player_at("cannery")

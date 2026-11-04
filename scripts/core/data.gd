@@ -6,7 +6,8 @@ extends RefCounted
 const CONTENT_PATH := "res://data/content.json"
 const SURFACES_PATH := "res://data/surfaces.json"
 const QUESTS_PATH := "res://data/quests.json"
-const Locals = preload("res://scripts/core/locals.gd")
+const INTERIORS_PATH := "res://data/interiors.json"
+const Locals =preload("res://scripts/core/locals.gd")
 
 
 static func load_all(path: String = CONTENT_PATH) -> Dictionary:
@@ -17,6 +18,8 @@ static func load_all(path: String = CONTENT_PATH) -> Dictionary:
 		parsed["surfaces"] = _load_json(SURFACES_PATH) if FileAccess.file_exists(SURFACES_PATH) else {}
 	if not parsed.has("quests"):
 		parsed["quests"] = _load_json(QUESTS_PATH) if FileAccess.file_exists(QUESTS_PATH) else {}
+	if not parsed.has("interiors"):
+		parsed["interiors"] = _load_json(INTERIORS_PATH) if FileAccess.file_exists(INTERIORS_PATH) else {}
 	Locals.add_to(parsed)  # named townsfolk on every planet join the contacts
 	return parsed
 

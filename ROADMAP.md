@@ -31,7 +31,7 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 
 ## P2 – Living planets
 - [ ] Art pass for the surface via the asset pipeline (tileset, character sprites with 4-direction walk cycles, building sprites)
-- [ ] Building interiors as their own small instances (enter door → interior scene) instead of opening a panel at the door
+- [x] Building interiors as their own small instances (enter door → interior scene) instead of opening a panel at the door
 - [ ] NPC schedules (home ↔ work ↔ plaza by time of day), day/night tint, idle chatter bubbles
 - [ ] Customers on foot: NPCs who want product walk up to you; you deal with them directly (replaces part of the contacts menu)
 - [x] Second and third surface: Drift Bazaar as a walkable hull deck (with the fence's back room), Cinder Belt as a mining camp
@@ -186,7 +186,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
 - → **Release v0.1.10** (shipped as v0.1.9).
 
 ### Wave 8 – bigger, unique worlds (v0.1.11)
-- **D4 Larger planet maps** (was D4). ✅ done (see PROGRESS.md; interiors for key buildings not built). Each planet 2–3× bigger with its own districts and landmarks (Mireth canal
+- **D4 Larger planet maps** (was D4). ✅ done (see PROGRESS.md; interiors for key buildings added in wave 11). Each planet 2–3× bigger with its own districts and landmarks (Mireth canal
   docks, Cinder mine shafts, Bazaar market decks, Varrow dune town, Glacis domes), interiors for key buildings,
   procedural filler props, minimap zoom.
 - **B4 Everyone is someone.** ✅ done (see PROGRESS.md). Every NPC on a surface is a named person from `people.gd` (generated names + look per

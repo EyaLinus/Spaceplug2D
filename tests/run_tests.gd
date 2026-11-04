@@ -23,6 +23,7 @@ const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Interiors = preload("res://scripts/core/interiors.gd")
 
 var data: Dictionary
 var failures := 0
@@ -34,6 +35,7 @@ func _init() -> void:
 	for t in [
 		"test_data_references",
 		"test_surface_layouts",
+		"test_interiors",
 		"test_art_registry",
 		"test_police_on_foot",
 		"test_combat_weapons",
@@ -262,6 +264,60 @@ func test_surface_layouts() -> void:
 			if c.location == loc:
 				var people: Array = s.npcs + Locals.npcs_for(data, loc)
 				check(people.any(func(n): return n.get("contact", "") == c.id), "%s contact %s stands on the surface" % [loc, c.id])
+
+
+func test_interiors() -> void:
+	var Nav = load("res://scripts/planet/nav.gd")
+	var seen := 0
+	for loc in data.surfaces:
+		var s: Dictionary = data.surfaces[loc]
+		# every panel building (market, shipyard, office, fence) is a key building with a room, and nothing else is
+		for b in s.buildings:
+			var panel: bool = str(b.get("action", "")) in Interiors.PANELS
+			check(Interiors.has(data, loc, b.id) == panel, "%s/%s: room iff it has a panel door" % [loc, b.id])
+		for id in data.interiors.get(loc, {}):
+			check(s.buildings.any(func(b): return b.id == id), "%s: room %s belongs to a building" % [loc, id])
+		check(Interiors.ids(data, loc).size() == data.interiors.get(loc, {}).size(), "%s: ids lists every room" % loc)
+		for id in Interiors.ids(data, loc):
+			seen += 1
+			var b := Interiors.building(data, loc, id)
+			var cfg := Interiors.build_cfg(data, loc, id)
+			var map := Rect2(0, 0, cfg.size[0], cfg.size[1])
+			var tag := "%s/%s" % [loc, id]
+			check(cfg.interior.building == id and cfg.interior.loc == loc and cfg.interior.action == b.action, "%s: interior header" % tag)
+			check(not cfg.has("estate") and float(cfg.security) == 0.0 and int(cfg.walkers) == 0, "%s: no police, no walkers, not an estate" % tag)
+			var solids: Array = []
+			for r in cfg.buildings:
+				var rr := Rect2(r.rect[0], r.rect[1], r.rect[2], r.rect[3])
+				check(map.encloses(rr), "%s: %s inside the room" % [tag, r.id])
+				solids.append(rr)
+			var counter: Dictionary = cfg.buildings.filter(func(x): return x.id == "counter")[0]
+			var cr := Rect2(counter.rect[0], counter.rect[1], counter.rect[2], counter.rect[3])
+			for r in cfg.buildings:
+				if r.id != "counter":
+					check(not Rect2(r.rect[0], r.rect[1], r.rect[2], r.rect[3]).intersects(cr), "%s: counter clear of %s" % [tag, r.id])
+			check(counter.action == b.action, "%s: counter opens the building's panel (%s)" % [tag, b.action])
+			check(cfg.npcs.size() == 1 and cfg.npcs[0].action == b.action and str(cfg.npcs[0].get("contact", "")) == "", "%s: one clerk, same panel" % tag)
+			# everything the player needs is on free floor and connected to the spawn
+			var grid: AStarGrid2D = Nav.build(cfg)
+			var spots := {
+				"spawn": Vector2(cfg.spawn[0], cfg.spawn[1]),
+				"exit": Vector2(cfg.exits[0].pos[0], cfg.exits[0].pos[1] - 12.0 / 32.0),
+				"counter": Vector2(counter.door[0], counter.door[1] + 0.6),
+				"clerk": Vector2(cfg.npcs[0].pos[0], cfg.npcs[0].pos[1] + 26.0 / 32.0),
+			}
+			for k in spots:
+				var cell := Vector2i(spots[k].floor())
+				check(grid.region.has_point(cell) and not grid.is_point_solid(cell), "%s: %s stands on free floor" % [tag, k])
+				if k != "spawn":
+					check(not grid.get_id_path(Vector2i(spots.spawn.floor()), cell).is_empty(), "%s: %s reachable from the spawn" % [tag, k])
+			check(cfg.exits[0].action == "exit_interior", "%s: exit action" % tag)
+			for p in cfg.props:
+				check(map.has_point(Vector2(p[1], p[2])), "%s: prop %s inside the room" % [tag, p[0]])
+			check(Interiors.outside_id(cfg) == id, "%s: leaving returns to the building's door" % tag)
+	check(seen >= 8, "all key buildings have rooms (%d)" % seen)
+	check(Interiors.build_cfg(data, "mireth", "cannery").is_empty() and not Interiors.has(data, "mireth", "nope"), "estates and unknown buildings have no panel room")
+
 
 
 func test_police_on_foot() -> void:

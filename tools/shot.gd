@@ -75,10 +75,25 @@ func _run() -> void:
 	for i in 5:
 		await physics_frame
 	sf.interact()
+	var room = m.surface  # D4: market room, then its counter
+	room.player.position += Vector2(0, -50)
+	for i in 10:
+		await physics_frame
+	await _save(out, "interior_market")
+	room.place_player_at("counter")
+	for i in 5:
+		await physics_frame
+	room.interact()
 	m.station._basket = {"cannabis": 4, "nanoflux": 2}
 	m.station.refresh()
 	await _save(out, "market")
 	m.station.close()
+	room.place_player_at("exit")
+	for i in 5:
+		await physics_frame
+	room.interact()
+	await physics_frame
+	sf = m.surface
 	g.buy("cannabis", 5)
 	g.buy("nanoflux", 5)
 	g.buy("ion_syrup", 5)
