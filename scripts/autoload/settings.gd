@@ -5,6 +5,10 @@ extends Node
 ## the two keys, so a group never ends up with one key on two actions.
 
 signal changed  ## any setting changed (HUD refreshes its key hints)
+signal language_changed  ## menus rebuild their texts
+
+const Loc = preload("res://scripts/core/loc.gd")
+const LANGUAGES := [["en", "English"], ["de", "Deutsch"]]  ## code, name shown in the selector
 
 const BUSES := ["Master", "Music", "SFX"]
 const RESOLUTIONS := [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440)]
@@ -50,6 +54,7 @@ var tutorial := true  ## new games start with the tutorial quests (off = straigh
 var screen_shake := 1.0  ## K1: camera shake strength 0..1 (0 = off)
 var damage_numbers := true  ## K1: floating damage numbers in fights
 var ui_scale := 0  ## K3: index into UI_SCALES
+var language := "en"  ## Loc language code
 var bindings: Dictionary = {}  ## action -> physical keycode overriding the default primary key
 var _defaults: Dictionary = {}  ## action -> default primary physical keycode, captured on first apply_input()
 
@@ -76,6 +81,7 @@ func load_settings() -> void:
 	screen_shake = clampf(float(cf.get_value("feel", "screen_shake", screen_shake)), 0.0, 1.0)
 	damage_numbers = bool(cf.get_value("feel", "damage_numbers", damage_numbers))
 	ui_scale = clampi(int(cf.get_value("display", "ui_scale", ui_scale)), 0, UI_SCALES.size() - 1)
+	set_language(str(cf.get_value("display", "language", language)), false)
 	bindings = {}
 	if cf.has_section("keys"):
 		for action in cf.get_section_keys("keys"):
@@ -93,6 +99,7 @@ func save_settings() -> bool:
 	cf.set_value("feel", "screen_shake", screen_shake)
 	cf.set_value("feel", "damage_numbers", damage_numbers)
 	cf.set_value("display", "ui_scale", ui_scale)
+	cf.set_value("display", "language", language)
 	for action in bindings:
 		cf.set_value("keys", action, bindings[action])
 	return cf.save(config_path) == OK
@@ -147,6 +154,13 @@ func set_screen_shake(x: float) -> void:
 func set_ui_scale(i: int) -> void:
 	ui_scale = clampi(i, 0, UI_SCALES.size() - 1)
 	changed.emit()
+
+
+func set_language(code: String, notify := true) -> void:
+	language = Loc.set_language(code)
+	if notify:
+		language_changed.emit()
+		changed.emit()
 
 
 func set_damage_numbers(on: bool) -> void:

@@ -732,3 +732,9 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
   people, stranger shows job, prompt shows want, talking opens Deals and makes a contact, name appears), menu smoke, screenshot.
 - Gaps: locals reuse the 8 NPC sprite looks (no per-planet outfits yet); no dialogue lines beyond the deal screen; the Contacts app
   grows long once you know many people (no search/filter yet, K3).
+
+## Localisation foundation (2026-11-04, wave 13)
+- `scripts/core/loc.gd`: `Loc.t(key, fallback)` over `data/loc/<lang>.json` (flat key -> text; lookup order: current language, English, fallback, key). `Settings.language` ("en"/"de", `[display] language` in settings.cfg, `language_changed` signal); selector in Settings > Display.
+- Converted: `scripts/ui/menu/main_menu.gd`, `pause_menu.gd`, `settings_panel.gd` (build code moved into `_build()`, rebuilt on `language_changed`). Slot panel, HUD, station UI, phone, world and quests are NOT converted (14 open PRs touch them) - convert per screen in follow-ups, add keys to both json files; `test_loc_tables` enforces key parity and equal `%` placeholder counts.
+- Convention: key = `<screen>.<name>`, English text stays as the `fallback` argument in code so a missing table never shows a bare key. Export include filter extended to `data/loc/*.json`.
+- Gaps: content data (items, quests, contacts in content.json/quests.json) has no translation mechanism yet; fonts only checked for Latin + umlauts by reading, not on screen.

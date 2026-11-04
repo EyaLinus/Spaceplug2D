@@ -48,6 +48,7 @@ func _run() -> void:
 	st = root.get_node("Settings")
 	gs.save_prefix = "user://menu_smoke_"
 	st.config_path = "user://menu_smoke_settings.cfg"
+	st.set_language("en")  # buttons are found by their English text
 	_cleanup()
 	root.get_node("AudioManager").set_enabled(false)
 
@@ -158,6 +159,16 @@ func _run() -> void:
 	st.set_volume("Music", 0.6)
 	await key(KEY_ESCAPE)
 	step("settings")
+
+	# language: switching rebuilds the open menus in German and back
+	st.set_language("de")
+	await frames(2)
+	_assert(_btn(m.pause_menu, "Fortsetzen") != null and _btn(m.menu, "Neues Spiel") != null, "menus switch to German")
+	_assert(_btn(m.settings_panel, "Zurück") != null, "settings panel switches to German")
+	st.set_language("en")
+	await frames(2)
+	_assert(_btn(m.pause_menu, "Resume") != null and _btn(m.settings_panel, "Back") != null, "menus switch back to English")
+	step("language")
 
 	_cleanup()
 	print("MENU DONE %d steps" % steps)
