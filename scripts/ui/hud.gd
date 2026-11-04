@@ -318,6 +318,11 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		"rumour":
 			var up: bool = p.demand >= 1.0
 			show_toast("Rumour: %s demand %s at %s." % [g.data.bases[p.base].name, "hot" if up else "cooling", g.data.locations[p.location].name])
+		"patrol_warning":
+			show_toast("Patrol scan range ahead: change course or hide in an asteroid field.", false)
+			fx.flash(UI.WARN, 0.12)
+		"pursuit_lost":
+			show_toast("Lost them in the rocks: the patrol dropped the chase.")
 		"heat_level":
 			if p.heat >= float(g.data.heat.chase_heat):
 				show_toast("Heat %d: patrols will hunt you." % int(p.heat), false)

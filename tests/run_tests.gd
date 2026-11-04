@@ -23,6 +23,7 @@ const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const PatrolFeel = preload("res://scripts/core/patrolfeel.gd")
 
 var data: Dictionary
 var failures := 0
@@ -105,6 +106,8 @@ func _init() -> void:
 		"test_space_wings",
 		"test_cartel_bases",
 		"test_ship_classes",
+		"test_patrol_feel_fields",
+		"test_patrol_feel_warning",
 		"test_interdiction_chances",
 		"test_interdiction_choices",
 		"test_interdiction_on_jump",
@@ -2966,6 +2969,57 @@ func test_ship_classes() -> void:
 
 
 # ---------------------------------------------------------------- interdiction (D3)
+
+func test_patrol_feel_fields() -> void:
+	var rules: Dictionary = data.patrol_feel
+	for sys in data.systems:
+		var fl := PatrolFeel.fields(data, sys)
+		check(not fl.is_empty(), "%s has asteroid fields" % sys)
+		for f in fl:
+			check(absf(f.pos.x) + f.radius < 4200.0 and absf(f.pos.y) + f.radius < 4200.0, "%s field inside the sector" % sys)
+			for id in data.locations:
+				var ld: Dictionary = data.locations[id]
+				if str(ld.get("system", "")) == sys:
+					var lp := Vector2(float(ld.pos[0]), float(ld.pos[1]))
+					check(lp.distance_to(f.pos) > f.radius + float(ld.radius) + 100.0, "%s field keeps clear of %s" % [sys, id])
+	var fl := PatrolFeel.fields(data, "halvane")
+	var c: Vector2 = fl[0].pos
+	var base := 380.0
+	check(PatrolFeel.depth(fl, Vector2(9000, 9000)) == 0.0, "no depth outside fields")
+	check(is_equal_approx(PatrolFeel.depth(fl, c), 1.0), "full depth at the middle")
+	check(is_equal_approx(PatrolFeel.scan_radius_at(data, base, fl, Vector2(9000, 9000)), base), "scan range unchanged in open space")
+	check(is_equal_approx(PatrolFeel.scan_radius_at(data, base, fl, c), base * float(rules.field_scan_mult)), "scan range shrinks in the middle of a field")
+	var edge := c + Vector2(fl[0].radius * 0.95, 0)
+	var mid := c + Vector2(fl[0].radius * 0.5, 0)
+	check(not PatrolFeel.breaks_pursuit(data, fl, edge), "the rim of a field does not break pursuit")
+	check(PatrolFeel.breaks_pursuit(data, fl, mid) and PatrolFeel.breaks_pursuit(data, fl, c), "inside a field patrols lose lock")
+	check(PatrolFeel.scan_radius_at(data, base, fl, mid) < PatrolFeel.scan_radius_at(data, base, fl, edge), "deeper means a smaller scan range")
+	check(PatrolFeel.fields(data, "nowhere").is_empty(), "unknown system has no fields")
+
+
+func test_patrol_feel_warning() -> void:
+	var m := float(data.patrol_feel.warn_margin)
+	check(PatrolFeel.warn_level(data, 1000.0, 380.0) == PatrolFeel.CLEAR, "far away is clear")
+	check(PatrolFeel.warn_level(data, 380.0 + m - 1.0, 380.0) == PatrolFeel.CLOSE, "inside the margin warns")
+	check(PatrolFeel.warn_level(data, 379.0, 380.0) == PatrolFeel.SCANNED, "inside the radius is scanned")
+	var st := {}
+	var fired := 0
+	for i in 600:  # 10 s hovering at the edge: exactly one warning
+		if PatrolFeel.warn_tick(data, st, PatrolFeel.CLOSE, 1.0 / 60.0):
+			fired += 1
+	check(fired == 1, "hovering at the edge warns once (got %d)" % fired)
+	for i in 60 * 4:  # clear for 4 s re-arms
+		PatrolFeel.warn_tick(data, st, PatrolFeel.CLEAR, 1.0 / 60.0)
+	check(PatrolFeel.warn_tick(data, st, PatrolFeel.CLOSE, 1.0 / 60.0), "warns again after clearing the range")
+	var st2 := {}
+	check(PatrolFeel.warn_tick(data, st2, PatrolFeel.SCANNED, 0.016), "being scanned with no warning yet still warns once")
+	st = {}
+	var n := 0
+	for i in 300:  # flicker CLOSE/CLEAR every frame never re-arms
+		if PatrolFeel.warn_tick(data, st, PatrolFeel.CLOSE if i % 2 == 0 else PatrolFeel.CLEAR, 0.016):
+			n += 1
+	check(n == 1, "flickering at the margin does not spam (got %d)" % n)
+
 
 func jump_game() -> Game:
 	var g := fly_game()

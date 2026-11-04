@@ -10,6 +10,7 @@ const CombatLayerScript = preload("res://scripts/world/combat_layer.gd")
 const CombatHudScript = preload("res://scripts/ui/combat_hud.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Style = preload("res://scripts/core/style.gd")
+const PatrolFeel = preload("res://scripts/core/patrolfeel.gd")
 
 const SECTOR_HALF := 4200.0
 
@@ -28,6 +29,10 @@ var input_blocked := false  ## the ship holds position (no steering) while the p
 var _stars: Array = []
 var _nebulae: Array = []  ## [pos, radius, colour]
 var _patrol_seed := 1
+var fields: Array = []  ## asteroid fields of this system (patrolfeel.gd): smaller scan range, break pursuit
+var _rocks: Array = []  ## [pos, radius, tint] drawn inside the fields
+var _warn := {}  ## patrolfeel.gd warn_tick state
+var _hunted := false  ## a patrol was chasing last frame (to announce a lost lock once)
 
 
 func _ready() -> void:
@@ -45,6 +50,7 @@ func _ready() -> void:
 	combat_hud = CombatHudScript.new()
 	combat_hud.setup(combat)
 	add_child(combat_hud)
+	EventBus.shake.connect(func(st: float): if active: shake = maxf(shake, st))
 	var first: String = data.systems.keys()[0] if data.has("systems") else ""
 	show_system(first)
 
@@ -80,6 +86,13 @@ func show_system(sys: String) -> void:
 		add_child(n)
 		move_child(n, 0)
 		locations[id] = n
+	fields = PatrolFeel.fields(data, sys)
+	_rocks.clear()
+	for f in fields:
+		for i in int(float(f.radius) / 6.0):
+			var a := r.randf() * TAU
+			var d := sqrt(r.randf()) * float(f.radius)
+			_rocks.append([f.pos + Vector2.from_angle(a) * d, r.randf_range(4.0, 16.0), Color(0.45, 0.4, 0.36).lerp(Color(0.7, 0.6, 0.5), r.randf()) * Color(1, 1, 1, 0.8)])
 	queue_redraw()
 
 
@@ -176,10 +189,18 @@ func _sync_patrols(g) -> void:
 	while patrols.size() > want:
 		patrols.pop_back().queue_free()
 	var chase: bool = g.heat >= float(GameState.data.heat.chase_heat) and active
-	var radius: float = g.scan_radius()
+	var radius: float = PatrolFeel.scan_radius_at(GameState.data, g.scan_radius(), fields, ship.position)
+	var lost: bool = PatrolFeel.breaks_pursuit(GameState.data, fields, ship.position)
+	var hunting := false
 	for p in patrols:
 		p.scan_radius = radius
-		p.step(get_physics_process_delta_time(), ship.position, chase and p.position.distance_to(ship.position) < 1600.0)
+		var near: bool = p.position.distance_to(ship.position) < 1600.0
+		p.step(get_physics_process_delta_time(), ship.position, chase and near and not lost)
+		hunting = hunting or p.chasing
+	if _hunted and not hunting and chase and lost:
+		AudioManager.play("sell")
+		EventBus.game_event.emit("pursuit_lost", {})
+	_hunted = hunting
 
 
 func _patrol_home(g) -> Vector2:
@@ -189,11 +210,17 @@ func _patrol_home(g) -> Vector2:
 
 func _update_scan(g, delta: float) -> void:
 	var in_range := false
-	var radius: float = g.scan_radius()
+	var radius: float = PatrolFeel.scan_radius_at(GameState.data, g.scan_radius(), fields, ship.position)
+	var nearest := INF
 	for p in patrols:
-		if p.position.distance_to(ship.position) < radius:
+		var d: float = p.position.distance_to(ship.position)
+		nearest = minf(nearest, d)
+		if d < radius:
 			in_range = true
-			break
+	# warning before the scan range: only worth it while there is something to find
+	var lvl: int = PatrolFeel.warn_level(GameState.data, nearest, radius) if g.has_contraband() else PatrolFeel.CLEAR
+	if PatrolFeel.warn_tick(GameState.data, _warn, lvl, delta):
+		EventBus.game_event.emit("patrol_warning", {"distance": nearest, "radius": radius})
 	var old := scan
 	if in_range and g.has_contraband():
 		scan += delta / float(GameState.data.heat.scan_seconds)
@@ -213,6 +240,11 @@ func _update_scan(g, delta: float) -> void:
 func _draw() -> void:
 	for s in _stars:
 		draw_circle(s[0], s[1], s[2])
+	for f in fields:
+		draw_circle(f.pos, f.radius, Color(0.5, 0.42, 0.34, 0.06))
+		draw_arc(f.pos, f.radius, 0, TAU, 64, Color(0.7, 0.6, 0.45, 0.2), 2.0)
+	for rk in _rocks:
+		draw_circle(rk[0], rk[1], rk[2])
 	# faint nebulae for depth, tinted per system
 	for nb in _nebulae:
 		draw_circle(nb[0], nb[1], nb[2])
