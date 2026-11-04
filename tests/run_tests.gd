@@ -23,6 +23,7 @@ const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Raids = preload("res://scripts/core/raids.gd")
 
 var data: Dictionary
 var failures := 0
@@ -120,6 +121,7 @@ func _init() -> void:
 		"test_debt_win_and_loss",
 		"test_save_roundtrip",
 		"test_style",
+		"test_raids",
 		"test_drug_ladder",
 		"test_old_save_names_migrate",
 		"test_core_loop_is_profitable",
@@ -2115,6 +2117,118 @@ func test_save_roundtrip() -> void:
 	h.from_dict(data, JSON.parse_string(json))
 	check(JSON.stringify(h.to_dict()) == json, "save round-trip is stable")
 	check(h.lab_queue.size() == 1 and h.upgrades.engine == 2, "lab queue and upgrades restored")
+
+
+func _hot_days(g: Game, n: int) -> void:
+	for i in n:
+		g.heat = 95.0
+		g._new_day()
+
+
+func test_raids() -> void:
+	var g := new_game()
+	var rules: Dictionary = data.raids
+	check(g.estates.has("cannery_rig") and Raids.estate_system(g, "cannery_rig") == "halvane", "starter estate sits in Halvane")
+	# no raid while heat is low, however long
+	var warned := []
+	var raided := []
+	g.event.connect(func(k, p):
+		if k == "raid_warning": warned.append(p)
+		if k == "raided": raided.append(p))
+	for i in 8:
+		g.heat = 10.0
+		g._new_day()
+	check(warned.is_empty() and raided.is_empty() and Raids.chance(g, "halvane") == 0.0, "low heat never gets raided")
+	check(Raids.status_text(g, "cannery_rig") == "", "no raid line at low heat")
+	# the streak must reach N days
+	g.heat = 95.0
+	g._new_day()
+	check(int(g.raids.streak.get("halvane", 0)) == 1 and Raids.chance(g, "halvane") == 0.0, "one hot day is not a streak")
+	check(Raids.status_text(g, "cannery_rig").contains("high for 1"), "estate screen mentions the streak")
+	check(Raids.chance(g, "halvane") <= float(rules.chance_max), "chance stays capped")
+	# rng isolation: the game RNG stream is the same with and without raids
+	var a := new_game()
+	var b := new_game()
+	a.raids = {}
+	b.heat = 95.0
+	a.heat = 95.0
+	var sa := a.rng.state
+	var sb := b.rng.state
+	check(sa == sb, "same seed, same rng state")
+	_hot_days(b, 6)
+	for i in 6:
+		a.heat = 95.0
+		a.corruption = b.corruption.duplicate(true)
+		a.raids = Raids.init_state()
+		a._new_day()
+	check(a.rng.state == b.rng.state, "raids never draw from the game rng")
+	# force a warning, then check the raid on the next day
+	var h := new_game()
+	h.credits = 1000
+	h.estate_stock["cannery_rig"] = {"weed": 10, "cocaine": 1}
+	h.bench["cannery_rig"] = {"base": "weed", "qty": 6, "additives": [], "done": [], "scores": {}, "mixed": false}
+	h.raids.streak["halvane"] = int(rules.days)
+	h.raids.roll = 1
+	var ev := []
+	h.event.connect(func(k, p): ev.append(k))
+	var got_warn := false
+	for i in 40:
+		h.heat = 100.0
+		h.corruption.heat.clear()
+		h.raids.streak["halvane"] = int(rules.days)
+		h._new_day()
+		if not h.raids.warn.is_empty():
+			got_warn = true
+			break
+	check(got_warn and ev.has("raid_warning") and not ev.has("raided"), "a warning comes first, no raid yet")
+	check(h.raids.warn.estate == "cannery_rig" and h.estate_stock.cannery_rig.weed == 10, "warning leaves the stash alone")
+	check(Raids.status_text(h, "cannery_rig").begins_with("RAID WARNING"), "estate screen shows the warning")
+	var heat0: float = h.heat
+	var wanted0 := Corruption.wanted(h)
+	h.heat = 100.0
+	h._new_day()
+	check(ev.has("raided") and h.raids.warn.is_empty(), "raid lands on the day after the warning")
+	check(h.estate_stock.cannery_rig.weed == 5 and h.estate_stock.cannery_rig.cocaine == 0 if h.estate_stock.cannery_rig.has("cocaine") else h.estate_stock.cannery_rig.weed == 5, "half the estate stock is seized (rounded up)")
+	check(h.bench.cannery_rig.qty == 3, "half the tray is seized")
+	check(h.credits == 1000 - int(rules.fine), "fine is paid")
+	check(h.heat < 100.0 and Corruption.wanted(h) > wanted0, "heat drops, wanted rises")
+	check(int(h.raids.streak.get("halvane", 0)) < int(rules.days) and heat0 >= 0.0, "streak restarts after a raid")
+	# an emptied estate loses nothing and pays nothing
+	var e := new_game()
+	e.credits = 1000
+	e.raids.warn = {"estate": "cannery_rig", "day": e.day + 1}
+	e.heat = 80.0
+	e._new_day()
+	check(e.credits == 1000 and e.raids.count == 1, "empty estate: nothing seized, no fine")
+	# warning is called off when the heat is gone
+	var c := new_game()
+	c.raids.warn = {"estate": "cannery_rig", "day": c.day + 1}
+	c.heat = 0.0
+	c._new_day()
+	check(c.raids.warn.is_empty() and c.raids.count == 0, "cooled-down system: raid called off")
+	# a hired captain cuts the chance
+	var k := new_game()
+	k.credits = 5000
+	k.undock()
+	k.dock("cinder")
+	k.heat = 95.0
+	k.raids.streak["halvane"] = 5
+	var plain := Raids.chance(k, "halvane")
+	Corruption.recruit(k, "dreyer")
+	var cut := Raids.chance(k, "halvane")
+	check(plain > 0.0 and is_equal_approx(cut, plain * (1.0 - float(rules.tipoff_cut))), "captain tip-offs cut the chance")
+	# ship bay is never a target; save round trip; old saves
+	check(Raids._targets(g, "halvane").has("cannery_rig") and not Raids._targets(g, "halvane").has("ship_bay"), "ship bay is not a raid target")
+	h.raids.warn = {"estate": "cannery_rig", "day": h.day + 1}
+	var j := JSON.stringify(h.to_dict())
+	var l := Game.new()
+	l.from_dict(data, JSON.parse_string(j))
+	check(JSON.stringify(l.to_dict()) == j and l.raids.warn.estate == "cannery_rig" and l.raids.count == h.raids.count, "raid state survives a save")
+	var old := h.to_dict()
+	old.erase("raids")
+	var o := Game.new()
+	o.from_dict(data, JSON.parse_string(JSON.stringify(old)))
+	check(o.raids.warn.is_empty() and o.raids.count == 0, "old saves load without raids")
 
 
 func test_style() -> void:

@@ -1,5 +1,19 @@
 # Progress log
 
+## Estate raids (phase 4, 2026-11-04)
+- **Core** `scripts/core/raids.gd`, data `content.json` "raids", state `Game.raids` {streak per system, warn, own LCG roll,
+  count}, saved (old saves start clean). Hook: `Raids.new_day` after `Corruption.new_day` in `Game._new_day`.
+- Rules: system heat >= 80 for 3 consecutive days -> each night a chance (0.3 + 0.01 per heat above, max 0.8, halved by a
+  hired patrol captain in that system) to pick one owned estate there (never the ship bay). A warning comes one day ahead
+  (`raid_warning` event + notice toast, captain also emits `tip_off`). On the next day change `raided` fires: half of
+  `estate_stock` and the tray are seized, fine up to 150 cr (only if something was found), heat -30 (-10 on an empty
+  estate), wanted +10 on a haul, streak resets. If the system cooled below 40 the raid is called off.
+- Uses its own RNG, so the game RNG is untouched; the 5-seed sim is identical to origin/main (threshold 80 on purpose:
+  at 70 seed 102 got raided in the sim).
+- UI: toasts via the existing `notice` event, a RAID WARNING / streak line in the estate screen (`station_ui`), flash +
+  shake in `fx.gd` on `raided`.
+- Gaps: the global hub stash and the cook queue are not raided; no way to bribe a raid away; no raid on the ship bay.
+
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,
   version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building

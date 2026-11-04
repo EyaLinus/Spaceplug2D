@@ -17,6 +17,7 @@ const OfficialsApp = preload("res://scripts/ui/phone/apps/officials_app.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Style = preload("res://scripts/core/style.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
+const Raids = preload("res://scripts/core/raids.gd")
 
 var tabs: TabContainer
 var _title: Label
@@ -316,6 +317,9 @@ func _build_stash(g) -> Control:
 		b.tooltip_text = "%d s left" % int(ceil(job.remaining))
 		h.add_child(b)
 		v.add_child(h)
+	var raid_line: String = Raids.status_text(g, g.inside_estate)
+	if raid_line != "":
+		v.add_child(UI.label(raid_line, 14, UI.WARN))
 	v.add_child(UI.heading("Stash"))
 	if g.stash.is_empty():
 		v.add_child(UI.label("Empty.", 15, UI.MUTED))
