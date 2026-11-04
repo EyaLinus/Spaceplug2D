@@ -5,6 +5,18 @@
   version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building
   interiors (D4), a real balance pass (waits for Linus), Ninth Veil base quest (chapter 3), duplicate PRs #48 and #64.
 
+
+## Price board with per-location history (2026-11-04)
+- **Core** `scripts/core/price_board.gd` (headless, no autoloads): `Game.price_board` = `{loc: {"buy:<item>"|"sell:<base>": [[day, price], ...]}}`.
+  `observe(g, loc)` notes every good the location trades at most once per game day, capped to `history_days` (14);
+  `trend()`, `sparkline()`, `lines()` are pure helpers. Numbers in `content.json` -> `price_board` (history_days,
+  spark_days, flat_pct). Saved; old saves load empty; `from_save` drops junk (unknown loc/good, bad entries), sorts and de-dups.
+- **Hook** `Game._note_prices()` (docked only) called from `dock()` and `_new_day()`. No RNG, no economy numbers touched.
+- **UI** Map app > Price comparison: per offer a trend arrow + block sparkline (or "seen" / "no data") with the last days as
+  tooltip. Only locations you docked at have history. Market cards (station_ui.gd) untouched.
+- Verified: unit tests (new `test_price_board`: record, once per day, cap, trend, RNG/economy unchanged, save round trip, old save, garbage), UI smoke (+ history label step), menu smoke, tip audit 0, sim 5/5 avg win day 4.6 (unchanged).
+- Gaps: buy prices are static data so their sparkline is flat; sell values move with demand. No market-card tooltip yet.
+
 ## K3: QoL (phase 3 wave 10, 2026-11-03)
 - **Autopilot** (`ship.gd`): action `ship_autopilot` (T) toggles; `goal_provider` = `hud.quest_point` (set in main);
   `autopilot_step()` turns to the goal, thrusts when within ~20°, brakes inside the stopping distance, switches off

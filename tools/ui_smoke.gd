@@ -1102,6 +1102,13 @@ func _map_and_drive(m, g) -> void:
 	m.phone.find_child("MapPrices", true, false).pressed.emit()
 	await frames(3)
 	_assert(m.phone.current_title() == "Prices" and m.phone.find_child("Price_cannabis", true, false) != null, "price comparison lists raws")
+	var any_hist: Array = m.phone.find_children("PriceHist_*", "Label", true, false)
+	_assert(not any_hist.is_empty() and any_hist[0].tooltip_text != "", "price rows carry a history label with a tooltip (%d)" % any_hist.size())
+	g.price_board["mireth"] = {"buy:cannabis": [[1, 30], [2, 36]]}
+	root.get_node("EventBus").game_event.emit("map_ui", {})
+	await frames(3)
+	var seen: Label = m.phone.find_child("PriceHist_mireth_buy_cannabis", true, false)
+	_assert(seen != null and seen.text.begins_with("▲") and seen.tooltip_text.contains("day 2: 36 cr"), "price history shows trend arrow, sparkline and tooltip")
 	m.phone.find_child("MapTab_sell", true, false).pressed.emit()
 	await frames(3)
 	_assert(m.phone.find_child("Price_cocaine", true, false) != null, "price comparison lists product demand")

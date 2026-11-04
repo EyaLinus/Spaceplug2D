@@ -439,6 +439,10 @@
     "flee_base": 0.35, "flee_engine": 0.12, "flee_speed": 0.3, "flee_fail_damage": 30,
     "fight_heat": 25, "authority_kill_heat": 15
   },
+  "price_board": {
+    "_doc": "Price board (Map app > Price comparison): per location and good one observation per game day while you are docked there, kept for history_days; spark_days = points in the sparkline, flat_pct = change below this share counts as steady.",
+    "history_days": 14, "spark_days": 8, "flat_pct": 0.02
+  },
   "style": {
     "_doc": "K2 customization (Style app on the phone). Ramps swap palette roles of the player sprite (hair H/h, skin S/s, jacket C/c/A, pants P) and of the ship hull (y/c/A). cost 0 = owned from the start. Decor is shown in the estates you switch it on for.",
     "hair": {

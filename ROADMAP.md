@@ -220,4 +220,4 @@ later screen builds on it. Conflict hot spots as in phase 2, plus `ui_theme.gd` 
 ## Carried over from the v0.1 roadmap (fold into the milestones above when they are picked up)
 - Patrol feel in space: warning before scan range, asteroid fields to break pursuit, screen shake on bust
 - Packaging tiers (shielded product survives a scan with a chance) → P4 packaging table
-- Price board with per-location history → P2/P6
+- [x] Price board with per-location history → P2/P6 (Map app price comparison)
