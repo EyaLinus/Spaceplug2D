@@ -24,6 +24,7 @@ const Quests = preload("res://scripts/core/quests.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Style = preload("res://scripts/core/style.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const HeatZones = preload("res://scripts/core/heat_zones.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -35,6 +36,7 @@ var debt_due_day: int = 10
 var day: int = 1
 var day_time: float = 0.0
 var total_time: float = 0.0
+var heat_zone := ""  ## zone of the street spot you stand on (heat_zones.gd, set by the surface, runtime only)
 var heat: float = 0.0  ## heat of the system the ship is in (other systems: corruption.heat)
 var corruption: Dictionary = {}  ## wanted level, parked heat of other systems, officials (see corruption.gd)
 var location: String = ""  ## location id while docked, "" while flying
@@ -627,7 +629,7 @@ func sell(product_key: String, qty: int, contact_id: String = "") -> Dictionary:
 		if bargain:
 			var s: Dictionary = People.state(self, contact_id)
 			s.affinity = clampf(float(s.affinity) + float(data.get("products", {}).get("affinity_bargain", 0.0)), -1.0, 1.0)
-	add_heat(float(loc_data().heat_per_unit) * qty * heat_mult(p.base))
+	add_heat(float(loc_data().heat_per_unit) * qty * heat_mult(p.base) * HeatZones.mult(self))
 	_emit("sold", {"product": product_key, "qty": qty, "credits": total, "contact": contact_id})
 	return _ok("Sold %d for %d cr." % [qty, total])
 

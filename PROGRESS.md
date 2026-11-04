@@ -1,5 +1,14 @@
 # Progress log
 
+## P3: planet heat zones (phase 3 wave 12, 2026-11-04)
+- **Core** `scripts/core/heat_zones.gd`, data `content.json` "heat_zones": `zone_at(cfg, cell)` = plaza (surface `plazas`
+  rects, x1.6) / street (`roads`, x1.0) / alley (anywhere else, x0.6); surfaces without roads and plazas (estates) are
+  always street. `Game.heat_zone` (runtime, set by `surface.gd` each physics frame, cleared on exit) multiplies the heat of
+  `Game.sell` and `Deals.fulfill`. Dead drops, dealers and lab heat are untouched. No zone (space/sim) = x1, sim unchanged.
+- **UI**: small label under the district name above the minimap ("Plaza · sales x1.6 heat", warn/muted/teal colour).
+- Verified: unit test `test_heat_zones` (zones, exact multiplier, every surface), UI smoke 50 steps, menu smoke, tip audit 0,
+  sim 5/5 avg win day 4.6 identical to main. Gaps: only sale heat (not officer sight or frisk odds) depends on the zone; not looked at by eye.
+
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,
   version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building

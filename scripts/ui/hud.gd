@@ -6,6 +6,7 @@ const UI = preload("res://scripts/ui/ui_theme.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Bench = preload("res://scripts/core/bench.gd")
+const HeatZones = preload("res://scripts/core/heat_zones.gd")
 const FxScript = preload("res://scripts/ui/fx.gd")
 
 const MAX_TOASTS := 5
@@ -36,6 +37,7 @@ const MINIMAP_AREAS := {"water": Color("#2f6f8a"), "pit": Color("#0a0806"), "sla
 	"arena": Color("#c27447", 0.5), "salt": Color("#ece8dc", 0.4)}
 var map_zoom := 0  ## index into MAP_ZOOMS
 var _district: Label  ## name of the district you stand in, above the minimap
+var _zone: Label  ## heat zone you stand in (heat_zones.gd), under the district name
 var _district_name := ""
 var _district_t := 0.0  ## seconds the "you entered" highlight still shows
 var _nav: Control  ## edge arrows pointing at off-screen locations
@@ -142,6 +144,16 @@ func _ready() -> void:
 	_district.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_district.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_district)
+	_zone = UI.label("", 13, UI.MUTED)
+	_zone.name = "HeatZone"
+	_zone.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_zone.offset_left = -240
+	_zone.offset_right = -12
+	_zone.offset_top = -246
+	_zone.offset_bottom = -228
+	_zone.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_zone)
 
 	var help := UI.label("", 14, UI.MUTED)
 	help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
@@ -217,6 +229,11 @@ func _update_district(delta: float) -> void:
 	_district.visible = d != ""
 	var zoom_hint := "" if map_zoom == 0 else "  ×%d" % int(MAP_ZOOMS[map_zoom])
 	_district.text = d.to_upper() + zoom_hint
+	var g = GameState.game
+	_zone.visible = d != "" and g.heat_zone != ""
+	if _zone.visible:
+		_zone.text = "%s · sales ×%.1f heat" % [HeatZones.label(g, g.heat_zone), HeatZones.mult(g)]
+		_zone.add_theme_color_override("font_color", UI.WARN if HeatZones.mult(g) > 1.0 else (UI.MUTED if HeatZones.mult(g) == 1.0 else UI.ACCENT))
 	_district.add_theme_color_override("font_color", UI.GOLD if _district_t > 0.0 else UI.MUTED)
 
 
