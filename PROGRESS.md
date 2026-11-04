@@ -1,5 +1,16 @@
 # Progress log
 
+## Grow tray, first slice (phase 4 wave 12, 2026-11-04)
+- **Core** `scripts/core/grow.gd`, data `content.json` "grow" (tray cost/cap, seed qty, crops with days and yield).
+  State `Game.grow` {estate -> {trays: [{raw, start_day, watered: [days]}]}}, saved; old saves load with none.
+  Actions `build_tray`, `plant` (seeds leave the hold), `water` (once per game day), `harvest` (into `stash`).
+  Quality = watered days / growth days, yield scales from `min_yield_factor` to 1.0. No tick hook: ripeness is `Game.day`.
+- **UI** Grow trays section in the estate Build tab (`station_ui._build_grow_trays`); `surface.gd` untouched.
+- Tests `test_grow` and a UI smoke block in the estate step. Not run locally (no Godot binary in the routine
+  container); CI is the check.
+- Gaps: trays are not drawn in the estate room, no worker automation, only two crops, harvest has no quality grade
+  on the item itself (only the yield), no minigame.
+
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,
   version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building

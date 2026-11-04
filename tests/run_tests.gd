@@ -120,6 +120,7 @@ func _init() -> void:
 		"test_debt_win_and_loss",
 		"test_save_roundtrip",
 		"test_style",
+		"test_grow",
 		"test_drug_ladder",
 		"test_old_save_names_migrate",
 		"test_core_loop_is_profitable",
@@ -2115,6 +2116,58 @@ func test_save_roundtrip() -> void:
 	h.from_dict(data, JSON.parse_string(json))
 	check(JSON.stringify(h.to_dict()) == json, "save round-trip is stable")
 	check(h.lab_queue.size() == 1 and h.upgrades.engine == 2, "lab queue and upgrades restored")
+
+
+func test_grow() -> void:
+	const Grow = preload("res://scripts/core/grow.gd")
+	var g := new_game()
+	check(g.grow.is_empty(), "no grow trays at the start")
+	for raw in data.grow.crops:
+		check(data.raws.has(raw), "grow crop %s is a raw" % raw)
+	g.credits = 1000
+	var est := "cannery_rig"
+	check(not Grow.build_tray(g, "dune_cellar").ok, "can't build in an estate you don't own")
+	check(Grow.build_tray(g, est).ok and g.credits == 1000 - int(data.grow.tray_cost), "tray bought")
+	for i in int(data.grow.max_trays) - 1:
+		Grow.build_tray(g, est)
+	check(Grow.trays(g, est).size() == int(data.grow.max_trays) and not Grow.build_tray(g, est).ok, "tray cap")
+	check(not Grow.plant(g, est, 0, "cannabis").ok, "planting needs seed stock in the hold")
+	check(not Grow.plant(g, est, 0, "pseudo").ok, "only listed crops grow")
+	g.cargo["cannabis"] = 5
+	check(Grow.plant(g, est, 0, "cannabis").ok and int(g.cargo.cannabis) == 5 - int(data.grow.seed_qty), "plant takes seeds from the hold")
+	check(not Grow.plant(g, est, 0, "cannabis").ok, "tray in use")
+	check(not Grow.harvest(g, est, 0).ok, "can't harvest unripe")
+	var days := int(data.grow.crops.cannabis.days)
+	check(Grow.water(g, est, 0).ok and not Grow.water(g, est, 0).ok, "water once per day")
+	g.day += days
+	check(Grow.is_ripe(g, Grow.trays(g, est)[0]) and not Grow.water(g, est, 0).ok, "ripe after the growth days")
+	var lo := int(round(float(data.grow.crops.cannabis["yield"]) * lerpf(float(data.grow.min_yield_factor), 1.0, 1.0 / days)))
+	check(Grow.expected_yield(g, Grow.trays(g, est)[0]) == lo, "one watering gives a poor yield")
+	var before := int(g.stash.get("cannabis", 0))
+	check(Grow.harvest(g, est, 0).ok and int(g.stash.cannabis) == before + lo, "harvest goes into the stash")
+	check(Grow.trays(g, est)[0].raw == "", "harvested tray is empty again")
+	# well cared for: watered every day -> full yield and prime grade
+	Grow.plant(g, est, 1, "cannabis")
+	for n in days:
+		check(Grow.water(g, est, 1).ok, "water day %d" % n)
+		g.day += 1
+	var t: Dictionary = Grow.trays(g, est)[1]
+	check(is_equal_approx(Grow.quality(g, t), 1.0) and Grow.grade(1.0) == "prime", "full care = quality 1")
+	check(Grow.expected_yield(g, t) == int(data.grow.crops.cannabis["yield"]), "full care = full yield")
+	check(Grow.expected_yield(g, t) > lo, "care raises the yield")
+	# save round trip, then an old save without grow
+	var d := g.to_dict()
+	var g2 := new_game()
+	g2.from_dict(data, JSON.parse_string(JSON.stringify(d)))
+	check(Grow.trays(g2, est).size() == Grow.trays(g, est).size() and Grow.quality(g2, Grow.trays(g2, est)[1]) == 1.0, "grow trays survive a save")
+	check(Grow.harvest(g2, est, 1).ok, "loaded tray can be harvested")
+	d.erase("grow")
+	var g3 := new_game()
+	g3.from_dict(data, JSON.parse_string(JSON.stringify(d)))
+	check(g3.grow.is_empty(), "old save without grow loads")
+	d["grow"] = {"cannery_rig": {"trays": [{"raw": "bogus", "start_day": "x", "watered": [1]}]}, "nowhere": {"trays": [{}]}}
+	g3.from_dict(data, JSON.parse_string(JSON.stringify(d)))
+	check(Grow.trays(g3, est).size() == 1 and Grow.trays(g3, est)[0].raw == "" and not g3.grow.has("nowhere"), "junk grow data is cleaned")
 
 
 func test_style() -> void:

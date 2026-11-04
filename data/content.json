@@ -350,6 +350,16 @@
     "dune_cellar": {"name": "Dune Cellar", "location": "varrow", "price": 1800, "size": [11, 6], "desc": "Cool cellar under a buried water tank. Nobody out here asks, nobody comes looking."},
     "cryo_vault": {"name": "Cryo Vault 4", "location": "glacis", "price": 5200, "size": [12, 7], "desc": "Leased cold-storage vault in the corporate quarter. Pricey, clean, right under the Authority's nose."}
   },
+  "grow": {
+    "tray_cost": 180,
+    "max_trays": 4,
+    "seed_qty": 2,
+    "min_yield_factor": 0.5,
+    "crops": {
+      "cannabis": {"days": 3, "yield": 6},
+      "coca_leaf": {"days": 4, "yield": 6}
+    }
+  },
   "buildables": {
     "trim_table": {"cost": 150, "size": [2, 1]},
     "precursor_scale": {"cost": 200, "size": [1, 1]},

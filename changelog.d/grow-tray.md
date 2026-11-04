@@ -1,0 +1,1 @@
+- **Grow trays:** build grow trays in your estates (Build menu), plant cannabis or coca from your hold, water them once a day and harvest into the stash after a few days. Watering every day gives the full yield, neglect halves it. Old saves load without trays.

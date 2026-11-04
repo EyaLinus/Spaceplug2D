@@ -16,6 +16,7 @@ const ShipPreview = preload("res://scripts/ui/ship_preview.gd")
 const OfficialsApp = preload("res://scripts/ui/phone/apps/officials_app.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Style = preload("res://scripts/core/style.gd")
+const Grow = preload("res://scripts/core/grow.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 
 var tabs: TabContainer
@@ -467,7 +468,54 @@ func _build_build_menu(g) -> Control:
 	v.add_theme_constant_override("separation", 8)
 	v.add_child(UI.heading("Stations"))
 	v.add_child(grid)
+	var est: String = _filter.get("estate", "")
+	if g.estates.has(est):
+		v.add_child(_build_grow_trays(g, est))
 	v.add_child(UI.label("Pick a station, then walk to a free spot: it goes on the cells in front of you. Station kits ordered in the phone's Orders app are placed for free.", 14, UI.MUTED))
+	return v
+
+
+## Grow trays of the estate: build one, plant a raw from the hold, water it on growing days, harvest into the stash.
+func _build_grow_trays(g, est: String) -> Control:
+	var v := VBoxContainer.new()
+	v.name = "GrowTrays"
+	v.add_theme_constant_override("separation", 6)
+	v.add_child(UI.heading("Grow trays"))
+	var list: Array = Grow.trays(g, est)
+	for i in list.size():
+		var t: Dictionary = list[i]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		if t.raw == "":
+			row.add_child(UI.label("Tray %d: empty" % (i + 1), 15, UI.MUTED))
+			for raw in Grow.crops(g):
+				var need := int(Grow.cfg(g).get("seed_qty", 1))
+				var pb := UI.button("Plant " + g.data.raws[raw].name, func(): GameState.act(Grow.plant(g, est, i, raw)))
+				pb.name = "GrowPlant_%d_%s" % [i, raw]
+				pb.tooltip_text = "Takes %d %s from your hold. Grows in %d days." % [need, g.data.raws[raw].name, int(Grow.crops(g)[raw].days)]
+				pb.disabled = int(g.cargo.get(raw, 0)) < need
+				row.add_child(pb)
+		else:
+			var ripe: bool = Grow.is_ripe(g, t)
+			row.add_child(UI.label("Tray %d: %s, %s" % [i + 1, g.data.raws[t.raw].name,
+				("ripe, %d units (%s)" % [Grow.expected_yield(g, t), Grow.grade(Grow.quality(g, t))]) if ripe else "%d day(s) to go" % Grow.days_left(g, t)], 15))
+			if ripe:
+				var hb := UI.button("Harvest", func(): GameState.act(Grow.harvest(g, est, i)))
+				hb.name = "GrowHarvest_%d" % i
+				hb.tooltip_text = "Moves the crop into your stash; collect it at the lab."
+				row.add_child(hb)
+			else:
+				var wb := UI.button("Water", func(): GameState.act(Grow.water(g, est, i)))
+				wb.name = "GrowWater_%d" % i
+				wb.tooltip_text = "Once a day. Quality is the share of growth days you watered; it scales the yield."
+				wb.disabled = (t.watered as Array).has(g.day)
+				row.add_child(wb)
+		v.add_child(row)
+	var add := UI.button("Build grow tray (%d cr)" % int(Grow.cfg(g).get("tray_cost", 0)), func(): GameState.act(Grow.build_tray(g, est)))
+	add.name = "GrowBuild"
+	add.tooltip_text = "Adds a tray (max %d per estate). Plant raws, water daily, harvest into the stash." % Grow.max_trays(g)
+	add.disabled = list.size() >= Grow.max_trays(g) or g.credits < int(Grow.cfg(g).get("tray_cost", 0))
+	v.add_child(add)
 	return v
 
 
