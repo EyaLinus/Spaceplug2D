@@ -50,7 +50,7 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [x] Cook in your estate with the stations you placed (station minigames from the lab run on your own stations)
 - [ ] Production buildings as core entities: grow tray (raws with growth time/quality), mixing station (the current lab,
       one per station), drying/packaging table, storage crate; each has its own input/output inventory
-- [ ] The global "hydro rig" becomes the first rented estate; lab upgrades turn into building tiers
+- [x] The global "hydro rig" becomes the first rented estate; lab upgrades turn into building tiers (rent itself still open)
 - [ ] Raids on estates when heat stays high
 - [x] Station minigames (trim, scale, mixing, cook, packaging) decide yield, quality grade and heat; reusable runner
       for estate buildings (`scripts/ui/minigames/`)

@@ -90,6 +90,7 @@ func _init() -> void:
 		"test_galaxy_and_jump",
 		"test_bust",
 		"test_upgrades",
+		"test_estate_tiers",
 		"test_space_combat_stats",
 		"test_space_combat_damage",
 		"test_space_combat_pirates",
@@ -1882,9 +1883,35 @@ func test_upgrades() -> void:
 	check(not g.buy_upgrade("cargo").ok, "max level")
 	g.buy_upgrade("stealth")
 	check(g.scan_radius() < float(data.heat.scan_radius), "stealth shrinks scan radius")
-	var t0 := g.batch_seconds(5)
-	g.buy_upgrade("lab")
-	check(g.lab_capacity() == 10 and g.batch_seconds(5) < t0, "lab upgrade: capacity and speed")
+	check(not g.upgrades.has("lab"), "no global lab upgrade any more")
+
+
+func test_estate_tiers() -> void:
+	var g := new_game()
+	var t0 := g.batch_seconds(5, "cannery_rig")
+	check(g.rig_estate() == "cannery_rig" and g.lab_capacity() == 5, "hub lab = rented starter rig, tier 0")
+	check(not g.buy_estate_tier("cannery_rig").ok, "tier needs credits")
+	g.credits = 10000
+	check(g.buy_estate_tier("cannery_rig").ok and g.estate_tier("cannery_rig") == 1, "rig rebuilt to tier 1")
+	check(g.lab_capacity() == 10 and g.batch_seconds(5, "cannery_rig") < t0, "tier: capacity and speed")
+	g.buy_estate("cannery_annex")
+	check(g.lab_capacity("cannery_annex") == 5, "other estates keep their own tier")
+	g.buy_estate_tier("cannery_rig")
+	g.buy_estate_tier("cannery_rig")
+	check(g.lab_capacity() == 35 and not g.buy_estate_tier("cannery_rig").ok, "top tier")
+	g.location = "cinder"
+	check(not g.buy_estate_tier("cannery_annex").ok, "must be on the planet to rebuild")
+	g.location = "mireth"
+	var g2 := Game.new()
+	g2.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(g2.estate_tier("cannery_rig") == 3 and g2.estate_tier("cannery_annex") == 0, "tiers survive save/load")
+	# old save: global lab level 2 -> tier of the starter rig
+	var d: Dictionary = JSON.parse_string(JSON.stringify(g.to_dict()))
+	d.upgrades.lab = 2
+	d.estates.cannery_rig.erase("tier")
+	var g3 := Game.new()
+	g3.from_dict(data, d)
+	check(g3.estate_tier("cannery_rig") == 2 and not g3.upgrades.has("lab"), "old save migrates hydro rig level")
 
 
 func fly_game() -> Game:

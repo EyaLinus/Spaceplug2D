@@ -939,8 +939,10 @@ func _run() -> void:
 	step("cook and sell")
 
 	g.credits = 20000
-	for u in ["cargo", "engine", "stealth", "lab", "laser", "missile", "shield", "hull"]:
+	for u in ["cargo", "engine", "stealth", "laser", "missile", "shield", "hull"]:
 		gs.act(g.buy_upgrade(u))
+	gs.act(g.buy_estate_tier("cannery_rig"))
+	_assert(g.estate_tier("cannery_rig") == 1 and g.lab_capacity() == 10, "hydro rig rebuilt as building tier")
 	_assert(g.upgrades.laser == 1 and g.upgrades.missile == 1 and g.upgrades.shield == 1 and g.upgrades.hull == 1, "weapon and shield modules bought at the mechanic")
 	_assert(g.combat.missiles == 4 and g.combat.shield == 40.0 and g.combat.hull == 130.0, "new modules arrive charged")
 	g.add_heat(30)

@@ -287,7 +287,7 @@ func estate(g, _phone, eid: String) -> Control:
 			cur = k + 1
 	opt.select(cur)
 	opt.item_selected.connect(func(idx: int):
-		var q: int = int(e.recipe.get("qty", g.lab_capacity()))
+		var q: int = int(e.recipe.get("qty", g.lab_capacity(eid)))
 		GameState.act(Workers.set_recipe(g, eid, "" if idx == 0 else choices[idx - 1][0], [] if idx == 0 else choices[idx - 1][1], q)))
 	v.add_child(opt)
 	if not e.recipe.is_empty():

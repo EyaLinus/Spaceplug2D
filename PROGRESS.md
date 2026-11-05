@@ -1,5 +1,19 @@
 # Progress log
 
+## P4: estate building tiers (2026-11-05)
+- The starter estate `cannery_rig` already was the hub lab; the leftover global "Hydro Rig" upgrade is now a per-estate
+  **tier**. Data `content.json` "estate_tiers" {names, capacity [5,10,20,35], costs [800,2000,4500]}; "lab" removed
+  from `upgrades` (and from the ship module overlay).
+- Core (`game.gd`): `estate_tier`, `rig_estate` (given id, else the estate you stand in, else the starter estate that is
+  this planet's hub lab), `estate_tier_cost`, `buy_estate_tier` (must be on the planet), event `estate_tier`.
+  `lab_capacity(id)` / `batch_seconds(qty, id)` take the estate; workers use their own estate's tier.
+- Save: `estates[id].tier` only written when > 0. Old saves: `upgrades.lab` becomes the tier of `cannery_rig`.
+- UI: shipyard tab lists a "Rebuild as ..." card per owned estate on this planet (+ ship bay); bench shows the tier name.
+- Verified: 10830 unit checks (new test_estate_tiers incl. old-save migration), UI smoke 50 steps, tip audit 0, sim 5/5
+  avg win day 4.6 (unchanged; bot rebuilds the rig).
+- Gaps: no rent/upkeep yet (the rig is just free and `starter`); tiers only change batch size and speed, no new stations
+  gated by tier; the tier can be bought only from the shipyard tab, not from inside the estate; `up_lab`/module sprites unused.
+
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,
   version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building
