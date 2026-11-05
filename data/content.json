@@ -431,6 +431,11 @@
     "hostility_per_share": 150, "hostility_per_kill": 3, "hostility_per_raid": 30, "hostility_decay": 2,
     "weakened_days": 3, "pressure_min": 0.5, "pressure_max": 1.2
   },
+  "pricewar": {
+    "start_share": 0.45, "min_you": 0.05, "min_hostility": 10, "chance_base": 0.05, "chance_per_hostility": 0.004,
+    "max_wars": 2, "days": 4, "truce_days": 3, "sell_cut": 0.3, "buy_spike": 0.25, "end_you": 0.3,
+    "pay_base": 120, "pay_per_day": 60, "pay_you_discount": 0.5
+  },
   "interdiction": {
     "min_day": 2, "cartel_base": 0.05, "cartel_hostility": 0.35, "cargo_bonus": 0.1, "max_chance": 0.5,
     "authority_base": 0.1, "authority_heat": 0.4, "authority_units": ["interceptor", "interceptor"],

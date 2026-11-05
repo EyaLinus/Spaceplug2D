@@ -22,6 +22,7 @@ const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
+const PriceWar = preload("res://scripts/core/pricewar.gd")
 const Style = preload("res://scripts/core/style.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 const SAVE_VERSION := 1
@@ -83,6 +84,8 @@ var quests: Dictionary = {"active": [], "done": [], "step": {}, "count": {}, "tr
 var interdiction: Dictionary = {}  ## pending interdiction after a jump (runtime only, see interdiction.gd)
 var lane_rng := RandomNumberGenerator.new()  ## interdiction rolls only, so the game RNG stays untouched
 var style: Dictionary = {}  ## K2 look, ship paint/decal and estate decor (see style.gd), saved
+var price_wars: Dictionary = {}  ## active cartel price wars {loc: {cartel, started, ends}} (see pricewar.gd), saved
+var price_truce: Dictionary = {}  ## {loc: last truce day}, saved
 var cartels: Dictionary = {}  ## sector influence per location and cartel hostility (see cartels.gd), saved
 
 
@@ -134,6 +137,8 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	dealers = []
 	quests = Quests.empty_state()  # the opening quests start in GameState.new_game (tests and sims run without)
 	cartels = Cartels.init_state(data)
+	price_wars = {}
+	price_truce = {}
 	style = Style.init_state(data)
 	interdiction = {}
 	lane_rng.seed = seed_value * 7919 + 13
@@ -283,7 +288,7 @@ func _maybe_referral(from_id: String) -> void:
 ## Price per unit for selling `product_key` here, to a contact (id) or the fence ("").
 func sell_price(product_key: String, contact_id: String = "", loc: String = location) -> int:
 	var p := Mixing.parse_key(product_key)
-	var v := Mixing.value(data, product_key) * float(demand.get(loc, {}).get(p.base, 0.0)) * Cartels.price_mult(self, loc)
+	var v := Mixing.value(data, product_key) * float(demand.get(loc, {}).get(p.base, 0.0)) * Cartels.price_mult(self, loc) * PriceWar.sell_mult(self, loc)
 	if contact_id == "":
 		return int(round(v * float(data.market.fence_ratio)))
 	var c := contact(contact_id)
@@ -385,6 +390,7 @@ func _new_day() -> void:
 	Corruption.new_day(self)
 	Workers.new_day(self)
 	Cartels.new_day(self)
+	PriceWar.new_day(self)
 	_emit("new_day", {"day": day})
 	if debt > 0 and day > debt_due_day:
 		state = "lost"
@@ -471,9 +477,9 @@ func buy_price(item: String, loc: String = location) -> int:
 	if ld.is_empty():
 		return -1
 	if ld.sells_raw.has(item):
-		return int(ld.sells_raw[item])
+		return int(round(int(ld.sells_raw[item]) * PriceWar.buy_mult(self, loc)))
 	if ld.get("sells_additives", false) and data.additives.has(item):
-		return int(data.additives[item].price)
+		return int(round(int(data.additives[item].price) * PriceWar.buy_mult(self, loc)))
 	return -1
 
 
@@ -865,7 +871,7 @@ func to_dict() -> Dictionary:
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
 		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
 		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "quests": Quests.to_save(self),
-		"cartels": Cartels.to_save(self), "ship_class": ship_class, "hulls": hulls.duplicate(),
+		"cartels": Cartels.to_save(self), "pricewar": PriceWar.to_save(self), "ship_class": ship_class, "hulls": hulls.duplicate(),
 		"style": Style.to_save(self),
 	}
 
@@ -945,6 +951,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Dealers.from_save(self, d.get("dealers", []))
 	Quests.from_save(self, d.get("quests", {}), d.has("quests"))
 	Cartels.from_save(self, d.get("cartels", {}))
+	PriceWar.from_save(self, d.get("pricewar", {}))
 	Style.from_save(self, d.get("style", {}))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
@@ -988,6 +995,7 @@ static func _add(dict: Dictionary, k: String, n: int) -> void:
 func _emit(kind: String, payload: Dictionary) -> void:
 	event.emit(kind, payload)
 	Cartels.on_event(self, kind, payload)
+	PriceWar.on_event(self, kind, payload)
 	Quests.on_event(self, kind, payload)
 
 

@@ -283,6 +283,7 @@ static func on_raid(g, id: String) -> void:
 		return
 	s.raids = int(s.raids) + 1
 	s.weakened = g.day + int(rules(g).get("weakened_days", 3))
+	g._emit("cartel_raided", {"cartel": id})
 	_add_hostility(g, id, float(rules(g).get("hostility_per_raid", 0.0)))
 	var sys: String = g.loc_system(str(gang(g, id).get("base", ""))) if g.data.locations.has(str(gang(g, id).get("base", ""))) else ""
 	if sys == "":

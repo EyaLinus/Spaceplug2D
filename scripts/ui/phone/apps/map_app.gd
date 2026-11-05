@@ -5,6 +5,7 @@ extends "res://scripts/ui/phone/phone_app.gd"
 
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
+const PriceWar = preload("res://scripts/core/pricewar.gd")
 
 const CANVAS_H := 170.0
 const COLD := Color("#4fe3c1")
@@ -303,6 +304,20 @@ func _location_row(g, loc: String, best: Dictionary) -> Control:
 	var s := UI.label(sub, 12, UI.MUTED)
 	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(s)
+	if PriceWar.active(g, loc):
+		var wl := UI.label("⚔ " + PriceWar.label(g, loc), 12, UI.WARN)
+		wl.name = "MapWar_" + loc
+		wl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		wl.tooltip_text = PriceWar.howto(g, loc)
+		box.add_child(wl)
+		var cost := PriceWar.pay_cost(g, loc)
+		var pb := UI.button("Pay off (%d cr)" % cost, func():
+			PriceWar.pay_off(g, loc)
+			_refresh_soon(), 0)
+		pb.name = "MapPayOff_" + loc
+		pb.tooltip_text = "Pay the cartel to call off the price war here. " + PriceWar.howto(g, loc)
+		pb.disabled = g.credits < cost
+		box.add_child(pb)
 	if _mode == "influence" and g.cartels.influence.has(loc):
 		box.add_child(_share_bar(g, loc))
 	return box

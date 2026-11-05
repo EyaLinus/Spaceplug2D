@@ -1,0 +1,1 @@
+- **Cartel price wars:** a cartel that rules a location can start a four-day price war there: you earn 30 % less when selling and pay 25 % more when buying. The HUD flags it and the Map app lists it with a "Pay off" button; raising your influence, wrecking a cartel base or waiting also ends it.
