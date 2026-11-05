@@ -1,0 +1,1 @@
+- **Hidden crate:** your estates get a hidden crate (Stash tab). Product you hide there is safe from patrol busts and knock-outs. It starts with room for 40 units and can be upgraded three times (+40 each).

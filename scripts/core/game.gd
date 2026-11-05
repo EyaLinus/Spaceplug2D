@@ -20,6 +20,7 @@ const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
+const Vault = preload("res://scripts/core/vault.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Style = preload("res://scripts/core/style.gd")
@@ -41,6 +42,7 @@ var location: String = ""  ## location id while docked, "" while flying
 var system: String = ""  ## star system the ship is in (content.json "systems"); travel between systems = jump()
 var cargo: Dictionary = {}  ## item key -> qty (raw ids, additive ids, product keys)
 var stash: Dictionary = {}  ## finished lab output waiting at the hub
+var vault: Dictionary = {}  ## hidden crate (vault.gd): {"tier": int, "items": {key: qty}}, safe from busts and knock-outs
 var lab_queue: Array = []  ## [{product, qty, remaining, total}]
 var demand: Dictionary = {}  ## location -> base -> multiplier
 var contact_ready_at: Dictionary = {}  ## contact id -> total_time when they buy again
@@ -103,6 +105,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	system = loc_system(location)
 	cargo = s.get("cargo", {}).duplicate()
 	stash = {}
+	vault = Vault.fresh()
 	lab_queue = []
 	contact_ready_at = {}
 	people = People.init_all(data)
@@ -866,7 +869,7 @@ func to_dict() -> Dictionary:
 		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
 		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "quests": Quests.to_save(self),
 		"cartels": Cartels.to_save(self), "ship_class": ship_class, "hulls": hulls.duplicate(),
-		"style": Style.to_save(self),
+		"style": Style.to_save(self), "vault": Vault.to_save(self),
 	}
 
 
@@ -946,6 +949,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Quests.from_save(self, d.get("quests", {}), d.has("quests"))
 	Cartels.from_save(self, d.get("cartels", {}))
 	Style.from_save(self, d.get("style", {}))
+	Vault.from_save(self, d.get("vault", {}))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

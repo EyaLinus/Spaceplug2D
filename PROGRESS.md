@@ -1,5 +1,12 @@
 # Progress log
 
+## Hidden crate (P4 storage, 2026-11-05)
+- `scripts/core/vault.gd` (headless), numbers in `content.json` "vault"; state `Game.vault` {tier, items}, saved (old saves load empty).
+- Inside an estate, product moves hold <-> crate. Bust and knock-out only take the hold, so the crate is safe. 40 units, 3 upgrades (+40 each, 500/1200/2500 cr).
+- UI: "Hidden crate" block in the estate Stash tab (`station_ui._build_vault`). Test `test_vault`; changelog fragment `hidden-crate.md`.
+- Verified (Godot 4.3 headless): unit 10840 checks 0 failures, UI smoke 50 steps ok, tip audit 0 missing.
+- Gaps: crate is global (not per estate), no raid interaction (#73 not merged), no playtest, capacity/prices are guesses, no UI smoke step for the new block.
+
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,
   version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building

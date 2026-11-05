@@ -19,6 +19,7 @@ const ArtReg = preload("res://scripts/core/art.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
+const Vault = preload("res://scripts/core/vault.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
@@ -69,6 +70,7 @@ func _init() -> void:
 		"test_deal_haggle_qty_time",
 		"test_dealers",
 		"test_dealers_bust_and_save",
+		"test_vault",
 		"test_quest_data",
 		"test_quest_tutorial_flow",
 		"test_quest_retry_and_skip",
@@ -3122,3 +3124,36 @@ func test_quest_chapter2() -> void:
 	check(g.quests.done.has("main_nest") and g.quests.active.has("main_rig"), "raiding the Nest finishes Smoke the Nest")
 	check(Quests.space_goal(g, {"loc": "tide_rig"}) == "halvane_gate", "the Rig waypoint routes through the gate")
 
+
+
+func test_vault() -> void:
+	var g := new_game()
+	var p := "weed:glow"
+	g.cargo[p] = 30
+	g.cargo["seed_weed"] = 5
+	check(not Vault.deposit(g, p, 10).ok, "crate only inside an estate")
+	g.inside_estate = "cannery_rig"
+	check(not Vault.deposit(g, "seed_weed", 1).ok, "raws are not hidden")
+	check(not Vault.deposit(g, p, 31).ok, "can't hide what you don't carry")
+	check(Vault.deposit(g, p, 30).ok and Vault.used(g) == 30 and not g.cargo.has(p), "hidden")
+	g.cargo[p] = 20
+	check(Vault.deposit(g, p, 20).ok and Vault.used(g) == Vault.capacity(g) and int(g.cargo[p]) == 10, "capped at capacity")
+	check(not Vault.deposit(g, p, 5).ok, "full crate")
+	var lost: Dictionary = g.bust()
+	check(lost.ok and Vault.used(g) == 40 and not g.cargo.has(p), "bust takes the hold, not the crate")
+	g.credits = 5000
+	var cap0 := Vault.capacity(g)
+	check(Vault.upgrade(g).ok and Vault.capacity(g) == cap0 + 40, "upgrade adds room")
+	g.credits = 0
+	check(not Vault.upgrade(g).ok, "upgrade needs credits")
+	var g2 := new_game()
+	g2.from_dict(data, g.to_dict())
+	check(Vault.used(g2) == 40 and int(g2.vault.tier) == 1, "vault survives save/load")
+	g2.inside_estate = "cannery_rig"
+	check(Vault.withdraw(g2, p, 15).ok and int(g2.cargo[p]) == 15 and Vault.used(g2) == 25, "withdraw")
+	var g3 := new_game()
+	
+	var old: Dictionary = g.to_dict()
+	old.erase("vault")
+	g3.from_dict(data, old)
+	check(Vault.used(g3) == 0 and int(g3.vault.tier) == 0, "old saves load with an empty crate")
