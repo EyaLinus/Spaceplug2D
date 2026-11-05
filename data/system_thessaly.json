@@ -1,0 +1,47 @@
+{
+	"_comment": "Content pack: the third star system, Thessaly Drift, two jumps out (Halvane > Kovar > Thessaly). Merged into content.json by Data.merge_pack at load; only ids that do not exist yet are added, so loading twice (or a content.json that already has them) changes nothing. A surface with 'from' clones that surface and applies the overrides; 'strip_estates' removes the estate doors and 'strip_contacts' the story contacts of the clone.",
+	"systems": {
+		"thessaly": {
+			"name": "Thessaly Drift",
+			"galaxy_pos": [9, 1],
+			"security": "mixed",
+			"patrol_mult": 0.9,
+			"star": "#ffb0a0",
+			"nebula": ["#7a2640", "#244a66"],
+			"desc": "Far end of the Kovar lane. One walled arcology that pays top credits and polices every pocket, and one lawless moon where nobody counts."
+		}
+	},
+	"locations": {
+		"kovar_thessaly_gate": {
+			"name": "Thessaly Jump Gate", "system": "kovar", "kind": "gate", "pos": [600, 3400], "radius": 60, "color": "#4fe3c1",
+			"desc": "Long-haul gate. Deep lane, so the toll is steeper and the trip takes longer.",
+			"jump_to": "thessaly", "arrive": "thessaly_gate", "toll": 140, "seconds": 30,
+			"sells_raw": {}, "sells_additives": false, "lab": false, "shipyard": false, "office": false, "fence": false, "heat_per_unit": 0, "demand": {}, "dockable": false
+		},
+		"thessaly_gate": {
+			"name": "Kovar Jump Gate", "system": "thessaly", "kind": "gate", "pos": [-3300, -600], "radius": 60, "color": "#4fe3c1",
+			"desc": "The way back to the Kovar Expanse.",
+			"jump_to": "kovar", "arrive": "kovar_thessaly_gate", "toll": 140, "seconds": 30,
+			"sells_raw": {}, "sells_additives": false, "lab": false, "shipyard": false, "office": false, "fence": false, "heat_per_unit": 0, "demand": {}, "dockable": false
+		},
+		"quillon": {
+			"name": "Quillon", "system": "thessaly", "kind": "planet", "pos": [800, -900], "radius": 155, "color": "#b8a0d8",
+			"desc": "Walled arcology world. Wealthy buyers pay for coke and fentanyl, scanners hum on every street.",
+			"sells_raw": {"cannabis": 17}, "sells_additives": true, "lab": false, "shipyard": false, "office": false, "fence": false,
+			"heat_per_unit": 4.0, "demand": {"weed": 1.2, "cocaine": 1.4, "meth": 0.8, "fentanyl": 1.5}, "patrol_base": true,
+			"surface": {"from": "glacis", "name": "Quillon · Wall Quarter", "security": 1.9, "strip_estates": true, "strip_contacts": true}
+		},
+		"ashfall": {
+			"name": "Ashfall", "system": "thessaly", "kind": "asteroid", "pos": [-1200, 2200], "radius": 110, "color": "#6e5a52",
+			"desc": "Burnt-out moon, no law since the last warden left. Raw cheap, meth sells high, the fence takes everything.",
+			"sells_raw": {"coca_leaf": 12, "pseudo": 31, "fent_precursor": 92}, "sells_additives": false, "lab": false, "shipyard": false, "office": false, "fence": true,
+			"heat_per_unit": 0.5, "demand": {"weed": 0.7, "cocaine": 0.95, "meth": 1.5, "fentanyl": 1.1},
+			"surface": {"from": "varrow", "name": "Ashfall · Cinder Row", "security": 0.1, "strip_estates": true, "strip_contacts": true}
+		}
+	},
+	"officials": [
+		{"id": "wren_q", "name": "Inspector Odalys Wren", "location": "quillon", "role": "inspector", "look": "npc_purple", "job": "Wall Quarter records inspector", "bio": "Files every scan twice. Her second copy is the one that goes missing for a fee.", "recruit_cost": 480, "retainer": 22},
+		{"id": "kasimir", "name": "Customs Chief Tobiah Kasimir", "location": "quillon", "role": "customs", "look": "npc_sky", "job": "Customs chief, Quillon orbital dock", "bio": "Runs the strictest scanner on the lane. Everybody has a price, his is just high.", "recruit_cost": 700, "retainer": 30, "pass_chance": 0.7},
+		{"id": "marl", "name": "Captain Dessa Marl", "location": "ashfall", "role": "captain", "look": "npc_rust", "job": "Last warden's deputy, Thessaly wing", "bio": "Commands three cutters and nobody who cares. Takes payment in anything that burns.", "recruit_cost": 330, "retainer": 14}
+	]
+}

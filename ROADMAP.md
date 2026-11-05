@@ -62,7 +62,7 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [ ] Courier drones between estates and the spaceport
 
 ## P6 – Expansion & 1.0
-- [ ] More planets with own laws, demand and security levels; jump lanes to a second system
+- [ ] More planets with own laws, demand and security levels; jump lanes to a second system (first slice: Thessaly Drift, 2 planets, per-lane tolls; laws and more systems still open)
 - [ ] Rival syndicate with territory and price wars; ship classes
 - [x] Menu system: main + pause menu, 3 save slots, settings (volumes, window mode/size, VSync, key rebinding)
 - [ ] Tutorial contract chain, mixing journal, balance pass with long sims, localisation DE/EN

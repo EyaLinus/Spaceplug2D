@@ -427,6 +427,16 @@ func undock() -> Dictionary:
 
 ## Jumps through `gate` (a location with "jump_to") to the next system. Costs the gate toll and some travel time.
 ## The world puts the ship at the arrival gate (`arrive`).
+## Toll of a jump gate: its own "toll" (long or dangerous lanes cost more) or the global jump.fee.
+func gate_toll(gate: String) -> int:
+	return int(loc_data(gate).get("toll", data.get("jump", {}).get("fee", 0)))
+
+
+## Travel time through a jump gate: its own "seconds" or the global jump.seconds.
+func gate_seconds(gate: String) -> float:
+	return float(loc_data(gate).get("seconds", data.get("jump", {}).get("seconds", 0.0)))
+
+
 func jump(gate: String) -> Dictionary:
 	var gd: Dictionary = loc_data(gate)
 	if location != "":
@@ -434,14 +444,14 @@ func jump(gate: String) -> Dictionary:
 	if gd.is_empty() or not gd.has("jump_to") or loc_system(gate) != system:
 		return _fail("No jump gate there.")
 	var j: Dictionary = data.get("jump", {})
-	var fee := int(j.get("fee", 0))
+	var fee := gate_toll(gate)
 	if credits < fee:
 		return _fail("The gate toll is %d cr." % fee)
 	credits -= fee
 	var from := system
 	system = str(gd.jump_to)
 	Corruption.on_jump(self, from, system)
-	tick(float(j.get("seconds", 0.0)))
+	tick(gate_seconds(gate))
 	_emit("jumped", {"from": from, "to": system, "gate": gate, "arrive": str(gd.get("arrive", ""))})
 	Interdiction.roll(self, system)
 	return _ok("Jumped to %s (%d cr toll)." % [system_data().get("name", system), fee])

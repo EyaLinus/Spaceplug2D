@@ -1,5 +1,16 @@
 # Progress log
 
+## P6 slice: Thessaly Drift, a third system via content pack (2026-11-05)
+- **Data** `data/system_thessaly.json` (content pack: systems, locations, officials; a location's `surface` clones an existing
+  surface). `Data.merge_pack` adds only ids that do not exist yet, so merging twice is a no-op. Quillon (security 1.9,
+  heat/sale 4.0, cocaine 1.4, patrol base) and Ashfall (security 0.1, heat 0.5, meth 1.5, fence, cheap raws); clones of
+  Glacis/Varrow surfaces and cover, placeholder space sprites. No generated locals yet.
+- **Lanes** gates take an optional `toll` and `seconds` (`Game.gate_toll/gate_seconds`, fallback `jump.fee/seconds`);
+  `Galaxy.plan` sums them per hop. Kovar-Thessaly: 140 cr, 30 s. HUD gate prompt shows the gate's toll.
+- Old saves: no new saved fields; missing demand/heat/official entries default. Verified: 11472 unit checks (new
+  `test_second_system`), UI smoke (Map shows Thessaly, route via Kovar, 220 cr), tip audit, menu smoke.
+- Not done: planet laws (separate PRs), locals for the new planets, real art, a quest into Thessaly.
+
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,
   version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building
