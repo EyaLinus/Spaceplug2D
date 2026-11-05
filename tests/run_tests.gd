@@ -22,6 +22,7 @@ func _init() -> void:
 		"test_art_registry",
 		"test_police_on_foot",
 		"test_estates",
+		"test_estate_upkeep",
 		"test_mixing_rules",
 		"test_buy_and_cargo_limit",
 		"test_lab_batch",
@@ -267,6 +268,92 @@ func test_estates() -> void:
 	check(g.collect_stash().ok and g.has_contraband(), "collect output in the estate")
 	g.inside_estate = ""
 	check(not g.lab_here(), "outside the estate no lab")
+
+
+func test_estate_upkeep() -> void:
+	var U = preload("res://scripts/core/estate_upkeep.gd")
+	var up: Dictionary = data.upkeep
+	check(float(up.daily_rate) > 0.0 and int(up.grace_days) >= 1 and int(up.seize_days) > int(up.grace_days), "upkeep data sane")
+	check(float(up.sell_share) < 1.0, "selling pays back less than the price")
+	var g := new_game()
+	g.credits = 20000
+	check(U.daily(g, "cannery_annex") == 0, "unowned estate costs nothing")
+	g.buy_estate("cannery_annex")
+	var d: int = U.daily(g, "cannery_annex")
+	check(d == maxi(int(up.min_daily), int(round(1500 * float(up.daily_rate)))) and d > 0, "daily upkeep %d" % d)
+	var c0: int = g.credits
+	g._new_day()
+	check(g.credits == c0 - d and U.status(g, "cannery_annex") == "ok", "upkeep paid on a new day")
+	# can't pay: overdue -> locked -> seized
+	g.place_building("cannery_annex", "cook_stove", 0, 0)
+	g.credits = 0
+	g._new_day()
+	check(U.unpaid_days(g, "cannery_annex") == 1 and g.credits == 0, "unpaid day counted")
+	check(U.status(g, "cannery_annex") == ("locked" if int(up.grace_days) <= 1 else "overdue"), "status after 1 unpaid day")
+	while U.unpaid_days(g, "cannery_annex") < int(up.grace_days):
+		g._new_day()
+	check(U.locked(g, "cannery_annex"), "locked after the grace period")
+	g.inside_estate = "cannery_annex"
+	g.location = "cinder"  # Mireth has the hub lab; test the estate rule where there is none
+	check(not g.lab_here(), "no cooking in a locked estate")
+	g.location = "mireth"
+	check(U.arrears(g, "cannery_annex") == d * int(up.grace_days), "arrears = days x daily")
+	check(not g.pay_estate_arrears("cannery_annex").ok, "can't pay without money")
+	# save/load keeps the unpaid days; old saves (no field) read as 0
+	var g2 := Game.new()
+	g2.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(U.unpaid_days(g2, "cannery_annex") == U.unpaid_days(g, "cannery_annex"), "unpaid days survive save/load")
+	var old: Dictionary = JSON.parse_string(JSON.stringify(g.to_dict()))
+	old.estates.cannery_annex.erase("unpaid")
+	g2.from_dict(data, old)
+	check(U.unpaid_days(g2, "cannery_annex") == 0 and U.status(g2, "cannery_annex") == "ok", "old saves have no arrears")
+	var left: int = U.days_to_seizure(g, "cannery_annex")
+	check(left == int(up.seize_days) - U.unpaid_days(g, "cannery_annex") and left > 0, "days to seizure %d" % left)
+	# paying arrears unlocks
+	g.credits = 5000
+	c0 = g.credits
+	check(g.pay_estate_arrears("cannery_annex").ok and g.credits == c0 - d * int(up.grace_days), "arrears paid")
+	g.location = "cinder"
+	check(U.status(g, "cannery_annex") == "ok" and g.lab_here(), "unlocked again")
+	g.location = "mireth"
+	# a late payment of today's + arrears happens automatically when money is back
+	g.credits = 0
+	g._new_day()
+	g.credits = 5000
+	g._new_day()
+	check(U.unpaid_days(g, "cannery_annex") == 0 and g.credits == 5000 - 2 * d, "arrears + today auto-paid")
+	# seizure
+	g.credits = 0
+	var seized := [false]
+	g.event.connect(func(kind, _p): if kind == "estate_seized": seized[0] = true)
+	for i in int(up.seize_days):
+		g._new_day()
+	check(not g.estate_owned("cannery_annex") and seized[0] and g.inside_estate == "", "estate seized, buildings gone")
+	# selling
+	g.credits = 20000
+	g.buy_estate("cannery_annex")
+	g.place_building("cannery_annex", "cook_stove", 0, 0)
+	var q: Dictionary = U.sale_quote(g, "cannery_annex")
+	check(q.share == int(round(1500 * float(up.sell_share))) and q.buildings == int(round(int(data.buildables.cook_stove.cost) * float(data.estate_refund))), "sale quote %s" % [q])
+	g.location = "cinder"
+	check(not g.sell_estate("cannery_annex").ok and g.estate_owned("cannery_annex"), "must be on the planet to sell")
+	g.location = "mireth"
+	g.inside_estate = "cannery_annex"
+	c0 = g.credits
+	check(g.sell_estate("cannery_annex").ok and g.credits == c0 + q.net and not g.estate_owned("cannery_annex"), "sold for the quoted amount")
+	check(g.inside_estate == "" and not g.sell_estate("cannery_annex").ok, "left the estate; can't sell twice")
+	# arrears are deducted from the proceeds, never below zero
+	g.credits = 20000
+	g.buy_estate("cannery_annex")
+	g.credits = 0
+	g._new_day()
+	var q2: Dictionary = U.sale_quote(g, "cannery_annex")
+	check(q2.arrears == d and q2.net == maxi(0, q2.share - d), "arrears deducted from the sale")
+	# buy again after selling starts clean
+	g.credits = 20000
+	g.sell_estate("cannery_annex")
+	g.buy_estate("cannery_annex")
+	check(U.unpaid_days(g, "cannery_annex") == 0, "re-bought estate starts without arrears")
 
 
 func test_mixing_rules() -> void:

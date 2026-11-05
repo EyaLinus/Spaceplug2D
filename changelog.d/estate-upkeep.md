@@ -1,0 +1,2 @@
+- **Estate upkeep:** Every owned estate costs daily upkeep (2% of its price, min 20 cr), paid automatically at each new day. Unpaid days lock the estate after 2 days (no entry, no cooking until you pay the arrears) and the landlord seizes it, stations included, after 5.
+- **Selling estates:** The estate panel has a "Sell for N cr" button (60% of the price plus half the station cost, minus arrears) when you are on that planet, and a "Pay arrears" button. Old saves load without arrears.

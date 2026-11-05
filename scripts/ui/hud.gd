@@ -180,6 +180,10 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 			show_toast("Lab: %d × %s ready in your stash." % [p.qty, g.item_name(p.product)])
 		"new_day":
 			show_toast("Day %d begins. %d days until the Consortium collects." % [p.day, maxi(0, g.debt_due_day - p.day + 1)] if g.debt > 0 else "Day %d begins." % p.day)
+		"upkeep_missed", "upkeep_locked":
+			show_toast("Can't pay the upkeep for %s. %s" % [g.data.estates[p.estate].name, "It is locked until you pay." if kind == "upkeep_locked" else "Pay soon or it gets locked."], false)
+		"estate_seized":
+			show_toast("%s was seized for unpaid upkeep." % g.data.estates[p.estate].name, false)
 		"rumour":
 			var up: bool = p.demand >= 1.0
 			show_toast("Rumour: %s demand %s at %s." % [g.data.bases[p.base].name, "hot" if up else "cooling", g.data.locations[p.location].name])

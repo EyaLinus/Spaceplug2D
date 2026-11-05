@@ -294,9 +294,9 @@ func _on_surface_action(action: String, p: Dictionary) -> void:
 			return
 		"estate":
 			var eid: String = GameState.data.surfaces[g.location].buildings.filter(func(b): return b.id == p.id)[0].estate
-			if g.estate_owned(eid):
+			if g.estate_owned(eid) and not g.EstateUpkeep.locked(g, eid):
 				enter_estate(eid)
-			else:
+			else:  # not owned yet, or locked for unpaid upkeep
 				station.open({"tabs": ["Estate"], "title": GameState.data.estates[eid].name, "estate": eid})
 			return
 		"exit_estate":

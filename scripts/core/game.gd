@@ -9,6 +9,7 @@ signal event(kind: String, payload: Dictionary)
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
+const EstateUpkeep = preload("res://scripts/core/estate_upkeep.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -269,6 +270,7 @@ func _new_day() -> void:
 		demand[loc][b] = clampf(demand[loc][b] + rng.randf_range(-0.15, 0.25), float(data.market.min_demand), m)
 		_emit("rumour", {"location": loc, "base": b, "demand": demand[loc][b]})
 	People.new_day(self)
+	EstateUpkeep.new_day(self)
 	_emit("new_day", {"day": day})
 	if debt > 0 and day > debt_due_day:
 		state = "lost"
@@ -359,7 +361,7 @@ func buy_price(item: String, loc: String = location) -> int:
 
 ## True where you can cook: the hub lab, or inside an estate you own.
 func lab_here() -> bool:
-	return loc_data().get("lab", false) or estates.has(inside_estate)
+	return loc_data().get("lab", false) or (estates.has(inside_estate) and not EstateUpkeep.locked(self, inside_estate))
 
 
 ## Station ids a batch needs that the estate you stand in does not have yet ([] at the hub lab).
@@ -625,6 +627,14 @@ func remove_building(estate_id: String, index: int) -> Dictionary:
 	return _ok("%s taken down, sold the parts for %d cr." % [data.stations[b.id].name, refund])
 
 
+func pay_estate_arrears(id: String) -> Dictionary:
+	return EstateUpkeep.pay_arrears(self, id)
+
+
+func sell_estate(id: String) -> Dictionary:
+	return EstateUpkeep.sell(self, id)
+
+
 # ---------------------------------------------------------------- save / load
 
 func to_dict() -> Dictionary:
@@ -675,6 +685,8 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 			for b in d.estates[e].get("buildings", []):
 				list.append({"id": str(b.id), "x": int(b.x), "y": int(b.y)})
 			estates[e] = {"buildings": list}
+			if int(d.estates[e].get("unpaid", 0)) > 0:
+				estates[e]["unpaid"] = int(d.estates[e].unpaid)
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

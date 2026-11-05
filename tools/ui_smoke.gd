@@ -212,6 +212,28 @@ func _run() -> void:
 	_assert(sf.loc_id == "mireth" and sf.player.position.distance_to(sf.interactable("annex").stand) < 1.0, "back on Mireth at the annex door")
 	step("estate buy, build, leave")
 
+	# estate upkeep: unpaid days lock the door and open the estate panel with pay/sell buttons
+	g.credits = 100000
+	g.estates.cannery_annex["unpaid"] = int(g.data.upkeep.grace_days)
+	sf.place_player_at("annex")
+	await physics_frame
+	await physics_frame
+	_assert(sf.interact(), "use the locked annex door")
+	await frames(2)
+	_assert(m.surface == sf and m.station.visible and m.station.tab_names() == ["Estate"], "locked estate opens the panel instead of the room")
+	var btns: Array = []
+	_collect_buttons(m.station, btns)
+	var texts := btns.map(func(b): return b.text)
+	_assert(texts.any(func(t): return t.begins_with("Pay arrears")), "pay arrears button: %s" % [texts])
+	_assert(texts.any(func(t): return t.begins_with("Sell for")), "sell button")
+	var paid: Dictionary = g.pay_estate_arrears("cannery_annex")
+	_assert(paid.ok and not g.EstateUpkeep.locked(g, "cannery_annex"), "arrears paid unlocks")
+	m.station.close()
+	var sold: Dictionary = gs.act(g.sell_estate("cannery_annex"))
+	_assert(sold.ok and not g.estate_owned("cannery_annex"), "estate sold")
+	await frames(2)
+	step("estate upkeep lock, pay, sell")
+
 	gs.act(g.buy("cannabis", 5))
 	gs.act(g.buy("nanoflux", 5))
 	m.station._lab_adds = ["nanoflux", "", ""]
@@ -413,3 +435,10 @@ func _assert(cond: bool, msg: String) -> void:
 	if not cond:
 		printerr("SMOKE FAIL: " + msg)
 		quit(1)
+
+
+func _collect_buttons(n: Node, out: Array) -> void:
+	if n is Button:
+		out.append(n)
+	for c in n.get_children():
+		_collect_buttons(c, out)

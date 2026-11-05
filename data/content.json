@@ -246,5 +246,12 @@
     "refiner": {"cost": 550, "size": [2, 2]},
     "pack_table": {"cost": 250, "size": [2, 1]}
   },
-  "estate_refund": 0.5
+  "estate_refund": 0.5,
+  "upkeep": {
+    "daily_rate": 0.02,
+    "min_daily": 20,
+    "grace_days": 2,
+    "seize_days": 5,
+    "sell_share": 0.6
+  }
 }

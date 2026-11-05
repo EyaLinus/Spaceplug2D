@@ -360,7 +360,7 @@ func _build_estate(g) -> Control:
 	v.add_child(UI.label("Floor space %d × %d cells. Place production stations inside, hire workers later." % [int(e.size[0]), int(e.size[1])], 15, UI.MUTED))
 	if g.estate_owned(id):
 		v.add_child(UI.label("Yours. %d station(s) set up." % g.estates[id].buildings.size(), 17, UI.ACCENT))
-		v.add_child(UI.button("Go inside", func(): estate_enter_requested.emit(id), 160))
+		_add_estate_upkeep(g, id, v)
 	else:
 		v.add_child(UI.label("For sale: %d cr" % int(e.price), 19, UI.GOLD))
 		var b := UI.button("Buy for %d cr" % int(e.price), func():
@@ -369,6 +369,31 @@ func _build_estate(g) -> Control:
 		b.disabled = g.credits < int(e.price)
 		v.add_child(b)
 	return v
+
+
+## Upkeep status, pay-arrears, enter and sell controls for an owned estate (rules: scripts/core/estate_upkeep.gd).
+func _add_estate_upkeep(g, id: String, v: VBoxContainer) -> void:
+	var U = g.EstateUpkeep
+	var st: String = U.status(g, id)
+	var line := "Upkeep %d cr/day, paid at every new day." % U.daily(g, id)
+	if st != "ok":
+		line = "%d unpaid day(s), %d cr in arrears. %s Seized in %d day(s)." % [U.unpaid_days(g, id), U.arrears(g, id),
+			"Locked: pay to get back in." if st == "locked" else "Still open.", U.days_to_seizure(g, id)]
+	v.add_child(UI.label(line, 15, UI.GOLD if st == "ok" else UI.WARN))
+	var enter := UI.button("Go inside", func(): estate_enter_requested.emit(id), 160)
+	enter.disabled = st == "locked"
+	v.add_child(enter)
+	if st != "ok":
+		var pay := UI.button("Pay arrears (%d cr)" % U.arrears(g, id), func(): GameState.act(g.pay_estate_arrears(id)), 200)
+		pay.disabled = g.credits < U.arrears(g, id)
+		v.add_child(pay)
+	var q: Dictionary = U.sale_quote(g, id)
+	var sell := UI.button("Sell for %d cr" % int(q.net), func():
+		if GameState.act(g.sell_estate(id)).ok:
+			estate_changed.emit(), 200)
+	sell.tooltip_text = "%d for the property + %d for the stations - %d arrears" % [q.share, q.buildings, q.arrears]
+	sell.disabled = g.location != g.data.estates[id].location
+	v.add_child(sell)
 
 
 func _build_build_menu(g) -> Control:

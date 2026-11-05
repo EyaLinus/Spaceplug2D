@@ -1,5 +1,23 @@
 # Progress log
 
+## Wave 21: estate upkeep + selling (2026-11-05)
+- **Core:** new `scripts/core/estate_upkeep.gd` (static rules on `Game`, like `people.gd`), data in `content.json` `upkeep`
+  (`daily_rate` 0.02 of the price, `min_daily` 20, `grace_days` 2, `seize_days` 5, `sell_share` 0.6). `Game._new_day()` calls
+  `EstateUpkeep.new_day`: the owed amount (today + arrears) is paid automatically, otherwise `estates[id].unpaid` grows;
+  at `grace_days` the estate is locked (`lab_here()` is false, the door opens the estate panel instead of the room), at
+  `seize_days` it is seized with its stations. Events `upkeep_paid/missed/locked`, `estate_seized`, `estate_sold`.
+- **Selling:** `Game.sell_estate(id)` (on that planet only) pays `sell_share` of the price + `estate_refund` of the station
+  cost - arrears (never below 0). `Game.pay_estate_arrears(id)` clears the arrears by hand. The stash and cargo are global,
+  so nothing stored in an estate can be lost.
+- **Save:** `unpaid` is stored inside the estate entry; old saves have no field and read as 0 (test).
+- **UI:** estate panel (`station_ui.gd` `_add_estate_upkeep`): upkeep line, arrears/seizure countdown, Pay arrears, Go inside
+  (disabled when locked), Sell (quote in the tooltip); HUD toasts for missed/locked/seized.
+- Verified: 1006 unit checks (new `test_estate_upkeep`), UI smoke 25 steps (locked door -> panel -> pay -> sell), menu smoke,
+  sim 5/5 won (the bot owns no estates, so upkeep does not affect balance there).
+- Gaps: no sale price from the planet's market or heat; no "inside when seized" cutscene (inside_estate is just cleared);
+  upkeep is not shown in the phone/finance app; no per-estate rate override or building-tier upkeep (PR #87 tiers);
+  raids (#73) and couriers (#80) do not know about locked/seized estates yet; numbers are untuned guesses.
+
 ## Release v0.1.5 (2026-10-30)
 - Phase 2 wave 1 complete: A1 Com-Phone + Contacts, D1 Kovar system (Varrow, Glacis), C1 Extractor/Refiner, E3 visible
   ship upgrades. Changelog folded, version 0.1.5 in project.godot and export_presets.cfg. Next: wave 2 (A2, A3, B2, B1).
