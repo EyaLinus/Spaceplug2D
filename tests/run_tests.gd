@@ -897,7 +897,7 @@ func test_planet_laws() -> void:
 	var banned_cops := g.police_on_foot(1.0)
 	g.cargo.erase(key)
 	check(g.police_on_foot(1.0) <= banned_cops, "legal cargo draws no more police on foot than banned")
-	check(Laws.frisk_mult(g, "mireth") < 1.0, "legal weed frisks lighter")
+	check(is_equal_approx(Laws.frisk_mult(g, "mireth"), 1.0), "legal weed does not thin the patrols")
 	check(Laws.summary(g, "glacis").size() == data.bases.size() and Laws.line(g, "glacis").contains("Weed"), "summary lists every drug")
 	check(Laws.tooltip(g, "varrow").contains("Local laws"), "tooltip text")
 	var h := Game.new()

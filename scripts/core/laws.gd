@@ -52,10 +52,11 @@ static func scan_mult(g) -> float:
 	return 1.0 if w == "" else _mult(g, w, "scan_mult")
 
 
-## Walking police density factor on a surface, by the cargo you carry.
+## Walking police density factor on a surface, by the cargo you carry. Never below 1: legal goods do not thin the
+## patrols out (the surface would drop officers every time the cargo changes), banned goods add some.
 static func frisk_mult(g, loc: String) -> float:
 	var w := worst_cargo_level(g, loc)
-	return 1.0 if w == "" else _mult(g, w, "frisk_mult")
+	return 1.0 if w == "" else maxf(1.0, _mult(g, w, "frisk_mult"))
 
 
 ## [{base, name, level, label}] for every drug at a location, weakest tier first.
