@@ -23,6 +23,7 @@ const Dealers = preload("res://scripts/core/dealers.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Style = preload("res://scripts/core/style.gd")
+const Marker = preload("res://scripts/core/marker.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 const SAVE_VERSION := 1
 
@@ -83,6 +84,7 @@ var quests: Dictionary = {"active": [], "done": [], "step": {}, "count": {}, "tr
 var interdiction: Dictionary = {}  ## pending interdiction after a jump (runtime only, see interdiction.gd)
 var lane_rng := RandomNumberGenerator.new()  ## interdiction rolls only, so the game RNG stays untouched
 var style: Dictionary = {}  ## K2 look, ship paint/decal and estate decor (see style.gd), saved
+var map_marker := ""  ## K3 hand-placed map marker: location or system id, "" = none (see marker.gd), saved
 var cartels: Dictionary = {}  ## sector influence per location and cartel hostility (see cartels.gd), saved
 
 
@@ -135,6 +137,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	quests = Quests.empty_state()  # the opening quests start in GameState.new_game (tests and sims run without)
 	cartels = Cartels.init_state(data)
 	style = Style.init_state(data)
+	map_marker = ""
 	interdiction = {}
 	lane_rng.seed = seed_value * 7919 + 13
 	_add_starter_estates()
@@ -866,7 +869,7 @@ func to_dict() -> Dictionary:
 		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
 		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "quests": Quests.to_save(self),
 		"cartels": Cartels.to_save(self), "ship_class": ship_class, "hulls": hulls.duplicate(),
-		"style": Style.to_save(self),
+		"style": Style.to_save(self), "marker": Marker.to_save(self),
 	}
 
 
@@ -946,6 +949,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Quests.from_save(self, d.get("quests", {}), d.has("quests"))
 	Cartels.from_save(self, d.get("cartels", {}))
 	Style.from_save(self, d.get("style", {}))
+	Marker.from_save(self, d.get("marker", ""))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

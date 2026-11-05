@@ -1,0 +1,1 @@
+- **Map marker:** In the Map app you can mark any location ("Mark") or star system ("Set marker") and clear it again. With no quest waypoint active, the ship autopilot (T) and the HUD arrow lead to the marker (a marker in another system routes to the jump gate); quest waypoints keep priority, and the autopilot switches off on arrival. Saved; old saves load without one.

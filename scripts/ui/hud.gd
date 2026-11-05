@@ -5,6 +5,7 @@ extends Control
 const UI = preload("res://scripts/ui/ui_theme.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Quests = preload("res://scripts/core/quests.gd")
+const Marker = preload("res://scripts/core/marker.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const FxScript = preload("res://scripts/ui/fx.gd")
 
@@ -505,8 +506,25 @@ func _update_quest_ui(g, delta: float) -> void:
 		_card_left = clampf(4.0 + str(m[1]).length() / 22.0, 6.0, 14.0)
 
 
-## World position the tracked quest points at right now, or null (no target, target is a phone app, docked menu).
+## Waypoint for the arrow and the autopilot: the tracked quest's, else the hand-placed map marker's (K3), else null.
 func quest_point():
+	var qp = _quest_target_point()
+	return qp if qp != null else marker_point()
+
+
+## World position of the map marker while flying (marker.gd), or null.
+func marker_point():
+	var g = GameState.game
+	if g == null or surface != null or world == null or not world.active:
+		return null
+	var goal := Marker.goal_location(g)
+	if goal == "" or not world.locations.has(goal):
+		return null
+	return world.locations[goal].position
+
+
+## World position the tracked quest points at right now, or null (no target, target is a phone app, docked menu).
+func _quest_target_point():
 	var g = GameState.game
 	if g == null:
 		return null
@@ -566,10 +584,11 @@ func _draw_quest_marker() -> void:
 	var wp = quest_point()
 	if wp == null:
 		return
+	var is_mark: bool = _quest_target_point() == null
 	var view := _nav.size
 	var p: Vector2 = get_viewport().get_canvas_transform() * (wp as Vector2)
 	var bob := sin(Time.get_ticks_msec() / 220.0) * 4.0
-	var col := UI.GOLD
+	var col := UI.ACCENT if is_mark else UI.GOLD
 	var margin := 48.0
 	if Rect2(Vector2(margin, margin), view - Vector2(margin, margin) * 2.0).has_point(p):
 		var c := p + Vector2(0, -34 + bob)
@@ -583,5 +602,6 @@ func _draw_quest_marker() -> void:
 	var tip := e + dir * (18.0 + bob)
 	_nav.draw_colored_polygon(PackedVector2Array([tip, e + dir.orthogonal() * 11.0, e - dir.orthogonal() * 11.0]), col)
 	var font := ThemeDB.fallback_font
-	var w := font.get_string_size("QUEST", HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	_nav.draw_string(font, e - dir * 20.0 - Vector2(w / 2.0, -5.0), "QUEST", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
+	var tag := "MARK" if is_mark else "QUEST"
+	var w := font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	_nav.draw_string(font, e - dir * 20.0 - Vector2(w / 2.0, -5.0), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)

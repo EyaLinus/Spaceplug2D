@@ -974,6 +974,7 @@ func _run() -> void:
 	ship.goal_provider = old_provider
 	ship.velocity = Vector2.ZERO
 	step("autopilot")
+	await _map_marker(m, g)
 	_assert(not is_instance_valid(sf) or sf.is_queued_for_deletion(), "surface instance freed")
 	for i in 120:
 		m.world.ship.steer(1.0 / 60.0, true, false)
@@ -1374,3 +1375,45 @@ func _interdiction(m, g) -> void:
 	g.cargo.erase("weed:glow")
 	g.heat = 0.0
 
+
+
+## K3: a hand-placed map marker from the Map app feeds the HUD arrow and the autopilot when no quest waypoint is active.
+func _map_marker(m, g) -> void:
+	var ship = m.world.ship
+	var saved_quests: Dictionary = g.quests.duplicate(true)
+	g.quests.tracked = ""
+	g.quests.active = []
+	_assert(m.hud.quest_point() == null and g.map_marker == "", "no quest waypoint and no marker: no goal")
+	m.toggle_phone()
+	m.phone.open_app("map")
+	await frames(3)
+	var goal_loc := "mireth"
+	for l in g.locations_in(g.system):
+		if m.world.locations.has(l) and l != g.location:
+			goal_loc = l
+			break
+	m.phone.find_child("MapMark_" + goal_loc, true, false).pressed.emit()
+	await frames(3)
+	_assert(g.map_marker == goal_loc, "Mark button sets the marker")
+	_assert(m.phone.find_child("MapMarkClear", true, false) != null, "map offers Clear marker")
+	var pt = m.hud.quest_point()
+	_assert(pt != null and (pt as Vector2).is_equal_approx(m.world.locations[goal_loc].position), "HUD waypoint falls back to the marker")
+	ship.position = (pt as Vector2) + Vector2(-1400, 500)
+	ship.velocity = Vector2.ZERO
+	ship.set_autopilot(true)
+	_assert(ship.autopilot, "autopilot engages on a marker")
+	for i in 1500:
+		if not ship.autopilot:
+			break
+		var ap: Dictionary = ship.autopilot_step(1.0 / 60.0)
+		ship.rotation += float(ap.turn) * float(ship.cfg.turn_speed) / 60.0
+		ship.steer(1.0 / 60.0, ap.thrust, ap.brake)
+	_assert(not ship.autopilot and ship.position.distance_to(pt) < 400.0, "autopilot flew to the marker and switched off")
+	ship.velocity = Vector2.ZERO
+	m.phone.find_child("MapMarkClear", true, false).pressed.emit()
+	await frames(3)
+	_assert(g.map_marker == "" and m.hud.quest_point() == null, "Clear marker removes the waypoint")
+	m.toggle_phone()
+	await frames(2)
+	g.quests = saved_quests
+	step("map marker")
