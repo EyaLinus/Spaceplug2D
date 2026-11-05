@@ -2132,7 +2132,7 @@ func test_grow() -> void:
 		Grow.build_tray(g, est)
 	check(Grow.trays(g, est).size() == int(data.grow.max_trays) and not Grow.build_tray(g, est).ok, "tray cap")
 	check(not Grow.plant(g, est, 0, "cannabis").ok, "planting needs seed stock in the hold")
-	check(not Grow.plant(g, est, 0, "pseudo").ok, "only listed crops grow")
+	check(not Grow.plant(g, est, 0, "fent_precursor").ok, "only listed crops grow")
 	g.cargo["cannabis"] = 5
 	check(Grow.plant(g, est, 0, "cannabis").ok and int(g.cargo.cannabis) == 5 - int(data.grow.seed_qty), "plant takes seeds from the hold")
 	check(not Grow.plant(g, est, 0, "cannabis").ok, "tray in use")
@@ -2161,6 +2161,31 @@ func test_grow() -> void:
 	g2.from_dict(data, JSON.parse_string(JSON.stringify(d)))
 	check(Grow.trays(g2, est).size() == Grow.trays(g, est).size() and Grow.quality(g2, Grow.trays(g2, est)[1]) == 1.0, "grow trays survive a save")
 	check(Grow.harvest(g2, est, 1).ok, "loaded tray can be harvested")
+	# second slice: third crop, quality grade on the harvested pile, room visuals
+	check(data.grow.crops.has("pseudo"), "third crop is listed")
+	var gt: Dictionary = Grow.trays(g, est)[2]
+	g.cargo["pseudo"] = 2
+	check(Grow.plant(g, est, 2, "pseudo").ok and Grow.visuals(g, est)[2].raw == "pseudo", "third crop plants")
+	check(Grow.visuals(g, est).size() == Grow.trays(g, est).size() and float(Grow.visuals(g, est)[2].progress) == 0.0, "visuals list every tray")
+	g.day += int(data.grow.crops.pseudo.days)
+	check(Grow.visuals(g, est)[2].ripe and Grow.visuals(g, est)[2].grade == "poor", "unwatered ripe tray is poor")
+	g.stash["pseudo"] = 0
+	check(Grow.stash_grade(g, "pseudo") == "", "no grade without grown stock")
+	Grow.harvest(g, est, 2)
+	check(Grow.stash_grade(g, "pseudo") == "poor" and gt.raw == "", "poor harvest grades the pile poor")
+	g.stash["cannabis"] = 0
+	g.grow_q.erase("cannabis")
+	Grow.harvest(g, est, 1)
+	check(Grow.stash_grade(g, "cannabis") == "prime", "prime harvest grades the pile prime")
+	g.cargo["cannabis"] = 4
+	Grow.plant(g, est, 0, "cannabis")
+	g.day += days
+	Grow.harvest(g, est, 0)
+	var mix := float(g.grow_q.cannabis)
+	check(mix > 0.5 and mix < 1.0, "piles blend qualities (%.2f)" % mix)
+	var g4 := new_game()
+	g4.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(is_equal_approx(float(g4.grow_q.cannabis), mix), "pile quality survives a save")
 	d.erase("grow")
 	var g3 := new_game()
 	g3.from_dict(data, JSON.parse_string(JSON.stringify(d)))

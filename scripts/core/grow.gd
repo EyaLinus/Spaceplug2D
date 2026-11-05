@@ -7,6 +7,10 @@ extends RefCounted
 ## "watered": [days]}]}. No autoload references (unit tests run without autoloads).
 
 
+## Stash raws that were not grown (no entry in Game.grow_q) count as this quality.
+const UNGRADED_Q := 0.5
+
+
 static func cfg(g) -> Dictionary:
 	return g.data.get("grow", {})
 
@@ -102,6 +106,27 @@ static func grade(q: float) -> String:
 	return "prime" if q >= 0.85 else ("good" if q >= 0.5 else "poor")
 
 
+## Grade of the grown raw pile in the stash ("" if nothing grown is left there).
+static func stash_grade(g, raw: String) -> String:
+	if not g.grow_q.has(raw) or int(g.stash.get(raw, 0)) <= 0:
+		return ""
+	return grade(float(g.grow_q[raw]))
+
+
+## What the estate room draws: one entry per tray, progress 0..1 (1 = ripe), grade of the care so far.
+static func visuals(g, estate: String) -> Array:
+	var out: Array = []
+	for t in trays(g, estate):
+		var d := {"raw": t.raw, "progress": 0.0, "ripe": false, "grade": ""}
+		if t.raw != "":
+			var days := float(crops(g)[t.raw].days)
+			d.progress = clampf((days - days_left(g, t)) / days, 0.0, 1.0)
+			d.ripe = is_ripe(g, t)
+			d.grade = grade(quality(g, t))
+		out.append(d)
+	return out
+
+
 static func expected_yield(g, t: Dictionary) -> int:
 	if t.raw == "":
 		return 0
@@ -119,11 +144,14 @@ static func harvest(g, estate: String, i: int) -> Dictionary:
 	var q := quality(g, t)
 	var n := expected_yield(g, t)
 	var raw: String = t.raw
+	var old_n := int(g.stash.get(raw, 0))
+	var old_q := float(g.grow_q.get(raw, UNGRADED_Q))
+	g.grow_q[raw] = (old_q * old_n + q * n) / float(old_n + n)  # quality of the stash pile = weighted mean
 	g._add(g.stash, raw, n)
 	t.raw = ""
 	t.start_day = 0
 	t.watered = []
-	g._emit("grow_harvested", {"estate": estate, "raw": raw, "qty": n})
+	g._emit("grow_harvested", {"estate": estate, "raw": raw, "qty": n, "grade": grade(q)})
 	return _res(true, "Harvested %d %s (%s)." % [n, g.data.raws[raw].name, grade(q)])
 
 
@@ -131,9 +159,18 @@ static func to_save(g) -> Dictionary:
 	return g.grow.duplicate(true)
 
 
+static func quality_to_save(g) -> Dictionary:
+	return g.grow_q.duplicate()
+
+
 ## Old saves have no "grow": nobody owns a tray. Unknown estates and crops are dropped.
 static func from_save(g, d: Dictionary) -> void:
 	g.grow = {}
+	g.grow_q = {}
+	var gq: Dictionary = d.get("grow_q", {})
+	for raw in gq:
+		if crops(g).has(raw):
+			g.grow_q[raw] = clampf(float(gq[raw]), 0.0, 1.0)
 	var src: Dictionary = d.get("grow", {})
 	for e in src:
 		if not g.estates.has(e):

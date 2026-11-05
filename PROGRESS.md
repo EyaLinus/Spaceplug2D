@@ -1,5 +1,13 @@
 # Progress log
 
+## Grow tray, second slice (phase 4 wave 14, 2026-11-05)
+- Stacked on #81. `Grow.visuals` feeds `surface._draw_grow_trays` (overlay row along the estate's bottom wall, plant height =
+  progress, gold frame when ripe). Third crop `pseudo` (5 days, yield 5). Quality grade on the item: `Game.grow_q`
+  (raw -> weighted mean quality of the stash pile, un-graded stock counts as 0.5, saved as `grow_q`), `Grow.stash_grade`.
+- Tests: `test_grow` extended (third crop, visuals, grades, blending, save). Not run locally (no Godot binary); CI is the check.
+- Unverified: the tray row can overlap buildings placed along the bottom wall; grade not yet shown in the sell UI;
+  no price effect from grade yet. Still open: worker automation, minigame.
+
 ## Grow tray, first slice (phase 4 wave 12, 2026-11-04)
 - **Core** `scripts/core/grow.gd`, data `content.json` "grow" (tray cost/cap, seed qty, crops with days and yield).
   State `Game.grow` {estate -> {trays: [{raw, start_day, watered: [days]}]}}, saved; old saves load with none.

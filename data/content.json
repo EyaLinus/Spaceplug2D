@@ -357,7 +357,8 @@
     "min_yield_factor": 0.5,
     "crops": {
       "cannabis": {"days": 3, "yield": 6},
-      "coca_leaf": {"days": 4, "yield": 6}
+      "coca_leaf": {"days": 4, "yield": 6},
+      "pseudo": {"days": 5, "yield": 5}
     }
   },
   "buildables": {
