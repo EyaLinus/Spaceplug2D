@@ -1,0 +1,1 @@
+- **Idle chatter:** people on planet surfaces now say short speech-bubble lines when you walk past, flavoured by planet and time of day (data/chatter.json).
