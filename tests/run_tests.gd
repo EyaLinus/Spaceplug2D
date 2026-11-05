@@ -21,6 +21,7 @@ const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
+const Hiding = preload("res://scripts/core/hiding.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 
@@ -1248,6 +1249,67 @@ func test_planet_districts() -> void:
 			var cell := Vector2i(int(floor(s.spots[k][0])), int(floor(s.spots[k][1])))
 			check(not nav.is_point_solid(cell) and not nav.get_id_path(start, cell).is_empty(), "%s spot %s reachable" % [loc, k])
 		check(s.spots.size() >= 8, "%s has places for people to be (%d)" % [loc, s.spots.size()])
+
+
+## P3: hiding spots. Still in a spot hides you, officers lose you, close ones find you, moving breaks cover.
+func test_hiding() -> void:
+	var r: Dictionary = Hiding.rules()
+	check(float(r.settle_seconds) > 0.0 and float(r.lose_seconds) > float(r.settle_seconds), "hiding rules load")
+	var h := Hiding.fresh()
+	var ev := Hiding.step(h, 0.5, true, 0.0, INF)
+	check(not h.hidden and not ev.hid, "not hidden before the settle time")
+	ev = Hiding.step(h, 0.5, true, 0.0, INF)
+	check(h.hidden and ev.hid, "hidden after standing still in a spot")
+	check(not Hiding.visible_to_officer(h, true) and Hiding.visible_to_officer(Hiding.fresh(), true), "hidden player is invisible to officers, open player is not")
+	check(not Hiding.visible_to_officer(h, false), "out of sight stays out of sight")
+	var lost := 0
+	for i in 40:
+		ev = Hiding.step(h, 0.1, true, 0.0, 300.0)
+		if ev.lost:
+			lost += 1
+	check(lost == 1 and h.hidden, "officers lose you exactly once per hide")
+	ev = Hiding.step(h, 0.1, true, 0.0, float(r.notice_range) - 1.0)
+	check(ev.found and not h.hidden and float(h.cd) > 0.0, "an officer who walks up finds you and burns the spot")
+	for i in 20:
+		Hiding.step(h, 0.1, true, 0.0, INF)
+	check(not h.hidden and float(h.cd) > 0.0, "cannot re-hide during the found cooldown")
+	for i in 60:
+		Hiding.step(h, 0.1, true, 0.0, INF)
+	check(h.hidden, "can hide again after the cooldown")
+	Hiding.step(h, 0.1, true, 120.0, INF)
+	check(not h.hidden, "moving breaks cover")
+	h = Hiding.fresh()
+	Hiding.step(h, 0.5, true, 0.0, INF)
+	Hiding.step(h, 0.5, false, 0.0, INF)
+	Hiding.step(h, 0.5, true, 0.0, INF)
+	check(not h.hidden, "leaving the spot resets the settle timer")
+	Hiding.step(h, 0.5, true, 0.0, INF)
+	check(h.hidden, "settles again in the spot")
+	Hiding.reveal(h)
+	check(not h.hidden and float(h.hid_t) == 0.0, "reveal (shooting, being shot) breaks cover")
+	# layout: every planet's spots are inside the map, off buildings/roads/solid areas/cover, reachable, with a known kind
+	var Nav = load("res://scripts/planet/nav.gd")
+	for loc in data.surfaces:
+		var s: Dictionary = data.surfaces[loc]
+		if s.has("estate"):
+			continue
+		var spots: Array = s.get("hide", [])
+		check(spots.size() >= 3, "%s has hiding spots (%d)" % [loc, spots.size()])
+		var map := Rect2(0, 0, s.size[0], s.size[1])
+		var nav: AStarGrid2D = Nav.build(s)
+		var start := Vector2i(int(s.spawn[0]), int(s.spawn[1]))
+		var cover: Array = Combat.cover_rects(Combat.cover_tiles(data, loc), 1.0)
+		var rects := Hiding.spot_rects(s, 1.0)
+		for i in spots.size():
+			var rc: Rect2 = rects[i]
+			check(map.encloses(rc) and r.kinds.has(str(spots[i][4])), "%s hiding spot %d inside the map with a known kind" % [loc, i])
+			for b in s.buildings:
+				check(not rc.intersects(Rect2(b.rect[0], b.rect[1], b.rect[2], b.rect[3])), "%s hiding spot %d off buildings" % [loc, i])
+			for c in cover:
+				check(not rc.intersects(c), "%s hiding spot %d off cover" % [loc, i])
+			var cell := Vector2i(int(rc.get_center().x), int(rc.get_center().y))
+			check(not nav.is_point_solid(cell) and not nav.get_id_path(start, cell).is_empty(), "%s hiding spot %d reachable" % [loc, i])
+		check(Hiding.spot_at(rects, rects[0].get_center()) == 0 and Hiding.spot_at(rects, Vector2(-5, -5)) == -1, "%s spot_at" % loc)
 
 
 ## B4: every person on a planet is a named customer with a habit, a budget and a day plan.
