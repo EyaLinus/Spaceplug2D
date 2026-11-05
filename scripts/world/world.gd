@@ -187,6 +187,21 @@ func _patrol_home(g) -> Vector2:
 	return n.position if n != null else Vector2.ZERO
 
 
+## Circles the autopilot flies around: every body (planets, asteroid outposts, stations) and, while you carry
+## contraband, each patrol's scan zone.
+func autopilot_hazards() -> Array:
+	var out: Array = []
+	for id in locations:
+		var n: Node2D = locations[id]
+		out.append({"pos": n.position, "r": float(n.radius) * 1.2})
+	var g = GameState.game
+	if g != null and g.has_contraband():
+		var radius: float = g.scan_radius()
+		for p in patrols:
+			out.append({"pos": p.position, "r": radius})
+	return out
+
+
 func _update_scan(g, delta: float) -> void:
 	var in_range := false
 	var radius: float = g.scan_radius()

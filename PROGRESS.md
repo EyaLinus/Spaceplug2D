@@ -5,6 +5,16 @@
   version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building
   interiors (D4), a real balance pass (waits for Linus), Ninth Veil base quest (chapter 3), duplicate PRs #48 and #64.
 
+## K3 follow-up: autopilot avoidance (2026-11-05)
+- `scripts/core/steering.gd` `avoid_heading()` (pure): detours around circular hazards ahead of the course (tangent
+  aim on the clear side, 90 px margin, ignores hazards containing the goal, pushes out when already inside).
+  `ship.autopilot_step()` now aims along it via `ship.hazard_provider` (set in main to `World.autopilot_hazards()`:
+  every location body at 1.2x radius, plus each patrol's scan zone while you carry contraband).
+- Verified (Godot 4.3 headless): unit tests 10837 checks / 0 failures (new `test_autopilot_avoid`: left/right
+  detour, ignored far/behind/goal hazards, point-ship flight clears a rock), UI smoke 50 steps, tip audit 0, menu
+  smoke. Not verified: real in-game feel (no playtest/screenshot), balance sim not run, no moving-patrol prediction,
+  hazards are only re-evaluated each frame (no path memory, so a very wide patrol zone can still be clipped).
+
 ## K3: QoL (phase 3 wave 10, 2026-11-03)
 - **Autopilot** (`ship.gd`): action `ship_autopilot` (T) toggles; `goal_provider` = `hud.quest_point` (set in main);
   `autopilot_step()` turns to the goal, thrusts when within ~20°, brakes inside the stopping distance, switches off

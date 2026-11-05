@@ -4,6 +4,7 @@ extends Node2D
 
 const Art = preload("res://scripts/core/art.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
+const Steering = preload("res://scripts/core/steering.gd")
 
 var velocity := Vector2.ZERO
 var thrusting := false
@@ -17,7 +18,9 @@ var hull_cfg: Dictionary = {}  ## hull class (content.json "ship_classes"): draw
 
 var autopilot := false  ## K3: fly to the quest waypoint on its own until you touch the controls or arrive
 var goal_provider: Callable  ## returns the waypoint (Vector2) or null; set by main (HUD quest point)
+var hazard_provider: Callable  ## returns [{pos: Vector2, r: float}] to steer around (bodies, patrol scan zones); set by main
 const AUTOPILOT_ARRIVE := 260.0
+const AUTOPILOT_LOOKAHEAD := 900.0
 var _flame := 0.0
 var _boost_t := 0.0  ## seconds of dodge boost left
 var _invuln_t := 0.0  ## seconds of dodge invulnerability left
@@ -83,7 +86,9 @@ func autopilot_step(_delta: float) -> Dictionary:
 	if dist < AUTOPILOT_ARRIVE:
 		set_autopilot(false, "Autopilot: arrived.")
 		return {"turn": 0.0, "thrust": false, "brake": true}
-	var want := to.angle() + PI / 2.0  # the nose points up (−y)
+	var hazards: Array = hazard_provider.call() if hazard_provider.is_valid() else []
+	var heading := Steering.avoid_heading(position, goal as Vector2, hazards, AUTOPILOT_LOOKAHEAD + velocity.length() * 0.5)
+	var want := heading.angle() + PI / 2.0  # the nose points up (−y)
 	var diff := wrapf(want - rotation, -PI, PI)
 	var turn := clampf(diff * 3.0, -1.0, 1.0)
 	var speed := velocity.length()

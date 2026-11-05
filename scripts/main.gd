@@ -82,6 +82,7 @@ func _ready() -> void:
 	hud = HudScript.new()
 	hud.world = world
 	world.ship.goal_provider = hud.quest_point
+	world.ship.hazard_provider = world.autopilot_hazards
 	root.add_child(hud)
 	station = StationScript.new()
 	root.add_child(station)
