@@ -313,7 +313,7 @@ func test_flee_heat() -> void:
 	var g := new_game()
 	g.cargo.clear()
 	check(Pursuit.tick(g, 1.0, true, true, false) == 0.0 and g.heat == 0.0, "sprinting in sight without product and no chase: no heat")
-	g.cargo["weed"] = 3
+	g.cargo["weed:glow"] = 3
 	check(g.has_contraband(), "weed counts as product")
 	check(Pursuit.tick(g, 1.0, false, true, true) == 0.0, "walking adds nothing")
 	check(Pursuit.tick(g, 1.0, true, false, true) == 0.0 and g.heat == 0.0, "out of sight adds nothing, even when chased")
