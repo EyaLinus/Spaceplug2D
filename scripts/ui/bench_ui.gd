@@ -11,6 +11,7 @@ extends Control
 const UI = preload("res://scripts/ui/ui_theme.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Bench = preload("res://scripts/core/bench.gd")
+const Drying = preload("res://scripts/core/drying.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const Registry = preload("res://scripts/ui/minigames/registry.gd")
@@ -81,6 +82,8 @@ func open_station(id: String, index: int) -> void:
 	_sub.text = "%s  ·  improves %s" % [st.get("hint", ""), st.affects]
 	var m: Dictionary = Bench.use_mode(g, id)
 	mode = m.mode
+	if id == Drying.TABLE:
+		mode = "dry"
 	if mode == "start":
 		var bases: Array = _startable(g)
 		if _base == "" or not _base in bases:
@@ -106,14 +109,17 @@ func _startable(g) -> Array:
 
 func _rebuild() -> void:
 	for c in _body.get_children():
+		_body.remove_child(c)  # out of the tree now, so the rebuilt nodes keep their names
 		c.queue_free()
 	var g = GameState.game
 	match mode:
 		"start": _build_start(g)
 		"mix": _build_mix(g)
 		"wait": _build_wait(g)
+		"dry": _build_dry(g)
 		"result": _build_result(g)
-	_body.add_child(_line_strip(g))
+	if mode != "dry":
+		_body.add_child(_line_strip(g))
 	_body.add_child(_footer(g))
 
 
@@ -229,6 +235,40 @@ func _build_mix(g) -> void:
 		close())
 	skip.name = "MixSkip"
 	row.add_child(skip)
+
+
+# ---------------------------------------------------------------- drying table (passive building, see drying.gd)
+
+func _build_dry(g) -> void:
+	var e: String = g.inside_estate
+	var cap := Drying.capacity(g, e)
+	_body.add_child(UI.heading("Rack: %d / %d units" % [Drying.loaded(g, e), cap]))
+	for b in Drying.batches(g, e):
+		var done: bool = float(b.left) <= 0.0
+		var l := UI.label("%d × %s  →  %d × %s  ·  %s" % [int(b.qty), g.item_name(b.product), Drying.result_qty(g, int(b.qty)),
+			g.item_name(Drying.result_key(b.product)), "dry" if done else "%d s left" % ceili(float(b.left))], 15, UI.ACCENT if done else UI.TEXT)
+		l.name = "Batch"
+		_body.add_child(l)
+	var c := UI.accent_button("Take cured product (%d units)" % Drying.ready(g, e), func():
+		GameState.act(Drying.collect(g, e))
+		_rebuild())
+	c.name = "DryCollect"
+	c.disabled = Drying.ready(g, e) <= 0
+	_body.add_child(c)
+	_body.add_child(UI.heading("Hang up"))
+	var cands: Array = Drying.candidates(g)
+	if cands.is_empty():
+		_body.add_child(UI.label("Nothing to cure in your hold. Finished weed below Pristine grade goes on the rack.", 15, UI.MUTED))
+	for cd in cands:
+		var k: String = cd.product
+		var btn := UI.button("Load %d × %s" % [mini(int(cd.qty), cap - Drying.loaded(g, e)), g.item_name(k)], func():
+			GameState.act(Drying.load_rack(g, e, k, int(cd.qty)))
+			_rebuild())
+		btn.name = "DryLoad"
+		btn.tooltip_text = "Cures in %d s to %s. Keeps %d%% of the weight." % [int(Drying.cfg(g).get("seconds", 120)),
+			g.item_name(Drying.result_key(k)), int(float(Drying.cfg(g).get("weight_keep", 0.8)) * 100.0)]
+		btn.disabled = Drying.loaded(g, e) >= cap
+		_body.add_child(btn)
 
 
 # ---------------------------------------------------------------- wait / result
@@ -386,7 +426,9 @@ func _input(ev: InputEvent) -> void:
 	elif current != null and _wait <= 0.0:
 		current.key(ev.keycode, ev.pressed)
 	elif ev.pressed and ev.keycode in [KEY_E, KEY_ENTER, KEY_KP_ENTER]:
-		if mode in ["start", "mix", "result"]:
+		if mode == "dry":
+			close()
+		elif mode in ["start", "mix", "result"]:
 			_confirm()
 		elif mode == "wait":
 			close()

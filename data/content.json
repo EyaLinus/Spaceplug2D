@@ -249,7 +249,9 @@
     "refiner": {"name": "Refiner", "minigame": "equilibrium", "affects": "purity", "bases": ["cocaine", "meth", "fentanyl"],
       "hint": "Space/left click doses acid (needle up), Backspace/right click doses base (needle down). Doses act with a delay: keep the reaction in the green band and don't overdose."},
     "pack_table": {"name": "Packaging Table", "minigame": "pack", "affects": "heat",
-      "hint": "Press Space/click when the sealer is over the bag. Tight seals smell less (less heat)."}
+      "hint": "Press Space/click when the sealer is over the bag. Tight seals smell less (less heat)."},
+    "drying_table": {"name": "Drying Table", "passive": true, "affects": "grade", "bases": ["weed"],
+      "hint": "Hang finished weed on the rack to cure. It comes off one grade higher but lighter."}
   },
   "workers": {
     "max_staff": 6, "hire_days": 2, "paid_loyalty_gain": 0.02, "unpaid_loyalty_loss": 0.3,
@@ -357,8 +359,10 @@
     "mixing_station": {"cost": 350, "size": [2, 1]},
     "cook_stove": {"cost": 400, "size": [2, 2]},
     "refiner": {"cost": 550, "size": [2, 2]},
-    "pack_table": {"cost": 250, "size": [2, 1]}
+    "pack_table": {"cost": 250, "size": [2, 1]},
+    "drying_table": {"cost": 300, "size": [2, 1]}
   },
+  "drying": {"seconds": 120, "capacity": 20, "weight_keep": 0.8, "max_grade": 3, "bases": ["weed"]},
   "orders": {
     "markup": 0.35, "fee_pct": 0.06, "fee_min": 12, "express_fee_mult": 2.0,
     "seconds": {"standard": 90, "express": 30}, "far_seconds": 60,

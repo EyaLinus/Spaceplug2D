@@ -732,3 +732,9 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
   people, stranger shows job, prompt shows want, talking opens Deals and makes a contact, name appears), menu smoke, screenshot.
 - Gaps: locals reuse the 8 NPC sprite looks (no per-planet outfits yet); no dialogue lines beyond the deal screen; the Contacts app
   grows long once you know many people (no search/filter yet, K3).
+
+## Drying Table (2026-11-05, wave 17)
+- **Core** `scripts/core/drying.gd`, numbers in `content.json` -> `drying` (120 s, 20 units per table, keeps 80 % of the units, bases `["weed"]`, up to grade 3). State `Game.drying` (estate id -> batches `{product, qty, left, total}`), saved under `drying`; old saves load with empty racks, junk entries are dropped. `Drying.tick` runs in `Game.tick`.
+- Loading takes finished product (not raws) out of the hold; a batch comes off one grade higher (`weed:glow` -> `weed:glow@2`) and lighter. Rack capacity is shared by an estate's tables; the last table can't come down while the rack is loaded.
+- Building `drying_table` (300 cr, 2x1, `passive` station: no minigame, not in `station_order`), build-menu card with tooltip, sprite `assets/src/stations/drying_table.txt`, rack panel in `bench_ui.gd` (mode `dry`). `_rebuild` now removes old children immediately so rebuilt nodes keep their names.
+- Verified: unit tests (`test_drying_table`), UI smoke (place, load, cure, collect), menu smoke, tip audit. Gaps: only weed, no workers/auto-load, raws are not dried (grow tray not on main), no sim run.

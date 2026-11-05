@@ -631,6 +631,17 @@ assets:
     source: assets/src/stations/cook_stove.txt
     status: done
     updated: '2026-10-30'
+  station_drying_table:
+    created: '2026-11-05'
+    kind: prop
+    method: pixel
+    note: 'Drying Table 2x1: wooden frame with hanging weed bunches over a slatted
+      tray.'
+    outputs:
+    - assets/gfx/stations/drying_table.png
+    source: assets/src/stations/drying_table.txt
+    status: done
+    updated: '2026-11-05'
   station_extractor:
     created: '2026-10-30'
     kind: prop

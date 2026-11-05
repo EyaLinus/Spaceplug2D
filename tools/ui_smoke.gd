@@ -9,6 +9,7 @@ const People = preload("res://scripts/core/people.gd")
 
 const Workers = preload("res://scripts/core/workers.gd")
 const Bench = preload("res://scripts/core/bench.gd")
+const Drying = preload("res://scripts/core/drying.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
@@ -793,6 +794,35 @@ func _run() -> void:
 	_assert(m.bench.visible and m.bench.mode == "wait" and not m.station.visible, "a station without a tray explains where batches start (mode %s)" % m.bench.mode)
 	_assert(m.bench.find_child("TakeDown", true, false) != null, "placed stations can be taken down from their overlay")
 	_assert(g.inside_estate == "cannery_annex" and g.lab_here(), "the estate counts as a lab")
+	m.bench.close()
+	# drying table: build it, hang weed on the rack, wait out the cure, take it off one grade higher
+	_assert(gs.act(g.place_building("cannery_annex", "drying_table", 5, 0)).ok, "drying table placed")
+	m.enter_estate("cannery_annex", es.player.position)
+	await frames(2)
+	es = m.surface
+	var dry_idx := -1
+	for bi in g.estates.cannery_annex.buildings.size():
+		if g.estates.cannery_annex.buildings[bi].id == "drying_table":
+			dry_idx = bi
+	es.place_player_at("b%d" % dry_idx)
+	await physics_frame
+	await physics_frame
+	g.cargo["weed:glow"] = 10
+	_assert(es.interact(), "use the drying table")
+	await frames(2)
+	_assert(m.bench.visible and m.bench.mode == "dry" and m.bench.find_child("DryLoad", true, false) != null, "drying table opens the rack panel")
+	m.bench.find_child("DryLoad", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.cargo.get("weed:glow", 0) == 0 and Drying.loaded(g, "cannery_annex") == 10, "load button hangs the weed on the rack")
+	_assert(m.bench.find_child("DryCollect", true, false).disabled, "wet product can't be collected")
+	for db in g.drying.cannery_annex:
+		db.left = 0.0  # fast-forward the cure without moving the world clock
+	m.bench.open_station("drying_table", dry_idx)
+	await frames(2)
+	m.bench.find_child("DryCollect", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.cargo.get("weed:glow@2", 0) == 8, "cured weed is Premium and 20%% lighter (%s)" % [g.cargo])
+	g.cargo.erase("weed:glow@2")
 	m.bench.close()
 	es.place_player_at("exit")
 	await physics_frame
