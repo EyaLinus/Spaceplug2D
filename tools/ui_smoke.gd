@@ -788,10 +788,12 @@ func _run() -> void:
 	# P5: hired workers show up as walkers inside the estate and head for their post (presentation only)
 	g.credits += 2000
 	_assert(g.credits > 0 and Workers.hire(g, "moss").ok and Workers.assign(g, "moss", "cannery_annex").ok, "stocker hired for the annex")
-	await frames(4)
+	es._worker_t = 0.0
+	await frames(3)
 	_assert(es.worker_nodes.has("moss") and es.worker_nodes.moss.sheet != null, "the stocker walks around the annex with a recoloured sprite")
 	Workers.fire(g, "moss")
-	await frames(4)
+	es._worker_t = 0.0
+	await frames(3)
 	_assert(not es.worker_nodes.has("moss"), "fired worker leaves the room")
 	es.place_player_at("b0")
 	await physics_frame
