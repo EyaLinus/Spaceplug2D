@@ -23,6 +23,7 @@ const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Sealing = preload("res://scripts/core/sealing.gd")
 
 var data: Dictionary
 var failures := 0
@@ -119,6 +120,7 @@ func _init() -> void:
 		"test_corruption_save",
 		"test_debt_win_and_loss",
 		"test_save_roundtrip",
+		"test_sealing_bench",
 		"test_style",
 		"test_drug_ladder",
 		"test_old_save_names_migrate",
@@ -1026,6 +1028,8 @@ func test_production_stations() -> void:
 	var Runner = load("res://scripts/ui/minigames/registry.gd")
 	for id in data.stations:
 		var st: Dictionary = data.stations[id]
+		if st.get("passive", false):
+			continue  # no minigame (sealing bench)
 		check(Runner.MINIGAMES.has(st.minigame), "station %s minigame %s is registered" % [id, st.minigame])
 		check(st.affects in ["yield", "quality", "purity", "heat"], "station %s affects a known stat" % id)
 		check(id in data.station_order, "station %s is in station_order" % id)
@@ -1102,6 +1106,8 @@ func test_station_minigames() -> void:
 		return {"base": base, "tier": int(data.bases[base].tier), "additives": ["nanoflux", "ion_syrup"], "qty": 5, "data": data, "seed": seed_value}
 	for id in data.stations:
 		var st: Dictionary = data.stations[id]
+		if st.get("passive", false):
+			continue
 		var base: String = st.get("bases", ["meth"])[0]
 		for s in 4:
 			for skilled in [true, false]:
@@ -3122,3 +3128,63 @@ func test_quest_chapter2() -> void:
 	check(g.quests.done.has("main_nest") and g.quests.active.has("main_rig"), "raiding the Nest finishes Smoke the Nest")
 	check(Quests.space_goal(g, {"loc": "tide_rig"}) == "halvane_gate", "the Rig waypoint routes through the gate")
 
+
+func test_sealing_bench() -> void:
+	var g := new_game()
+	var e := "cannery_annex"
+	g.credits = 5000
+	g.estates[e] = {"buildings": []}
+	var prod := Mixing.key("weed", ["glow"], 2)
+	g.cargo[prod] = 10
+	check(not Sealing.load_bench(g, e, prod, 5, 1).ok, "no bench, no wrapping")
+	check(g.place_building(e, "seal_bench", 0, 0).ok and Sealing.benches(g, e) == 1, "sealing bench can be built")
+	check(Sealing.capacity(g, e) == int(data.sealing.capacity), "one bench = base capacity")
+	check(Mixing.key("weed", ["glow"], 2, 2) == "weed:glow@2#2" and Mixing.parse_key("weed:glow@2#2").pack == 2, "pack tier key round-trips")
+	check(Mixing.parse_key("weed:glow@2").pack == 0 and Mixing.value(data, "weed:glow@2#2") == Mixing.value(data, prod), "old keys are loose, tier keeps the value")
+	check(Mixing.display_name(data, "weed:glow@2#2").ends_with("(Shielded)"), "tier in name: %s" % Mixing.display_name(data, "weed:glow@2#2"))
+	check(Sealing.can_seal(prod) and not Sealing.can_seal("weed:glow@2#1") and not Sealing.can_seal("cannabis"), "only loose product can be wrapped")
+	check(Sealing.result_key(prod, 2) == "weed:glow@2#2", "result key carries grade and tier")
+	check(not Sealing.load_bench(g, e, prod, 5, 0).ok and not Sealing.load_bench(g, e, prod, 5, 9).ok, "unknown tiers are refused")
+	check(not Sealing.load_bench(g, e, "weed:glow@2#1", 1, 2).ok, "packed product can't be wrapped again")
+	var before := g.credits
+	var r := Sealing.load_bench(g, e, prod, 6, 2)
+	check(r.ok and g.cargo[prod] == 4 and Sealing.loaded(g, e) == 6, "loading takes the units from the hold")
+	check(before - g.credits == 6 * int(Sealing.offer(g, 2).cost), "wrap supplies are paid")
+	check(not Sealing.collect(g, e).ok and Sealing.ready(g, e) == 0, "nothing to collect while wrapping")
+	check(not g.remove_building(e, 0).ok, "last bench can't go down while loaded")
+	g.tick(float(Sealing.offer(g, 2).seconds) - 1.0)
+	check(Sealing.ready(g, e) == 0, "not done one second early")
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(Sealing.loaded(h, e) == 6 and ceili(float(h.sealing[e][0].left)) == 1 and int(h.sealing[e][0].tier) == 2, "save keeps the bench and its timer")
+	var old := g.to_dict()
+	old.erase("sealing")
+	var k := Game.new()
+	k.from_dict(data, old)
+	check(k.sealing.is_empty(), "old save loads with an empty bench")
+	var junk := g.to_dict()
+	junk.sealing = {e: [{"product": "nope"}, 5, {"product": "weed:glow", "tier": 7}, {"product": "weed:glow#1", "tier": 1}], "ghost": []}
+	var m := Game.new()
+	m.from_dict(data, junk)
+	check(m.sealing.is_empty(), "garbage bench entries are dropped")
+	g.tick(2.0)
+	check(Sealing.ready(g, e) == 6, "wrapping keeps every unit")
+	g.cargo = {}
+	g.cargo["cannabis"] = g.cargo_free() - 2
+	check(Sealing.collect(g, e).ok and g.cargo.get("weed:glow@2#2", 0) == 2 and Sealing.loaded(g, e) == 4, "collect only moves what fits")
+	g.cargo = {}
+	check(Sealing.collect(g, e).ok and g.cargo["weed:glow@2#2"] == 4 and Sealing.loaded(g, e) == 0 and not g.sealing.has(e), "collect after room frees up")
+	check(g.remove_building(e, 0).ok, "empty bench can come down")
+	# broke: wrap is paid per unit, so credits cap the load
+	g.place_building(e, "seal_bench", 0, 0)
+	g.cargo[prod] = 10
+	g.credits = 2 * int(Sealing.offer(g, 1).cost)
+	check(Sealing.load_bench(g, e, prod, 10, 1).ok and Sealing.loaded(g, e) == 2 and g.credits == 0, "credits cap the load")
+	check(not Sealing.load_bench(g, e, prod, 10, 1).ok, "no credits, no wrap")
+	# capacity is shared by all benches
+	g.credits = 100000
+	g.sealing = {}
+	g.place_building(e, "seal_bench", 3, 0)
+	g.cargo[prod] = 100
+	Sealing.load_bench(g, e, prod, 100, 1)
+	check(Sealing.loaded(g, e) == 2 * int(data.sealing.capacity), "bench stops at capacity")

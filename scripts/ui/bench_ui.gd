@@ -12,6 +12,7 @@ const UI = preload("res://scripts/ui/ui_theme.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
+const Sealing = preload("res://scripts/core/sealing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const Registry = preload("res://scripts/ui/minigames/registry.gd")
 const Runner = preload("res://scripts/ui/minigames/minigame_runner.gd")
@@ -81,6 +82,8 @@ func open_station(id: String, index: int) -> void:
 	_sub.text = "%s  ·  improves %s" % [st.get("hint", ""), st.affects]
 	var m: Dictionary = Bench.use_mode(g, id)
 	mode = m.mode
+	if id == Sealing.BENCH:
+		mode = "seal"
 	if mode == "start":
 		var bases: Array = _startable(g)
 		if _base == "" or not _base in bases:
@@ -106,14 +109,17 @@ func _startable(g) -> Array:
 
 func _rebuild() -> void:
 	for c in _body.get_children():
+		_body.remove_child(c)  # out of the tree now, so the rebuilt nodes keep their names
 		c.queue_free()
 	var g = GameState.game
 	match mode:
 		"start": _build_start(g)
 		"mix": _build_mix(g)
 		"wait": _build_wait(g)
+		"seal": _build_seal(g)
 		"result": _build_result(g)
-	_body.add_child(_line_strip(g))
+	if mode != "seal":
+		_body.add_child(_line_strip(g))
 	_body.add_child(_footer(g))
 
 
@@ -229,6 +235,44 @@ func _build_mix(g) -> void:
 		close())
 	skip.name = "MixSkip"
 	row.add_child(skip)
+
+
+# ---------------------------------------------------------------- sealing bench (passive building, see sealing.gd)
+
+func _build_seal(g) -> void:
+	var e: String = g.inside_estate
+	var cap := Sealing.capacity(g, e)
+	_body.add_child(UI.heading("Bench: %d / %d units" % [Sealing.loaded(g, e), cap]))
+	for b in Sealing.batches(g, e):
+		var done: bool = float(b.left) <= 0.0
+		var l := UI.label("%d × %s  →  %s  ·  %s" % [int(b.qty), g.item_name(b.product), g.item_name(Sealing.result_key(b.product, int(b.tier))),
+			"packed" if done else "%d s left" % ceili(float(b.left))], 15, UI.ACCENT if done else UI.TEXT)
+		l.name = "Batch"
+		_body.add_child(l)
+	var c := UI.accent_button("Take packed product (%d units)" % Sealing.ready(g, e), func():
+		GameState.act(Sealing.collect(g, e))
+		_rebuild())
+	c.name = "SealCollect"
+	c.disabled = Sealing.ready(g, e) <= 0
+	c.tooltip_text = "Moves every finished pack into your hold."
+	_body.add_child(c)
+	_body.add_child(UI.heading("Wrap"))
+	var cands: Array = Sealing.candidates(g)
+	if cands.is_empty():
+		_body.add_child(UI.label("No loose product in your hold. Finished batches that are not packed yet can be wrapped here.", 15, UI.MUTED))
+	for cd in cands:
+		for o in Sealing.offers(g):
+			var k: String = cd.product
+			var tier := int(o.tier)
+			var n := mini(int(cd.qty), cap - Sealing.loaded(g, e))
+			var btn := UI.button("Wrap %d × %s  →  %s  (%d cr)" % [n, g.item_name(k), g.data.packaging.tiers[tier].name, Sealing.wrap_cost(g, tier, n)], func():
+				GameState.act(Sealing.load_bench(g, e, k, int(cd.qty), tier))
+				_rebuild())
+			btn.name = "SealLoad_%d" % tier
+			btn.tooltip_text = "%d s. %d cr per unit. A %s pack hides about %d%% of the units in a patrol scan." % [int(o.seconds), int(o.cost),
+				g.data.packaging.tiers[tier].name, int(float(g.data.packaging.tiers[tier].scan_survive) * 100.0)]
+			btn.disabled = Sealing.loaded(g, e) >= cap or g.credits < int(o.cost)
+			_body.add_child(btn)
 
 
 # ---------------------------------------------------------------- wait / result
@@ -386,7 +430,9 @@ func _input(ev: InputEvent) -> void:
 	elif current != null and _wait <= 0.0:
 		current.key(ev.keycode, ev.pressed)
 	elif ev.pressed and ev.keycode in [KEY_E, KEY_ENTER, KEY_KP_ENTER]:
-		if mode in ["start", "mix", "result"]:
+		if mode == "seal":
+			close()
+		elif mode in ["start", "mix", "result"]:
 			_confirm()
 		elif mode == "wait":
 			close()

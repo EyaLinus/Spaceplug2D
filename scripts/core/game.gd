@@ -12,6 +12,7 @@ const People = preload("res://scripts/core/people.gd")
 const Corruption = preload("res://scripts/core/corruption.gd")
 const Workers = preload("res://scripts/core/workers.gd")
 const Bench = preload("res://scripts/core/bench.gd")
+const Sealing = preload("res://scripts/core/sealing.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Orders = preload("res://scripts/core/orders.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
@@ -75,6 +76,7 @@ var next_drop_id: int = 0
 var drops_unseen: int = 0  ## finished drop jobs since the DeadDrop app was opened (runtime only)
 var workers: Array = []  ## hired staff [{id, loyalty, estate, hired_day}] (see workers.gd)
 var bench: Dictionary = {}  ## estate id -> batch tray carried between stations on foot (see bench.gd), saved
+var sealing: Dictionary = {}  ## estate id -> packs being wrapped on Sealing Benches (see sealing.gd), saved
 var recipes: Dictionary = {}  ## recipe book: recipe key -> {base, additives, made, best, day} (see products.gd), saved
 var prices: Dictionary = {}  ## your asking price per Standard unit, recipe key -> cr; no entry = market price, saved
 var dealers: Array = []  ## hired street dealers [{id, loc, stock, cash, sold, jail}] (see dealers.gd), saved
@@ -129,6 +131,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	workers = []
 	Workers.ensure(estates[SHIP_BAY])
 	bench = {}
+	sealing = {}
 	recipes = {}
 	prices = {}
 	dealers = []
@@ -333,6 +336,7 @@ func tick(dt: float) -> void:
 	Corruption.tick(self, dt)
 	_tick_lab(dt)
 	Workers.tick(self, dt)
+	Sealing.tick(self, dt)
 	_tick_demand(dt)
 	Deals.tick(self, dt)
 	Dealers.tick(self, dt)
@@ -844,6 +848,8 @@ func remove_building(estate_id: String, index: int) -> Dictionary:
 	var b: Dictionary = estates[estate_id].buildings[index]
 	if b.get("fixed", false):
 		return _fail("The %s came with the place and stays." % data.stations[b.id].name)
+	if b.id == Sealing.BENCH and not Sealing.can_remove(self, estate_id):
+		return _fail("Empty the sealing bench first.")
 	var refund := int(round(int(data.buildables[b.id].cost) * float(data.estate_refund)))
 	estates[estate_id].buildings.remove_at(index)
 	credits += refund
@@ -863,7 +869,7 @@ func to_dict() -> Dictionary:
 		"next_offer_id": next_offer_id, "offer_clock": snappedf(offer_clock, 0.01), "upgrades": upgrades.duplicate(),
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
-		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
+		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self), "sealing": Sealing.to_save(self),
 		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "quests": Quests.to_save(self),
 		"cartels": Cartels.to_save(self), "ship_class": ship_class, "hulls": hulls.duplicate(),
 		"style": Style.to_save(self),
@@ -941,6 +947,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	workers = Workers.from_save(self, d.get("workers", []))
 	_add_starter_estates()
 	Bench.from_save(self, d)
+	Sealing.from_save(self, d.get("sealing", {}))
 	Products.from_save(self, d.get("products", {}))
 	Dealers.from_save(self, d.get("dealers", []))
 	Quests.from_save(self, d.get("quests", {}), d.has("quests"))

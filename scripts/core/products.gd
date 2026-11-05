@@ -20,6 +20,9 @@ static func rules(g) -> Dictionary:
 
 ## Product key without the grade suffix.
 static func recipe_key(product_key: String) -> String:
+	var hash_at := product_key.find("#")
+	if hash_at >= 0:
+		product_key = product_key.substr(0, hash_at)
 	var at := product_key.find("@")
 	return product_key if at < 0 else product_key.substr(0, at)
 

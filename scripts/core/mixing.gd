@@ -28,15 +28,23 @@ static func traits_for(data: Dictionary, base: String, additives: Array) -> Arra
 	return traits
 
 
-static func key(base: String, traits: Array, grade: int = STANDARD) -> String:
+## A packaging tier above Loose (0) is appended as "#<tier>" after the grade (see packaging.gd).
+static func key(base: String, traits: Array, grade: int = STANDARD, pack: int = 0) -> String:
 	var sorted := traits.duplicate()
 	sorted.sort()
 	var k := base + ":" + "+".join(PackedStringArray(sorted))
-	return k if grade == STANDARD else "%s@%d" % [k, grade]
+	if grade != STANDARD:
+		k = "%s@%d" % [k, grade]
+	return k if pack <= 0 else "%s#%d" % [k, pack]
 
 
 static func parse_key(product_key: String) -> Dictionary:
 	var grade := STANDARD
+	var pack := 0
+	var hash_at := product_key.find("#")
+	if hash_at >= 0:
+		pack = int(product_key.substr(hash_at + 1))
+		product_key = product_key.substr(0, hash_at)
 	var at := product_key.find("@")
 	if at >= 0:
 		grade = int(product_key.substr(at + 1))
@@ -46,7 +54,7 @@ static func parse_key(product_key: String) -> Dictionary:
 	if parts.size() > 1 and parts[1] != "":
 		for t in parts[1].split("+"):
 			traits.append(t)
-	return {"base": parts[0], "traits": traits, "grade": grade}
+	return {"base": parts[0], "traits": traits, "grade": grade, "pack": pack}
 
 
 static func grade_info(data: Dictionary, grade: int) -> Dictionary:
@@ -74,4 +82,8 @@ static func display_name(data: Dictionary, product_key: String) -> String:
 	for t in p.traits:
 		names.append(data.traits[t].name)
 	var prefix: String = "" if p.grade == STANDARD else grade_info(data, p.grade).name + " "
-	return "%s%s [%s]" % [prefix, data.bases[p.base].name, ", ".join(PackedStringArray(names))]
+	var suffix := ""
+	var tiers: Array = data.get("packaging", {}).get("tiers", [])
+	if int(p.pack) > 0 and int(p.pack) < tiers.size():
+		suffix = " (%s)" % tiers[int(p.pack)].name
+	return "%s%s [%s]%s" % [prefix, data.bases[p.base].name, ", ".join(PackedStringArray(names)), suffix]
