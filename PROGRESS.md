@@ -732,3 +732,11 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
   people, stranger shows job, prompt shows want, talking opens Deals and makes a contact, name appears), menu smoke, screenshot.
 - Gaps: locals reuse the 8 NPC sprite looks (no per-planet outfits yet); no dialogue lines beyond the deal screen; the Contacts app
   grows long once you know many people (no search/filter yet, K3).
+
+## Running away raises heat (2026-11-05, wave 17)
+- **Core** `scripts/core/pursuit.gd`: `Pursuit.tick(g, dt, sprinting, seen, chasing)` adds heat while the player sprints in an officer's sight:
+  `heat.flee_chase_per_second` (1.2) when an officer chases or is armed and hostile, else `flee_carry_per_second` (0.5) when carrying product;
+  never above `flee_heat_cap` (80). Out of sight or walking adds nothing. Tunables live in `content.json` -> `heat`.
+- **Surface:** `_update_police` only reports "any officer sees me / any chasing" and calls `Pursuit.tick` (6 lines in surface.gd).
+- Verified: static review only. Godot is not installed in this sandbox, so unit tests (`test_flee_heat` added), UI smoke, tip audit and sim were NOT run locally; CI is the check.
+- Gaps: no toast or HUD hint yet when flee heat starts; no UI smoke assertion for the surface hook.
