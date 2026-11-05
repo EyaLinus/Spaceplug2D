@@ -9,6 +9,7 @@ const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const Corruption = preload("res://scripts/core/corruption.gd")
 const Workers = preload("res://scripts/core/workers.gd")
+const WorkerWalk = preload("res://scripts/core/worker_walk.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Orders = preload("res://scripts/core/orders.gd")
@@ -47,6 +48,7 @@ func _init() -> void:
 		"test_bench_mixing",
 		"test_bench_save",
 		"test_workers",
+		"test_worker_walk",
 		"test_ship_bay",
 		"test_orders",
 		"test_order_kits",
@@ -690,6 +692,69 @@ func test_workers() -> void:
 	check(o.workers.is_empty() and o.estates.shaft_shack.storage.is_empty() and o.estates.shaft_shack.job.is_empty(), "old saves load without workers")
 	o.tick(30.0)
 	check(o.estates.shaft_shack.buildings.size() == 4, "old save estate still ticks")
+func test_worker_walk() -> void:
+	var g := worker_game()
+	var est := "shaft_shack"
+	var size: Array = data.estates[est].size
+	g.credits = 20000
+	Workers.hire(g, "hollis")
+	Workers.hire(g, "reva")
+	check(WorkerWalk.activity(g, "hollis") == WorkerWalk.IDLE and WorkerWalk.target_cell(g, "hollis") == Vector2(-1, -1), "unassigned worker is idle with no cell")
+	check(WorkerWalk.activity(g, "nobody") == WorkerWalk.IDLE, "unknown worker idle")
+	Workers.assign(g, "hollis", est)
+	Workers.assign(g, "reva", est)
+	var idle_h := WorkerWalk.idle_cell(data, est, "lab_hand")
+	var idle_s := WorkerWalk.idle_cell(data, est, "stocker")
+	check(idle_h != idle_s, "roles wait at different spots")
+	for c in [idle_h, idle_s, WorkerWalk.storage_cell(data, est)]:
+		check(c.x > 0.0 and c.x < float(size[0]) and c.y > 0.0 and c.y < float(size[1]), "cell %s inside the room" % c)
+	check(WorkerWalk.activity(g, "hollis") == WorkerWalk.IDLE and WorkerWalk.target_cell(g, "hollis") == idle_h, "no recipe: lab hand waits at his idle spot")
+	check(WorkerWalk.activity(g, "reva") == WorkerWalk.IDLE and WorkerWalk.target_cell(g, "reva") == idle_s, "nothing to carry: stocker waits")
+	# station cell: first needed station, in front of it
+	var e: Dictionary = g.estates[est]
+	var st := WorkerWalk.station_cell(data, est, e.buildings, {})
+	var b0: Dictionary = e.buildings[0]
+	check(st.x >= float(b0.x) and st.x <= float(b0.x) + float(data.buildables[b0.id].size[0]) and st.y > float(b0.y), "station cell sits in front of the first station (%s)" % st)
+	check(WorkerWalk.station_cell(data, est, [], {}) == Vector2(-1, -1), "no station: no cell")
+	Workers.set_recipe(g, est, "weed", [], 5)
+	var needed: Array = Production.stations_for(data, "weed", [])
+	var sc := WorkerWalk.station_cell(data, est, e.buildings, e.recipe)
+	var found := false
+	for b in e.buildings:
+		if b.id == needed[0]:
+			found = absf(sc.x - (float(b.x) + float(data.buildables[b.id].size[0]) / 2.0)) < 0.01
+	check(found, "with a recipe the cell is at the first needed station")
+	# stocker with raws in storage carries them to the bench: storage first, station in the second half of the trip
+	g.cargo = {"cannabis": 5}
+	g.inside_estate = est
+	Workers.deposit(g, est, "cannabis", 5)
+	check(WorkerWalk.activity(g, "reva") == WorkerWalk.HAUL, "stocker has raws to carry")
+	e.haul_t = 0.0
+	check(WorkerWalk.target_cell(g, "reva") == WorkerWalk.storage_cell(data, est), "first half of a trip: at the storage")
+	e.haul_t = 1000.0
+	check(WorkerWalk.target_cell(g, "reva") == sc, "second half of a trip: at the station")
+	# with a stocker the lab hand stays at the station, without one he fetches from storage
+	check(WorkerWalk.activity(g, "hollis") == WorkerWalk.COOK and WorkerWalk.target_cell(g, "hollis") == sc, "stocked lab hand waits at the station")
+	Workers.assign(g, "reva", "")
+	check(WorkerWalk.activity(g, "hollis") == WorkerWalk.FETCH and WorkerWalk.target_cell(g, "hollis") == WorkerWalk.storage_cell(data, est), "unstocked lab hand fetches from storage")
+	# a running job keeps him at the station
+	g.tick(1.0)
+	check(not e.job.is_empty() and WorkerWalk.activity(g, "hollis") == WorkerWalk.COOK, "cooking at the station")
+	# presentation never touches the simulation
+	var before := JSON.stringify(g.to_dict())
+	for id in ["hollis", "reva"]:
+		WorkerWalk.activity(g, id)
+		WorkerWalk.target_cell(g, id)
+	check(JSON.stringify(g.to_dict()) == before, "walk helper is read-only")
+	# stable per-worker outfits that recolour the player sheet
+	var sw := WorkerWalk.look_swaps(data, "hollis")
+	check(not sw.is_empty() and sw == WorkerWalk.look_swaps(data, "hollis"), "outfit is stable")
+	var distinct := {}
+	for c in data.workers.candidates:
+		distinct[str(WorkerWalk.look_swaps(data, c.id))] = true
+	check(distinct.size() > 1, "workers do not all dress alike")
+
+
 func test_ship_bay() -> void:
 	var sb: String = Game.SHIP_BAY
 	check(data.estates.has(sb) and data.estates[sb].get("ship", false), "ship estate is defined")

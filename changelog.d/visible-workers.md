@@ -1,0 +1,1 @@
+- **Visible workers:** hired lab hands and stockers now walk around the estate you are standing in: to the storage crate to fetch or drop off goods, to their station while a batch cooks, and to an idle spot by the door when there is nothing to do. They wear their own recoloured outfit and show their first name. Purely cosmetic, production is unchanged.

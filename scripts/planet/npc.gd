@@ -14,6 +14,7 @@ var pick_next: Callable  ## returns a new path when this one is done (walkers on
 var look := ""  ## character sheet name in assets/gfx/chars; "" = closest npc_* look to `color`
 var hold := false  ## named people stop walking while the player stands next to them
 var marker := false  ## gold "$" above the head: you have an agreed deal with this person
+var sheet: Texture2D  ## recoloured sheet (hired workers); null = the plain look sheet
 var heading := Vector2.DOWN  ## last walking direction, picks the sprite row
 var _step := 0.0
 var _t := 0.0
@@ -40,7 +41,7 @@ func _draw() -> void:
 	var moving := not path.is_empty() and not hold
 	if look == "":  # people without a profile look match their data colour
 		look = Art.look_for_color(color)
-	if Art.draw_character(self, look, heading, int(_step * 4.0 / TAU) if moving else 0):
+	if Art.draw_character(self, look, heading, int(_step * 4.0 / TAU) if moving else 0, Vector2(0, 12), sheet):
 		_draw_name()
 		return
 	var swing := sin(_step) * 3.5 if moving else 0.0
