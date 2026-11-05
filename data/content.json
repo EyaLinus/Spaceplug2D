@@ -71,6 +71,21 @@
     "meth": {"name": "Meth", "tier": 3, "raw": "pseudo", "innate": "crisp", "base_value": 95, "heat_mult": 1.7},
     "fentanyl": {"name": "Fentanyl", "tier": 4, "raw": "fent_precursor", "innate": "deep", "base_value": 150, "heat_mult": 2.4}
   },
+  "laws": {
+    "_note": "Numbers are eyeballed, not balanced by long sims. Locations not listed count as tolerated everywhere.",
+    "levels": {
+      "legal": {"name": "Legal", "scan_mult": 0.5, "frisk_mult": 0.5, "heat_mult": 0.5, "price_mult": 0.95, "color": "#7fe3a0"},
+      "tolerated": {"name": "Tolerated", "scan_mult": 1.0, "frisk_mult": 1.0, "heat_mult": 1.0, "price_mult": 1.0, "color": "#e8d27a"},
+      "banned": {"name": "Banned", "scan_mult": 1.4, "frisk_mult": 1.6, "heat_mult": 1.4, "price_mult": 1.2, "color": "#ff7a6a"}
+    },
+    "planets": {
+      "mireth": {"1": "legal", "2": "tolerated", "3": "banned", "4": "banned"},
+      "cinder": {"1": "legal", "2": "tolerated", "3": "tolerated", "4": "banned"},
+      "bazaar": {"1": "legal", "2": "legal", "3": "tolerated", "4": "tolerated"},
+      "varrow": {"1": "legal", "2": "legal", "3": "legal", "4": "tolerated"},
+      "glacis": {"1": "tolerated", "2": "banned", "3": "banned", "4": "banned"}
+    }
+  },
   "systems": {
     "halvane": {
       "name": "Halvane Reach", "galaxy_pos": [0, 0], "security": "medium", "patrol_mult": 1.0,

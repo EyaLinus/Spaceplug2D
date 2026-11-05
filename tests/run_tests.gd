@@ -23,6 +23,7 @@ const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Laws = preload("res://scripts/core/laws.gd")
 
 var data: Dictionary
 var failures := 0
@@ -53,6 +54,7 @@ func _init() -> void:
 		"test_orders_save",
 		"test_galaxy_routes",
 		"test_galaxy_overlays",
+		"test_planet_laws",
 		"test_jump_drive",
 		"test_jump_drive_multi_hop",
 		"test_mixing_rules",
@@ -863,6 +865,44 @@ func test_galaxy_routes() -> void:
 	check(not Galaxy.plan(g, "halvane").ok, "no plan to the current system")
 	g.upgrades.engine = 3
 	check(Galaxy.charge_seconds(g) < pl.charge and Galaxy.charge_seconds(g) >= float(data.jump.min_charge), "engine upgrades shorten the charge, never below the minimum")
+
+
+## Per-planet laws (P6): levels, scan/frisk/heat/price scaling, data coverage and old saves.
+func test_planet_laws() -> void:
+	var g := new_game()
+	for loc in data.laws.planets:
+		check(data.locations.has(loc), "laws list a real location: " + loc)
+		for tier in data.laws.planets[loc]:
+			check(Laws.RANK.has(data.laws.planets[loc][tier]), "%s tier %s has a valid level" % [loc, tier])
+	for lv in Laws.RANK:
+		check(data.laws.levels.has(lv), "level rule exists: " + lv)
+	check(Laws.level(g, "mireth", "weed") == "legal" and Laws.level(g, "mireth", "meth") == "banned", "Mireth: weed legal, meth banned")
+	check(Laws.level(g, "beacon", "weed") == "tolerated", "unlisted location counts as tolerated")
+	check(Laws.heat_mult(g, "mireth", "weed") < 1.0 and Laws.heat_mult(g, "mireth", "meth") > 1.0, "legal cools, banned heats")
+	check(is_equal_approx(g.sale_heat_mult("meth", "mireth"), g.heat_mult("meth") * Laws.heat_mult(g, "mireth", "meth")), "sale heat multiplies strength and law")
+	var key := Mixing.key("meth", [])
+	var weed := Mixing.key("weed", [])
+	g.demand["mireth"]["meth"] = 1.0
+	var plain := int(round(Mixing.value(data, key) * Cartels.price_mult(g, "mireth") * float(data.market.fence_ratio)))
+	check(g.sell_price(key, "", "mireth") > plain, "banned goods sell at a premium")
+	check(Laws.price_mult(g, "mireth", "weed") < 1.0, "legal goods lose the premium")
+	g.location = "mireth"
+	var base_r := float(data.heat.scan_radius) * (1.0 - g.stealth())
+	check(is_equal_approx(g.scan_radius(), base_r), "no cargo = plain scan radius")
+	g.cargo[weed] = 1
+	check(g.scan_radius() < base_r, "carrying only legal goods shrinks the scan radius")
+	g.cargo[key] = 1
+	check(g.scan_radius() > base_r, "carrying banned goods widens the scan radius")
+	g.heat = 80.0
+	var banned_cops := g.police_on_foot(1.0)
+	g.cargo.erase(key)
+	check(g.police_on_foot(1.0) <= banned_cops, "legal cargo draws no more police on foot than banned")
+	check(Laws.frisk_mult(g, "mireth") < 1.0, "legal weed frisks lighter")
+	check(Laws.summary(g, "glacis").size() == data.bases.size() and Laws.line(g, "glacis").contains("Weed"), "summary lists every drug")
+	check(Laws.tooltip(g, "varrow").contains("Local laws"), "tooltip text")
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(Laws.level(h, "glacis", "cocaine") == "banned", "laws are static data, saves need nothing")
 
 
 ## Heat overlay and price comparison data (A6).

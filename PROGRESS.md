@@ -1,5 +1,10 @@
 # Progress log
 
+## P6: per-planet laws (2026-11-05)
+- **Laws:** `data/content.json` `laws` rates each drug tier legal / tolerated / banned per planet; `scripts/core/laws.gd` scales sale heat (all sale paths), patrol scan radius and on-foot frisk density by the strictest carried tier, and sell price (banned +20%, legal -5%). Stateless, old saves load unchanged. Map app shows a laws line and tooltip per location.
+- Numbers are eyeballed. NOT verified locally: Godot could not be run in the authoring sandbox, so unit tests (`test_planet_laws`), UI smoke and sim are left to CI; the balance impact on the sim is unchecked.
+- Gaps: scan law uses the last docked planet; no per-system laws; no laws UI in the shop.
+
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,
   version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building
