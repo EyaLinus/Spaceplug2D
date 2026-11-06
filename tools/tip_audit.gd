@@ -49,12 +49,27 @@ func _run() -> void:
 	await _frames(3)
 	var sf = m.surface
 	for spot in ["market", "rusk"]:
+		sf = m.surface
 		sf.place_player_at(spot)
 		for i in 4:
 			await physics_frame
 		sf.interact()
+		if m.surface != sf or sf.cfg.has("interior") or not m.station.visible:  # D4: market door -> room -> counter
+			for i in 4:
+				await physics_frame
+			sf = m.surface
+			if sf.cfg.has("interior"):
+				sf.place_player_at(spot)
+				for i in 4:
+					await physics_frame
+				sf.interact()
 		await _audit("station " + spot, m.station)
 		m.station.close()
+		if m.surface.cfg.has("interior"):
+			m.leave_interior()
+			for i in 3:
+				await physics_frame
+	sf = m.surface
 	g.buy("cannabis", 5)
 	g.buy("nanoflux", 5)
 	sf.place_player_at("cannery")

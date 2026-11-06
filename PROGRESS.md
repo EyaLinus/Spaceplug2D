@@ -5,6 +5,24 @@
   version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building
   interiors (D4), a real balance pass (waits for Linus), Ninth Veil base quest (chapter 3), duplicate PRs #48 and #64.
 
+## D4 leftover: Building interiors, first slice (2026-11-06, wave 27)
+- **Data** `data/interiors.json` (merged into `data.interiors` by `data.gd`), keyed `<planet>:<building id>`: room size, floor/wall/counter
+  colours, clerk name, props. Three rooms on Mireth: Spaceport Hangar (Rusk's repairs), Night Market, Ouroboros Consortium office.
+  Adding a room for another panel building is data only.
+- **Core** `scripts/core/interiors.gd` (headless, no autoloads): `has`, `build_cfg` (walled room, counter with the outer building's id/action/label,
+  a decorative clerk behind it, exit gap, `interior` marker), `door_stand`, `return_spot` (saved entry position, falls back to the door stand if off-map
+  or inside a building).
+- **Wiring** (kept small): `main.gd` intercepts a panel action (`SURFACE_TABS`) on a building that has an interior -> `enter_interior` (remembers the
+  exact player position, swaps the surface like estates do); the counter opens the same panel as before; `exit_interior` -> `leave_interior` re-lands and
+  puts the player back on the remembered spot. `surface.gd`: only two guards changed (`not cfg.has("interior")` next to the estate checks: no cover/locals,
+  no daylight tint). Rooms have no officers (`security` 0), so the frisk/chase loop is paused indoors.
+- Quest waypoints keep working inside (counter keeps the building id). Interior state is runtime only; the outside surface is rebuilt on exit like after an estate.
+- Verified: unit tests (`test_interiors`: layout inside the room, no overlaps, spawn/counter/exit reachable, panel action kept, return-spot rules; 10958 checks,
+  0 failures), UI smoke (door -> room, exit returns to the exact spot, re-enter, counter focus, panel via counter for hangar/market/office, market basket via
+  counter; SMOKE DONE 50 steps), tip audit (TIPS DONE 0), menu smoke. Updated `ui_smoke.gd` and `tip_audit.gd` for the extra door step.
+- Not verified: no screenshot (rendering not available here), so the room look is unseen; balance sim not run (no core economy change).
+- Gaps: only Mireth; other planets' markets/fences/NPC-run places still open at the door; no interior-only NPCs or ambience; save inside a room reloads outside.
+
 ## K3: QoL (phase 3 wave 10, 2026-11-03)
 - **Autopilot** (`ship.gd`): action `ship_autopilot` (T) toggles; `goal_provider` = `hud.quest_point` (set in main);
   `autopilot_step()` turns to the goal, thrusts when within ~20°, brakes inside the stopping distance, switches off

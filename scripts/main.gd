@@ -10,6 +10,7 @@ const StationScript = preload("res://scripts/ui/station_ui.gd")
 const BenchScript = preload("res://scripts/ui/bench_ui.gd")
 const SurfaceScript = preload("res://scripts/planet/surface.gd")
 const EstateLayout = preload("res://scripts/planet/estate_layout.gd")
+const Interiors = preload("res://scripts/core/interiors.gd")
 const MainMenuScript = preload("res://scripts/ui/menu/main_menu.gd")
 const PauseMenuScript = preload("res://scripts/ui/menu/pause_menu.gd")
 const SlotPanelScript = preload("res://scripts/ui/menu/slot_panel.gd")
@@ -46,6 +47,7 @@ const ACTIONS := {
 
 var world: Node2D
 var surface: Node2D  ## current planet surface instance, null in space
+var _interior_return: Dictionary = {}  ## D4: {loc, building, pos} where the player stood before entering a building
 var hud: Control
 var station: Control
 var bench: Control  ## station overlay on foot: start a tray, mix, play the station minigame (G2)
@@ -406,6 +408,12 @@ func _leave_surface() -> void:
 
 func _on_surface_action(action: String, p: Dictionary) -> void:
 	var g = GameState.game
+	if action == "exit_interior":
+		leave_interior()
+		return
+	if SURFACE_TABS.has(action) and not surface.cfg.has("interior") and Interiors.has(GameState.data, g.location, str(p.id)):
+		enter_interior(str(p.id))  # D4: the door leads into a room; its counter opens the panel
+		return
 	match action:
 		"takeoff":
 			undock()
@@ -476,6 +484,33 @@ func leave_estate() -> void:
 	for b in GameState.data.surfaces[loc].buildings:
 		if b.get("estate", "") == eid:
 			surface.place_player_at(b.id)
+
+
+## D4: walks through the door of a building that has an interior; remembers the exact spot to come back to.
+func enter_interior(building_id: String) -> void:
+	var loc: String = GameState.game.location
+	_interior_return = {"loc": loc, "building": building_id, "pos": surface.player.position}
+	station.close()
+	_leave_surface()
+	surface = SurfaceScript.new()
+	surface.setup("interior:" + Interiors.key(loc, building_id), Interiors.build_cfg(GameState.data, loc, building_id))
+	surface.interacted.connect(_on_surface_action)
+	add_child(surface)
+	move_child(surface, world.get_index() + 1)
+	world.visible = false
+	hud.surface = surface
+
+
+## Back out through the exit door to the exact spot outside the building.
+func leave_interior() -> void:
+	var r: Dictionary = _interior_return
+	var loc: String = GameState.game.location
+	var bid: String = str(surface.cfg.outer)
+	_land(loc, false)
+	var at := Interiors.return_spot(GameState.data, loc, bid, r.get("pos") if r.get("loc", "") == loc and r.get("building", "") == bid else null)
+	surface.player.position = at
+	surface.camera.reset_smoothing()
+	_interior_return = {}
 
 
 func open_build_menu() -> void:

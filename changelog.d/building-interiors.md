@@ -1,0 +1,1 @@
+- **Building interiors:** On Mireth the Spaceport Hangar, the Night Market and the Ouroboros Consortium office are now small rooms. Step through the door, use the counter for the usual panel, and the exit door puts you back on the exact spot outside.

@@ -23,6 +23,7 @@ const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Interiors = preload("res://scripts/core/interiors.gd")
 
 var data: Dictionary
 var failures := 0
@@ -79,6 +80,7 @@ func _init() -> void:
 		"test_people_save",
 		"test_people_schedules_on_surfaces",
 		"test_planet_districts",
+		"test_interiors",
 		"test_locals",
 		"test_deal_requests",
 		"test_deal_answers",
@@ -1210,6 +1212,58 @@ func test_people_save() -> void:
 
 
 ## D4: every planet is a big map split into named districts, with landmarks (areas) that are either paint or walls.
+## D4: building interiors (data/interiors.json + core/interiors.gd).
+func test_interiors() -> void:
+	var Nav = load("res://scripts/planet/nav.gd")
+	check(data.interiors.size() >= 2, "at least two interiors")
+	for k in data.interiors:
+		var parts: PackedStringArray = k.split(":")
+		check(parts.size() == 2 and data.surfaces.has(parts[0]), "%s: key is planet:building on a known planet" % k)
+		var loc: String = parts[0]
+		var bid: String = parts[1]
+		var outer := Interiors.outer_building(data, loc, bid)
+		check(not outer.is_empty() and ["market", "shipyard", "office", "fence"].has(outer.get("action", "")), "%s: outer building has a panel action" % k)
+		check(Interiors.has(data, loc, bid) and not Interiors.has(data, loc, "nope"), "%s: has()" % k)
+		var cfg := Interiors.build_cfg(data, loc, bid)
+		check(cfg.has("interior") and cfg.outer == bid and not cfg.has("estate"), "%s: marked as interior" % k)
+		var map := Rect2(0, 0, cfg.size[0], cfg.size[1])
+		var rects: Array = []
+		for b in cfg.buildings:
+			var r := Rect2(b.rect[0], b.rect[1], b.rect[2], b.rect[3])
+			check(map.encloses(r), "%s/%s inside the room" % [k, b.id])
+			for o in rects:
+				check(not o.intersects(r), "%s/%s does not overlap" % [k, b.id])
+			rects.append(r)
+		var counter: Dictionary = cfg.buildings.filter(func(b): return b.id == bid)[0]
+		check(counter.action == outer.action and counter.label == str(outer.get("label", outer.name)), "%s: counter keeps the panel action" % k)
+		var nav: AStarGrid2D = Nav.build(cfg)
+		var spawn := Vector2i(int(cfg.spawn[0]), int(cfg.spawn[1]))
+		check(not nav.is_point_solid(spawn), "%s: spawn is free" % k)
+		var ex: Dictionary = cfg.exits[0]
+		check(ex.action == "exit_interior", "%s: exit door action" % k)
+		var exit_cell := Vector2i(int(ex.pos[0]), int(ex.pos[1]))
+		check(not nav.is_point_solid(exit_cell), "%s: exit gap is free" % k)
+		var front := Vector2i(int(counter.door[0]), int(counter.door[1]))
+		check(not nav.is_point_solid(front), "%s: free cell in front of the counter" % k)
+		check(not nav.get_id_path(spawn, front).is_empty() and not nav.get_id_path(spawn, exit_cell).is_empty(), "%s: counter and exit reachable from spawn" % k)
+		for p in cfg.props:
+			check(map.has_point(Vector2(p[1], p[2])), "%s: prop %s inside" % [k, p[0]])
+		var clerk: Dictionary = cfg.npcs[0]
+		check(not rects.any(func(r): return r.has_point(Vector2(clerk.pos[0], clerk.pos[1]))), "%s: clerk stands on free floor" % k)
+		# return spot: the exact entry spot wins, junk falls back to the door
+		var stand := Interiors.door_stand(data, loc, bid)
+		var tile := float(data.surfaces[loc].get("tile", 32))
+		var door_r := Rect2(Vector2(outer.rect[0], outer.rect[1]) * tile, Vector2(outer.rect[2], outer.rect[3]) * tile)
+		check(not door_r.has_point(stand), "%s: door stand is outside the building" % k)
+		var spot := stand + Vector2(37.0, 11.0)
+		check(Interiors.return_spot(data, loc, bid, spot) == spot, "%s: exact spot is kept" % k)
+		check(Interiors.return_spot(data, loc, bid, null) == stand, "%s: no spot -> door" % k)
+		check(Interiors.return_spot(data, loc, bid, Vector2(-50, -50)) == stand, "%s: off-map spot -> door" % k)
+		check(Interiors.return_spot(data, loc, bid, door_r.get_center()) == stand, "%s: spot inside the building -> door" % k)
+	# every interior-capable building is a panel building, the shipyard one included (mechanic)
+	check(Interiors.has(data, "mireth", "spaceport") and Interiors.has(data, "mireth", "market") and Interiors.has(data, "mireth", "office"), "mechanic, market and Consortium office have interiors")
+
+
 func test_planet_districts() -> void:
 	var Nav = load("res://scripts/planet/nav.gd")
 	var kinds := ["water", "pit", "slag", "void", "chasm", "grass", "sand", "salt", "ice", "rubble", "rail", "deck", "arena", "dome"]

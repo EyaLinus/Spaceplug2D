@@ -1,0 +1,20 @@
+{
+  "mireth:spaceport": {
+    "name": "Spaceport Hangar", "size": [10, 6], "ground": "#2c313b", "ground_alt": "#323843", "wall": "#4b5d7a",
+    "counter": {"width": 4, "color": "#6b7a96"},
+    "clerk": {"name": "Rusk's bench", "color": "#ff9a4d"},
+    "props": [["crate", 1.6, 3.0], ["barrel", 1.5, 4.4], ["barrel", 10.2, 3.2], ["crate", 10.2, 4.6], ["lamp", 3.0, 3.6], ["lamp", 9.0, 3.6]]
+  },
+  "mireth:market": {
+    "name": "Night Market", "size": [11, 6], "ground": "#3a2a20", "ground_alt": "#41302a", "wall": "#7a5a3a",
+    "counter": {"width": 5, "color": "#a0472f"},
+    "clerk": {"name": "Stallkeeper", "color": "#e8b04a"},
+    "props": [["stall", 1.8, 3.4], ["stall", 11.4, 3.4], ["neon", 6.5, 4.6], ["crate", 1.5, 5.0], ["lamp", 4.0, 3.8], ["lamp", 9.0, 3.8]]
+  },
+  "mireth:office": {
+    "name": "Ouroboros Consortium", "size": [9, 6], "ground": "#241c33", "ground_alt": "#2a2139", "wall": "#2e2440",
+    "counter": {"width": 3, "color": "#5a2d6e"},
+    "clerk": {"name": "Consortium clerk", "color": "#c79bff"},
+    "props": [["rug", 5.5, 4.4], ["plant", 1.5, 3.2], ["plant", 9.4, 3.2], ["sofa", 2.6, 5.0], ["trophy", 8.6, 5.0]]
+  }
+}

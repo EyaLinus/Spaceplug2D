@@ -206,11 +206,37 @@ func _run() -> void:
 	var expect := {"spaceport": "Shipyard", "market": "Market", "office": "Office",
 		"rusk": "Shipyard", "okka": "Deals", "sen": "Deals"}
 	for id in expect:
+		sf = m.surface
 		sf.place_player_at(id)
 		await physics_frame
 		await physics_frame
 		_assert(not sf.focus.is_empty() and sf.focus.payload.id == id, "focus on %s (got %s)" % [id, sf.focus.get("payload", {})])
 		_assert(m.hud._prompt.text.begins_with("[E]"), "HUD prompt for %s" % id)
+		if gs.data.interiors.has("mireth:" + id):  # D4: the door leads into a room, the counter opens the panel
+			sf.player.position += Vector2(5, 3)  # an exact spot outside, not the door stand
+			var spot_out: Vector2 = sf.player.position
+			await physics_frame
+			_assert(sf.interact(), "walk through the door of %s" % id)
+			await frames(2)
+			sf = m.surface
+			_assert(sf.cfg.get("interior", "") == "mireth:" + id and not m.station.visible and sf.officers.is_empty(), "%s: inside the interior" % id)
+			sf.place_player_at("exit")
+			await physics_frame
+			await physics_frame
+			_assert(sf.interact(), "%s: use the exit door" % id)
+			await frames(2)
+			sf = m.surface
+			_assert(sf.loc_id == "mireth" and sf.player.position.distance_to(spot_out) < 0.5, "%s: exit returns to the exact spot outside" % id)
+			sf.place_player_at(id)
+			await physics_frame
+			await physics_frame
+			_assert(sf.interact(), "%s: re-enter" % id)
+			await frames(2)
+			sf = m.surface
+			sf.place_player_at(id)  # the counter inside carries the building's id
+			await physics_frame
+			await physics_frame
+			_assert(not sf.focus.is_empty() and sf.focus.payload.id == id, "%s: focus on the counter (got %s)" % [id, sf.focus.get("payload", {})])
 		_assert(sf.interact(), "interact with %s" % id)
 		await frames(2)
 		_assert(m.station.visible and m.station.tab_names() == [expect[id]], "%s opens %s (got %s)" % [id, expect[id], m.station.tab_names()])
@@ -218,7 +244,14 @@ func _run() -> void:
 		m.station.close_requested.emit()
 		await frames(1)
 		_assert(not m.station.visible, "panel closes")
-	step("doors and people")
+		if sf.cfg.has("interior"):
+			sf.place_player_at("exit")
+			await physics_frame
+			await physics_frame
+			sf.interact()
+			await frames(2)
+	sf = m.surface
+	step("doors, interiors and people")
 
 	# B4: the townsfolk are named customers; unknown ones show their job, talking makes them a contact
 	var g0 = gs.game
@@ -241,10 +274,17 @@ func _run() -> void:
 	step("named townsfolk")
 
 	# market shop screen: item cards fill a basket, one checkout buys it all
+	sf = m.surface
 	sf.place_player_at("market")
 	await physics_frame
 	await physics_frame
-	sf.interact()
+	sf.interact()  # into the Night Market
+	await frames(2)
+	sf = m.surface
+	sf.place_player_at("market")
+	await physics_frame
+	await physics_frame
+	sf.interact()  # the counter
 	await frames(2)
 	var have_c := int(g.cargo.get("cannabis", 0))
 	m.station.find_child("Item_cannabis", true, false).pressed.emit()
@@ -260,6 +300,12 @@ func _run() -> void:
 	_assert(int(g.cargo.get("cannabis", 0)) == have_c + 2 and g.credits < cr_before and m.station._basket.is_empty(), "checkout buys the basket")
 	m.station.close_requested.emit()
 	await frames(1)
+	sf.place_player_at("exit")
+	await physics_frame
+	await physics_frame
+	sf.interact()
+	await frames(2)
+	sf = m.surface
 	# shipyard cards: one button per upgrade
 	sf.place_player_at("rusk")
 	await physics_frame

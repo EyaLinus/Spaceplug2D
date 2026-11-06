@@ -95,7 +95,7 @@ func setup(id: String, surface_cfg: Dictionary) -> void:
 	cfg = surface_cfg
 	tile = float(cfg.get("tile", 32))
 	map_size = Vector2(cfg.size[0], cfg.size[1]) * tile
-	if not cfg.has("estate"):  # estate interiors have no cover
+	if not cfg.has("estate") and not cfg.has("interior"):  # estate and building interiors have no cover
 		cfg = cfg.duplicate()
 		cfg.cover = Combat.cover_tiles(GameState.data, id)
 		covers = Combat.cover_rects(cfg.cover, tile)
@@ -235,7 +235,7 @@ func _ready() -> void:
 	camera.make_current()
 	EventBus.shake.connect(func(st: float): shake = maxf(shake, st))
 	EventBus.game_event.connect(_on_style_event)
-	if not cfg.has("estate"):  # interiors keep their own lighting
+	if not cfg.has("estate") and not cfg.has("interior"):  # interiors keep their own lighting
 		_daylight = CanvasModulate.new()
 		add_child(_daylight)
 		_update_daylight()
