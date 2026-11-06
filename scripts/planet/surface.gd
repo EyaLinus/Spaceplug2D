@@ -9,6 +9,7 @@ const WalkerScript = preload("res://scripts/planet/walker.gd")
 const NpcScript = preload("res://scripts/planet/npc.gd")
 const OfficerScript = preload("res://scripts/planet/officer.gd")
 const Art = preload("res://scripts/core/art.gd")
+const Pursuit = preload("res://scripts/core/pursuit.gd")
 const Nav = preload("res://scripts/planet/nav.gd")
 const FloatText = preload("res://scripts/world/float_text.gd")
 const Style = preload("res://scripts/core/style.gd")
@@ -455,6 +456,8 @@ func _update_police(delta: float) -> void:
 			o.path = []
 	player.modulate.a = 0.45 if hiding.hidden else 1.0
 	var drawn := Combat.officers_armed(g)
+	var flee_seen := false
+	var flee_chased := false
 	for o in officers:
 		var seen: bool = Hiding.visible_to_officer(hiding, OfficerScript.sees(o.position, o.facing, player.position, o.vision, o.cone, _blockers))
 		var dist: float = o.position.distance_to(player.position)
@@ -480,6 +483,9 @@ func _update_police(delta: float) -> void:
 					EventBus.game_event.emit("shot", {"weapon": "officer"})
 		if seen and carrying and not hostile:
 			watched = true
+		if seen:
+			flee_seen = true
+			flee_chased = flee_chased or o.chasing or hostile
 		if o.chasing:
 			if not (carrying or hostile) or dist > float(pc.give_up_range):
 				o.chasing = false
@@ -497,6 +503,7 @@ func _update_police(delta: float) -> void:
 			o.speed = float(pc.chase_speed)
 			if not hostile:
 				EventBus.toast.emit("An officer spotted you. Lose them!", false)
+	Pursuit.tick(g, delta, player.sprinting, flee_seen, flee_chased)  # running in their sight is suspicious
 	if _repath <= 0.0:
 		_repath = 0.35
 	var old := suspicion

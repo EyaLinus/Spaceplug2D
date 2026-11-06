@@ -26,7 +26,10 @@
     "bust_fine_ratio": 0.15,
     "bust_fine_min": 50,
     "bust_heat_drop": 40,
-    "bribe_credits_per_heat": 12
+    "bribe_credits_per_heat": 12,
+    "flee_chase_per_second": 1.2,
+    "flee_carry_per_second": 0.5,
+    "flee_heat_cap": 80
   },
   "market": {
     "saturation_per_unit": 0.03,

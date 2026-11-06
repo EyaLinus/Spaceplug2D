@@ -1,0 +1,1 @@
+- **Running away raises heat:** sprinting in an officer's sight adds heat per second, more while an officer is chasing you (or has drawn a weapon) and less when you merely carry product. Out of sight or walking adds nothing. Rates and cap are in `content.json` -> `heat` (`flee_chase_per_second`, `flee_carry_per_second`, `flee_heat_cap`).

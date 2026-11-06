@@ -52,6 +52,7 @@ func _init() -> void:
 		"test_interiors",
 		"test_art_registry",
 		"test_police_on_foot",
+		"test_flee_heat",
 		"test_combat_weapons",
 		"test_combat_player",
 		"test_combat_geometry",
@@ -394,6 +395,30 @@ func test_police_on_foot() -> void:
 	check(not Officer.sees(Vector2.ZERO, Vector2.RIGHT, Vector2(-100, 0), 170.0, cone, []), "blind behind")
 	check(not Officer.sees(Vector2.ZERO, Vector2.RIGHT, Vector2(300, 0), 170.0, cone, []), "out of range")
 	check(not Officer.sees(Vector2.ZERO, Vector2.RIGHT, Vector2(150, 0), 170.0, cone, [Rect2(60, -20, 20, 40)]), "walls block sight")
+
+
+func test_flee_heat() -> void:
+	var Pursuit = load("res://scripts/core/pursuit.gd")
+	var h: Dictionary = data.heat
+	check(float(h.flee_chase_per_second) > float(h.flee_carry_per_second) and float(h.flee_carry_per_second) > 0.0, "flee heat is tunable data")
+	var g := new_game()
+	g.cargo.clear()
+	check(Pursuit.tick(g, 1.0, true, true, false) == 0.0 and g.heat == 0.0, "sprinting in sight without product and no chase: no heat")
+	g.cargo["weed:glow"] = 3
+	check(g.has_contraband(), "weed counts as product")
+	check(Pursuit.tick(g, 1.0, false, true, true) == 0.0, "walking adds nothing")
+	check(Pursuit.tick(g, 1.0, true, false, true) == 0.0 and g.heat == 0.0, "out of sight adds nothing, even when chased")
+	var a: float = Pursuit.tick(g, 2.0, true, true, false)
+	check(is_equal_approx(a, 2.0 * float(h.flee_carry_per_second)) and is_equal_approx(g.heat, a), "carrying and sprinting in sight: heat per second")
+	var b: float = Pursuit.tick(g, 2.0, true, true, true)
+	check(b > a and is_equal_approx(b, 2.0 * float(h.flee_chase_per_second)), "being chased is hotter")
+	g.cargo.clear()
+	g.heat = 0.0
+	check(Pursuit.tick(g, 1.0, true, true, true) > 0.0, "a chase heats even without product (armed officer / chase)")
+	g.heat = float(h.flee_heat_cap) - 0.1
+	Pursuit.tick(g, 10.0, true, true, true)
+	check(is_equal_approx(g.heat, float(h.flee_heat_cap)), "flee heat stops at the cap")
+	check(Pursuit.tick(g, 10.0, true, true, true) == 0.0, "no more at the cap")
 
 
 # ---------------------------------------------------------------- E1 ground combat
