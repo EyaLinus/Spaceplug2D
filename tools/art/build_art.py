@@ -748,6 +748,101 @@ def build_space() -> list[Path]:
     return out
 
 
+# ---------------------------------------------------------------- art pass 4: fx, idle frames, ground edges, starfield
+
+def build_fx() -> list[Path]:
+    """Combat effects from sprites/fx_*.txt and the starfield sprites: all frames side by side in one strip each
+    (fx/<name>.png, space/stars.png). Single-frame files are one sprite pointing right; Godot rotates them."""
+    out = []
+    for src in sorted((SRC / "sprites").glob("fx_*.txt")):
+        legend, frames = parse_grid(src)
+        w, h = max(len(r) for r in frames[0]), len(frames[0])
+        sheet = Image.new("RGBA", (w * len(frames), h), CLEAR)
+        for i, f in enumerate(frames):
+            sheet.paste(grid_image(f, legend), (i * w, 0))
+        out.append(save(sheet, f"fx/{src.stem[3:]}.png"))
+    legend, frames = parse_grid(SRC / "sprites" / "stars.txt")
+    sheet = Image.new("RGBA", (8 * len(frames), 8), CLEAR)
+    for i, f in enumerate(frames):
+        sheet.paste(grid_image(f, legend), (i * 8, 0))
+    out.append(save(sheet, "space/stars.png"))
+    out.append(save(nebula_strip(3, 48), "space/nebula.png"))
+    return out
+
+
+def nebula_strip(n: int, d: int) -> Image.Image:
+    """n neutral gas clouds (d art px each): dithered fbm density with a radial falloff, stone ramp so the game can
+    tint each cloud with the system's nebula colour. Transparent where the gas is thin."""
+    import math
+    ramp = ["slate_dark", "slate", "slate_light", "stone"]
+    sheet = Image.new("RGBA", (d * n, d), CLEAR)
+    for i in range(n):
+        f = fbm(200 + i * 7)
+        for y in range(d):
+            for x in range(d):
+                r = math.hypot(x - (d - 1) / 2, y - (d - 1) / 2) / (d / 2)
+                v = f(x / d, y / d) * 1.5 - r * 1.1
+                if v <= 0.05 + 0.35 * (BAYER[y % 4][x % 4] / 15.0) * 0.5:
+                    continue
+                sheet.putpixel((i * d + x, y), color(shade(ramp, min(1.0, v * 1.4), x, y)))
+    return sheet
+
+
+IDLE_FRAMES = 4  # stand, breathe (head and shoulders 1 px lower), stand, blink
+
+
+def build_idle() -> list[Path]:
+    """chars/<look>_idle.png: 4 idle frames x 3 facings (down/up/right) derived from the walk sheet's idle frame."""
+    looks = yaml.safe_load((SRC / "characters.yaml").read_text())
+    dirs = [parse_grid(SRC / "sprites" / f"char_{d}.txt") for d in ("down", "up", "right")]
+    out = []
+    for look, roles in looks.items():
+        sheet = Image.new("RGBA", (T * IDLE_FRAMES, T * 3), CLEAR)
+        for row, (legend, frames) in enumerate(dirs):
+            lg = dict(legend)
+            lg.update(roles)
+            base = frames[0]
+            breathe = ["." * len(base[0])] + base[0:8] + base[9:]
+            blink = [r.replace("E", "S") for r in base]
+            for col, fr in enumerate((base, breathe, base, blink)):
+                sheet.paste(grid_image(fr, lg), (col * T, row * T))
+        out.append(save(sheet, f"chars/{look}_idle.png"))
+    return out
+
+
+def build_edges() -> list[Path]:
+    """tiles/<set>_edge.png: 8 fringe tiles (N, E, S, W, NE, SE, SW, NW) drawn over a road or plaza tile where the
+    ground starts on that side (corners = ground only diagonal). The fringe reuses the ground tile's own pixels,
+    so it matches every set. Run after build_tiles()."""
+    out = []
+    for gp in sorted((OUT / "tiles").glob("*_ground.png")):
+        ground = Image.open(gp).convert("RGBA").resize((T * 4, T), Image.NEAREST)
+        ground = ground.crop((0, 0, T, T))  # first ground variant at art scale
+        name = gp.name.replace("_ground", "_edge")
+        r = random.Random(sum(map(ord, name)))
+
+        def fringe(side: str) -> Image.Image:
+            img = Image.new("RGBA", (T, T), CLEAR)
+            for i in range(T):
+                d = 1 + sum(r.random() < p for p in (0.9, 0.6, 0.3, 0.1))  # 1..5 px deep, ragged
+                for k in range(d):
+                    x, y = {"N": (i, k), "S": (i, T - 1 - k), "W": (k, i), "E": (T - 1 - k, i)}[side]
+                    img.putpixel((x, y), ground.getpixel((x, y)))
+            return img
+
+        tiles = [fringe(side) for side in "NESW"]
+        for cx, cy in ((1, 0), (1, 1), (0, 1), (0, 0)):  # NE, SE, SW, NW
+            img = Image.new("RGBA", (T, T), CLEAR)
+            for dy in range(5):
+                for dx in range(5):
+                    if dx + dy < 4 + (r.random() < 0.4) - (r.random() < 0.3):
+                        x, y = (T - 1 - dx if cx else dx), (T - 1 - dy if cy else dy)
+                        img.putpixel((x, y), ground.getpixel((x, y)))
+            tiles.append(img)
+        out.append(save(strip(tiles), f"tiles/{name}"))
+    return out
+
+
 def contact_sheet(paths: list[Path], dest: Path) -> None:
     pad, scale = 8, 2
     imgs = [Image.open(p) for p in paths]
@@ -836,7 +931,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--preview", help="also write a contact sheet of every output to this PNG")
     args = ap.parse_args()
-    paths = build_characters() + build_sprites() + build_stations() + build_tiles() + build_building_parts() + build_space() + build_icons() + build_ship_modules() + build_ui()
+    paths = build_characters() + build_sprites() + build_stations() + build_tiles() + build_edges() + build_idle() + build_fx() + build_building_parts() + build_space() + build_icons() + build_ship_modules() + build_ui()
     for p in paths:
         print(p.relative_to(ROOT))
     if args.preview:

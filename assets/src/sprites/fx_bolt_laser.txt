@@ -1,0 +1,23 @@
+# Player laser bolt, points right; Godot rotates it.
+legend:
+. = transparent
+k = ink
+W = white
+Y = gold
+L = gold_light
+y = gold_dark
+R = red
+r = red_dark
+T = teal
+t = teal_dark
+b = blue_light
+B = blue
+S = slate_light
+s = slate
+n = rust_light
+---
+.kkkkkkkkkkkkk..
+kttTTTTTTTTWWWk.
+kTTTTTWWWWWWWWWk
+kttTTTTTTTTWWWk.
+.kkkkkkkkkkkkk..

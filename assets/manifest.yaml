@@ -259,6 +259,92 @@ assets:
     source: assets/src/sprites/char_down.txt
     status: done
     updated: '2026-10-30'
+  chars_idle:
+    created: '2026-11-03'
+    kind: character
+    method: pixel
+    note: 4 idle frames x 3 facings, derived from walk-sheet idle frame (breathe,
+      blink)
+    outputs:
+    - assets/gfx/chars/npc_green_idle.png
+    - assets/gfx/chars/npc_pink_idle.png
+    - assets/gfx/chars/npc_purple_idle.png
+    - assets/gfx/chars/npc_red_idle.png
+    - assets/gfx/chars/npc_rust_idle.png
+    - assets/gfx/chars/npc_sky_idle.png
+    - assets/gfx/chars/npc_slate_idle.png
+    - assets/gfx/chars/npc_teal_idle.png
+    - assets/gfx/chars/officer_idle.png
+    - assets/gfx/chars/player_idle.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-11-03'
+  fx_bolt_laser:
+    created: '2026-11-03'
+    kind: sprite
+    method: pixel
+    note: space combat fx, frames in one strip; not yet drawn by combat_layer.gd (procedural
+      there)
+    outputs:
+    - assets/gfx/fx/bolt_laser.png
+    source: assets/src/sprites/fx_bolt_laser.txt
+    status: done
+    updated: '2026-11-03'
+  fx_bolt_pirate:
+    created: '2026-11-03'
+    kind: sprite
+    method: pixel
+    note: space combat fx, frames in one strip; not yet drawn by combat_layer.gd (procedural
+      there)
+    outputs:
+    - assets/gfx/fx/bolt_pirate.png
+    source: assets/src/sprites/fx_bolt_pirate.txt
+    status: done
+    updated: '2026-11-03'
+  fx_explosion:
+    created: '2026-11-03'
+    kind: sprite
+    method: pixel
+    note: space combat fx, frames in one strip; not yet drawn by combat_layer.gd (procedural
+      there)
+    outputs:
+    - assets/gfx/fx/explosion.png
+    source: assets/src/sprites/fx_explosion.txt
+    status: done
+    updated: '2026-11-03'
+  fx_hit:
+    created: '2026-11-03'
+    kind: sprite
+    method: pixel
+    note: space combat fx, frames in one strip; not yet drawn by combat_layer.gd (procedural
+      there)
+    outputs:
+    - assets/gfx/fx/hit.png
+    source: assets/src/sprites/fx_hit.txt
+    status: done
+    updated: '2026-11-03'
+  fx_missile:
+    created: '2026-11-03'
+    kind: sprite
+    method: pixel
+    note: space combat fx, frames in one strip; not yet drawn by combat_layer.gd (procedural
+      there)
+    outputs:
+    - assets/gfx/fx/missile.png
+    source: assets/src/sprites/fx_missile.txt
+    status: done
+    updated: '2026-11-03'
+  fx_shield:
+    created: '2026-11-03'
+    kind: sprite
+    method: pixel
+    note: space combat fx, frames in one strip; not yet drawn by combat_layer.gd (procedural
+      there)
+    outputs:
+    - assets/gfx/fx/shield.png
+    source: assets/src/sprites/fx_shield.txt
+    status: done
+    updated: '2026-11-03'
   icon_app_contacts:
     created: '2026-10-30'
     kind: icon
@@ -369,6 +455,16 @@ assets:
     source: assets/src/icons/fentanyl.txt
     status: done
     updated: '2026-10-30'
+  icon_hud_boost:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: combat HUD / galaxy map icon
+    outputs:
+    - assets/gfx/icons/hud_boost.png
+    source: assets/src/icons/hud_boost.txt
+    status: done
+    updated: '2026-11-03'
   icon_hud_credits:
     created: '2026-10-30'
     kind: icon
@@ -399,6 +495,36 @@ assets:
     source: assets/src/icons/hud_heat.txt
     status: done
     updated: '2026-10-30'
+  icon_hud_hull:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: combat HUD / galaxy map icon
+    outputs:
+    - assets/gfx/icons/hud_hull.png
+    source: assets/src/icons/hud_hull.txt
+    status: done
+    updated: '2026-11-03'
+  icon_hud_missile:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: combat HUD / galaxy map icon
+    outputs:
+    - assets/gfx/icons/hud_missile.png
+    source: assets/src/icons/hud_missile.txt
+    status: done
+    updated: '2026-11-03'
+  icon_hud_shield:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: combat HUD / galaxy map icon
+    outputs:
+    - assets/gfx/icons/hud_shield.png
+    source: assets/src/icons/hud_shield.txt
+    status: done
+    updated: '2026-11-03'
   icon_ion_syrup:
     created: '2026-10-30'
     kind: icon
@@ -409,6 +535,46 @@ assets:
     source: assets/src/icons/ion_syrup.txt
     status: done
     updated: '2026-10-30'
+  icon_map_gate:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: combat HUD / galaxy map icon
+    outputs:
+    - assets/gfx/icons/map_gate.png
+    source: assets/src/icons/map_gate.txt
+    status: done
+    updated: '2026-11-03'
+  icon_map_hostile:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: combat HUD / galaxy map icon
+    outputs:
+    - assets/gfx/icons/map_hostile.png
+    source: assets/src/icons/map_hostile.txt
+    status: done
+    updated: '2026-11-03'
+  icon_map_ship:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: combat HUD / galaxy map icon
+    outputs:
+    - assets/gfx/icons/map_ship.png
+    source: assets/src/icons/map_ship.txt
+    status: done
+    updated: '2026-11-03'
+  icon_map_star:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: combat HUD / galaxy map icon
+    outputs:
+    - assets/gfx/icons/map_star.png
+    source: assets/src/icons/map_star.txt
+    status: done
+    updated: '2026-11-03'
   icon_meth:
     created: '2026-10-30'
     kind: icon
@@ -439,6 +605,126 @@ assets:
     source: assets/src/icons/pseudo.txt
     status: done
     updated: '2026-10-30'
+  icon_st_cook_stove:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: lab station icon for dropdowns/minigame panels (key st_<station>)
+    outputs:
+    - assets/gfx/icons/st_cook_stove.png
+    source: assets/src/icons/st_cook_stove.txt
+    status: done
+    updated: '2026-11-03'
+  icon_st_extractor:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: lab station icon for dropdowns/minigame panels (key st_<station>)
+    outputs:
+    - assets/gfx/icons/st_extractor.png
+    source: assets/src/icons/st_extractor.txt
+    status: done
+    updated: '2026-11-03'
+  icon_st_mixing_station:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: lab station icon for dropdowns/minigame panels (key st_<station>)
+    outputs:
+    - assets/gfx/icons/st_mixing_station.png
+    source: assets/src/icons/st_mixing_station.txt
+    status: done
+    updated: '2026-11-03'
+  icon_st_pack_table:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: lab station icon for dropdowns/minigame panels (key st_<station>)
+    outputs:
+    - assets/gfx/icons/st_pack_table.png
+    source: assets/src/icons/st_pack_table.txt
+    status: done
+    updated: '2026-11-03'
+  icon_st_precursor_scale:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: lab station icon for dropdowns/minigame panels (key st_<station>)
+    outputs:
+    - assets/gfx/icons/st_precursor_scale.png
+    source: assets/src/icons/st_precursor_scale.txt
+    status: done
+    updated: '2026-11-03'
+  icon_st_refiner:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: lab station icon for dropdowns/minigame panels (key st_<station>)
+    outputs:
+    - assets/gfx/icons/st_refiner.png
+    source: assets/src/icons/st_refiner.txt
+    status: done
+    updated: '2026-11-03'
+  icon_st_trim_table:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: lab station icon for dropdowns/minigame panels (key st_<station>)
+    outputs:
+    - assets/gfx/icons/st_trim_table.png
+    source: assets/src/icons/st_trim_table.txt
+    status: done
+    updated: '2026-11-03'
+  icon_st_auto_trimmer:
+    created: '2026-11-06'
+    kind: icon
+    method: pixel
+    note: lab station icon for dropdowns/minigame panels (key st_<station>)
+    outputs:
+    - assets/gfx/icons/st_auto_trimmer.png
+    source: assets/src/icons/st_auto_trimmer.txt
+    status: done
+    updated: '2026-11-06'
+  icon_st_drip_mixer:
+    created: '2026-11-06'
+    kind: icon
+    method: pixel
+    note: lab station icon for dropdowns/minigame panels (key st_<station>)
+    outputs:
+    - assets/gfx/icons/st_drip_mixer.png
+    source: assets/src/icons/st_drip_mixer.txt
+    status: done
+    updated: '2026-11-06'
+  icon_st_drying_table:
+    created: '2026-11-06'
+    kind: icon
+    method: pixel
+    note: lab station icon for dropdowns/minigame panels (key st_<station>)
+    outputs:
+    - assets/gfx/icons/st_drying_table.png
+    source: assets/src/icons/st_drying_table.txt
+    status: done
+    updated: '2026-11-06'
+  icon_st_packing_machine:
+    created: '2026-11-06'
+    kind: icon
+    method: pixel
+    note: lab station icon for dropdowns/minigame panels (key st_<station>)
+    outputs:
+    - assets/gfx/icons/st_packing_machine.png
+    source: assets/src/icons/st_packing_machine.txt
+    status: done
+    updated: '2026-11-06'
+  icon_st_seal_bench:
+    created: '2026-11-06'
+    kind: icon
+    method: pixel
+    note: lab station icon for dropdowns/minigame panels (key st_<station>)
+    outputs:
+    - assets/gfx/icons/st_seal_bench.png
+    source: assets/src/icons/st_seal_bench.txt
+    status: done
+    updated: '2026-11-06'
   icon_static_pollen:
     created: '2026-10-30'
     kind: icon
@@ -509,6 +795,46 @@ assets:
     source: assets/src/icons/weed.txt
     status: done
     updated: '2026-10-30'
+  icon_wpn_pistol:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: ground weapon icon (key wpn_<weapon>)
+    outputs:
+    - assets/gfx/icons/wpn_pistol.png
+    source: assets/src/icons/wpn_pistol.txt
+    status: done
+    updated: '2026-11-03'
+  icon_wpn_shotgun:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: ground weapon icon (key wpn_<weapon>)
+    outputs:
+    - assets/gfx/icons/wpn_shotgun.png
+    source: assets/src/icons/wpn_shotgun.txt
+    status: done
+    updated: '2026-11-03'
+  icon_wpn_smg:
+    created: '2026-11-03'
+    kind: icon
+    method: pixel
+    note: ground weapon icon (key wpn_<weapon>)
+    outputs:
+    - assets/gfx/icons/wpn_smg.png
+    source: assets/src/icons/wpn_smg.txt
+    status: done
+    updated: '2026-11-03'
+  nebula:
+    created: '2026-11-03'
+    kind: sprite
+    method: procedural
+    note: 3 neutral gas clouds, tint at runtime
+    outputs:
+    - assets/gfx/space/nebula.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-11-03'
   prop_barrel:
     created: '2026-10-30'
     kind: prop
@@ -759,6 +1085,14 @@ assets:
     outputs:
     - assets/gfx/stations/packing_machine.png
     source: assets/src/stations/packing_machine.txt
+  stars:
+    created: '2026-11-03'
+    kind: sprite
+    method: pixel
+    note: 8 starfield sprites, strip of 8x8 art px
+    outputs:
+    - assets/gfx/space/stars.png
+    source: assets/src/sprites/stars.txt
     status: done
     updated: '2026-11-03'
   station_cook_stove:
@@ -968,6 +1302,20 @@ assets:
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
+  tile_edges:
+    created: '2026-11-03'
+    kind: tile
+    method: procedural
+    note: 8 fringe tiles per set (N,E,S,W,NE,SE,SW,NW) from the ground tile pixels
+    outputs:
+    - assets/gfx/tiles/bazaar_edge.png
+    - assets/gfx/tiles/cinder_edge.png
+    - assets/gfx/tiles/glacis_edge.png
+    - assets/gfx/tiles/mireth_edge.png
+    - assets/gfx/tiles/varrow_edge.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-11-03'
   tile_glacis_ground:
     created: '2026-10-30'
     kind: tile

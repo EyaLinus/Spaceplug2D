@@ -33,6 +33,11 @@ const SHIP_NOZZLES := [
 	[[Vector2(0, 18), 0.9], [Vector2(-11, 20), 0.9], [Vector2(11, 20), 0.9]],
 ]
 
+## Art pass 4 sheets (registry only; callers opt in). Idle sheet: IDLE_FRAMES columns (stand, breathe, stand, blink) x rows
+## down/up/right. Edge strip: 8 fringe tiles in EDGE_ORDER, drawn over road/plaza where ground starts on that side.
+const IDLE_FRAMES := 4
+const EDGE_ORDER := ["N", "E", "S", "W", "NE", "SE", "SW", "NW"]
+
 static var _cache := {}
 
 
@@ -243,3 +248,8 @@ static func with_icon(key: String, ctrl: Control) -> Control:
 	ctrl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(ctrl)
 	return h
+
+
+static func idle_sheet(look: String) -> Texture2D: return tex("chars/%s_idle.png" % look)
+static func edge_strip(set_name: String) -> Texture2D: return tex("tiles/%s_edge.png" % set_name)
+static func fx(name: String) -> Texture2D: return tex("fx/%s.png" % name)  ## bolt_laser, bolt_pirate, missile, explosion (4 frames of 32 px), hit (3 of 16), shield (3 of 64)
