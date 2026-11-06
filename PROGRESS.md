@@ -913,3 +913,16 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
 - Converted: `scripts/ui/menu/main_menu.gd`, `pause_menu.gd`, `settings_panel.gd` (build code moved into `_build()`, rebuilt on `language_changed`). Slot panel, HUD, station UI, phone, world and quests are NOT converted (14 open PRs touch them) - convert per screen in follow-ups, add keys to both json files; `test_loc_tables` enforces key parity and equal `%` placeholder counts.
 - Convention: key = `<screen>.<name>`, English text stays as the `fallback` argument in code so a missing table never shows a bare key. Export include filter extended to `data/loc/*.json`.
 - Gaps: content data (items, quests, contacts in content.json/quests.json) has no translation mechanism yet; fonts only checked for Latin + umlauts by reading, not on screen.
+## P3: hiding spots (2026-11-05, wave 16)
+- **Core** `scripts/core/hiding.gd` (rules in `data/hiding.json`, spots in `surfaces.json` -> `hide`, 4 per planet as 2x1 tile rects with a kind).
+  Pure `step(state, dt, in_spot, speed, nearest_officer)`: still (<= 18 px/s) in a spot for 0.8 s = hidden; hidden for 2.0 s = officers stand down
+  (`lost` event); an officer within 46 px finds you and burns the spots for 4 s; moving, leaving the spot, shooting or being shot reveals you.
+  State is a runtime dict on the surface, not saved (no `game.gd` change).
+- **Surface hooks** (`surface.gd`, narrow): officer sight and the provoked-aim shortcut ignore a hidden player, chasers/armed officers are reset on `lost`,
+  spots are drawn as shade plus a prop, the player sprite fades to 45 % while hidden, toasts on hide / found / lost.
+- Verified: new `test_hiding` (state machine, once-per-hide `lost`, found + cooldown, move/leave/reveal, layout on all 5 planets: inside the map, off buildings and
+  cover, known kind, reachable on the nav grid), 10828 unit checks 0 failures, UI smoke (51 steps: hide, far chaser gives up, no frisk while hidden, close officer
+  finds you), tip audit 0 missing, menu smoke, sim 5/5.
+- Gaps: not played by a human, so settle/lose times and the 4 positions are guesses (positions were picked by script beside buildings, not hand-placed);
+  spots are mostly away from the main streets; no prompt or HUD indicator before you are hidden besides the toast; officers do not search the last seen
+  spot; armed officers already shooting at you only stop when `hostile_t` runs out or `lost` fires; hiding is not available inside estates; art is placeholder.

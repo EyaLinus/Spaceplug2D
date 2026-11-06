@@ -684,6 +684,45 @@ func _run() -> void:
 	cop.path = []
 	step("police pathfinding")
 
+	# hiding spots (P3): standing still in a spot hides you; a chasing officer far away loses you, a close one finds you
+	_assert(sf.hide_rects.size() >= 3, "Mireth has hiding spots")
+	var spot: Rect2 = sf.hide_rects[0]
+	g.cargo["weed:glow"] = 1
+	g.heat = 45.0
+	sf.player.position = spot.get_center() - Vector2(0, 12)
+	cop.pick_next = Callable()
+	cop.chasing = true
+	cop.speed = float(gs.data.police.chase_speed)
+	var lost_ok := false
+	for i in 260:
+		cop.position = sf.player.position + Vector2(260, 0)
+		cop.chasing = cop.chasing or not sf.hiding.hidden
+		await physics_frame
+		if not cop.chasing and sf.hiding.hidden:
+			lost_ok = true
+			break
+	_assert(lost_ok and sf.player.modulate.a < 1.0, "standing in a hiding spot hides you and the far chaser gives up")
+	var busts_h: int = g.stats.busts
+	cop.facing = Vector2.LEFT
+	for i in 200:
+		cop.position = sf.player.position + Vector2(120, 0)
+		await physics_frame
+	_assert(sf.hiding.hidden and g.stats.busts == busts_h and sf.suspicion == 0.0, "hidden: an officer in front of you does not frisk you")
+	cop.position = sf.player.position + Vector2(20, 0)
+	await physics_frame
+	await physics_frame
+	_assert(not sf.hiding.hidden and sf.player.modulate.a == 1.0, "an officer who walks up finds you")
+	g.cargo.erase("weed:glow")
+	g.heat = 0.0
+	cop.chasing = false
+	cop.pick_next = sf._walker_path
+	cop.speed = float(gs.data.police.speed)
+	cop.path = []
+	sf.hiding = sf.Hiding.fresh()
+	sf.place_player_at("spaceport")
+	await physics_frame
+	step("hiding spots")
+
 	# ground combat: aim, fire, cover, armed officers, knock-out, weapon wheel
 	sf.use_mouse = false
 	for o in sf.officers:

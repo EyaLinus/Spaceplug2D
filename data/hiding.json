@@ -1,0 +1,12 @@
+{
+  "settle_seconds": 0.8,
+  "still_speed": 18,
+  "lose_seconds": 2.0,
+  "notice_range": 46,
+  "found_cooldown": 4.0,
+  "kinds": {
+    "dumpster": {"label": "Dumpster"},
+    "crates": {"label": "Crate stack"},
+    "alcove": {"label": "Shadowed alcove"}
+  }
+}

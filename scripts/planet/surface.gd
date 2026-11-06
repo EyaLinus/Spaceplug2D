@@ -22,6 +22,7 @@ const Locals = preload("res://scripts/core/locals.gd")
 const HeatZones = preload("res://scripts/core/heat_zones.gd")
 const Curfew = preload("res://scripts/core/curfew.gd")
 const Walkups = preload("res://scripts/core/walkups.gd")
+const Hiding = preload("res://scripts/core/hiding.gd")
 
 const INPUT := {
 	"move_up": [KEY_W, KEY_UP],
@@ -69,6 +70,8 @@ var can_place: Callable
 var use_mouse := true  ## false in tests: they set `aim_point` themselves
 var aim_point := Vector2.ZERO  ## world position the player aims at
 var bullets: Array = []  ## flying bullets (Combat.make_bullet dictionaries)
+var hide_rects: Array = []  ## P3 hiding spots as pixel rects (hiding.gd)
+var hiding: Dictionary = Hiding.fresh()
 var covers: Array = []  ## cover pieces as pixel rects: block walking and bullets, not sight
 var wheel_open := false
 var wheel_sel := -1  ## wheel sector under the mouse, -1 = none
@@ -105,6 +108,7 @@ func setup(id: String, surface_cfg: Dictionary) -> void:
 		cfg = cfg.duplicate()
 		cfg.cover = Combat.cover_tiles(GameState.data, id)
 		covers = Combat.cover_rects(cfg.cover, tile)
+		hide_rects = Hiding.spot_rects(cfg, tile)
 		cfg.npcs = cfg.get("npcs", []) + Locals.npcs_for(GameState.data, id)  # B4: the townsfolk are named customers
 
 
@@ -434,14 +438,30 @@ func _update_police(delta: float) -> void:
 		return
 	var watched := false
 	var carrying: bool = g.has_contraband()
+	var nearest := INF
+	for o in officers:
+		nearest = minf(nearest, o.position.distance_to(player.position))
+	var hev := Hiding.step(hiding, delta, Hiding.spot_at(hide_rects, player.position + Vector2(0, 12)) >= 0, player.velocity.length(), nearest)
+	if hev.hid:
+		EventBus.toast.emit("Hidden. Stay still: officers lose you unless they walk right up.", true)
+	if hev.found:
+		EventBus.toast.emit("An officer found your hiding spot!", false)
+	if hev.lost:
+		EventBus.toast.emit("The officers lost you.", true)
+		for o in officers:
+			o.chasing = false
+			o.hostile_t = 0.0
+			o.speed = float(pc.speed)
+			o.path = []
+	player.modulate.a = 0.45 if hiding.hidden else 1.0
 	var drawn := Combat.officers_armed(g)
 	for o in officers:
-		var seen: bool = OfficerScript.sees(o.position, o.facing, player.position, o.vision, o.cone, _blockers)
+		var seen: bool = Hiding.visible_to_officer(hiding, OfficerScript.sees(o.position, o.facing, player.position, o.vision, o.cone, _blockers))
 		var dist: float = o.position.distance_to(player.position)
 		# armed officers (high heat, or shot at) shoot the player they can see; they stop to fire and need a clear line
 		o.armed = drawn or o.provoked
 		o.hostile_t = maxf(0.0, o.hostile_t - delta)
-		if o.armed and (seen or (o.provoked and dist <= float(oc.range) * 1.5 and Combat.line_clear(o.position, player.position, _blockers))):
+		if o.armed and (seen or (o.provoked and not hiding.hidden and dist <= float(oc.range) * 1.5 and Combat.line_clear(o.position, player.position, _blockers))):
 			o.hostile_t = float(oc.alert_seconds)
 		var hostile: bool = o.armed and o.hostile_t > 0.0
 		if hostile and not o.drew:
@@ -572,6 +592,7 @@ func shoot() -> bool:
 	if not res.ok:
 		return false
 	bullets.append_array(res.bullets)
+	Hiding.reveal(hiding)  # shooting gives you away
 	_aim_t = 1.5
 	_flash_t = 0.06
 	player.aim_dir = dir
@@ -640,6 +661,8 @@ func _step_bullets(g, delta: float) -> void:
 				pass
 			"target":
 				_impacts.append({"pos": res.pos, "t": 0.15})
+				if b.owner != Combat.PLAYER_BULLET:
+					Hiding.reveal(hiding)  # being shot breaks cover
 				if b.owner == Combat.PLAYER_BULLET:
 					_hit_officer(g, officers[res.idx], float(b.damage))
 				elif Combat.damage_player(g, float(b.damage)):
@@ -811,6 +834,8 @@ func _draw() -> void:
 		_draw_building(b)
 	for p in cfg.get("props", []):
 		_draw_prop(p[0], Vector2(float(p[1]), float(p[2])) * tile)
+	for i in hide_rects.size():
+		_draw_hide_spot(hide_rects[i], str(cfg.hide[i][4]))
 	for i in covers.size():
 		_draw_cover(covers[i], str(cfg.cover[i][4]) if cfg.cover[i].size() > 4 else "barrier")
 	var font := ThemeDB.fallback_font
@@ -1139,6 +1164,22 @@ func _draw_prop(kind: String, p: Vector2) -> void:
 				draw_rect(Rect2(p + Vector2(-22 + i * 11, -18), Vector2(11, 10)), Color("#c84a3a") if i % 2 == 0 else Color("#f0e0c0"))
 			draw_circle(p + Vector2(-10, 0), 4.0, Color("#7fffd4"))
 			draw_circle(p + Vector2(4, 1), 4.0, Color("#ff9ad5"))
+
+
+## Hiding spot (hiding.gd): walkable shade beside a prop; stand still in it to drop out of sight.
+func _draw_hide_spot(r: Rect2, kind: String) -> void:
+	draw_rect(r, Color(0, 0, 0, 0.32))
+	draw_rect(r, Color(0.55, 0.85, 0.7, 0.35), false, 1.0)
+	var back := Rect2(r.position + Vector2(2, -10), Vector2(r.size.x - 4, 12))
+	if kind == "crates":
+		draw_rect(back, Color("#8a6a3e"))
+		draw_rect(back, Color("#4e3a1e"), false, 2.0)
+	elif kind == "alcove":
+		draw_rect(back, Color("#1d2128"))
+	else:
+		draw_rect(back, Color("#3d5a46"))
+		draw_rect(Rect2(back.position, Vector2(back.size.x, 3)), Color("#5f8a6a"))
+		draw_rect(back, Color("#1b2a20"), false, 2.0)
 
 
 ## Low cover: concrete barrier or stacked crates. Solid for walking and bullets, not for sight.
