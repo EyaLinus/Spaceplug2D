@@ -9,7 +9,6 @@ const QUESTS_PATH := "res://data/quests.json"
 const INTERIORS_PATH := "res://data/interiors.json"
 const Locals =preload("res://scripts/core/locals.gd")
 const CHATTER_PATH := "res://data/chatter.json"
-const Locals = preload("res://scripts/core/locals.gd")
 
 
 static func load_all(path: String = CONTENT_PATH) -> Dictionary:

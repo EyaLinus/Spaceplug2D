@@ -208,7 +208,7 @@ func _update_chatter(delta: float) -> void:
 	var radius := float(rl.get("radius", 240.0))
 	var visible_n := 0
 	for id in npcs:
-		if npcs[id].bubble_t > 0.0:
+		if npcs[id].chat_t > 0.0:
 			visible_n += 1
 	for id in npcs:
 		var npc: Node2D = npcs[id]
