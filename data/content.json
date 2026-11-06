@@ -186,6 +186,10 @@
       {"id": "sable", "name": "Sable Ortiga", "fee": 600, "cut": 0.3, "skill": 0.65, "capacity": 40, "bio": "Station medic with a side business in 'prescriptions'."}
     ]
   },
+  "drones": {
+    "price": 350, "upkeep": 15, "max_total": 4, "max_per_estate": 2, "capacity": 12, "trip_seconds": 45, "far_seconds": 45,
+    "loss_base": 0.01, "loss_per_heat": 0.0008, "scrap_refund": 0.4
+  },
   "deals": {
     "interval": 40, "chance": 0.3, "max_open": 3, "answer_seconds": 90, "meet_seconds": 150, "premium": 0.15,
     "accept_base": 0.8, "accept_per_raise": 2.6, "accept_affinity": 0.4, "accept_addiction": 0.4,

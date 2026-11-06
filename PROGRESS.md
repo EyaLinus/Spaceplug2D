@@ -41,6 +41,18 @@
 - Verified: unit tests (`test_patrol_feel_fields`, `test_patrol_feel_warning`; 10884 checks, 0 failures), UI smoke (warning fires once before
   the range, toast, smaller range and lost lock in a field, open space scans again, bust shakes), tip audit, menu smoke, sim 5/5 won.
 - Gaps: the bot ignores fields and warnings; no minimap marking of fields; patrols do not hunt actively for a lost target.
+## Courier drones (P5, phase 3 wave 12, 2026-11-04)
+- **Core** `scripts/core/drones.gd`, numbers in `content.json "drones"`: buy a drone for an owned, fixed estate (not the
+  ship bay) with a route. `to_port` flies finished product (output tray, then shelf) to the hub stash, where
+  `collect_stash()` loads it; `to_estate` flies what the auto recipe still lacks (bench + shelf) from the stash to the
+  shelf. One trip per `trip_seconds` (+`far_seconds` for estates in another system), `capacity` units, only when
+  there is cargo (parked otherwise). Each trip can be shot down (`loss_base` + `loss_per_heat` x heat): drone and cargo lost.
+  Upkeep per drone each new day; unpaid = grounded until it can be paid. Max 4 drones, 2 per estate. Saved under `drones`.
+- **UI**: COURIER DRONES block at the bottom of the estate screen in the HR app (buy per route, flip route, scrap, status).
+- Verified (Godot 4.3 headless, run in the container): unit tests 10875 checks 0 failures (+47, `test_drones`,
+  `test_drones_loss_upkeep_save`), UI smoke 50 steps (+assertions in the hr app step), tip audit 0, menu smoke, sim 5/5 won.
+- Gaps: no drone sprite or flight animation in the world; drones do not carry between estates or ferry cash; supplies are
+  only topped up for the auto recipe; not played by a human, balance numbers (price 350, upkeep 15/day) are guesses.
 
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,

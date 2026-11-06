@@ -61,7 +61,7 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [ ] Hire workers at the job board (botanist, cook, handler) with daily wages
 - [ ] Assign workers to buildings; simple job system moves items storage → station → storage
 - [ ] Dealers: workers who sell product to customers on their own (with bust risk)
-- [ ] Courier drones between estates and the spaceport
+- [x] Courier drones between estates and the spaceport
 
 ## P6 – Expansion & 1.0
 - [ ] More planets with own laws, demand and security levels; jump lanes to a second system
