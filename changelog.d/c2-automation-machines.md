@@ -1,0 +1,1 @@
+- **Automation machines (C2):** Auto-trimmer, Drip Mixer and Packing Machine run one station step of your tray on their own, even while you are away. They score below a good minigame (never Premium on their own) and can be sold back for half the price. Core and saves only; the build menu comes later.

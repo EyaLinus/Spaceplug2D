@@ -12,6 +12,7 @@ const People = preload("res://scripts/core/people.gd")
 const Corruption = preload("res://scripts/core/corruption.gd")
 const Workers = preload("res://scripts/core/workers.gd")
 const Bench = preload("res://scripts/core/bench.gd")
+const Automation = preload("res://scripts/core/automation.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Orders = preload("res://scripts/core/orders.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
@@ -53,7 +54,7 @@ var ship_class: String = "courier"  ## hull class you fly (content.json "ship_cl
 var hulls: Array = ["courier"]  ## hull classes you own; switch between them at a shipyard, saved
 var combat: Dictionary = {}  ## space combat state: hull, shield, missiles, kills (saved), boost, idle (runtime); see spacecombat.gd
 var state: String = "playing"  ## playing | won | lost
-var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0}
+var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0, "machine_steps": 0}
 const SHIP_BAY := "ship_bay"  ## id of the ship's own estate (content.json "estates", flagged "ship"): always owned
 
 var estates: Dictionary = {}  ## owned estate id -> {"buildings": [{"id": station id, "x": int, "y": int}]}
@@ -114,7 +115,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	hulls = ["courier"]
 	SpaceCombat.reset(self)
 	state = "playing"
-	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0}
+	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0, "machine_steps": 0}
 	estates = {SHIP_BAY: {"buildings": []}}
 	orders = []
 	order_seq = 0
@@ -333,6 +334,7 @@ func tick(dt: float) -> void:
 	Corruption.tick(self, dt)
 	_tick_lab(dt)
 	Workers.tick(self, dt)
+	Automation.tick(self, dt)
 	_tick_demand(dt)
 	Deals.tick(self, dt)
 	Dealers.tick(self, dt)
@@ -941,6 +943,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	workers = Workers.from_save(self, d.get("workers", []))
 	_add_starter_estates()
 	Bench.from_save(self, d)
+	Automation.prune(self)
 	Products.from_save(self, d.get("products", {}))
 	Dealers.from_save(self, d.get("dealers", []))
 	Quests.from_save(self, d.get("quests", {}), d.has("quests"))

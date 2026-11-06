@@ -123,8 +123,9 @@ static func mix(g, additives: Array) -> Dictionary:
 
 
 ## Records the minigame score of `station` for the tray; after the last station the batch is queued.
-static func record(g, station: String, score: float) -> Dictionary:
-	var t := tray(g)
+## `estate` "" = the estate you stand in (machines pass the estate they run in).
+static func record(g, station: String, score: float, estate: String = "") -> Dictionary:
+	var t := tray(g, estate)
 	if t.is_empty() or next_station(g, t) != station:
 		return g._fail("Wrong station.")
 	if g.data.station_order.find(station) > g.data.station_order.find(MIX):
@@ -134,14 +135,14 @@ static func record(g, station: String, score: float) -> Dictionary:
 	g._emit("tray_step", {"station": station, "base": t.base, "score": t.scores[station]})
 	if next_station(g, t) != "":
 		return g._ok("%s done. Next: %s." % [g.data.stations[station].name, g.data.stations[next_station(g, t)].name])
-	return finish(g)
+	return finish(g, estate)
 
 
-static func finish(g) -> Dictionary:
-	var t := tray(g)
+static func finish(g, estate: String = "") -> Dictionary:
+	var t := tray(g, estate)
 	var r: Dictionary = g.queue_batch(t.base, t.additives, int(t.qty), t.scores)
 	if r.ok:
-		g.bench.erase(g.inside_estate)
+		g.bench.erase(estate if estate != "" else g.inside_estate)
 	return r
 
 

@@ -10,6 +10,7 @@ const People = preload("res://scripts/core/people.gd")
 const Corruption = preload("res://scripts/core/corruption.gd")
 const Workers = preload("res://scripts/core/workers.gd")
 const Bench = preload("res://scripts/core/bench.gd")
+const Automation = preload("res://scripts/core/automation.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Orders = preload("res://scripts/core/orders.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
@@ -46,6 +47,7 @@ func _init() -> void:
 		"test_bench_line",
 		"test_bench_mixing",
 		"test_bench_save",
+		"test_automation",
 		"test_workers",
 		"test_ship_bay",
 		"test_orders",
@@ -2481,6 +2483,74 @@ func test_bench_save() -> void:
 	var old := Game.new()
 	old.from_dict(data, d)
 	check(old.estate_owned("cannery_rig") and old.bench.is_empty(), "old saves get the cannery rig and no tray")
+
+
+func test_automation() -> void:
+	var ms: Dictionary = Automation.machines(new_game())
+	check(ms.size() == 3, "three automation machines")
+	var premium := float(data.quality.grades[2].min)
+	for id in ms:
+		var m: Dictionary = ms[id]
+		check(data.stations.has(m.station) and data.buildables.has(m.station), "machine %s automates a real station" % id)
+		check(float(m.score) < premium and float(m.score) > 0.0, "machine %s plays worse than a good minigame" % id)
+		check(float(m.seconds) > 0.0 and int(m.cost) > 0, "machine %s has a time and a price" % id)
+	var g := bench_game()
+	g.credits = 5000
+	check(Automation.install(g, "cannery_rig", "auto_trimmer").ok and g.credits == 5000 - int(ms.auto_trimmer.cost), "installing costs credits")
+	check(not Automation.install(g, "cannery_rig", "auto_trimmer").ok, "one machine per station")
+	check(not Automation.install(g, "cannery_rig", "nope").ok and not Automation.install(g, "nowhere", "drip_mixer").ok, "unknown machine or estate refused")
+	g.credits = 1
+	check(not Automation.install(g, "cannery_rig", "packing_machine").ok, "too poor for a machine")
+	g.credits = 5000
+	check(Automation.install(g, "cannery_rig", "packing_machine").ok and Automation.install(g, "cannery_rig", "drip_mixer").ok, "other machines install")
+	Bench.begin(g, "trim_table", "weed", 4)
+	var secs := float(ms.auto_trimmer.seconds)
+	Automation.tick(g, secs * 0.5)
+	check(Bench.tray(g).done.is_empty() and is_equal_approx(Automation.progress(g, "cannery_rig"), 0.5), "the trimmer is half way")
+	Automation.tick(g, secs * 0.5)
+	check(Bench.tray(g).done == ["trim_table"] and is_equal_approx(Bench.tray(g).scores.trim_table, float(ms.auto_trimmer.score)), "the trimmer finished the step at its fixed quality")
+	check(g.stats.machine_steps == 1, "machine steps are counted")
+	Automation.tick(g, 1000.0)
+	check(Bench.next_station(g, Bench.tray(g)) == "extractor" and Bench.tray(g).done.size() == 1, "no machine for the extractor: the tray waits for you")
+	Bench.record(g, "extractor", 0.9)
+	Bench.record(g, "cook_stove", 0.9)
+	check(Bench.next_station(g, Bench.tray(g)) == "pack_table", "packing is next")
+	Automation.tick(g, 1000.0)
+	check(Bench.tray(g).is_empty() and g.lab_queue.size() == 1, "the packing machine finishes the tray and queues the batch")
+	Bench.begin(g, "trim_table", "weed", 2)
+	Bench.record(g, "trim_table", 0.9)
+	Bench.record(g, "extractor", 0.9)
+	check(Bench.mix(g, ["ion_syrup"]).ok and Bench.next_station(g, Bench.tray(g)) == "mixing_station", "additives put the mixing station next")
+	Automation.tick(g, float(ms.drip_mixer.seconds))
+	check(Bench.tray(g).done.has("mixing_station") and is_equal_approx(Bench.tray(g).scores.mixing_station, float(ms.drip_mixer.score)), "the drip mixer poured")
+	var all := {}
+	for m in ms:
+		all[ms[m].station] = float(ms[m].score)
+	check(Production.outcome(data, all).grade <= 1, "machine scores alone never reach Premium")
+	var before := g.credits
+	check(Automation.remove(g, "cannery_rig", "drip_mixer").ok and g.credits == before + int(round(int(ms.drip_mixer.cost) * 0.5)), "removing refunds part of the price")
+	check(not Automation.remove(g, "cannery_rig", "drip_mixer").ok, "cannot remove twice")
+	var json := JSON.stringify(g.to_dict())
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(json))
+	check(Automation.installed(h, "cannery_rig", "auto_trimmer") and not Automation.installed(h, "cannery_rig", "drip_mixer"), "machines survive save/load")
+	check(JSON.stringify(h.to_dict()) == json, "save with machines is stable")
+	var d := new_game().to_dict()
+	d.estates.cannery_rig.erase("machines")
+	var old := Game.new()
+	old.from_dict(data, d)
+	check(old.estates.cannery_rig.machines.is_empty(), "old saves have no machines")
+	d.estates.cannery_rig.machines = ["ghost", "auto_trimmer"]
+	old.from_dict(data, d)
+	check(old.estates.cannery_rig.machines == ["auto_trimmer"], "unknown machines are dropped on load")
+	var c := bench_game()
+	c.credits = 5000
+	Automation.install(c, "cannery_rig", "auto_trimmer")
+	Bench.begin(c, "trim_table", "weed", 1)
+	c.inside_estate = ""
+	for i in int(secs) + 2:
+		c.tick(1.0)
+	check(Bench.tray(c, "cannery_rig").done == ["trim_table"], "Game.tick runs machines while you are away")
 
 
 # ---------------------------------------------------------------- quests

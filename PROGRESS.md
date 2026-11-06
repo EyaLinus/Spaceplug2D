@@ -1,5 +1,20 @@
 # Progress log
 
+## C2: Automation machines (wave 24, 2026-11-06)
+- **Core** `scripts/core/automation.gd`: content.json `automation.machines` (auto_trimmer -> trim_table, drip_mixer ->
+  mixing_station, packing_machine -> pack_table; cost, fixed `score` 0.45-0.5, `seconds` per step). Installed machines are ids in
+  `estates[e].machines` (plus `auto_for`/`auto_t` progress), saved with the estate; unknown ids are pruned on load, old saves
+  have none. One machine per station per estate, `install`/`remove` (50% refund), `progress`.
+- `Automation.tick` (called from `Game.tick` after Workers): when the estate's tray waits at a station that has a machine, the
+  timer runs (also while the player is elsewhere) and then `Bench.record` is called with the machine's score. `Bench.record` and
+  `Bench.finish` got an optional `estate` argument for this. Machine scores stay under Premium (0.72), so playing the minigame
+  well still pays. New stat `machine_steps`.
+- Verified: new `test_automation` (data sanity, install/refuse, half-way progress, fixed score, waiting at non-machine stations,
+  mixer and packing finish, grade cap, refund, save/load stability, old saves, tick while away). Could not be run in the agent
+  sandbox (no Godot binary allowed); CI runs it.
+- Gaps: no UI yet to buy/see machines (build menu, estate view, progress bar); machines cost nothing to run; the cook stove,
+  extractor, scale and refiner have no machine.
+
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,
   version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building

@@ -10,6 +10,7 @@ extends RefCounted
 ## Wages are charged each new day; unpaid wages cost loyalty and at 0 loyalty the worker quits.
 
 const Mixing = preload("res://scripts/core/mixing.gd")
+const Automation = preload("res://scripts/core/automation.gd")
 const Production = preload("res://scripts/core/production.gd")
 const Products = preload("res://scripts/core/products.gd")
 
@@ -25,6 +26,7 @@ static func ensure(e: Dictionary) -> void:
 			e[k] = {}
 	if not e.has("haul_t"):
 		e["haul_t"] = 0.0
+	Automation.ensure(e)
 
 
 static func candidate(g, id: String) -> Dictionary:
@@ -322,3 +324,4 @@ static func load_estate(src: Dictionary, e: Dictionary) -> void:
 	var j: Dictionary = src.get("job", {})
 	e.job = {} if j.is_empty() else {"product": str(j.product), "qty": int(j.qty), "remaining": float(j.remaining), "total": float(j.total)}
 	e.haul_t = float(src.get("haul_t", 0.0))
+	Automation.load_estate(src, e)

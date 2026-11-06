@@ -365,6 +365,17 @@
     "max_qty": 40, "max_open": 6, "cancel_refund": 0.8, "kit_price": 0.85
   },
   "estate_refund": 0.5,
+  "automation": {
+    "refund": 0.5,
+    "machines": {
+      "auto_trimmer": {"name": "Auto-Trimmer", "station": "trim_table", "cost": 700, "score": 0.5, "seconds": 25,
+        "hint": "Snips the tray's buds on its own: sloppy, but nobody has to stand at the table."},
+      "drip_mixer": {"name": "Drip Mixer", "station": "mixing_station", "cost": 900, "score": 0.5, "seconds": 20,
+        "hint": "Drips the chosen additives into the tray at a fixed rate. Never a perfect pour."},
+      "packing_machine": {"name": "Packing Machine", "station": "pack_table", "cost": 800, "score": 0.45, "seconds": 20,
+        "hint": "Seals the bags by itself. The seals are loose, so the batch smells a bit more."}
+    }
+  },
   "combat": {
     "player": {"hp": 100, "regen_per_second": 4.0, "regen_delay": 6.0, "radius": 10, "ko_hp_ratio": 0.5,
       "ko_fine_ratio": 0.2, "ko_fine_min": 80, "ko_heat_drop": 20},
