@@ -214,7 +214,7 @@ func _process(_delta: float) -> void:
 	elif world != null and world.active and world.nearby != "":
 		var nl: Dictionary = g.data.locations[world.nearby]
 		if nl.has("jump_to"):
-			_prompt.text = "[%s] Jump to %s (%d cr toll)" % [Settings.key_label("ship_dock"), g.system_data(nl.jump_to).get("name", nl.jump_to), int(g.data.jump.fee)]
+			_prompt.text = "[%s] Jump to %s (%d cr toll)" % [Settings.key_label("ship_dock"), g.system_data(nl.jump_to).get("name", nl.jump_to), g.gate_toll(world.nearby)]
 		else:
 			_prompt.text = "[%s] Dock at %s" % [Settings.key_label("ship_dock"), nl.name]
 	else:

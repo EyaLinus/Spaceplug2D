@@ -91,8 +91,12 @@ static func plan(g, to: String) -> Dictionary:
 		return {"ok": false, "msg": "You are already there." if to == g.system else "No lane leads there.", "route": rt,
 			"hops": 0, "fee": 0, "travel": 0.0, "charge": 0.0, "total_seconds": 0.0}
 	var hops := rt.size() - 1
-	var fee := hops * int(rules(g).get("fee", 0))
-	var travel := hops * float(rules(g).get("seconds", 0.0))
+	var fee := 0
+	var travel := 0.0
+	for i in range(hops):
+		var gate_list := gates(g, str(rt[i]), str(rt[i + 1]))
+		fee += g.gate_toll(gate_list[0]) if not gate_list.is_empty() else int(rules(g).get("fee", 0))
+		travel += g.gate_seconds(gate_list[0]) if not gate_list.is_empty() else float(rules(g).get("seconds", 0.0))
 	var charge := hops * charge_seconds(g)
 	return {"ok": true, "msg": "", "route": rt, "hops": hops, "fee": fee, "travel": travel, "charge": charge, "total_seconds": travel + charge}
 
@@ -245,7 +249,8 @@ static func engage(g) -> Dictionary:
 	r["more"] = false
 	if r.ok:
 		rt.pop_front()
-		if rt.size() > 1 and g.credits >= int(rules(g).get("fee", 0)):
+		var next_gates := gates(g, str(rt[0]), str(rt[1])) if rt.size() > 1 else []
+		if not next_gates.is_empty() and g.credits >= g.gate_toll(next_gates[0]):
 			_begin(g, rt, to)
 			r["more"] = true
 	return r

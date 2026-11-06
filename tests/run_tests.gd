@@ -77,6 +77,7 @@ func _init() -> void:
 		"test_galaxy_routes",
 		"test_galaxy_overlays",
 		"test_planet_laws",
+		"test_second_system",
 		"test_jump_drive",
 		"test_jump_drive_multi_hop",
 		"test_mixing_rules",
@@ -1042,9 +1043,9 @@ func test_orders_save() -> void:
 ## Lanes and route planning over the jump gates (A6).
 func test_galaxy_routes() -> void:
 	var g := new_game()
-	check(Galaxy.neighbours(g, "halvane") == ["kovar"] and Galaxy.neighbours(g, "kovar") == ["halvane"], "the two systems are neighbours")
-	check(Galaxy.lanes(g).size() == 1, "one lane (gate pairs count once)")
-	check(Galaxy.gates(g, "halvane", "kovar") == ["halvane_gate"] and Galaxy.gates(g, "kovar").size() == 1, "gate lookup")
+	check(Galaxy.neighbours(g, "halvane") == ["kovar"] and Galaxy.neighbours(g, "kovar") == ["halvane", "thessaly"], "Halvane-Kovar-Thessaly chain")
+	check(Galaxy.lanes(g).size() == 2, "two lanes (gate pairs count once)")
+	check(Galaxy.gates(g, "halvane", "kovar") == ["halvane_gate"] and Galaxy.gates(g, "kovar").size() == 2, "gate lookup")
 	check(Galaxy.route(g, "halvane", "kovar") == ["halvane", "kovar"] and Galaxy.route(g, "kovar", "kovar") == ["kovar"], "route over the lane")
 	check(Galaxy.route(g, "halvane", "nowhere").is_empty(), "unknown system has no route")
 	var pl := Galaxy.plan(g, "kovar")
@@ -1091,6 +1092,58 @@ func test_planet_laws() -> void:
 	var h := Game.new()
 	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
 	check(Laws.level(h, "glacis", "cocaine") == "banned", "laws are static data, saves need nothing")
+## Thessaly Drift: the third system from the content pack data/system_thessaly.json, two jumps out.
+func test_second_system() -> void:
+	check(data.systems.has("thessaly") and data.locations.has("quillon") and data.locations.has("ashfall"), "pack systems and locations merged")
+	var before := JSON.stringify([data.systems, data.locations, data.surfaces, data.officials, data.combat.cover])
+	Data.merge_pack(data, Data._load_json("res://data/system_thessaly.json"))
+	check(JSON.stringify([data.systems, data.locations, data.surfaces, data.officials, data.combat.cover]) == before, "merging the pack again changes nothing")
+	var q: Dictionary = data.locations.quillon
+	var a: Dictionary = data.locations.ashfall
+	check(q.system == "thessaly" and a.system == "thessaly" and not q.has("surface"), "locations sit in Thessaly")
+	check(q.demand != a.demand and q.demand.cocaine > a.demand.cocaine and a.demand.meth > q.demand.meth, "own demand values")
+	check(data.surfaces.quillon.security > data.surfaces.glacis.security and data.surfaces.ashfall.security < data.surfaces.varrow.security, "own security: Quillon tight, Ashfall lawless")
+	check(q.heat_per_unit > a.heat_per_unit and q.get("patrol_base", false) and a.get("fence", false), "heat per sale, patrol base, fence")
+	for loc in ["quillon", "ashfall"]:
+		check(not data.surfaces[loc].buildings.any(func(b): return b.get("action", "") == "estate"), "%s clone has no duplicate estate door" % loc)
+		check(not data.surfaces[loc].npcs.any(func(n): return n.has("contact")), "%s clone has no duplicate story contacts" % loc)
+	var g := new_game()
+	check(Galaxy.route(g, "halvane", "thessaly") == ["halvane", "kovar", "thessaly"] and Galaxy.route(g, "thessaly", "halvane").size() == 3, "route over both lanes, both ways")
+	var pl := Galaxy.plan(g, "thessaly")
+	var lane: Dictionary = data.locations.kovar_thessaly_gate
+	check(pl.ok and pl.hops == 2 and pl.fee == int(data.jump.fee) + int(lane.toll), "plan sums the per-lane tolls (80 + 140)")
+	check(is_equal_approx(pl.travel, float(data.jump.seconds) + float(lane.seconds)), "plan sums the per-lane travel time")
+	check(g.gate_toll("halvane_gate") == int(data.jump.fee) and g.gate_toll("kovar_thessaly_gate") == 140, "gate toll falls back to jump.fee")
+	g.undock()
+	g.credits = 100
+	check(not Galaxy.start(g, "thessaly").ok, "two tolls must be affordable up front")
+	g.credits = 1000
+	check(Galaxy.start(g, "thessaly").ok, "drive charges for Thessaly")
+	g.tick(100.0)
+	var r1 := Galaxy.engage(g)
+	check(r1.ok and r1.more and g.system == "kovar" and g.credits == 1000 - 80, "first hop pays 80")
+	g.tick(100.0)
+	var r2 := Galaxy.engage(g)
+	check(r2.ok and not r2.more and g.system == "thessaly" and g.credits == 1000 - 80 - 140, "second hop pays the 140 toll")
+	check(g.locations_in("thessaly").has("quillon") and g.patrol_home("thessaly") == "quillon", "Quillon is Thessaly's patrol base")
+	check(Galaxy.location_risk(g, "quillon").security > Galaxy.location_risk(g, "ashfall").security, "map risk differs per location")
+	check(Galaxy.patrols_in(g, "thessaly") >= 0 and g.demand.has("quillon"), "demand tracked for the new locations")
+	g.corruption.heat["thessaly"] = 10.0
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(h.system == "thessaly" and is_equal_approx(float(h.demand.quillon.cocaine), float(g.demand.quillon.cocaine)), "a save made in Thessaly round-trips")
+	# an old save knows nothing about the pack: no Thessaly demand, heat or officials
+	var old: Dictionary = JSON.parse_string(JSON.stringify(new_game().to_dict()))
+	for k in ["quillon", "ashfall"]:
+		old.demand.erase(k)
+	for o in ["wren_q", "kasimir", "marl"]:
+		old.corruption.officials.erase(o)
+	var og := Game.new()
+	og.from_dict(data, old)
+	check(og.system == "halvane" and og.demand.quillon.cocaine == float(q.demand.cocaine) and Galaxy.plan(og, "thessaly").ok, "an old save loads and gets Thessaly at default values")
+	og.undock()
+	og.tick(5.0)
+	check(og.state == "playing", "an old save keeps running")
 
 
 ## Heat overlay and price comparison data (A6).
@@ -1203,7 +1256,7 @@ func test_jump_drive_multi_hop() -> void:
 	var r2 := Galaxy.engage(g)
 	check(r2.ok and not r2.more and g.system == "zeta" and g.jump_plan.is_empty(), "second hop arrives in Zeta")
 	check(Galaxy.route(g, "zeta", "halvane") == ["zeta", "kovar", "halvane"], "route back")
-	check(Galaxy.lanes(g).size() == 2, "two lanes")
+	check(Galaxy.lanes(g).size() == 3, "three lanes (Thessaly pack + the test system)")
 
 
 func test_mixing_rules() -> void:
@@ -3051,7 +3104,7 @@ func test_heat_per_system() -> void:
 	g.add_heat(30)
 	var kovar_gate := ""
 	for l in data.locations:
-		if data.locations[l].has("jump_to") and data.locations[l].system == "kovar":
+		if data.locations[l].get("jump_to", "") == "halvane" and data.locations[l].system == "kovar":
 			kovar_gate = l
 	g.credits = 500
 	check(g.jump(kovar_gate).ok and g.system == "halvane", "jumped back")
