@@ -912,7 +912,7 @@ func to_dict() -> Dictionary:
 		"cartels": Cartels.to_save(self), "ship_class": ship_class, "hulls": hulls.duplicate(),
 		"style": Style.to_save(self), "escort": Escort.to_save(self),
 		"price_board": PriceBoard.to_save(self),
-		"style": Style.to_save(self), "grow": Grow.to_save(self), "grow_q": Grow.quality_to_save(self),
+		"grow": Grow.to_save(self), "grow_q": Grow.quality_to_save(self),
 	}
 
 
