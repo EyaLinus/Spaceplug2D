@@ -26,6 +26,7 @@ const Style = preload("res://scripts/core/style.gd")
 const PriceBoard = preload("res://scripts/core/price_board.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Escort = preload("res://scripts/core/escort.gd")
+const Raids = preload("res://scripts/core/raids.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -86,6 +87,7 @@ var interdiction: Dictionary = {}  ## pending interdiction after a jump (runtime
 var escort: Dictionary = {"job": {}, "last": {}, "done": 0}  ## freighter escort job and cooldowns (see escort.gd), saved
 var lane_rng := RandomNumberGenerator.new()  ## interdiction rolls only, so the game RNG stays untouched
 var price_board: Dictionary = {}  ## seen prices per location and good, last N days (see price_board.gd), saved
+var raids: Dictionary = {}  ## estate raid streaks, warning and own RNG (see raids.gd), saved
 var style: Dictionary = {}  ## K2 look, ship paint/decal and estate decor (see style.gd), saved
 var cartels: Dictionary = {}  ## sector influence per location and cartel hostility (see cartels.gd), saved
 
@@ -140,6 +142,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	cartels = Cartels.init_state(data)
 	style = Style.init_state(data)
 	price_board = {}
+	raids = Raids.init_state()
 	interdiction = {}
 	escort = Escort.empty_state()
 	lane_rng.seed = seed_value * 7919 + 13
@@ -389,6 +392,7 @@ func _new_day() -> void:
 		_emit("rumour", {"location": loc, "base": b, "demand": demand[loc][b]})
 	People.new_day(self)
 	Corruption.new_day(self)
+	Raids.new_day(self)
 	Workers.new_day(self)
 	Cartels.new_day(self)
 	_note_prices()
@@ -872,7 +876,7 @@ func to_dict() -> Dictionary:
 	return {
 		"version": SAVE_VERSION, "credits": credits, "debt": debt, "debt_due_day": debt_due_day,
 		"day": day, "day_time": snappedf(day_time, 0.01), "total_time": snappedf(total_time, 0.01),
-		"heat": snappedf(heat, 0.01), "corruption": Corruption.to_save(self), "location": location, "system": system, "cargo": cargo.duplicate(), "stash": stash.duplicate(),
+		"heat": snappedf(heat, 0.01), "corruption": Corruption.to_save(self), "raids": Raids.to_save(self), "location": location, "system": system, "cargo": cargo.duplicate(), "stash": stash.duplicate(),
 		"lab_queue": lab_queue.duplicate(true), "demand": demand.duplicate(true),
 		"contact_ready_at": contact_ready_at.duplicate(), "people": people.duplicate(true), "offers": offers.duplicate(true),
 		"next_offer_id": next_offer_id, "offer_clock": snappedf(offer_clock, 0.01), "upgrades": upgrades.duplicate(),
@@ -964,6 +968,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Style.from_save(self, d.get("style", {}))
 	Escort.from_save(self, d.get("escort", {}))
 	PriceBoard.from_save(self, d.get("price_board", {}))
+	Raids.from_save(self, d.get("raids", {}))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

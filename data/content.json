@@ -365,6 +365,8 @@
     "max_qty": 40, "max_open": 6, "cancel_refund": 0.8, "kit_price": 0.85
   },
   "estate_refund": 0.5,
+  "raids": {"heat": 80, "days": 3, "chance_base": 0.3, "chance_per_heat": 0.01, "chance_max": 0.8, "tipoff_cut": 0.5, "call_off_heat": 40,
+    "seize": 0.5, "fine": 150, "heat_drop": 30, "heat_drop_empty": 10, "wanted": 10},
   "combat": {
     "player": {"hp": 100, "regen_per_second": 4.0, "regen_delay": 6.0, "radius": 10, "ko_hp_ratio": 0.5,
       "ko_fine_ratio": 0.2, "ko_fine_min": 80, "ko_heat_drop": 20},
