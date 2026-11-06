@@ -16,7 +16,7 @@ var decal := ""  ## K2: decal id (content.json style.decal)
 var hull_cfg: Dictionary = {}  ## hull class (content.json "ship_classes"): drawn size and paint stripe
 
 var autopilot := false  ## K3: fly to the quest waypoint on its own until you touch the controls or arrive
-var goal_provider: Callable  ## returns the waypoint (Vector2) or null; set by main (HUD quest point)
+var goal_provider: Callable  ## returns the waypoint (Vector2) or null; set by main (HUD quest point, else the map marker)
 const AUTOPILOT_ARRIVE := 260.0
 var _flame := 0.0
 var _boost_t := 0.0  ## seconds of dodge boost left
@@ -64,7 +64,7 @@ func set_autopilot(on: bool, why := "") -> void:
 	if on:
 		var goal = goal_provider.call() if goal_provider.is_valid() else null
 		if goal == null:
-			EventBus.toast.emit("Autopilot: no waypoint. Track a quest with a place to go.", false)
+			EventBus.toast.emit("Autopilot: no waypoint. Track a quest with a place to go, or set a marker in the Map app.", false)
 			return
 	if on == autopilot:
 		return

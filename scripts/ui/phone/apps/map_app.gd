@@ -7,6 +7,7 @@ const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const PriceBoard = preload("res://scripts/core/price_board.gd")
 const Laws = preload("res://scripts/core/laws.gd")
+const Marker = preload("res://scripts/core/marker.gd")
 
 const CANVAS_H := 170.0
 const COLD := Color("#4fe3c1")
@@ -209,10 +210,45 @@ func _system_panel(g) -> Control:
 		ib.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		ir.add_child(ib)
 		col.add_child(ir)
+	col.add_child(_marker_row(g))
 	var best := _best_buys(g)
 	for loc in g.locations_in(_sel):
 		col.add_child(_location_row(g, loc, best))
 	return panel
+
+
+## K3: hand-placed marker. The ship autopilot (T) and the HUD arrow use it when no quest waypoint is active.
+func _marker_row(g) -> Control:
+	var row := HBoxContainer.new()
+	row.name = "MapMarker"
+	row.add_theme_constant_override("separation", 6)
+	var cur: String = g.map_marker
+	var txt := "Marker: " + Marker.label(g, cur) if cur != "" else "No marker set."
+	var l := UI.label(txt, 12, UI.ACCENT if cur != "" else UI.MUTED)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(l)
+	if _sel != cur:
+		var sb := UI.button("Set marker", func():
+			_set_marker(g, _sel), 0)
+		sb.name = "MapMarkSys"
+		sb.tooltip_text = "Mark this system: the autopilot (T) and the HUD arrow lead you to its gate."
+		row.add_child(sb)
+	if cur != "":
+		var cb := UI.button("Clear marker", func():
+			Marker.clear(g)
+			AudioManager.play("click")
+			_refresh_soon(), 0)
+		cb.name = "MapMarkClear"
+		cb.tooltip_text = "Remove the map marker."
+		row.add_child(cb)
+	return row
+
+
+func _set_marker(g, id: String) -> void:
+	var r: Dictionary = Marker.set_marker(g, id)
+	AudioManager.play("click")
+	EventBus.toast.emit(r.msg, r.ok)
+	_refresh_soon()
 
 
 ## Strongest actor of a system: [actor id ("you" or a cartel), average share].
@@ -307,6 +343,20 @@ func _location_row(g, loc: String, best: Dictionary) -> Control:
 		box.tooltip_text = Laws.tooltip(g, loc)
 	var s := UI.label(sub, 12, UI.MUTED)
 	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var top := HBoxContainer.new()
+	box.add_child(top)
+	var nm: Label = box.get_child(0)
+	box.remove_child(nm)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(nm)
+	if g.map_marker != loc:
+		var mb := UI.button("Mark", func():
+			_set_marker(g, loc), 0)
+		mb.name = "MapMark_" + loc
+		mb.tooltip_text = "Set the map marker here: the autopilot (T) and the HUD arrow lead you to it."
+		top.add_child(mb)
+	else:
+		top.add_child(UI.label("marked", 12, UI.ACCENT))
 	box.add_child(s)
 	if ld.get("dockable", true) and not ld.has("jump_to") and _mode != "influence":
 		box.add_child(_laws_label(g, loc))

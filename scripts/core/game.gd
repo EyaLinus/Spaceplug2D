@@ -30,6 +30,7 @@ const Style = preload("res://scripts/core/style.gd")
 const PriceBoard = preload("res://scripts/core/price_board.gd")
 const Grow = preload("res://scripts/core/grow.gd")
 const Laws = preload("res://scripts/core/laws.gd")
+const Marker = preload("res://scripts/core/marker.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Escort = preload("res://scripts/core/escort.gd")
 const Raids = preload("res://scripts/core/raids.gd")
@@ -105,6 +106,7 @@ var raids: Dictionary = {}  ## estate raid streaks, warning and own RNG (see rai
 var grow: Dictionary = {}  ## estate id -> {"trays": [{raw, start_day, watered}]} grow trays (see grow.gd), saved
 var grow_q: Dictionary = {}  ## raw id -> mean quality 0..1 of the grown part of the stash pile (see grow.gd), saved
 var style: Dictionary = {}  ## K2 look, ship paint/decal and estate decor (see style.gd), saved
+var map_marker := ""  ## K3 hand-placed map marker: location or system id, "" = none (see marker.gd), saved
 var cartels: Dictionary = {}  ## sector influence per location and cartel hostility (see cartels.gd), saved
 
 
@@ -166,6 +168,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	raids = Raids.init_state()
 	grow = {}
 	grow_q = {}
+	map_marker = ""
 	interdiction = {}
 	escort = Escort.empty_state()
 	lane_rng.seed = seed_value * 7919 + 13
@@ -969,6 +972,7 @@ func to_dict() -> Dictionary:
 		"price_board": PriceBoard.to_save(self),
 		"grow": Grow.to_save(self), "grow_q": Grow.quality_to_save(self),
 		"vault": Vault.to_save(self),
+		"marker": Marker.to_save(self),
 	}
 
 
@@ -1062,6 +1066,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Raids.from_save(self, d.get("raids", {}))
 	Grow.from_save(self, d)
 	Vault.from_save(self, d.get("vault", {}))
+	Marker.from_save(self, d.get("marker", ""))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

@@ -156,6 +156,7 @@ func _init() -> void:
 		"test_raids",
 		"test_heat_zones",
 		"test_grow",
+		"test_map_marker",
 		"test_drug_ladder",
 		"test_old_save_names_migrate",
 		"test_core_loop_is_profitable",
@@ -2744,6 +2745,51 @@ func test_grow() -> void:
 	d["grow"] = {"cannery_rig": {"trays": [{"raw": "bogus", "start_day": "x", "watered": [1]}]}, "nowhere": {"trays": [{}]}}
 	g3.from_dict(data, JSON.parse_string(JSON.stringify(d)))
 	check(Grow.trays(g3, est).size() == 1 and Grow.trays(g3, est)[0].raw == "" and not g3.grow.has("nowhere"), "junk grow data is cleaned")
+func test_map_marker() -> void:
+	const Marker = preload("res://scripts/core/marker.gd")
+	var g := new_game()
+	check(g.map_marker == "" and Marker.goal_location(g) == "", "new game has no marker")
+	check(not Marker.set_marker(g, "nowhere").ok and g.map_marker == "", "unknown id is refused")
+	g.location = ""  # flying
+	var here: Array = g.locations_in(g.system)
+	var loc: String = here[0]
+	check(Marker.set_marker(g, loc).ok and g.map_marker == loc, "marker on a location")
+	check(Marker.goal_location(g) == loc, "location in this system is the goal")
+	g.location = loc
+	check(Marker.reached(g) and Marker.goal_location(g) == "", "docked at the marker = reached, no goal")
+	g.location = ""
+	# system marker: current system has nothing to fly to
+	Marker.set_marker(g, g.system)
+	check(Marker.is_system(g, g.system) and Marker.reached(g) and Marker.goal_location(g) == "", "marker on the system you are in = reached")
+	# another system routes via the gate, like quest waypoints
+	var other := ""
+	for s in g.data.systems:
+		if s != g.system and Galaxy.route(g, g.system, s).size() >= 2:
+			other = s
+			break
+	check(other != "", "a reachable second system exists")
+	Marker.set_marker(g, other)
+	var gate := Marker.goal_location(g)
+	var rt: Array = Galaxy.route(g, g.system, other)
+	check(gate != "" and g.data.locations[gate].has("jump_to") and g.data.locations[gate].jump_to == rt[1], "other system marker leads to the gate towards it (%s)" % gate)
+	var far: Array = g.locations_in(other)
+	Marker.set_marker(g, far[0])
+	check(Marker.goal_location(g) == gate, "location in another system leads to the same gate")
+	# save round trip; old saves (no key) and junk load as no marker
+	var d := g.to_dict()
+	var g2 := new_game()
+	g2.from_dict(data, d)
+	check(g2.map_marker == far[0], "marker survives a save")
+	d.erase("marker")
+	var g3 := new_game()
+	g3.map_marker = loc
+	g3.from_dict(data, d)
+	check(g3.map_marker == "", "old save without marker loads fine")
+	d["marker"] = "bogus"
+	g3.from_dict(data, d)
+	check(g3.map_marker == "", "unknown marker id in a save is dropped")
+	Marker.clear(g)
+	check(g.map_marker == "" and Marker.goal_location(g) == "", "clear")
 
 
 func test_style() -> void:

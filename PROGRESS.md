@@ -154,6 +154,14 @@
   tooltip. Only locations you docked at have history. Market cards (station_ui.gd) untouched.
 - Verified: unit tests (new `test_price_board`: record, once per day, cap, trend, RNG/economy unchanged, save round trip, old save, garbage), UI smoke (+ history label step), menu smoke, tip audit 0, sim 5/5 avg win day 4.6 (unchanged).
 - Gaps: buy prices are static data so their sparkline is flat; sell values move with demand. No market-card tooltip yet.
+## K3 follow-up: map marker (2026-11-05)
+- **Core** `scripts/core/marker.gd`, state `Game.map_marker` ("" / location id / system id, saved as "marker"; old or bogus
+  values load as none). `goal_location(g)` = the marker itself, or the gate towards its system; "" when none or reached.
+- **HUD** `quest_point()` = quest waypoint, else `marker_point()` (flying only); the arrow says MARK in teal for a marker.
+  The ship's `goal_provider` is `hud.quest_point`, so the autopilot (T) follows it and switches off on arrival.
+- **UI** Map app: "Mark" per location, "Set marker"/"Clear marker" row in the system panel.
+- Verified: unit tests (test_map_marker), UI smoke 51 steps (+ map marker step), tip audit 0, menu smoke.
+- Gaps: no marker on the surface/minimap-on-foot; autopilot still ignores asteroids/patrols.
 
 ## K3: QoL (phase 3 wave 10, 2026-11-03)
 - **Autopilot** (`ship.gd`): action `ship_autopilot` (T) toggles; `goal_provider` = `hud.quest_point` (set in main);
