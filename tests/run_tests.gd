@@ -2795,7 +2795,7 @@ func test_mixing_journal() -> void:
 	check(not Bench.recook(h, "meth:crisp+static").ok, "unknown recipe refused")
 	h.cargo.nanoflux = 4
 	check(Bench.recook_block(h, rk) == "", "no block with enough additives")
-	check(Bench.recook(h, rk).ok and Bench.tray(h).additives == ["nanoflux"] and h.cargo.nanoflux == 0, "re-cook pours the recipe")
+	check(Bench.recook(h, rk).ok and Bench.tray(h).additives == ["nanoflux"] and int(h.cargo.get("nanoflux", 0)) == 0, "re-cook pours the recipe")
 	var t2 := bench_game()
 	Bench.begin(t2, "precursor_scale", "meth", 2)
 	check(not Bench.recook(t2, rk).ok, "recipe for another drug refused")
