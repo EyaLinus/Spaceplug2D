@@ -336,8 +336,7 @@ func sale_heat_mult(base: String, loc: String = location) -> float:
 ## Price per unit for selling `product_key` here, to a contact (id) or the fence ("").
 func sell_price(product_key: String, contact_id: String = "", loc: String = location) -> int:
 	var p := Mixing.parse_key(product_key)
-	var v := Mixing.value(data, product_key) * float(demand.get(loc, {}).get(p.base, 0.0)) * Cartels.price_mult(self, loc) * Laws.price_mult(self, loc, p.base)
-	var v := Mixing.value(data, product_key) * float(demand.get(loc, {}).get(p.base, 0.0)) * Cartels.price_mult(self, loc) * PriceWar.sell_mult(self, loc)
+	var v := Mixing.value(data, product_key) * float(demand.get(loc, {}).get(p.base, 0.0)) * Cartels.price_mult(self, loc) * Laws.price_mult(self, loc, p.base) * PriceWar.sell_mult(self, loc)
 	if contact_id == "":
 		return int(round(v * float(data.market.fence_ratio)))
 	var c := contact(contact_id)
@@ -987,8 +986,7 @@ func to_dict() -> Dictionary:
 		"grow": Grow.to_save(self), "grow_q": Grow.quality_to_save(self),
 		"vault": Vault.to_save(self),
 		"marker": Marker.to_save(self),
-		"pricewar": PriceWar.to_save(self), 
-		
+		"pricewar": PriceWar.to_save(self),
 	}
 
 
