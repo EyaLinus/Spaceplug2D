@@ -5,6 +5,7 @@ extends "res://scripts/ui/phone/phone_app.gd"
 
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
+const PriceBoard = preload("res://scripts/core/price_board.gd")
 
 const CANVAS_H := 170.0
 const COLD := Color("#4fe3c1")
@@ -456,9 +457,23 @@ func _price_row(g, row: Dictionary) -> Control:
 		var where := UI.label("%s  (%s)" % [g.data.locations[o.loc].name, g.data.systems[o.system].name], 12, UI.TEXT if i == 0 else UI.MUTED)
 		where.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		line.add_child(where)
+		line.add_child(_history_label(g, o.loc, PriceBoard.key_buy(str(row.item)) if row.has("item") else PriceBoard.key_sell(str(row.base))))
 		line.add_child(UI.label("%d cr%s" % [o.price, "  best" if i == 0 else ""], 12, UI.GOLD if i == 0 else UI.MUTED))
 		col.add_child(line)
 	return panel
+
+
+## Price board: trend arrow + sparkline of the prices you saw at `loc`, last days as tooltip. "no data" until you docked there.
+func _history_label(g, loc: String, key: String) -> Label:
+	var h := PriceBoard.history(g, loc, key)
+	var c := PriceBoard.cfg(g.data)
+	var t := PriceBoard.trend(g, loc, key)
+	var l := UI.label("%s %s" % [PriceBoard.arrow(t), PriceBoard.sparkline(h, c.spark_days)] if h.size() >= 2 else ("seen" if h.size() == 1 else "no data"), 11,
+		UI.MUTED if t == 0 else (UI.ACCENT if t < 0 else UI.WARN))
+	l.name = "PriceHist_%s_%s" % [loc, key.replace(":", "_")]
+	l.mouse_filter = Control.MOUSE_FILTER_STOP
+	l.tooltip_text = ("Prices you saw here (last %d days):\n%s" % [mini(h.size(), c.spark_days), PriceBoard.lines(h, c.spark_days)]) if not h.is_empty() else "You have not docked here yet, so there is no price history."
+	return l
 
 
 func _refresh_soon() -> void:

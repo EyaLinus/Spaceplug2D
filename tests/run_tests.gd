@@ -128,6 +128,7 @@ func _init() -> void:
 		"test_debt_win_and_loss",
 		"test_save_roundtrip",
 		"test_style",
+		"test_price_board",
 		"test_drug_ladder",
 		"test_old_save_names_migrate",
 		"test_core_loop_is_profitable",
@@ -2177,6 +2178,69 @@ func test_save_roundtrip() -> void:
 	h.from_dict(data, JSON.parse_string(json))
 	check(JSON.stringify(h.to_dict()) == json, "save round-trip is stable")
 	check(h.lab_queue.size() == 1 and h.upgrades.engine == 2, "lab queue and upgrades restored")
+
+
+func test_price_board() -> void:
+	const PB = preload("res://scripts/core/price_board.gd")
+	var g := new_game()
+	var loc: String = str(data.start.location)
+	var cap: int = int(data.price_board.history_days)
+	check(g.price_board.is_empty(), "price board starts empty")
+	g.dock(loc)
+	var key := PB.key_buy("cannabis")
+	check(PB.history(g, loc, key).size() == 1 and PB.history(g, loc, key)[0][1] == g.buy_price("cannabis", loc), "docking notes the buy price")
+	check(PB.history(g, loc, PB.key_sell("weed")).size() == 1, "docking notes the sell value")
+	g.dock(loc)
+	check(PB.history(g, loc, key).size() == 1, "at most one observation per day")
+	check(PB.observe(g, loc) == 0, "observing twice on a day adds nothing")
+	g._new_day()
+	check(PB.history(g, loc, key).size() == 2 and PB.history(g, loc, key)[1][0] == g.day, "the day tick notes prices while docked")
+	check(PB.history(g, "cinder", key).is_empty(), "places you have not been to have no history")
+	for i in range(cap + 6):
+		g.day += 1
+		PB.observe(g, loc)
+	check(PB.history(g, loc, key).size() == cap, "history capped to %d days" % cap)
+	check(PB.history(g, loc, key).back()[0] == g.day, "newest kept when capped")
+	g.price_board[loc]["buy:cannabis"] = [[1, 100], [2, 100]]
+	check(PB.trend(g, loc, key) == 0, "same price is steady")
+	g.price_board[loc]["buy:cannabis"] = [[1, 100], [2, 130]]
+	check(PB.trend(g, loc, key) == 1 and PB.arrow(1) == "▲", "rise is detected")
+	g.price_board[loc]["buy:cannabis"] = [[1, 100], [2, 60]]
+	check(PB.trend(g, loc, key) == -1, "fall is detected")
+	check(PB.sparkline([[1, 5]], 8) == "" and PB.sparkline([[1, 1], [2, 9]], 8) == "▁█", "sparkline needs two points and spans low..high")
+	check(PB.lines([[1, 5], [2, 7]], 1) == "day 2: 7 cr", "tooltip lines show the last n")
+	# leaves the economy and the RNG stream alone
+	var g2 := new_game()
+	var g3 := new_game()
+	g2.dock(loc)
+	g3.location = loc
+	g2.tick(5.0)
+	g3.tick(5.0)
+	check(g2.rng.state == g3.rng.state and g2.credits == g3.credits and g2.demand == g3.demand, "price board leaves RNG and economy alone")
+	# save round trip
+	var gs := new_game()
+	gs.dock(loc)
+	var d := gs.to_dict()
+	var r := Game.new()
+	r.from_dict(data, JSON.parse_string(JSON.stringify(d)))
+	check(r.price_board == gs.price_board and not r.price_board.is_empty(), "price board survives a JSON save round trip")
+	# old save
+	d.erase("price_board")
+	var o := Game.new()
+	o.from_dict(data, d)
+	check(o.price_board.is_empty(), "old save loads with empty history")
+	# garbage
+	for junk in ["x", 5, [1, 2], {"mireth": 3}, {"nowhere": {"buy:cannabis": [[1, 2]]}}, {loc: {"buy:cannabis": "abc"}}]:
+		var jd := d.duplicate(true)
+		jd["price_board"] = junk
+		var jg := Game.new()
+		jg.from_dict(data, jd)
+		check(jg.price_board.is_empty(), "garbage price board is ignored: " + str(junk))
+	var jd2 := d.duplicate(true)
+	jd2["price_board"] = {loc: {"sell:weed": [[1], "x", [3, "y"], [5, 40], [4, 30], [5, 99]], "bad": [[1, 2]], "buy:nope": [[1, 2]]}}
+	var jg2 := Game.new()
+	jg2.from_dict(data, jd2)
+	check(jg2.price_board.get(loc, {}).keys() == ["sell:weed"] and jg2.price_board[loc]["sell:weed"] == [[4, 30], [5, 40]], "garbage entries dropped, rest sorted and de-duplicated")
 
 
 func test_style() -> void:

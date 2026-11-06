@@ -23,6 +23,7 @@ const Dealers = preload("res://scripts/core/dealers.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Style = preload("res://scripts/core/style.gd")
+const PriceBoard = preload("res://scripts/core/price_board.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Escort = preload("res://scripts/core/escort.gd")
 const SAVE_VERSION := 1
@@ -84,6 +85,7 @@ var quests: Dictionary = {"active": [], "done": [], "step": {}, "count": {}, "tr
 var interdiction: Dictionary = {}  ## pending interdiction after a jump (runtime only, see interdiction.gd)
 var escort: Dictionary = {"job": {}, "last": {}, "done": 0}  ## freighter escort job and cooldowns (see escort.gd), saved
 var lane_rng := RandomNumberGenerator.new()  ## interdiction rolls only, so the game RNG stays untouched
+var price_board: Dictionary = {}  ## seen prices per location and good, last N days (see price_board.gd), saved
 var style: Dictionary = {}  ## K2 look, ship paint/decal and estate decor (see style.gd), saved
 var cartels: Dictionary = {}  ## sector influence per location and cartel hostility (see cartels.gd), saved
 
@@ -137,6 +139,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	quests = Quests.empty_state()  # the opening quests start in GameState.new_game (tests and sims run without)
 	cartels = Cartels.init_state(data)
 	style = Style.init_state(data)
+	price_board = {}
 	interdiction = {}
 	escort = Escort.empty_state()
 	lane_rng.seed = seed_value * 7919 + 13
@@ -388,6 +391,7 @@ func _new_day() -> void:
 	Corruption.new_day(self)
 	Workers.new_day(self)
 	Cartels.new_day(self)
+	_note_prices()
 	_emit("new_day", {"day": day})
 	if debt > 0 and day > debt_due_day:
 		state = "lost"
@@ -415,8 +419,15 @@ func dock(loc: String) -> Dictionary:
 	system = loc_system(loc)
 	Corruption.on_dock(self, loc)
 	SpaceCombat.on_dock(self)
+	_note_prices()
 	_emit("docked", {"location": loc})
 	return _ok("Docked at %s." % ld.name)
+
+
+## Price board: note today's prices where you are docked (no RNG, no economy effect).
+func _note_prices() -> void:
+	if location != "":
+		PriceBoard.observe(self, location)
 
 
 func undock() -> Dictionary:
@@ -871,6 +882,7 @@ func to_dict() -> Dictionary:
 		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "quests": Quests.to_save(self),
 		"cartels": Cartels.to_save(self), "ship_class": ship_class, "hulls": hulls.duplicate(),
 		"style": Style.to_save(self), "escort": Escort.to_save(self),
+		"price_board": PriceBoard.to_save(self),
 	}
 
 
@@ -951,6 +963,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Cartels.from_save(self, d.get("cartels", {}))
 	Style.from_save(self, d.get("style", {}))
 	Escort.from_save(self, d.get("escort", {}))
+	PriceBoard.from_save(self, d.get("price_board", {}))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 

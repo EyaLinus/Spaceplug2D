@@ -511,5 +511,9 @@
       "aquarium": {"name": "Aquarium", "cost": 400, "desc": "Glowfish from the Glacis domes."},
       "trophy": {"name": "Gold trophy", "cost": 900, "desc": "For the kingpin who has everything."}
     }
+  },
+  "price_board": {
+    "_doc": "Price board (Map app > Price comparison): per location and good one observation per game day while you are docked there, kept for history_days; spark_days = points in the sparkline, flat_pct = change below this share counts as steady.",
+    "history_days": 14, "spark_days": 8, "flat_pct": 0.02
   }
 }

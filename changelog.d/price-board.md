@@ -1,0 +1,1 @@
+- **Price board:** the game now remembers the buy prices (raws, additives) and plain-batch sell values you saw at each location, one note per game day while docked, last 14 days, saved with the game. The Map app's price comparison shows a trend arrow and a sparkline per location with the last days as a tooltip.
