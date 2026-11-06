@@ -154,6 +154,7 @@ func _init() -> void:
 		"test_escort_enemies",
 		"test_escort_jump",
 		"test_escort_save",
+		"test_quest_chapter3",
 		"test_bribe",
 		"test_corruption_data",
 		"test_heat_per_system",
@@ -4797,3 +4798,46 @@ func test_sealing_bench() -> void:
 	g.cargo[prod] = 100
 	Sealing.load_bench(g, e, prod, 100, 1)
 	check(Sealing.loaded(g, e) == 2 * int(data.sealing.capacity), "bench stops at capacity")
+func test_quest_chapter3() -> void:
+	var g := new_game()
+	var qs: Dictionary = Quests.defs(g)
+	var ids := ["main_veil_whisper", "main_veil_ground", "main_veil_toll", "main_veil_wing", "main_veil_spire", "main_veil_ledger"]
+	for q in ids:
+		check(qs.has(q) and int(qs[q].chapter) == 3 and qs[q].main and str(qs[q].giver) != "", "chapter 3 quest %s" % q)
+	check((qs.main_rig.next as Array).has("main_veil_whisper"), "chapter 3 follows Cold Front")
+	check(g.data.locations.has(str(qs.main_veil_spire.steps[0].target.loc)), "the Spire waypoint exists")
+	Quests.start(g, "main_veil_whisper")
+	g.note("landed", {"location": "varrow"})
+	check(Quests.is_done(g, "main_veil_whisper"), "Varrow reached")
+	check(Quests.is_active(g, "main_veil_ground"), "Cheap Faith starts")
+	g.cartels.influence["varrow"] = {"veil": 0.6, "you": 0.1}
+	g.cartels.owner["varrow"] = "veil"
+	Cartels.gain(g, "varrow", "you", 0.6)
+	check(Quests.is_done(g, "main_veil_ground") and Quests.is_active(g, "main_veil_toll"), "taking a Veil street finishes Cheap Faith")
+	g.day = 3
+	g.interdiction = {}
+	Interdiction.begin(g, {"kind": "cartel", "cartel": "comets", "units": ["fighter"]})
+	Interdiction.resolve(g, "fight")
+	check(Quests.is_active(g, "main_veil_toll"), "a Comet interdiction does not count")
+	g.interdiction = {}
+	Interdiction.begin(g, {"kind": "cartel", "cartel": "veil", "units": ["fighter"]})
+	Interdiction.resolve(g, "fight")
+	check(Quests.is_done(g, "main_veil_toll") and Quests.is_active(g, "main_veil_wing"), "a Veil interdiction finishes The Quiet Toll")
+	for i in 3:
+		SpaceCombat.enemy_down(g, "fighter", "veil", g.rng)
+	SpaceCombat.enemy_down(g, "fighter", "comets", g.rng)
+	check(Quests.is_active(g, "main_veil_wing") and Quests.progress_text(g, "main_veil_wing") == "3/4", "only Veil wrecks count")
+	SpaceCombat.enemy_down(g, "fighter", "veil", g.rng)
+	check(Quests.is_done(g, "main_veil_wing") and Quests.is_active(g, "main_veil_spire"), "4 Veil wrecks finish Lanterns Out")
+	g.system = "kovar"
+	check(Quests.space_goal(g, Quests.target(g)) == "veil_spire", "the Spire is the waypoint in Kovar")
+	SpaceCombat.raid_base(g, "veil_spire", g.rng)
+	check(Quests.is_done(g, "main_veil_spire") and Quests.is_active(g, "main_veil_ledger"), "raiding the Spire finishes Veil Spire")
+	g.credits = 100
+	g.note("landed", {"location": "glacis"})
+	check(Quests.step_index(g, "main_veil_ledger") == 1, "landed on Glacis")
+	g.credits = 6000
+	Quests.refresh(g)
+	check(Quests.is_done(g, "main_veil_ledger"), "audit settled, chapter 3 done")
+	check(g.quests.active.is_empty(), "nothing follows chapter 3 yet")
+

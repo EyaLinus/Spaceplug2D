@@ -130,6 +130,20 @@
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,
   version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, building
   interiors (D4), a real balance pass (waits for Linus), Ninth Veil base quest (chapter 3), duplicate PRs #48 and #64.
+  version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building
+  interiors (D4), a real balance pass (waits for Linus), duplicate PRs #48 and #64.
+
+## Q3: main quest chapter 3, the Ninth Veil (2026-11-03)
+- 6 missions in `data/quests.json` (`chapter: 3`), chained after Cold Front (`main_rig.next`): Whispers on Varrow (land,
+  Rhea), Cheap Faith (turf_changed by you, was veil; Jex Ferro), The Quiet Toll (interdiction_resolved by the Veil;
+  Ines Okoro), Lanterns Out (4 pirate_down with cartel veil), Veil Spire (base_raided veil, waypoint on `veil_spire`),
+  Quill's Ledger (land on Glacis, then 5000 cr; Inspector Pavo Brandt). Rewards 400 to 3000 cr. Officials (Ferro, Okoro,
+  Brandt) are givers only: they live in the corruption system, not the People contacts, so no `meet` rewards.
+- Win screen text now points at chapter 4. Pure data and text, no core changes.
+- Verified: test_quest_chapter3 plays the whole chapter through the core (wrong-cartel events do not count); 10883
+  unit checks 0 failures, UI smoke, tip audit and menu smoke clean on Godot 4.3 headless.
+- Gaps: not played by a human; the Veil interdiction and kill steps depend on random encounters; Veil fighters only
+  spawn near the Spire/Kovar; no chapter 4 yet.
 
 ## E4 leftover: escort missions (phase 3 wave 11, 2026-11-03)
 - **Core** `scripts/core/escort.gd`, data `content.json` "escort" (freighter stats, wave rules, 5 missions: Mireth to
