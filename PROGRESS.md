@@ -532,6 +532,26 @@
   them); loyalty has no gameplay beyond quitting (no theft/strikes, no raises); no skill growth or training; auto cooking
   ignores the shared lab queue and lab-level capacity of the hub; worker-cooked batches are not wired into the sim bot;
   estates cannot be sold, so assignment cleanup on removal is not needed yet; wage balance (15-110 cr/day) is eyeballed.
+## Art wiring (2026-11-06)
+- **Wired from art pass 4:** station icons `st_<station>` in the bench overlay title and chain line and the stash "next stop"
+  line; weapon icons `wpn_*` in the on-foot HUD weapon line and the weapon wheel; combat HUD icons (`hud_hull/shield/boost`,
+  secondary row uses `hud_missile` / `up_flak` / `up_ion`); map app draws `map_star` (tinted per system), `map_gate` on
+  lanes, `map_ship` at your system, `map_hostile` at heat >= 0.66 (buttons moved under the star). `combat_layer.gd` draws the
+  laser/pirate bolt/missile sprites rotated to flight direction, explosion (pirate/gunship death, missile blast, wreck), hit
+  spark (non-lethal hits, hull hits) and the shield bubble; procedural drawing stays as fallback. Player and NPCs (workers
+  and officer too) play the idle sheet when standing (`Art.idle_frame`, recoloured idle sheet for player/workers). Roads and
+  plazas get ground fringes (`Art.edge_plan`/`draw_edges`, `surface._draw_edge_fringes`). World draws bigger stars as
+  `stars.png` sprites and nebulae as tinted `nebula.png` clouds.
+- Verified: unit tests (new `test_art_wiring`, 14087 checks), UI smoke (new fx/HUD-icon assertions), menu smoke, sim 2/2 won,
+  90 screenshots incl. new `space_fx` and `space_nebula`, reviewed. Fixed during review: combat HUD overflowing into the help line
+  (box taller), map glow centred on the star icon.
+- Gaps: idle animation is only reviewed as code and stills (no animation capture); fringes are visible but subtle and have no
+  alternatives per road/plaza kind (areas/`area_*` tiles and buildings are not fringed); the explosion sprite reads as a yellow
+  blob at 1x scale; the nebula is a faint blocky cloud at x10 scale and sits randomly (rarely in view); only the bigger stars
+  use sprites; no sprite for flak/ion bolts (kept procedural); hostile map marker only checked by code (heat was low in
+  shots); station icons are not in the machines/build cards (they keep the world sprites); the bench title icon is 32 px next
+  to a 24 px title; no tests for the draw paths beyond the smoke (they run, but pixels are not asserted).
+
 ## Art pass 4 (2026-11-03)
 - **New art** (all from source grids / `tools/art/build_art.py`, palette-checked by the build): 7 lab station icons
   `st_<station>`, 3 ground weapon icons `wpn_<weapon>`, combat HUD icons (`hud_hull/shield/missile/boost`), galaxy map

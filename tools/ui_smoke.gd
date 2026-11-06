@@ -1618,6 +1618,15 @@ func _space_combat_2(m, g) -> void:
 	g.combat.secondary = "ion"
 	await frames(2)
 	_assert(w.combat_hud._missiles.text.contains("Ion") and w.combat_hud._missiles.text.contains("switch"), "HUD shows the selected secondary")
+	# art pass 4: explosion, hit spark and shield sprites are queued and play out; the HUD rows carry icons
+	var fx0: int = cb.fx.size()
+	cb._sprite_fx("explosion", w.ship.position + Vector2(0, -80), 0.5, 4, 1.0)
+	cb._sprite_fx("hit", w.ship.position + Vector2(0, -80), 0.2, 3, 1.0)
+	cb._sprite_fx("no_such_fx", w.ship.position, 0.2, 3, 1.0)
+	_assert(cb.fx.size() == fx0 + 2 and cb.fx[fx0].has("sprite"), "sprite fx queued only for existing art")
+	await frames(2)
+	cb.fx.clear()
+	_assert(w.combat_hud._hull.get_parent().get_child(0) is HBoxContainer and w.combat_hud._missile_row != w.combat_hud._missiles, "combat HUD rows carry art pass 4 icons")
 	# raid the Comet Nest: turrets wake up, defenders launch, the base dies to concentrated fire
 	var nest: Node2D = w.locations["comet_nest"]
 	w.ship.position = nest.position + Vector2(0, 600)

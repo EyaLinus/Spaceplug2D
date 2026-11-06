@@ -37,6 +37,7 @@ const SHIP_NOZZLES := [
 ## down/up/right. Edge strip: 8 fringe tiles in EDGE_ORDER, drawn over road/plaza where ground starts on that side.
 const IDLE_FRAMES := 4
 const EDGE_ORDER := ["N", "E", "S", "W", "NE", "SE", "SW", "NW"]
+const IDLE_CYCLE := 3.6  ## seconds for one stand / breathe / blink loop
 
 static var _cache := {}
 
@@ -103,10 +104,18 @@ static func look_for_color(c: Color) -> String:
 
 ## Draws one character frame with its feet at `feet`. Facing picks the row (down/up/side, left = mirrored side).
 ## Returns false (and draws nothing) if the sheet is missing.
-static func draw_character(ci: CanvasItem, look: String, facing: Vector2, step: int, feet := Vector2(0, 12), sheet: Texture2D = null) -> bool:
+## `idle_t` >= 0 plays the idle sheet (breathe, blink) at that time instead of the walk cycle's standing frame; with a
+## recoloured `sheet` it needs the matching recoloured `idle` sheet, else the standing walk frame is used.
+static func draw_character(ci: CanvasItem, look: String, facing: Vector2, step: int, feet := Vector2(0, 12), sheet: Texture2D = null, idle_t := -1.0, idle: Texture2D = null) -> bool:
 	var t := sheet if sheet != null else character(look)
 	if t == null:
 		return false
+	var col: int = WALK[posmod(step, WALK.size())]
+	if idle_t >= 0.0 and col == 0:
+		var it := idle if idle != null else (idle_sheet(look) if sheet == null else null)
+		if it != null:
+			t = it
+			col = idle_frame(idle_t)
 	var row := 0
 	var flip := false
 	if absf(facing.x) > absf(facing.y) + 0.05:
@@ -114,7 +123,6 @@ static func draw_character(ci: CanvasItem, look: String, facing: Vector2, step: 
 		flip = facing.x < 0.0
 	elif facing.y < 0.0:
 		row = 1
-	var col: int = WALK[posmod(step, WALK.size())]
 	var src := Rect2(col * CHAR, row * CHAR, CHAR, CHAR)
 	var dst := Rect2(feet.x - CHAR / 2.0, feet.y - CHAR + 2.0, CHAR, CHAR)
 	if flip:
@@ -250,6 +258,63 @@ static func with_icon(key: String, ctrl: Control) -> Control:
 	return h
 
 
+## Idle sheet column at time `t` (seconds): stand, breathe, stand, then a short blink once per cycle.
+static func idle_frame(t: float) -> int:
+	var u := fposmod(t, IDLE_CYCLE)
+	if u < 1.4:
+		return 0
+	if u < 2.0:
+		return 1
+	return 2 if u < IDLE_CYCLE - 0.2 else 3
+
+
+## Draws frame `frame` (of `frames` equal-width frames side by side) of fx strip `name`, centred on `p`, rotated by `rot`.
+## Returns false without the art so the caller can draw the procedural effect.
+static func draw_fx(ci: CanvasItem, name: String, p: Vector2, rot := 0.0, frame := 0, frames := 1, scale := 1.0, tint := Color.WHITE) -> bool:
+	var t := fx(name)
+	if t == null:
+		return false
+	var w := t.get_width() / float(frames)
+	var h := float(t.get_height())
+	ci.draw_set_transform(p, rot, Vector2(scale, scale))
+	ci.draw_texture_rect_region(t, Rect2(-w / 2.0, -h / 2.0, w, h), Rect2(clampi(frame, 0, frames - 1) * w, 0, w, h), tint)
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	return true
+
+
 static func idle_sheet(look: String) -> Texture2D: return tex("chars/%s_idle.png" % look)
 static func edge_strip(set_name: String) -> Texture2D: return tex("tiles/%s_edge.png" % set_name)
 static func fx(name: String) -> Texture2D: return tex("fx/%s.png" % name)  ## bolt_laser, bolt_pirate, missile, explosion (4 frames of 32 px), hit (3 of 16), shield (3 of 64)
+
+
+## Fringe tiles for the border cells of a tile-aligned rect (a road or plaza) as [cell, EDGE_ORDER index] pairs, where
+## `is_solid.call(cell)` is false (= ground starts there): side tiles for open sides, a corner tile where both neighbours
+## are solid but the diagonal is open.
+static func edge_plan(cells: Rect2i, is_solid: Callable) -> Array:
+	var plan: Array = []
+	var side := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
+	var corner := [Vector2i(1, -1), Vector2i(1, 1), Vector2i(-1, 1), Vector2i(-1, -1)]
+	for cy in range(cells.position.y, cells.end.y):
+		for cx in range(cells.position.x, cells.end.x):
+			if cx > cells.position.x and cx < cells.end.x - 1 and cy > cells.position.y and cy < cells.end.y - 1:
+				continue
+			var c := Vector2i(cx, cy)
+			var open := [false, false, false, false]
+			for i in 4:
+				open[i] = not is_solid.call(c + side[i])
+				if open[i]:
+					plan.append([c, i])
+			for i in 4:  # NE, SE, SW, NW
+				if not open[i] and not open[(i + 1) % 4] and not is_solid.call(c + corner[i]):
+					plan.append([c, 4 + i])
+	return plan
+
+
+## Draws the edge_plan fringes of `cells`. Returns false without the set's edge strip.
+static func draw_edges(ci: CanvasItem, set_name: String, cells: Rect2i, tile: float, is_solid: Callable) -> bool:
+	var t := edge_strip(set_name)
+	if t == null:
+		return false
+	for e in edge_plan(cells, is_solid):
+		ci.draw_texture_rect_region(t, Rect2(Vector2(e[0]) * tile, Vector2(tile, tile)), Rect2(e[1] * TILE, 0, TILE, TILE))
+	return true

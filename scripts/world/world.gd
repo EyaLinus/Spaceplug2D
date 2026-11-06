@@ -11,6 +11,7 @@ const CombatHudScript = preload("res://scripts/ui/combat_hud.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Style = preload("res://scripts/core/style.gd")
 const Escort = preload("res://scripts/core/escort.gd")
+const Art = preload("res://scripts/core/art.gd")
 const FreighterScript = preload("res://scripts/world/freighter.gd")
 const PatrolFeel = preload("res://scripts/core/patrolfeel.gd")
 
@@ -280,14 +281,25 @@ func _update_scan(g, delta: float) -> void:
 
 
 func _draw() -> void:
+	var star_t := Art.tex("space/stars.png")  # art pass 4: the bigger stars are sprites (the dim ones stay dots)
 	for s in _stars:
-		draw_circle(s[0], s[1], s[2])
+		if star_t != null and s[1] > 1.7:
+			var i := int(absf(s[0].x * 7.0 + s[0].y * 13.0)) % 8
+			draw_texture_rect_region(star_t, Rect2(s[0] - Vector2(8, 8), Vector2(16, 16)), Rect2(i * 16, 0, 16, 16), s[2])
+		else:
+			draw_circle(s[0], s[1], s[2])
 	for f in fields:
 		draw_circle(f.pos, f.radius, Color(0.5, 0.42, 0.34, 0.06))
 		draw_arc(f.pos, f.radius, 0, TAU, 64, Color(0.7, 0.6, 0.45, 0.2), 2.0)
 	for rk in _rocks:
 		draw_circle(rk[0], rk[1], rk[2])
 	# faint nebulae for depth, tinted per system
-	for nb in _nebulae:
-		draw_circle(nb[0], nb[1], nb[2])
+	var neb_t := Art.tex("space/nebula.png")  # three neutral clouds, tinted with the system colours
+	for i in _nebulae.size():
+		var nb: Array = _nebulae[i]
+		if neb_t != null:
+			var d: float = nb[1] * 1.3
+			draw_texture_rect_region(neb_t, Rect2(nb[0] - Vector2(d, d) / 2.0, Vector2(d, d)), Rect2((i % 3) * 96, 0, 96, 96), Color(nb[2], 0.22))
+		else:
+			draw_circle(nb[0], nb[1], nb[2])
 	draw_rect(Rect2(-SECTOR_HALF, -SECTOR_HALF, SECTOR_HALF * 2, SECTOR_HALF * 2), Color(0.3, 0.6, 1.0, 0.25), false, 4.0)
