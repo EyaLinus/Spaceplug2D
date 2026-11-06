@@ -2219,7 +2219,7 @@ func test_price_board() -> void:
 	check(Pricehist.series(g, loc0, b0) == before, "stored points only move on a new day")
 	check(Pricehist.series(g, loc0, b0, true)[-1] == Pricehist.price_now(g, loc0, b0), "the live point follows demand")
 	# save round trip, junk and old saves
-	var d := JSON.parse_string(JSON.stringify(g.to_dict()))
+	var d: Dictionary = JSON.parse_string(JSON.stringify(g.to_dict()))
 	var h := Game.new()
 	h.from_dict(data, d)
 	check(Pricehist.series(h, loc0, b0) == before, "history survives a save")
