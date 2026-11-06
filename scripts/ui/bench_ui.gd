@@ -161,7 +161,7 @@ func _build_start(g) -> void:
 	q.add_child(ql)
 	q.add_child(_step_btn("+", 1, cap))
 	q.add_child(_step_btn("Max", 99, cap))
-	q.add_child(UI.label("Rig Mk %d holds %d per batch" % [g.upgrades.lab + 1, g.lab_capacity()], 14, UI.MUTED))
+	q.add_child(UI.label("%s holds %d per batch" % [g.data.estate_tiers.names[g.estate_tier(g.rig_estate())], g.lab_capacity()], 14, UI.MUTED))
 	var go := UI.accent_button("Start & work the %s [E]" % g.data.stations[station_id].name, _confirm, 0)
 	go.name = "StartBatch"
 	go.disabled = cap <= 0

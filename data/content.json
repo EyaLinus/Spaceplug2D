@@ -233,13 +233,17 @@
     "cargo": {"name": "Cargo Hold", "levels": [20, 35, 55, 80], "costs": [600, 1500, 3500]},
     "engine": {"name": "Ion Engine", "levels": [1.0, 1.25, 1.5, 1.8], "costs": [500, 1400, 3000]},
     "stealth": {"name": "Stealth Plating", "levels": [0.0, 0.15, 0.3, 0.45], "costs": [700, 1800, 4000]},
-    "lab": {"name": "Hydro Rig", "levels": [5, 10, 20, 35], "costs": [800, 2000, 4500]},
     "laser": {"name": "Laser Cannons", "levels": [8, 11, 15, 20], "costs": [500, 1300, 2800]},
     "missile": {"name": "Missile Pods", "levels": [0, 4, 8, 14], "costs": [700, 1500, 3200]},
     "flak": {"name": "Flak Battery", "levels": [0, 6, 9, 13], "costs": [900, 1700, 3000]},
     "ion": {"name": "Ion Emitter", "levels": [0, 12, 18, 26], "costs": [1100, 2000, 3600]},
     "shield": {"name": "Shield Generator", "levels": [0, 40, 80, 140], "costs": [800, 1800, 3800]},
     "hull": {"name": "Hull Armour", "levels": [100, 130, 170, 220], "costs": [600, 1400, 3000]}
+  },
+  "estate_tiers": {
+    "names": ["Rented rig", "Fitted line", "Pro line", "Industrial line"],
+    "capacity": [5, 10, 20, 35],
+    "costs": [800, 2000, 4500]
   },
   "lab": {
     "base_seconds": 3.0,

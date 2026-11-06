@@ -590,6 +590,7 @@ func _build_shipyard(g) -> Control:
 	var right := VBoxContainer.new()  # the tab itself scrolls
 	right.add_theme_constant_override("separation", 10)
 	right.add_child(grid)
+	right.add_child(_build_rig_tiers(g))
 	right.add_child(_build_hulls(g))
 	right.add_child(_build_mechanic(g))
 	var h := HBoxContainer.new()
@@ -611,7 +612,6 @@ const UPGRADE_TIPS := {
 	"cargo": "More hold slots: carry bigger hauls per trip.",
 	"engine": "More thrust: outrun patrols and pirates, shorter jump drive charge.",
 	"stealth": "Smaller patrol scan radius in space.",
-	"lab": "More units per batch at every station line.",
 	"laser": "Damage per laser bolt in space combat [J].",
 	"missile": "Homing missile pods [K]; restock at the mechanic.",
 	"flak": "Secondary weapon: a cone of flak pellets, shreds fighter swarms up close. No ammo. Switch with [Q].",
@@ -675,12 +675,39 @@ func _build_mechanic(g) -> Control:
 	return v
 
 
+## Building tiers: the old global Hydro Rig upgrade, now rebuilt per estate you own on this planet (and the ship bay).
+func _build_rig_tiers(g) -> Control:
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	var t: Dictionary = g.data.estate_tiers
+	for id in g.estates:
+		var e: Dictionary = g.data.estates[id]
+		if not e.get("ship", false) and e.get("location", "") != g.location:
+			continue
+		var tier: int = g.estate_tier(id)
+		var cost: int = g.estate_tier_cost(id)
+		var col := VBoxContainer.new()
+		col.add_child(UI.label("%s  ·  %s" % [e.name, t.names[tier]], 16, UI.GOLD))
+		if cost < 0:
+			col.add_child(UI.label("%d units/batch · best line" % int(t.capacity[tier]), 14, UI.MUTED))
+		else:
+			col.add_child(UI.label("%d  →  %d units/batch, faster cooking" % [int(t.capacity[tier]), int(t.capacity[tier + 1])], 14, UI.ACCENT))
+			var b := UI.accent_button("Rebuild as %s · %d cr" % [t.names[tier + 1], cost], func(): GameState.act(g.buy_estate_tier(id)))
+			b.name = "Tier_" + id
+			b.disabled = cost > g.credits
+			b.tooltip_text = "Bigger batches and faster cooking in this estate only."
+			col.add_child(b)
+		var card := UI.card(col)
+		card.tooltip_text = "Production line of this estate: more units per batch and faster cooking."
+		v.add_child(card)
+	return v
+
+
 static func _upgrade_value(key: String, v) -> String:
 	match key:
 		"cargo": return "%d slots" % int(v)
 		"engine": return "%d%% thrust" % int(float(v) * 100.0)
 		"stealth": return "-%d%% scan range" % int(float(v) * 100.0)
-		"lab": return "%d units/batch" % int(v)
 		"laser": return "%d damage/shot" % int(v)
 		"missile": return "no pods" if int(v) == 0 else "%d missiles" % int(v)
 		"flak": return "no battery" if int(v) == 0 else "%d dmg/pellet" % int(v)

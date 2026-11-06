@@ -63,7 +63,7 @@ var next_offer_id: int = 0
 var offer_clock: float = 0.0  ## seconds since the last round of customer texts
 var walkups: Dictionary = {}  ## customers on foot (walkups.gd), momentary, not saved
 var people: Dictionary = {}  ## contact id -> addiction, affinity, spent today, known, history (see people.gd)
-var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "flak": 0, "ion": 0, "shield": 0, "hull": 0}
+var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "laser": 0, "missile": 0, "flak": 0, "ion": 0, "shield": 0, "hull": 0}
 var ship_class: String = "courier"  ## hull class you fly (content.json "ship_classes"), saved
 var hulls: Array = ["courier"]  ## hull classes you own; switch between them at a shipyard, saved
 var combat: Dictionary = {}  ## space combat state: hull, shield, missiles, kills (saved), boost, idle (runtime); see spacecombat.gd
@@ -134,6 +134,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	offer_clock = 0.0
 	walkups = {}
 	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "flak": 0, "ion": 0, "shield": 0, "hull": 0}
+	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "laser": 0, "missile": 0, "flak": 0, "ion": 0, "shield": 0, "hull": 0}
 	ship_class = "courier"
 	hulls = ["courier"]
 	SpaceCombat.reset(self)
@@ -226,8 +227,8 @@ func cargo_free() -> int:
 	return cargo_capacity() - cargo_used()
 
 
-func lab_capacity() -> int:
-	return int(data.upgrades.lab.levels[upgrades.lab])
+func lab_capacity(estate_id: String = "") -> int:
+	return int(data.estate_tiers.capacity[estate_tier(rig_estate(estate_id))])
 
 
 func engine_mult() -> float:
@@ -350,9 +351,9 @@ func upgrade_cost(key: String) -> int:
 	return -1 if lvl >= costs.size() else int(costs[lvl])
 
 
-func batch_seconds(qty: int) -> float:
+func batch_seconds(qty: int, estate_id: String = "") -> float:
 	var l: Dictionary = data.lab
-	var speed: float = 1.0 + float(l.speed_per_level) * upgrades.lab
+	var speed: float = 1.0 + float(l.speed_per_level) * estate_tier(rig_estate(estate_id))
 	return (float(l.base_seconds) + float(l.seconds_per_unit) * qty) / speed
 
 
@@ -568,7 +569,7 @@ func check_batch(base: String, additives: Array, qty: int) -> Dictionary:
 			names.append(data.stations[st].name)
 		return _fail("Set up first: %s." % ", ".join(PackedStringArray(names)))
 	if qty <= 0 or qty > lab_capacity():
-		return _fail("Rig holds %d units per batch." % lab_capacity())
+		return _fail("This line holds %d units per batch." % lab_capacity())
 	if lab_queue.size() >= 3:
 		return _fail("Lab queue is full.")
 	var need := batch_needs(base, additives, qty)
@@ -813,6 +814,51 @@ func estate_owned(id: String) -> bool:
 	return estates.has(id)
 
 
+## Building tier of an owned estate (0 = as rented); tiers raise batch size and cooking speed there.
+func estate_tier(id: String) -> int:
+	return clampi(int(estates.get(id, {}).get("tier", 0)), 0, data.estate_tiers.capacity.size() - 1)
+
+
+## The estate whose tier applies: `id` if given, else the one you stand in, else the starter estate that is the
+## hub lab of this planet (the old global hydro rig), else "" (tier 0).
+func rig_estate(id: String = "") -> String:
+	if id != "":
+		return id
+	if estates.has(inside_estate):
+		return inside_estate
+	if loc_data().get("lab", false):
+		for k in data.estates:
+			if data.estates[k].get("starter", false) and data.estates[k].get("location", "") == location:
+				return k
+	return ""
+
+
+## Price of the next tier of `id` (-1 = top tier or not owned).
+func estate_tier_cost(id: String) -> int:
+	if not estates.has(id):
+		return -1
+	var costs: Array = data.estate_tiers.costs
+	var t := estate_tier(id)
+	return -1 if t >= costs.size() else int(costs[t])
+
+
+## Upgrades the production line of an owned estate (replaces the old global Hydro Rig upgrade).
+func buy_estate_tier(id: String) -> Dictionary:
+	if not estates.has(id) or id == "":
+		return _fail("You don't own that.")
+	var cost := estate_tier_cost(id)
+	if cost < 0:
+		return _fail("Already the best line.")
+	if credits < cost:
+		return _fail("Needs %d cr." % cost)
+	if not data.estates[id].get("ship", false) and location != data.estates[id].location:
+		return _fail("You have to be on %s to rebuild it." % data.locations[data.estates[id].location].name)
+	credits -= cost
+	estates[id].tier = estate_tier(id) + 1
+	_emit("estate_tier", {"estate": id, "tier": estates[id].tier})
+	return _ok("%s is now a %s." % [data.estates[id].name, data.estate_tiers.names[estates[id].tier]])
+
+
 func buy_estate(id: String) -> Dictionary:
 	if not data.estates.has(id):
 		return _fail("Unknown property.")
@@ -980,6 +1026,9 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 					nb.fixed = true
 				list.append(nb)
 			estates[e] = {"buildings": list}
+			var tier := clampi(int(d.estates[e].get("tier", 0)), 0, data.estate_tiers.capacity.size() - 1)
+			if tier > 0:  # tier 0 stays implicit so older saves round-trip unchanged
+				estates[e].tier = tier
 			Workers.load_estate(d.estates[e], estates[e])
 	if not estates.has(SHIP_BAY):
 		estates[SHIP_BAY] = {"buildings": []}
@@ -997,6 +1046,10 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Deaddrops.from_save(self, d)
 	workers = Workers.from_save(self, d.get("workers", []))
 	_add_starter_estates()
+	# Old saves: the global Hydro Rig level becomes the tier of the rented starter rig.
+	var old_rig := int(d.get("upgrades", {}).get("lab", 0))
+	if old_rig > 0 and not d.get("estates", {}).get("cannery_rig", {}).has("tier") and estates.has("cannery_rig"):
+		estates.cannery_rig.tier = clampi(old_rig, 0, data.estate_tiers.capacity.size() - 1)
 	Bench.from_save(self, d)
 	Products.from_save(self, d.get("products", {}))
 	Dealers.from_save(self, d.get("dealers", []))

@@ -55,6 +55,8 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
       one per station), drying/packaging table, storage crate; each has its own input/output inventory
 - [ ] The global "hydro rig" becomes the first rented estate; lab upgrades turn into building tiers
 - [x] Raids on estates when heat stays high
+- [x] The global "hydro rig" becomes the first rented estate; lab upgrades turn into building tiers (rent itself still open)
+- [ ] Raids on estates when heat stays high
 - [x] Station minigames (trim, scale, mixing, cook, packaging) decide yield, quality grade and heat; reusable runner
       for estate buildings (`scripts/ui/minigames/`)
 
