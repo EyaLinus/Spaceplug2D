@@ -5,6 +5,27 @@
   version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building
   interiors (D4), a real balance pass (waits for Linus), Ninth Veil base quest (chapter 3), duplicate PRs #48 and #64.
 
+## E4 leftover: escort missions (wave 25, 2026-11-06)
+- **Core** `scripts/core/escort.gd`, data `content.json` "escort" (rules + 2 contracts: `cinder_hop` Cinder Belt -> Bazaar,
+  one system, day 2; `kovar_convoy` Mireth -> Halvane gate -> Kovar gate -> Varrow, day 3). State `g.escort`
+  {active, done, failed, earned}, saved and old-save safe (unknown contracts dropped, missing block = empty).
+- **Flow**: accept in the new **Escort** Com-Phone app while docked at the job's start (status waiting) -> undock there
+  launches her (`escort_launched`). Route legs are "fly" (fills over `leg_seconds` while you are within `near_radius`
+  and nothing hostile sits on her) or "jump" (she waits at the gate; your jump carries her through). Raids come on a
+  timer while you are with her (`first_raid`, `raid_interval`, `max_raids`): `take_raid` picks the contract's cartel
+  for her system (falls back to a present, non-weakened cartel, else pirates), wing from `SpaceCombat.wing_units`
+  capped by `wing_cap`. Raiders within `raid_radius` hurt her at `raider_dps` x threat weight (gunship 2.5).
+- **End**: last location reached -> reward + `hull_bonus` share by hull left, `escort_done`. Fails (`escort_failed`
+  {reason, fine}): destroyed, abandoned (away `abandon_seconds`), left (jumped without her or out of range), wrecked
+  (your `ship_destroyed`), cancelled under way. Fine = min(credits, `fail_fine`); a failed job can be retaken.
+- **World/UI**: `scripts/world/escort_layer.gd` (freighter drawn + moved from the core's progress, measures near/threat,
+  spawns raid wings via `combat.spawn_wing`), hooks in `world.gd` (3 lines) and `Game._emit`/save; HUD line under the
+  quest tracker + toasts (`hud.gd`); `escort_app.gd` + registry line. Events are quest-usable (`escort_done` ...).
+- Verified: not run locally (no godot binary in this sandbox); CI runs tests (new `test_escort_*`), UI smoke
+  (`_escort`: offer, accept, launch, HUD, raid spawn, payout) and tip audit.
+- Gaps: raiders still chase the player, not the freighter (harassment is proximity damage); freighter has no
+  pathing or collision; numbers eyeballed; not played by a human; no art (polygon freighter, app tile has no icon).
+
 ## K3: QoL (phase 3 wave 10, 2026-11-03)
 - **Autopilot** (`ship.gd`): action `ship_autopilot` (T) toggles; `goal_provider` = `hud.quest_point` (set in main);
   `autopilot_step()` turns to the goal, thrusts when within ~20°, brakes inside the stopping distance, switches off

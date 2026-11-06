@@ -439,6 +439,27 @@
     "flee_base": 0.35, "flee_engine": 0.12, "flee_speed": 0.3, "flee_fail_damage": 30,
     "fight_heat": 25, "authority_kill_heat": 15
   },
+  "escort": {
+    "rules": {
+      "min_day": 2, "near_radius": 900, "abandon_seconds": 25, "leg_seconds": 40, "first_raid": 12, "raid_interval": 30,
+      "raid_radius": 650, "raider_dps": 5.0, "threat": {"pirate": 1.0, "fighter": 1.0, "gunship": 2.5, "interceptor": 1.0},
+      "hull_bonus": 0.25, "wing_cap": 4
+    },
+    "contracts": {
+      "cinder_hop": {
+        "title": "Ore Run to the Bazaar", "client": "Dag Hollis, ore hauler",
+        "desc": "Cinder Belt ore barge, one unarmed hull, a lane the Black Comets love. Keep them off her until the Bazaar.",
+        "freighter": "Ore barge Dagny", "route": ["cinder", "bazaar"], "hull": 140, "reward": 380, "fail_fine": 0,
+        "raiders": {"halvane": "comets"}, "max_raids": 2, "min_day": 2
+      },
+      "kovar_convoy": {
+        "title": "Convoy to Kovar", "client": "Marl Voss, Consortium broker",
+        "desc": "A sealed freighter from Mireth through the gate to Varrow. The Comets tax the first half, Saltglass the second. She jumps when you jump.",
+        "freighter": "Freighter Long Lantern", "route": ["mireth", "halvane_gate", "kovar_gate", "varrow"], "hull": 260, "reward": 1100, "fail_fine": 150,
+        "raiders": {"halvane": "comets", "kovar": "tide"}, "max_raids": 4, "min_day": 3
+      }
+    }
+  },
   "style": {
     "_doc": "K2 customization (Style app on the phone). Ramps swap palette roles of the player sprite (hair H/h, skin S/s, jacket C/c/A, pants P) and of the ship hull (y/c/A). cost 0 = owned from the start. Decor is shown in the estates you switch it on for.",
     "hair": {

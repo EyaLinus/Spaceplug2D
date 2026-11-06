@@ -5,6 +5,7 @@ extends Control
 const UI = preload("res://scripts/ui/ui_theme.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Quests = preload("res://scripts/core/quests.gd")
+const Escort = preload("res://scripts/core/escort.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const FxScript = preload("res://scripts/ui/fx.gd")
 
@@ -43,6 +44,7 @@ var _quest_box: PanelContainer  ## tracker of the followed quest (top left)
 var _quest_title: Label
 var _quest_step: Label
 var _quest_hint: Label
+var _escort_line: Label  ## escort job status under the quest tracker (escort.gd)
 var _card: PanelContainer  ## quest message from the quest giver (intro / outro), fades after a while
 var _card_from: Label
 var _card_text: Label
@@ -324,6 +326,14 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		"quest_started":
 			var q: Dictionary = Quests.defs(g).get(p.quest, {})
 			show_card(str(q.get("giver", "")), str(q.get("intro", "")))
+		"escort_launched":
+			show_toast("%s launches. Stay close and keep the raiders off her." % Escort.def(g, str(p.id)).freighter, false)
+		"escort_leg":
+			show_toast("Escort: next leg towards %s." % g.data.locations[Escort.leg_to(g)].name, false)
+		"escort_done":
+			show_toast("Escort complete: +%d cr." % int(p.reward), true)
+		"escort_failed":
+			show_toast(Escort.fail_text(str(p.reason)) + (" Fine: %d cr." % int(p.fine) if int(p.fine) > 0 else ""), false)
 		"quest_done":
 			var qd: Dictionary = Quests.defs(g).get(p.quest, {})
 			if qd.has("outro"):
@@ -436,7 +446,9 @@ func _build_quest_ui() -> void:
 	_quest_title = UI.label("", 14, UI.GOLD)
 	_quest_step = UI.label("", 16)
 	_quest_hint = UI.label("", 13, UI.MUTED)
-	for l in [_quest_title, _quest_step, _quest_hint]:
+	_escort_line = UI.label("", 14, UI.ACCENT)
+	_escort_line.name = "EscortLine"
+	for l in [_quest_title, _quest_step, _quest_hint, _escort_line]:
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size.x = 300
 		v.add_child(l)
@@ -479,7 +491,13 @@ func show_card(from: String, text: String) -> void:
 
 func _update_quest_ui(g, delta: float) -> void:
 	var qid := Quests.tracked(g)
-	_quest_box.visible = qid != ""
+	var esc_hint := Escort.hint(g)
+	_escort_line.text = esc_hint
+	_escort_line.visible = esc_hint != ""
+	_quest_box.visible = qid != "" or esc_hint != ""
+	_quest_title.visible = qid != ""
+	_quest_step.visible = qid != ""
+	_quest_hint.visible = qid != ""
 	if qid != "":
 		var q: Dictionary = Quests.defs(g)[qid]
 		var s: Dictionary = Quests.current(g, qid)

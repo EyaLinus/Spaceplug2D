@@ -10,11 +10,13 @@ const CombatLayerScript = preload("res://scripts/world/combat_layer.gd")
 const CombatHudScript = preload("res://scripts/ui/combat_hud.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Style = preload("res://scripts/core/style.gd")
+const EscortLayerScript = preload("res://scripts/world/escort_layer.gd")
 
 const SECTOR_HALF := 4200.0
 
 var ship: Node2D
 var camera: Camera2D
+var escort_layer: Node2D  ## the freighter of an escort job (escort_layer.gd)
 var combat: Node2D  ## pirates, bolts, missiles (combat_layer.gd)
 var combat_hud: CanvasLayer  ## hull / shield / boost / missile bars, visible while flying
 var system: String = ""  ## star system currently built
@@ -42,6 +44,9 @@ func _ready() -> void:
 	combat = CombatLayerScript.new()
 	combat.setup(self, ship)
 	add_child(combat)
+	escort_layer = EscortLayerScript.new()
+	escort_layer.setup(self, ship, combat)
+	add_child(escort_layer)
 	combat_hud = CombatHudScript.new()
 	combat_hud.setup(combat)
 	add_child(combat_hud)
@@ -122,10 +127,12 @@ func _physics_process(delta: float) -> void:
 	_sync_patrols(g)
 	if not active:
 		combat.clear()
+		escort_layer.visible = false
 		return
 	_update_nearby()
 	_update_scan(g, delta)
 	combat.step(delta, g)
+	escort_layer.step(delta, g)
 	shake = maxf(0.0, shake - delta * 18.0)
 	camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * maxf(combat.shake, shake) * Settings.screen_shake
 

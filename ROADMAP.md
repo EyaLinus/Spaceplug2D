@@ -198,7 +198,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
 - **I1 Enemy cartels + sector influence.** ✅ done (see PROGRESS.md; cartel bases and wings come with E4). 3 rival cartels with home systems, colours and bosses; every location has an
   influence share (you vs. cartels) that moves with sales, fights and drops; high influence = better prices and
   fewer pirates, low = robberies. Influence overlay in the Map app. (was F2 rival gangs)
-- **E4 Space combat II.** ✅ done (see PROGRESS.md; escort missions not built). Cartel fighter wings and gunships, escort missions, cartel stations you can raid,
+- **E4 Space combat II.** ✅ done (see PROGRESS.md; escort missions: wave 25). Cartel fighter wings and gunships, escort missions, cartel stations you can raid,
   new weapons (flak, ion), loot drops, ship classes at the shipyard.
 - **D3 Interdiction** (was D3). ✅ done (see PROGRESS.md). Jumps can be intercepted by cartel wings or the Authority: fight, pay, dump or flee.
 - → **Release v0.1.12** (shipped as v0.1.11).

@@ -14,6 +14,7 @@ const Combat = preload("res://scripts/core/combat.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Escort = preload("res://scripts/core/escort.gd")
 
 var steps := 0
 
@@ -1045,6 +1046,8 @@ func _run() -> void:
 	step("space combat II: wings, flak, ion, loot, cartel base")
 	await _interdiction(m, g)
 	step("interdiction card")
+	await _escort(m, g)
+	step("escort mission")
 
 	m.toggle_pause()
 	await frames(2)
@@ -1374,3 +1377,37 @@ func _interdiction(m, g) -> void:
 	g.cargo.erase("weed:glow")
 	g.heat = 0.0
 
+
+
+## Escort missions: offer in the Escort app, launch on undock, the freighter shows in the world and the HUD, a raid wing
+## is spawned for her, arrival pays out.
+func _escort(m, g) -> void:
+	var w = m.world
+	w.combat.clear()
+	g.system = "halvane"
+	g.location = "mireth"  # the offer needs a dock; the world keeps flying
+	g.day = maxi(g.day, 3)
+	g.escort = Escort.init_state()
+	m.toggle_phone()
+	m.phone.open_app("escort")
+	await frames(2)
+	_assert(m.phone.find_child("EscortJob_kovar_convoy", true, false) != null, "Escort app offers the convoy at Mireth")
+	_assert(m.phone.find_child("EscortJob_cinder_hop", true, false) != null, "other jobs are listed as elsewhere")
+	m.phone.find_child("EscortAccept_kovar_convoy", true, false).pressed.emit()
+	await frames(2)
+	_assert(Escort.is_active(g) and m.phone.find_child("EscortActive", true, false) != null, "job accepted, active card shown")
+	m.phone.close()
+	w.place_ship_at("mireth")
+	g.undock()
+	await frames(4)
+	_assert(Escort.enroute(g) and w.escort_layer.visible, "undocking launches the freighter, she is drawn in the world")
+	_assert(m.hud._escort_line.visible and m.hud._escort_line.text.contains("Escort"), "HUD shows the escort line")
+	g.escort.active.pending = true
+	await frames(3)
+	_assert(w.combat.pirates.size() > 0 and int(Escort.active(g).raids) == 1, "a raid wing is sent after her")
+	w.combat.clear()
+	var cr: int = g.credits
+	Escort.complete(g)
+	await frames(2)
+	_assert(g.credits > cr and not w.escort_layer.visible and Escort.is_done(g, "kovar_convoy"), "arrival pays and the freighter leaves")
+	g.escort = Escort.init_state()

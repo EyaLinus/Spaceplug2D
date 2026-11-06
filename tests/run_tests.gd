@@ -23,6 +23,7 @@ const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Escort = preload("res://scripts/core/escort.gd")
 
 var data: Dictionary
 var failures := 0
@@ -109,6 +110,10 @@ func _init() -> void:
 		"test_interdiction_choices",
 		"test_interdiction_on_jump",
 		"test_quest_chapter2",
+		"test_escort_data",
+		"test_escort_flow",
+		"test_escort_failures",
+		"test_escort_raids_and_save",
 		"test_bribe",
 		"test_corruption_data",
 		"test_heat_per_system",
@@ -3122,3 +3127,206 @@ func test_quest_chapter2() -> void:
 	check(g.quests.done.has("main_nest") and g.quests.active.has("main_rig"), "raiding the Nest finishes Smoke the Nest")
 	check(Quests.space_goal(g, {"loc": "tide_rig"}) == "halvane_gate", "the Rig waypoint routes through the gate")
 
+
+
+# ---------------------------------------------------------------- escort missions (E4 leftover)
+
+func _escort_at(loc: String) -> Game:
+	var g := new_game()
+	g.day = 3
+	g.dock(loc)
+	g.credits = 2000
+	return g
+
+
+## Flies `seconds` with the freighter in 1 s steps, nothing hostile near.
+func _escort_fly(g: Game, seconds: int, near := true, threat := 0.0) -> void:
+	for i in seconds:
+		Escort.tick(g, 1.0, near, threat)
+
+
+func test_escort_data() -> void:
+	var cs: Dictionary = Escort.defs(new_game())
+	check(cs.size() >= 2, "escort contracts exist")
+	for id in cs:
+		var d: Dictionary = cs[id]
+		var r: Array = d.route
+		check(r.size() >= 2, "escort %s has a route" % id)
+		for loc in r:
+			check(data.locations.has(loc), "escort %s waypoint %s exists" % [id, loc])
+		check(data.locations[r[0]].get("dockable", true), "escort %s starts at a dockable location" % id)
+		check(float(d.hull) > 0.0 and int(d.reward) > 0 and d.has("freighter") and d.has("title") and d.has("desc") and d.has("client"), "escort %s has hull, reward and texts" % id)
+		for sys in d.raiders:
+			check(data.systems.has(sys) and data.cartels.gangs.has(d.raiders[sys]), "escort %s raiders %s known" % [id, sys])
+		var g := new_game()
+		for i in r.size() - 1:
+			var kind := Escort.leg_kind(g, id, i)
+			check(kind in ["fly", "jump"], "escort %s leg %d has a kind" % [id, i])
+			if kind == "jump":
+				check(data.locations[r[i]].has("jump_to") and data.locations[r[i]].jump_to == g.loc_system(r[i + 1]), "escort %s jump leg %d starts at a gate to the next system" % [id, i])
+
+
+func test_escort_flow() -> void:
+	var g := _escort_at("mireth")
+	var events: Array = []
+	g.event.connect(func(k, p): events.append(k))
+	check(Escort.available(g).has("kovar_convoy") and not Escort.available(g).has("cinder_hop"), "only jobs that start here are offered")
+	check(Escort.elsewhere(g).has("cinder_hop"), "other jobs are listed as elsewhere")
+	g.day = 2
+	check(not Escort.available(g).has("kovar_convoy"), "the convoy is not ready on day 2")
+	check(not Escort.accept(g, "kovar_convoy").ok, "cannot accept early")
+	g.day = 3
+	check(not Escort.accept(g, "cinder_hop").ok, "cannot accept a job that starts elsewhere")
+	check(Escort.accept(g, "kovar_convoy").ok and Escort.is_active(g), "accepted at the start location")
+	check(not Escort.accept(g, "kovar_convoy").ok, "one job at a time")
+	check(Escort.hint(g).contains("undock"), "hint says to undock")
+	Escort.tick(g, 5.0, true, 0.0)
+	check(float(Escort.active(g).progress) == 0.0, "nothing moves before launch")
+	g.undock()
+	check(Escort.enroute(g) and events.has("escort_launched"), "undocking at the start launches her")
+	check(Escort.current_kind(g) == "fly" and Escort.freighter_system(g) == "halvane", "first leg is a fly leg in Halvane")
+	_escort_fly(g, 20, false)
+	check(float(Escort.active(g).progress) == 0.0 and float(Escort.active(g).away) > 0.0, "no progress when you are away")
+	Escort.tick(g, 1.0, true, 0.0)
+	check(float(Escort.active(g).away) == 0.0, "coming back resets the away timer")
+	_escort_fly(g, 20, true, 1.0)
+	var p0 := float(Escort.active(g).progress)
+	check(p0 < 0.05, "no progress while raiders are on top of her (%f)" % p0)
+	g.escort.active.hull = float(Escort.def(g, "kovar_convoy").hull)
+	_escort_fly(g, 45)
+	check(int(Escort.active(g).leg) == 1 and Escort.current_kind(g) == "jump" and events.has("escort_leg"), "first leg done, waiting at the gate")
+	check(Escort.hint(g).contains("jump"), "hint asks you to jump")
+	var cr := g.credits
+	g.location = ""
+	g.system = "halvane"
+	check(g.jump("halvane_gate").ok, "player jumps")
+	check(Escort.enroute(g) and int(Escort.active(g).leg) == 2 and Escort.freighter_system(g) == "kovar", "she comes through the gate with you")
+	_escort_fly(g, 45)
+	check(not Escort.is_active(g) and Escort.is_done(g, "kovar_convoy") and events.has("escort_done"), "arrival finishes the job")
+	var reward := int(Escort.def(g, "kovar_convoy").reward)
+	check(g.credits - cr >= reward - int(data.jump.fee) and g.credits - cr <= reward * 2, "reward paid (with hull bonus)")
+	check(not Escort.available(g).has("kovar_convoy") and Escort.available(g).is_empty(), "a delivered job is not offered again")
+	# same-system job, hull bonus scales with hull left
+	var h := _escort_at("cinder")
+	Escort.accept(h, "cinder_hop")
+	h.undock()
+	h.escort.active.hull = 70.0
+	var before := h.credits
+	_escort_fly(h, 45)
+	var paid := h.credits - before
+	check(Escort.is_done(h, "cinder_hop") and paid > int(Escort.def(h, "cinder_hop").reward) and paid < int(Escort.def(h, "cinder_hop").reward) * 1.25 + 1, "damaged hull pays a smaller bonus (%d cr)" % paid)
+
+
+func test_escort_failures() -> void:
+	var g := _escort_at("mireth")
+	var fails: Array = []
+	g.event.connect(func(k, p):
+		if k == "escort_failed":
+			fails.append(p.reason))
+	check(Escort.accept(g, "kovar_convoy").ok, "accept")
+	check(Escort.cancel(g).ok and not Escort.is_active(g) and g.escort.failed == 0, "cancelling before launch is free")
+	Escort.accept(g, "kovar_convoy")
+	g.undock()
+	# freighter dies
+	var cr := g.credits
+	var steps := 0
+	while Escort.is_active(g) and steps < 200:
+		Escort.tick(g, 1.0, true, 2.5)
+		steps += 1
+	check(not Escort.is_active(g) and fails == ["destroyed"], "raiders kill the freighter -> job failed")
+	check(g.credits == cr - int(Escort.def(g, "kovar_convoy").fail_fine) and g.escort.failed == 1, "fine paid, failure counted")
+	check(not Escort.is_done(g, "kovar_convoy"), "a failed job can be retried")
+	# abandoned
+	g.dock("mireth")
+	Escort.accept(g, "kovar_convoy")
+	g.undock()
+	_escort_fly(g, int(data.escort.rules.abandon_seconds) + 1, false)
+	check(not Escort.is_active(g) and fails.back() == "abandoned", "flying off for too long abandons her")
+	# jumping without her / mid-leg
+	g.dock("mireth")
+	Escort.accept(g, "kovar_convoy")
+	g.undock()
+	g.location = ""
+	g.system = "halvane"
+	g.jump("halvane_gate")
+	check(not Escort.is_active(g) and fails.back() == "left", "jumping during the first leg leaves her behind")
+	g.system = "halvane"
+	g.dock("mireth")
+	Escort.accept(g, "kovar_convoy")
+	g.undock()
+	_escort_fly(g, 45)
+	Escort.tick(g, 1.0, false, 0.0)
+	g.location = ""
+	g.system = "halvane"
+	g.jump("halvane_gate")
+	check(not Escort.is_active(g) and fails.back() == "left", "jumping while she is out of range leaves her behind")
+	# wreck and give-up
+	g.system = "halvane"
+	g.dock("mireth")
+	Escort.accept(g, "kovar_convoy")
+	g.undock()
+	SpaceCombat.defeat(g)
+	check(not Escort.is_active(g) and fails.back() == "wrecked", "your wreck ends the job")
+	g.dock("mireth")
+	Escort.accept(g, "kovar_convoy")
+	g.undock()
+	Escort.cancel(g)
+	check(not Escort.is_active(g) and fails.back() == "cancelled", "giving up under way counts as a failure")
+	g.credits = 0
+	g.dock("mireth")
+	Escort.accept(g, "kovar_convoy")
+	g.undock()
+	check(Escort.fail(g, "destroyed") == 0 and g.credits == 0, "the fine never exceeds your credits")
+
+
+func test_escort_raids_and_save() -> void:
+	var g := _escort_at("mireth")
+	Escort.accept(g, "kovar_convoy")
+	g.undock()
+	check(Escort.take_raid(g).is_empty(), "no raid at the start")
+	_escort_fly(g, int(data.escort.rules.first_raid))
+	var raid := Escort.take_raid(g)
+	check(not raid.is_empty() and raid.cartel == "comets" and not (raid.units as Array).is_empty(), "first raid comes from the Comets in Halvane")
+	check((raid.units as Array).size() <= int(data.escort.rules.wing_cap), "raid wings are capped")
+	for u in raid.units:
+		check(data.space_combat.enemies.has(u), "raid unit %s known" % u)
+	check(Escort.take_raid(g).is_empty(), "a raid is handed out once")
+	_escort_fly(g, int(data.escort.rules.raid_interval) - 1)
+	check(Escort.take_raid(g).is_empty(), "the next raid needs its interval")
+	_escort_fly(g, 2)
+	check(not Escort.take_raid(g).is_empty(), "the next raid arrives")
+	Cartels.state(g, "comets").weakened = g.day + 3
+	g.escort.active.pending = true
+	var r2 := Escort.take_raid(g)
+	check(r2.cartel != "comets", "a rebuilding cartel sends no raiders")
+	var maxr := int(Escort.def(g, "kovar_convoy").max_raids)
+	g.escort.active.raids = maxr
+	_escort_fly(g, 100, true, 0.0)
+	check(not Escort.is_active(g) or not bool(Escort.active(g).pending), "no more raids than the contract allows")
+	check(Escort.threat_of(g, ["fighter", "gunship"]) > Escort.threat_of(g, ["fighter", "fighter"]) - 0.01, "gunships weigh more")
+	# save round trip mid-job
+	var h := _escort_at("mireth")
+	Escort.accept(h, "kovar_convoy")
+	h.undock()
+	_escort_fly(h, 10)
+	h.escort.active.hull = 111.0
+	h.escort.done.append("cinder_hop")
+	h.escort.failed = 2
+	var d := h.to_dict()
+	check(d.has("escort"), "escort is saved")
+	var l := Game.new()
+	l.from_dict(data, JSON.parse_string(JSON.stringify(d)))
+	var a := Escort.active(l)
+	check(Escort.enroute(l) and str(a.id) == "kovar_convoy" and int(a.leg) == 0 and absf(float(a.progress) - 0.25) < 0.01 and absf(float(a.hull) - 111.0) < 0.01, "mid-job state survives a save")
+	check(Escort.is_done(l, "cinder_hop") and l.escort.failed == 2, "history survives a save")
+	var old := Game.new()
+	var legacy := d.duplicate(true)
+	legacy.erase("escort")
+	old.from_dict(data, legacy)
+	check(not Escort.is_active(old) and (old.escort.done as Array).is_empty(), "old saves load without escort state")
+	var bad := d.duplicate(true)
+	bad.escort.active.id = "gone"
+	bad.escort.done = ["gone"]
+	var b := Game.new()
+	b.from_dict(data, bad)
+	check(not Escort.is_active(b) and (b.escort.done as Array).is_empty(), "unknown contracts in a save are dropped")
