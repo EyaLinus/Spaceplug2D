@@ -18,7 +18,6 @@ var hull_cfg: Dictionary = {}  ## hull class (content.json "ship_classes"): draw
 
 var autopilot := false  ## K3: fly to the quest waypoint on its own until you touch the controls or arrive
 var goal_provider: Callable  ## returns the waypoint (Vector2) or null; set by main (HUD quest point, else the map marker)
-var goal_provider: Callable  ## returns the waypoint (Vector2) or null; set by main (HUD quest point)
 var hazard_provider: Callable  ## returns [{pos: Vector2, r: float}] to steer around (bodies, patrol scan zones); set by main
 const AUTOPILOT_ARRIVE := 260.0
 const AUTOPILOT_LOOKAHEAD := 900.0
