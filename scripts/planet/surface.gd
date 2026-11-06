@@ -973,6 +973,9 @@ func _draw_area(a: Array, index: int) -> void:
 				var p := Vector2(n.randf_range(r.position.x, r.end.x), n.randf_range(r.position.y + 10, r.end.y - 4))
 				draw_line(p, p + Vector2(n.randf_range(-8, 8), 6), Color("#3a2a20"), 2.0)
 		"grass", "sand", "salt", "ice", "rubble":
+			# art: opaque ground-paint strip (lawn, dunes, salt crust, ice sheet, rubble) with variation tiles
+			if Art.fill_tiles(self, "tiles/area_%s.png" % kind, r, 4 + index):
+				return
 			var tint: Color = {"grass": Color("#3f6a3a", 0.6), "sand": Color("#d8b070", 0.35), "salt": Color("#ece8dc", 0.6),
 				"ice": Color("#bfe6f5", 0.55), "rubble": Color(0, 0, 0, 0.14)}[kind]
 			draw_rect(r, tint)
@@ -1097,13 +1100,22 @@ func _draw_building(b: Dictionary) -> void:
 	var roof_r := Rect2(r.position, Vector2(r.size.x, r.size.y - wall_h))
 	var wall_r := Rect2(Vector2(r.position.x, r.end.y - wall_h), Vector2(r.size.x, wall_h))
 	# art: neutral roof/wall pieces tiled and tinted with the building's colours, so any building gets art
-	var roof_t := Art.tex("buildings/roof.png")
-	var wall_t := Art.tex("buildings/wall.png")
+	# facade looks vary per building (stable hash of planet + id): three roof and three wall surfaces, lit/shuttered/dark windows
+	var key := "%s/%s" % [loc_id, str(b.get("id", b.get("name", "")))]
+	var roof_t := Art.tex("buildings/%s.png" % ["roof", "roof_b", "roof_c"][Art.facade_variant(key, 1, 3)])
+	var wall_t := Art.tex("buildings/%s.png" % ["wall", "wall_b", "wall_c"][Art.facade_variant(key, 2, 3)])
+	if roof_t == null:
+		roof_t = Art.tex("buildings/roof.png")
+	if wall_t == null:
+		wall_t = Art.tex("buildings/wall.png")
 	var win_t := Art.tex("buildings/window.png")
 	if roof_t != null and wall_t != null:
 		draw_texture_rect(wall_t, wall_r, true, wall.lightened(0.25))
 		draw_texture_rect(roof_t, roof_r, true, roof.lightened(0.3))
 		draw_rect(Rect2(roof_r.position.x, roof_r.end.y - 4, roof_r.size.x, 4), roof.darkened(0.45))
+		# the eave throws a soft shadow onto the top of the wall
+		draw_rect(Rect2(wall_r.position.x, wall_r.position.y, wall_r.size.x, 6), Color(0, 0, 0, 0.22))
+		_draw_roof_gear(b, roof_r, key)
 	else:
 		draw_rect(wall_r, wall)
 		draw_rect(roof_r, roof)
@@ -1117,7 +1129,13 @@ func _draw_building(b: Dictionary) -> void:
 	while wx < r.end.x - tile * 0.8:
 		if win_t != null:
 			if absf(wx + tile * 0.5 - door_x) > tile * 0.9:
-				draw_texture(win_t, Vector2(wx, wall_r.position.y + (wall_h - tile) * 0.5))
+				var wt := win_t
+				var roll := Art.facade_variant(key, 10 + int(wx), 10)
+				if roll >= 8:
+					wt = Art.tex("buildings/window_shut.png")
+				elif roll >= 6:
+					wt = Art.tex("buildings/window_dark.png")
+				draw_texture(wt if wt != null else win_t, Vector2(wx, wall_r.position.y + (wall_h - tile) * 0.5))
 		else:
 			draw_rect(Rect2(wx, wall_r.position.y + wall_h * 0.25, tile * 0.45, wall_h * 0.4), Color("#ffe8a3").darkened(0.15))
 		wx += tile * 1.2
@@ -1128,6 +1146,10 @@ func _draw_building(b: Dictionary) -> void:
 		var door_t := Art.tex("buildings/hatch.png" if top else "buildings/door.png")
 		if door_t != null:
 			draw_texture(door_t, Vector2(d.x - tile * 0.5, d.y - tile if not top else d.y - tile * 0.15))
+			var awning_t := Art.tex("buildings/awning.png")
+			if awning_t != null and not top and b.has("action"):
+				# shops and services get a striped awning over the door, in a lightened roof colour
+				draw_texture(awning_t, Vector2(d.x - awning_t.get_width() / 2.0, d.y - tile - 12), roof.lightened(0.45))
 	if b.has("door") and Art.tex("buildings/door.png") == null:
 		var d := _px(b.door)
 		var top: bool = b.get("side", "bottom") == "top"
@@ -1144,6 +1166,23 @@ func _draw_building(b: Dictionary) -> void:
 		var sp := Vector2(r.get_center().x - w / 2.0, roof_r.get_center().y + 6)
 		draw_rect(Rect2(sp + Vector2(-8, -16), Vector2(w + 16, 22)), Color(0, 0, 0, 0.55))
 		draw_string(font, sp, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("#4fe3c1"))
+
+
+## Rooftop gear (vents, skylights, chimneys, dishes) on roofs tall enough to carry it, kept clear of the sign band.
+func _draw_roof_gear(b: Dictionary, roof_r: Rect2, key: String) -> void:
+	if roof_r.size.y < tile * 3.5 or roof_r.size.x < tile * 4:
+		return
+	var parts := ["roof_vent", "roof_skylight", "roof_chimney", "roof_dish"]
+	var slots := int(roof_r.size.x / (tile * 3.0))
+	for i in mini(slots, 4):
+		if Art.facade_variant(key, 20 + i, 3) == 0:
+			continue
+		var t := Art.tex("buildings/%s.png" % parts[Art.facade_variant(key, 30 + i, parts.size())])
+		if t == null:
+			continue
+		var x := roof_r.position.x + tile * 0.8 + i * (roof_r.size.x - tile * 2.6) / maxf(slots - 1, 1)
+		var y := roof_r.position.y + tile * 0.6 + Art.facade_variant(key, 40 + i, 2) * tile * 0.7
+		draw_texture(t, Vector2(roundf(x), roundf(y)))
 
 
 ## Production station inside an estate: a work surface with a few parts that hint at what it does.

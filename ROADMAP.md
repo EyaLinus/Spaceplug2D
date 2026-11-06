@@ -32,6 +32,8 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 ## P2 – Living planets
 - [ ] Art pass for the surface via the asset pipeline (tileset, character sprites with 4-direction walk cycles, building sprites)
 - [x] Building interiors as their own small instances (enter door → interior scene) instead of opening a panel at the door
+- [~] Art pass for the surface via the asset pipeline (tileset, character sprites with 4-direction walk cycles, building sprites) – partial: characters done earlier; wave 23 added ground feature tiles, area paint tiles and building facade variety (see PROGRESS.md); roads/plazas edges, water/pit/slag/chasm art and per-district materials still open
+- [ ] Building interiors as their own small instances (enter door → interior scene) instead of opening a panel at the door
 - [ ] NPC schedules (home ↔ work ↔ plaza by time of day), day/night tint, idle chatter bubbles
 - [ ] Customers on foot: NPCs who want product walk up to you; you deal with them directly (replaces part of the contacts menu) (walk-ups and the deal card are in; trimming the contacts menu is still open)
 - [ ] Building interiors as their own small instances (enter door → interior scene) instead of opening a panel at the door

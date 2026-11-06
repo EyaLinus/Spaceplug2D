@@ -61,6 +61,31 @@ func _run() -> void:
 	for i in 40:
 		await physics_frame
 	await _save(out, "surface_plaza")
+	# every planet's ground, roofs and facades: stand at one door per planet (art pass shots)
+	var doors := {"cinder": "depot", "bazaar": "hullmarket", "varrow": "saltmarket", "glacis": "exchange", "mireth": "market"}
+	for pl in doors:
+		m._land(pl, false)
+		sf = m.surface
+		sf.place_player_at(doors[pl])
+		for i in 30:
+			await physics_frame
+		await _save(out, "planet_" + pl)
+		var bd: Dictionary = {}
+		for bb in sf.cfg.buildings:
+			if bb.id == doors[pl]:
+				bd = bb
+		sf.player.position = Vector2(bd.rect[0] + bd.rect[2] * 0.5, bd.rect[1] + 1.0) * sf.tile  # roof view
+		sf.camera.reset_smoothing()
+		for i in 10:
+			await physics_frame
+		await _save(out, "planet_%s_roof" % pl)
+		sf.place_player_at("pad")
+		for i in 30:
+			await physics_frame
+		await _save(out, "planet_%s_pad" % pl)
+	if args.has("--surfaces-only"):
+		quit()
+		return
 	g.credits += 3000
 	g.buy_upgrade("engine")
 	g.buy_upgrade("cargo")

@@ -1,4 +1,14 @@
 assets:
+  building_awning:
+    created: '2026-11-06'
+    kind: tile
+    method: procedural
+    note: neutral, tinted at runtime; picked per building by hash
+    outputs:
+    - assets/gfx/buildings/awning.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-11-06'
   building_door:
     created: '2026-10-30'
     kind: tile
@@ -29,6 +39,66 @@ assets:
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
+  building_roof_b:
+    created: '2026-11-06'
+    kind: tile
+    method: procedural
+    note: neutral, tinted at runtime; picked per building by hash
+    outputs:
+    - assets/gfx/buildings/roof_b.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-11-06'
+  building_roof_c:
+    created: '2026-11-06'
+    kind: tile
+    method: procedural
+    note: neutral, tinted at runtime; picked per building by hash
+    outputs:
+    - assets/gfx/buildings/roof_c.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-11-06'
+  building_roof_chimney:
+    created: '2026-11-06'
+    kind: prop
+    method: pixel
+    note: facade detail drawn over the roof / wall
+    outputs:
+    - assets/gfx/buildings/roof_chimney.png
+    source: assets/src/sprites/roof_chimney.txt
+    status: done
+    updated: '2026-11-06'
+  building_roof_dish:
+    created: '2026-11-06'
+    kind: prop
+    method: pixel
+    note: facade detail drawn over the roof / wall
+    outputs:
+    - assets/gfx/buildings/roof_dish.png
+    source: assets/src/sprites/roof_dish.txt
+    status: done
+    updated: '2026-11-06'
+  building_roof_skylight:
+    created: '2026-11-06'
+    kind: prop
+    method: pixel
+    note: facade detail drawn over the roof / wall
+    outputs:
+    - assets/gfx/buildings/roof_skylight.png
+    source: assets/src/sprites/roof_skylight.txt
+    status: done
+    updated: '2026-11-06'
+  building_roof_vent:
+    created: '2026-11-06'
+    kind: prop
+    method: pixel
+    note: facade detail drawn over the roof / wall
+    outputs:
+    - assets/gfx/buildings/roof_vent.png
+    source: assets/src/sprites/roof_vent.txt
+    status: done
+    updated: '2026-11-06'
   building_wall:
     created: '2026-10-30'
     kind: tile
@@ -39,6 +109,26 @@ assets:
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
+  building_wall_b:
+    created: '2026-11-06'
+    kind: tile
+    method: procedural
+    note: neutral, tinted at runtime; picked per building by hash
+    outputs:
+    - assets/gfx/buildings/wall_b.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-11-06'
+  building_wall_c:
+    created: '2026-11-06'
+    kind: tile
+    method: procedural
+    note: neutral, tinted at runtime; picked per building by hash
+    outputs:
+    - assets/gfx/buildings/wall_c.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-11-06'
   building_window:
     created: '2026-10-30'
     kind: tile
@@ -49,6 +139,26 @@ assets:
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
+  building_window_dark:
+    created: '2026-11-06'
+    kind: prop
+    method: pixel
+    note: facade detail drawn over the roof / wall
+    outputs:
+    - assets/gfx/buildings/window_dark.png
+    source: assets/src/sprites/window_dark.txt
+    status: done
+    updated: '2026-11-06'
+  building_window_shut:
+    created: '2026-11-06'
+    kind: prop
+    method: pixel
+    note: facade detail drawn over the roof / wall
+    outputs:
+    - assets/gfx/buildings/window_shut.png
+    source: assets/src/sprites/window_shut.txt
+    status: done
+    updated: '2026-11-06'
   char_npc_green:
     created: '2026-10-30'
     kind: character
@@ -718,16 +828,66 @@ assets:
     source: assets/src/stations/trim_table.txt
     status: done
     updated: '2026-10-30'
+  tile_area_grass:
+    created: '2026-11-06'
+    kind: tile
+    method: procedural
+    note: ground paint strip for surfaces.json areas, 4 variants
+    outputs:
+    - assets/gfx/tiles/area_grass.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-11-06'
+  tile_area_ice:
+    created: '2026-11-06'
+    kind: tile
+    method: procedural
+    note: ground paint strip for surfaces.json areas, 4 variants
+    outputs:
+    - assets/gfx/tiles/area_ice.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-11-06'
+  tile_area_rubble:
+    created: '2026-11-06'
+    kind: tile
+    method: procedural
+    note: ground paint strip for surfaces.json areas, 4 variants
+    outputs:
+    - assets/gfx/tiles/area_rubble.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-11-06'
+  tile_area_salt:
+    created: '2026-11-06'
+    kind: tile
+    method: procedural
+    note: ground paint strip for surfaces.json areas, 4 variants
+    outputs:
+    - assets/gfx/tiles/area_salt.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-11-06'
+  tile_area_sand:
+    created: '2026-11-06'
+    kind: tile
+    method: procedural
+    note: ground paint strip for surfaces.json areas, 4 variants
+    outputs:
+    - assets/gfx/tiles/area_sand.png
+    source: tools/art/build_art.py
+    status: done
+    updated: '2026-11-06'
   tile_bazaar_ground:
     created: '2026-10-30'
     kind: tile
     method: procedural
-    note: strip of 4 variants, 32px
+    note: 'strip of 8: 4 plain variants + 4 feature tiles (~14% of cells), 32px'
     outputs:
     - assets/gfx/tiles/bazaar_ground.png
     source: tools/art/build_art.py
     status: done
-    updated: '2026-10-30'
+    updated: '2026-11-06'
   tile_bazaar_plaza:
     created: '2026-10-30'
     kind: tile
@@ -752,12 +912,12 @@ assets:
     created: '2026-10-30'
     kind: tile
     method: procedural
-    note: strip of 4 variants, 32px
+    note: 'strip of 8: 4 plain variants + 4 feature tiles (~14% of cells), 32px'
     outputs:
     - assets/gfx/tiles/cinder_ground.png
     source: tools/art/build_art.py
     status: done
-    updated: '2026-10-30'
+    updated: '2026-11-06'
   tile_cinder_plaza:
     created: '2026-10-30'
     kind: tile
@@ -782,12 +942,12 @@ assets:
     created: '2026-10-30'
     kind: tile
     method: procedural
-    note: strip of 4 variants, 32px
+    note: 'strip of 8: 4 plain variants + 4 feature tiles (~14% of cells), 32px'
     outputs:
     - assets/gfx/tiles/glacis_ground.png
     source: tools/art/build_art.py
     status: done
-    updated: '2026-10-30'
+    updated: '2026-11-06'
   tile_glacis_plaza:
     created: '2026-10-30'
     kind: tile
@@ -812,12 +972,12 @@ assets:
     created: '2026-10-30'
     kind: tile
     method: procedural
-    note: strip of 4 variants, 32px
+    note: 'strip of 8: 4 plain variants + 4 feature tiles (~14% of cells), 32px'
     outputs:
     - assets/gfx/tiles/mireth_ground.png
     source: tools/art/build_art.py
     status: done
-    updated: '2026-10-30'
+    updated: '2026-11-06'
   tile_mireth_plaza:
     created: '2026-10-30'
     kind: tile
@@ -842,12 +1002,12 @@ assets:
     created: '2026-10-30'
     kind: tile
     method: procedural
-    note: strip of 4 variants, 32px
+    note: 'strip of 8: 4 plain variants + 4 feature tiles (~14% of cells), 32px'
     outputs:
     - assets/gfx/tiles/varrow_ground.png
     source: tools/art/build_art.py
     status: done
-    updated: '2026-10-30'
+    updated: '2026-11-06'
   tile_varrow_plaza:
     created: '2026-10-30'
     kind: tile

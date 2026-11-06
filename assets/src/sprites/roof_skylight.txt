@@ -1,0 +1,26 @@
+# Rooftop skylight: glass panes in a frame.
+legend:
+. = transparent
+k = ink
+s = slate
+S = slate_light
+b = blue_light
+B = blue
+w = white
+---
+................
+................
+................
+................
+..kkkkkkkkkkkk..
+.kSSSSSSSSSSSsk.
+.kSbbwbbkbbbBsk.
+.kSbwbbbkbbBBsk.
+.kSbbbbbkbBBBsk.
+.kSkkkkkkkkkksk.
+.kSbbwbbkbbbBsk.
+.kSbbbbbkbbBBsk.
+.kSssssssssssSk.
+..kkkkkkkkkkkk..
+................
+................

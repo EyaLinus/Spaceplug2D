@@ -234,8 +234,28 @@ func test_art_registry() -> void:
 	for look in ["player", "officer"] + Art.NPC_LOOKS.keys():
 		var c: Texture2D = Art.character(look)
 		check(c != null and c.get_size() == Vector2(Art.CHAR * 3, Art.CHAR * 3), "character sheet %s is 3x3 frames" % look)
-	for part in ["roof", "wall", "window", "door", "hatch"]:
+	for part in ["roof", "wall", "window", "door", "hatch", "roof_b", "roof_c", "wall_b", "wall_c", "window_shut", "window_dark",
+			"awning", "roof_vent", "roof_skylight", "roof_chimney", "roof_dish"]:
 		check(Art.tex("buildings/%s.png" % part) != null, "building part %s" % part)
+	for loc in data.surfaces:
+		var gt: Texture2D = Art.tex("tiles/%s_ground.png" % Art.TILESETS[loc])
+		check(gt.get_width() / Art.TILE > Art.PLAIN_TILES, "%s ground has feature tiles beyond the plain ones" % loc)
+		for a in data.surfaces[loc].get("areas", []):
+			if ["grass", "sand", "salt", "ice", "rubble"].has(str(a[4])):
+				check(Art.tex("tiles/area_%s.png" % a[4]) != null, "%s area %s has a paint strip" % [loc, a[4]])
+	var feature_cells := 0
+	var plain_ok := true
+	for i in 2000:
+		var v: int = Art.pick_variant(hash(i * 977), 8)
+		feature_cells += 1 if v >= Art.PLAIN_TILES else 0
+		plain_ok = plain_ok and v >= 0 and v < 8
+	check(plain_ok and feature_cells > 2000 * 0.08 and feature_cells < 2000 * 0.22, "feature tiles cover roughly %d percent of ground cells (%d of 2000)" % [Art.FEATURE_CHANCE, feature_cells])
+	check(Art.pick_variant(12345, 4) < 4, "four-tile strips keep plain picks")
+	check(Art.facade_variant("mireth/market", 1, 3) == Art.facade_variant("mireth/market", 1, 3), "facade variant is stable")
+	var seen := {}
+	for bid in ["market", "spaceport", "cannery", "office", "shack", "depot", "cantina"]:
+		seen[Art.facade_variant("mireth/" + bid, 1, 3)] = true
+	check(seen.size() >= 2, "roof variants differ between buildings")
 	check(Art.tex("ships/ship.png") != null, "ship sprite")
 	check(Art.tex("ships/patrol.png") != null, "patrol sprite")
 	for k in Art.SHIP_UNDER + Art.SHIP_OVER:
