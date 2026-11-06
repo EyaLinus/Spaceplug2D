@@ -1,1 +1,0 @@
-- **Estate raids:** when a system's heat stays high for several days, the Authority can raid one of your estates there. You get a warning a day ahead (a hired patrol captain lowers the odds and tips you off), so empty the stash and the tray in time. A raid seizes half the estate stock and tray, fines you, cools the system and raises your wanted level.

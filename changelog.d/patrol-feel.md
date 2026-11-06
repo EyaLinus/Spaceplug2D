@@ -1,3 +1,0 @@
-- **Patrol warning:** a toast, red flash and alarm sound tell you when you are about to enter an Authority patrol's scan range (while carrying product).
-- **Asteroid fields:** each system has dense fields; inside them patrol scan range shrinks and patrols lose lock and drop the chase.
-- **Bust shake in space:** the camera now shakes when you are busted or wrecked in flight (it only did on foot before).

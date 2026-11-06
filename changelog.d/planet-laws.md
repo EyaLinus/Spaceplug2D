@@ -1,1 +1,0 @@
-- **Planet laws:** every planet now rates each drug tier legal, tolerated or banned (new `laws` data and `scripts/core/laws.gd`). Legal goods halve sale heat and patrol scans; banned goods add heat, widen scans and frisks, but sell at a +20% black-market premium. Shown in the Map app (laws line and tooltip per location). Numbers are eyeballed.

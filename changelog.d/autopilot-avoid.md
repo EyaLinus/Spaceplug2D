@@ -1,1 +1,0 @@
-- **Autopilot avoids obstacles:** the ship autopilot now steers around planets, asteroid outposts and stations on the way to the waypoint, and detours around Authority patrol scan zones while you carry contraband.

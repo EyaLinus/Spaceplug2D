@@ -1,1 +1,0 @@
-- **Planet heat zones:** where you deal on a planet now matters. Sales and hand-overs in the open plaza make 160 % of the normal heat, on the roads 100 %, in the back alleys off the roads only 60 %. The district label above the minimap shows your zone and its heat factor.

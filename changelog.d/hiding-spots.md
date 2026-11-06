@@ -1,1 +1,0 @@
-- **Hiding spots:** Each planet has four shaded hiding spots (dumpsters, crate stacks, alcoves). Stand still in one for under a second and officers can no longer see you: no frisk, and anyone chasing or aiming at you gives up after two seconds. An officer who walks right up to you finds you, and shooting, being shot or moving breaks cover.

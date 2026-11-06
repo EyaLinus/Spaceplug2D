@@ -1,1 +1,0 @@
-- **Customers on foot:** on a planet, townsfolk and contacts who want what you carry walk up to you with a speech bubble ("2 × Weed? 48 cr"). Talk to them to open a small deal card: Accept, Ask +10 % / +20 % (one haggle) or Walk away. The price is your asking price, and the sale goes through the normal sell path, so heat, cartels and quests react as before.

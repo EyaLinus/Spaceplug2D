@@ -1,1 +1,0 @@
-- **Courier drones:** buy drones in the HR app (estate screen) to fly finished product from an estate to the hub stash at the spaceport, or supplies for the auto recipe back to the estate. Upkeep per day, trips can be shot down at high heat.

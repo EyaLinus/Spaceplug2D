@@ -33,10 +33,7 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [ ] Art pass for the surface via the asset pipeline (tileset, character sprites with 4-direction walk cycles, building sprites)
 - [x] Building interiors as their own small instances (enter door → interior scene) instead of opening a panel at the door
 - [~] Art pass for the surface via the asset pipeline (tileset, character sprites with 4-direction walk cycles, building sprites) – partial: characters done earlier; wave 23 added ground feature tiles, area paint tiles and building facade variety (see PROGRESS.md); roads/plazas edges, water/pit/slag/chasm art and per-district materials still open
-- [ ] Building interiors as their own small instances (enter door → interior scene) instead of opening a panel at the door
-- [ ] NPC schedules (home ↔ work ↔ plaza by time of day), day/night tint, idle chatter bubbles
 - [ ] Customers on foot: NPCs who want product walk up to you; you deal with them directly (replaces part of the contacts menu) (walk-ups and the deal card are in; trimming the contacts menu is still open)
-- [ ] Building interiors as their own small instances (enter door → interior scene) instead of opening a panel at the door
 - [x] NPC schedules (home ↔ work ↔ plaza by time of day), day/night tint, idle chatter bubbles
 - [ ] Customers on foot: NPCs who want product walk up to you; you deal with them directly (replaces part of the contacts menu)
 - [x] Second and third surface: Drift Bazaar as a walkable hull deck (with the fence's back room), Cinder Belt as a mining camp
@@ -49,7 +46,6 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [ ] Curfew at night, hiding spots, bribable officers
 - [x] Planet heat zones: dealing in the plaza is hotter than in the back alleys
 - [x] Curfew at night + bribable officers (hiding spots still open)
-- [ ] Planet heat zones: dealing in the plaza is hotter than in the back alleys
 - [x] Hiding spots: stand still in a dumpster/crate/alcove spot and officers lose you (no frisk, chasers give up); close officers find you
 
 ## P4 – Estates & production buildings
@@ -61,7 +57,6 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [ ] The global "hydro rig" becomes the first rented estate; lab upgrades turn into building tiers
 - [x] Raids on estates when heat stays high
 - [x] The global "hydro rig" becomes the first rented estate; lab upgrades turn into building tiers (rent itself still open)
-- [ ] Raids on estates when heat stays high
 - [x] Station minigames (trim, scale, mixing, cook, packaging) decide yield, quality grade and heat; reusable runner
       for estate buildings (`scripts/ui/minigames/`)
 
@@ -235,6 +230,5 @@ later screen builds on it. Conflict hot spots as in phase 2, plus `ui_theme.gd` 
 - Patrol feel in space: ✅ done (wave 12 PR; warning before scan range, asteroid fields shrink scan range and break pursuit, screen shake on bust now also in space)
 - Packaging tiers (shielded product survives a scan with a chance) → P4 packaging table
 - [x] Price board with per-location history → P2/P6 (Map app price comparison)
-- Patrol feel in space: warning before scan range, asteroid fields to break pursuit, screen shake on bust
 - [x] Packaging tiers (shielded product survives a scan with a chance) → P4 packaging table (wave 12, `packaging.gd`)
 - Price board with per-location history → P2/P6

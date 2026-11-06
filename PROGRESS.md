@@ -1,5 +1,21 @@
 # Progress log
 
+## Release v0.1.13 (2026-11-06) – open-PR cleanup
+- The hourly automation opened ~35 draft PRs after v0.1.12 and never merged them (45 open in total). Cleanup thread:
+  16 closed as superseded/duplicate (#5, #19, #27, #28, #40, #42, #48, #51, #58, #64, #70, #81, #99, #100, #102, #103;
+  for each duplicate pair the Godot-verified, more complete one was kept), 30 merged in one integration PR in creation
+  order: #69 #71 #72 #73 #74 #75 #76 #77 #78 #79 #80 #82 #83 #84 #85 #86 #87 #88 #89 #90 #91 #92 #93 #94 #95 #97 #98
+  #101 #68 #39.
+- Integration fixes on top of the PRs: sale heat = law multiplier x heat zone, sell price = laws x price wars, frisk
+  count = laws + curfew officers, chatter bubble kept apart from the walk-up deal bubble, map marker uses the shared
+  escort marker drawer, sealing bench + drying table share the bench UI, Thessaly got asteroid fields and building
+  interiors, loc key for the bribe binding, station icons for the machines/drying table/sealing bench, `test_hiding`
+  registered, smoke door sweep runs without walk-ups (it was flaky when a local turned into a walk-up customer).
+- Verified (Godot 4.3 headless): 14081 unit checks 0 failures, UI smoke, tip audit 0, menu smoke, sim 5/5 won avg day 4.8.
+  Nothing played by a human; numbers of all new systems are eyeballed.
+- Left open: #96 estate upkeep/seizure/selling – branched from v0.1.5 code, the estate save format and tiers changed since;
+  needs a rebuild on current main, not a merge.
+
 ## Estate raids (phase 4, 2026-11-04)
 - **Core** `scripts/core/raids.gd`, data `content.json` "raids", state `Game.raids` {streak per system, warn, own LCG roll,
   count}, saved (old saves start clean). Hook: `Raids.new_day` after `Corruption.new_day` in `Game._new_day`.

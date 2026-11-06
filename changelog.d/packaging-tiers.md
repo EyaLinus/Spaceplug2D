@@ -1,1 +1,0 @@
-- **Packaging tiers:** the Packaging Table score now sets a tier on the batch (Loose, Sealed, Shielded). In a patrol scan each unit of a Sealed (15%) or Shielded (55%) product can stay in your hold instead of being confiscated. The tier shows in the product name and the batch result.

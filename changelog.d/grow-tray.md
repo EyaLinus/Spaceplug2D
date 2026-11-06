@@ -1,2 +1,0 @@
-- **Grow trays:** build grow trays in your estates (Build menu), plant cannabis or coca from your hold, water them once a day and harvest into the stash after a few days. Watering every day gives the full yield, neglect halves it. Old saves load without trays.
-- **Grow trays, second slice:** your grow trays are now drawn in the estate room (plants grow with the days, gold frame when ripe), Pseudoephedrine is a third crop, and harvested raws carry a quality grade (poor/good/prime) that blends with what is already in the stash.

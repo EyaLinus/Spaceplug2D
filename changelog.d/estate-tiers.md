@@ -1,1 +1,0 @@
-- **Estate building tiers:** the global Hydro Rig upgrade is now a production-line tier per estate (rebuild it from the shipyard tab). Old saves keep their rig level on the Old Cannery.

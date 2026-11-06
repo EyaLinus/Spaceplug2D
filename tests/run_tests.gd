@@ -60,6 +60,7 @@ func _init() -> void:
 		"test_art_registry",
 		"test_art_pass4",
 		"test_police_on_foot",
+		"test_hiding",
 		"test_flee_heat",
 		"test_combat_weapons",
 		"test_combat_player",

@@ -1,1 +1,0 @@
-- **Escort missions:** take a freight job in the Quests app while docked (Mireth, Cinder, Bazaar, Varrow), undock and fly the freighter to its destination, through the Kovar gate on the long charters. Cartel wings and raiders go for it; deliver it with a healthy hull for the full bonus, lose it and the job fails.

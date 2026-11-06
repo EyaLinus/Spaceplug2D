@@ -1,1 +1,0 @@
-- **Drying Table (P4):** a new estate building (300 cr, 2x1, Build menu) that cures finished weed over game time: hang units on the rack, 120 s later they come off one quality grade higher but 20 % lighter. Racks hold 20 units per table, state is saved (`scripts/core/drying.gd`, old saves load empty), with tooltip, pixel sprite and tests.
