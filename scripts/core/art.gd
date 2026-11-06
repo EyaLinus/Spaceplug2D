@@ -129,6 +129,26 @@ static func draw_prop(ci: CanvasItem, rel: String, p: Vector2, bottom := 0.0) ->
 	return true
 
 
+## Strips with more than PLAIN_TILES variants hold the common tiles first and rarer feature tiles (flowers, cracks,
+## hatches, bones) after them: feature tiles show up on about FEATURE_CHANCE percent of the cells.
+const PLAIN_TILES := 4
+const FEATURE_CHANCE := 14
+
+
+## Variant index for hash `h` in a strip of `n` tiles (see PLAIN_TILES).
+static func pick_variant(h: int, n: int) -> int:
+	if n <= PLAIN_TILES:
+		return posmod(h, n)
+	if posmod(h, 100) < FEATURE_CHANCE:
+		return PLAIN_TILES + posmod(h >> 8, n - PLAIN_TILES)
+	return posmod(h >> 8, PLAIN_TILES)
+
+
+## Stable pick among `n` looks for a building piece (roof, wall, window ...): same id and salt, same answer.
+static func facade_variant(id: String, salt: int, n: int) -> int:
+	return posmod(hash("%s/%d" % [id, salt]), n)
+
+
 ## Fills `r` with variant tiles from a strip (tiles/<set>_<kind>.png), picked by a stable hash per cell.
 static func fill_tiles(ci: CanvasItem, strip_rel: String, r: Rect2, seed_val: int) -> bool:
 	var t := tex(strip_rel)
@@ -139,7 +159,7 @@ static func fill_tiles(ci: CanvasItem, strip_rel: String, r: Rect2, seed_val: in
 	while y < r.end.y:
 		var x := r.position.x
 		while x < r.end.x:
-			var v := posmod(hash(Vector3i(int(x), int(y), seed_val)), n)
+			var v := pick_variant(hash(Vector3i(int(x), int(y), seed_val)), n)
 			var w := minf(TILE, r.end.x - x)
 			var h := minf(TILE, r.end.y - y)
 			ci.draw_texture_rect_region(t, Rect2(x, y, w, h), Rect2(v * TILE, 0, w, h))

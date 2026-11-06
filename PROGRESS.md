@@ -732,3 +732,25 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
   people, stranger shows job, prompt shows want, talking opens Deals and makes a contact, name appears), menu smoke, screenshot.
 - Gaps: locals reuse the 8 NPC sprite looks (no per-planet outfits yet); no dialogue lines beyond the deal screen; the Contacts app
   grows long once you know many people (no search/filter yet, K3).
+
+## Surface art pass, slice 1: ground variation and building facades (2026-11-06, wave 23)
+- **Audit (before):** ground strips were 4 near-identical speckle tiles per planet; `areas` of kind grass/sand/salt/ice/rubble were
+  tinted rectangles with scattered lines; every building used the same roof, wall and window, so a street read as copies; doors were
+  a bare sprite; no roof detail. Characters (down/up/right + mirror), props and the ship were already real art and left alone.
+- **Pipeline** (`tools/art/build_art.py`, nothing hand-edited): ground strips are now 8 tiles (4 plain + 4 per-planet feature tiles:
+  Mireth flowers/pebbles/clover/mushrooms, Cinder ore/crack/ash/scrap, Bazaar hatch/cable/oil/caution stripes, Varrow pebbles/crack/
+  shrub/bone, Glacis crack/frost/ice shard/drift); `tiles/area_<kind>.png` paint strips; building pieces `roof_b/roof_c`
+  (shingles, panels), `wall_b/wall_c` (brick, planks), `awning` (all neutral, tinted at runtime) and pixel sprites `roof_vent`,
+  `roof_skylight`, `roof_chimney`, `roof_dish`, `window_shut`, `window_dark` (`assets/src/sprites/*.txt`). Palette-locked, 16 px grid
+  exported 2x; `assets/manifest.yaml` updated.
+- **Runtime:** `Art.pick_variant` (feature tiles on ~14% of cells for strips with more than 4 tiles; 4-tile strips unchanged),
+  `Art.facade_variant` (stable hash of planet/building id). `surface.gd`: per-building roof/wall surface, 20% shuttered and 20% dark
+  windows, eave shadow on the wall, awning over bottom doors that have an action, rooftop gear on big roofs (clear of the sign),
+  area paint strips with the old tinted drawing as fallback.
+- **Tooling:** `tools/shot.gd` now shoots every planet (`planet_<id>`, `_roof`, `_pad`); `--surfaces-only` stops after those.
+- Verified: unit tests (new asserts in `test_art_registry`: new parts, feature tiles per ground strip, area strips, variant
+  distribution and stability), UI smoke, menu smoke, tip audit; before/after screenshots of all five planets checked.
+- Gaps: roads and plazas still have only 4 plain variants and no edge/corner or curb tiles; roofs are tinted neutral pieces so
+  per-district looks come from variant mix only, not from district-specific materials; water, pit, slag, void and chasm areas are
+  still drawn procedurally; no animated tiles (water, neon); building doors beyond door/hatch are not varied; NPC outfits per
+  planet and interiors are untouched. Feature tiles on Cinder and Mireth are subtle at 14%; tune `FEATURE_CHANCE` after a playtest.
