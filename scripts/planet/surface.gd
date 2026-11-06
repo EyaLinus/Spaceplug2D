@@ -12,6 +12,7 @@ const Art = preload("res://scripts/core/art.gd")
 const Nav = preload("res://scripts/planet/nav.gd")
 const FloatText = preload("res://scripts/world/float_text.gd")
 const Style = preload("res://scripts/core/style.gd")
+const Grow = preload("res://scripts/core/grow.gd")
 const EstateLayout = preload("res://scripts/planet/estate_layout.gd")
 const People = preload("res://scripts/core/people.gd")
 const Bench = preload("res://scripts/core/bench.gd")
@@ -1183,8 +1184,32 @@ func _draw_next_station() -> void:
 			_overlay.draw_rect(r, col, false, 2.0)
 
 
+## Inside an estate: the grow trays in a row along the bottom wall (soil, a plant that grows with the days,
+## a gold ring when ripe). Data comes from Grow.visuals, so the core stays headless.
+func _draw_grow_trays() -> void:
+	if not cfg.has("estate") or GameState.game == null:
+		return
+	var list: Array = Grow.visuals(GameState.game, str(cfg.estate))
+	var w := tile * 1.5
+	var y := map_size.y - tile * 1.9
+	var x0 := (map_size.x - (w + 6.0) * list.size()) * 0.5
+	for i in list.size():
+		var v: Dictionary = list[i]
+		var r := Rect2(Vector2(x0 + i * (w + 6.0), y), Vector2(w, tile * 0.9))
+		_overlay.draw_rect(r, Color("#4a3322"))
+		_overlay.draw_rect(r, Color("#2a1d13"), false, 2.0)
+		if v.raw == "":
+			continue
+		var col := Color("#6fcf6a") if v.grade != "poor" else Color("#a8b05a")
+		var h := 4.0 + float(v.progress) * (r.size.y - 6.0)
+		_overlay.draw_rect(Rect2(r.position.x + r.size.x * 0.5 - 4.0, r.end.y - 3.0 - h, 8.0, h), col)
+		if v.ripe:
+			_overlay.draw_rect(r.grow(2.0), Color("#ffd166"), false, 2.0)
+
+
 func _draw_overlay() -> void:
 	_draw_next_station()
+	_draw_grow_trays()
 	for b in bullets:
 		var v: Vector2 = b.vel
 		var col := Color("#ffe8a3") if b.owner == Combat.PLAYER_BULLET else Color("#ff6b5f")

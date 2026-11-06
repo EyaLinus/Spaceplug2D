@@ -53,6 +53,24 @@
   `test_drones_loss_upkeep_save`), UI smoke 50 steps (+assertions in the hr app step), tip audit 0, menu smoke, sim 5/5 won.
 - Gaps: no drone sprite or flight animation in the world; drones do not carry between estates or ferry cash; supplies are
   only topped up for the auto recipe; not played by a human, balance numbers (price 350, upkeep 15/day) are guesses.
+## Grow tray, second slice (phase 4 wave 14, 2026-11-05)
+- Stacked on #81. `Grow.visuals` feeds `surface._draw_grow_trays` (overlay row along the estate's bottom wall, plant height =
+  progress, gold frame when ripe). Third crop `pseudo` (5 days, yield 5). Quality grade on the item: `Game.grow_q`
+  (raw -> weighted mean quality of the stash pile, un-graded stock counts as 0.5, saved as `grow_q`), `Grow.stash_grade`.
+- Tests: `test_grow` extended (third crop, visuals, grades, blending, save). Not run locally (no Godot binary); CI is the check.
+- Unverified: the tray row can overlap buildings placed along the bottom wall; grade not yet shown in the sell UI;
+  no price effect from grade yet. Still open: worker automation, minigame.
+
+## Grow tray, first slice (phase 4 wave 12, 2026-11-04)
+- **Core** `scripts/core/grow.gd`, data `content.json` "grow" (tray cost/cap, seed qty, crops with days and yield).
+  State `Game.grow` {estate -> {trays: [{raw, start_day, watered: [days]}]}}, saved; old saves load with none.
+  Actions `build_tray`, `plant` (seeds leave the hold), `water` (once per game day), `harvest` (into `stash`).
+  Quality = watered days / growth days, yield scales from `min_yield_factor` to 1.0. No tick hook: ripeness is `Game.day`.
+- **UI** Grow trays section in the estate Build tab (`station_ui._build_grow_trays`); `surface.gd` untouched.
+- Tests `test_grow` and a UI smoke block in the estate step. Not run locally (no Godot binary in the routine
+  container); CI is the check.
+- Gaps: trays are not drawn in the estate room, no worker automation, only two crops, harvest has no quality grade
+  on the item itself (only the yield), no minigame.
 
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,
