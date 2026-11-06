@@ -29,6 +29,18 @@
 - Verified: 10841 unit checks (new `test_curfew`), UI smoke 50 steps, tip audit 0, menu smoke, sim 5/5 avg win day 4.6.
 - Gaps: hiding spots not built; no on-screen curfew indicator or toast; G key not exercised in the UI smoke; numbers
   eyeballed; not played by a human. Branches off main without the open wave-11 PRs (#68–#74).
+## Wave 12: patrol feel in space (2026-11-04)
+- **Core** `scripts/core/patrolfeel.gd` (numbers in `content.json` -> `patrol_feel`): `warn_level`/`warn_tick` (warning margin 240 px
+  outside the scan range, edge-triggered, 6 s cooldown, re-arms after 3 s clear, only while carrying product), asteroid fields per
+  system (3 each in Halvane and Kovar, kept clear of every location): `scan_radius_at` shrinks the range to x0.4 at the centre,
+  `breaks_pursuit` (depth >= 0.2) makes patrols drop the chase.
+- **World/HUD/audio:** `world.gd` draws the fields with rocks, applies both rules, emits game events `patrol_warning` (HUD toast + red
+  flash + new "warn" sound) and `pursuit_lost` (toast).
+- **Screen shake on bust:** the K1 `EventBus.shake` only reached the planet surface; the space world never listened, so busts in flight
+  did not shake. Fixed (world listens while active); smoke asserts it.
+- Verified: unit tests (`test_patrol_feel_fields`, `test_patrol_feel_warning`; 10884 checks, 0 failures), UI smoke (warning fires once before
+  the range, toast, smaller range and lost lock in a field, open space scans again, bust shakes), tip audit, menu smoke, sim 5/5 won.
+- Gaps: the bot ignores fields and warnings; no minimap marking of fields; patrols do not hunt actively for a lost target.
 
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,

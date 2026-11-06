@@ -1069,7 +1069,10 @@ func _run() -> void:
 		if g.stats.busts > busts:
 			break
 	_assert(g.stats.busts > busts, "patrol scan busts the player")
+	_assert(m.world.shake > 0.0, "a bust in space shakes the camera")
 	step("bust")
+	await _patrol_feel(m, g)
+	step("patrol feel: warning, asteroid field")
 
 	await _space_combat(m, g)
 	step("space combat")
@@ -1427,6 +1430,62 @@ func _space_combat_2(m, g) -> void:
 
 
 ## D3: an interdiction card pauses the flight; paying closes it, fighting spawns the wing ahead of the ship.
+func _patrol_feel(m, g) -> void:
+	var w = m.world
+	var PF = load("res://scripts/core/patrolfeel.gd")
+	var bus = root.get_node("EventBus")
+	var warned := [0]
+	var lost := [0]
+	bus.game_event.connect(func(k, _p):
+		if k == "patrol_warning": warned[0] += 1
+		if k == "pursuit_lost": lost[0] += 1)
+	g.cargo["weed:glow"] = 3
+	g.add_heat(60)
+	w.active = true
+	await pframes(2)
+	_assert(not w.fields.is_empty() and w.fields.size() == PF.fields(g.data, w.system).size(), "world builds the system's asteroid fields")
+	var open_pos := Vector2(3400, -3400)
+	var p = w.patrols[0]
+	var radius: float = g.scan_radius()
+	var gap: float = radius + float(g.data.patrol_feel.warn_margin) * 0.5
+	# 1. warning just outside the scan range, before any scan starts
+	w.ship.stop()
+	w.ship.position = open_pos
+	w._warn = {}
+	for i in 3:
+		p.position = open_pos + Vector2(gap, 0)
+		await physics_frame
+	_assert(warned[0] == 1 and w.scan == 0.0, "warning fires once before the scan range, no scan yet")
+	await frames(2)
+	var found := false
+	for c in m.hud._toasts.get_children():
+		if str(c.get_meta("text", "")).begins_with("Patrol scan range ahead"):
+			found = true
+	_assert(found, "HUD toast announces the patrol range")
+	# 2. inside an asteroid field: smaller scan range, no chase, lock lost
+	var f: Dictionary = w.fields[0]
+	w.ship.stop()
+	w.ship.position = f.pos
+	p.position = f.pos + Vector2(900, 0)
+	p.chasing = true
+	w._hunted = true
+	for i in 5:
+		p.position = f.pos + Vector2(250, 0)  # inside the open-space radius, outside the field-reduced one
+		await physics_frame
+	_assert(w.scan == 0.0, "reduced scan range inside the field: patrol at 250 does not scan")
+	_assert(not p.chasing and lost[0] >= 1, "patrol loses lock inside the field and the HUD hears of it")
+	# 3. leaving the field: the same distance scans again
+	w.ship.position = open_pos
+	for i in 30:
+		p.position = open_pos + Vector2(250, 0)
+		await physics_frame
+	_assert(w.scan > 0.0, "back in open space the same distance scans")
+	w.scan = 0.0
+	g.cargo.erase("weed:glow")
+	g.heat = 0.0
+	await physics_frame
+
+
 func _interdiction(m, g) -> void:
 	var w = m.world
 	g.cargo["weed:glow"] = 6

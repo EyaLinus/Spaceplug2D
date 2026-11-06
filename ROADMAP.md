@@ -220,6 +220,6 @@ Waves run in order; inside a wave milestones are sequential (max 2 threads in th
 later screen builds on it. Conflict hot spots as in phase 2, plus `ui_theme.gd` (G1 only).
 
 ## Carried over from the v0.1 roadmap (fold into the milestones above when they are picked up)
-- Patrol feel in space: warning before scan range, asteroid fields to break pursuit, screen shake on bust
+- Patrol feel in space: ✅ done (wave 12 PR; warning before scan range, asteroid fields shrink scan range and break pursuit, screen shake on bust now also in space)
 - Packaging tiers (shielded product survives a scan with a chance) → P4 packaging table
 - [x] Price board with per-location history → P2/P6 (Map app price comparison)
