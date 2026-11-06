@@ -182,7 +182,9 @@ func _update_workers(delta: float) -> void:
 			npc.display_name = str(_worker_name(g, id))
 			npc.color = Color("#9fd4ff")
 			npc.speed = 45.0
-			npc.sheet = Art.recolored("chars/player.png", WorkerWalk.look_swaps(GameState.data, id))
+			var swaps: Dictionary = WorkerWalk.look_swaps(GameState.data, id)
+			npc.sheet = Art.recolored("chars/player.png", swaps)
+			npc.idle_sheet = Art.recolored("chars/player_idle.png", swaps)
 			npc.look = "npc_slate"
 			npc.position = _px([cfg.spawn[0], cfg.spawn[1]])
 			add_child(npc)
@@ -874,6 +876,26 @@ func interactable(id: String) -> Dictionary:
 
 # ---------------------------------------------------------------- drawing
 
+## Art pass 4 fringes: ground pixels creep over the border of every road and plaza where the ground starts. A cell
+## counts as paved when a road/plaza covers it; buildings, pads and the map border are not looked at.
+func _draw_edge_fringes(set_name: String) -> void:
+	var rects: Array = []
+	for r in cfg.roads:
+		rects.append(Rect2i(int(r[0]), int(r[1]), int(r[2]), int(r[3])))
+	for r in cfg.get("plazas", []):
+		rects.append(Rect2i(int(r[0]), int(r[1]), int(r[2]), int(r[3])))
+	var map_cells := Rect2i(0, 0, int(map_size.x / tile), int(map_size.y / tile))
+	var paved := func(c: Vector2i) -> bool:
+		if not map_cells.has_point(c):
+			return true  # no ground to creep in beyond the map
+		for q in rects:
+			if q.has_point(c):
+				return true
+		return false
+	for q in rects:
+		Art.draw_edges(self, set_name, q, tile, paved)
+
+
 func _draw() -> void:
 	var tiles: String = Art.TILESETS.get(loc_id, "")
 	var art := tiles != "" and Art.tex("tiles/%s_ground.png" % tiles) != null
@@ -914,6 +936,8 @@ func _draw() -> void:
 		draw_circle(pr.get_center(), tile * 1.3, Color("#3e7a8c"))
 		draw_circle(pr.get_center(), tile * 1.0, Color("#5fb6c9"))
 		draw_arc(pr.get_center(), tile * 1.3, 0, TAU, 32, Color("#8a8b94"), 4.0)
+	if art:
+		_draw_edge_fringes(tiles)
 	if cfg.has("pad"):
 		_draw_pad()
 	for b in cfg.buildings:

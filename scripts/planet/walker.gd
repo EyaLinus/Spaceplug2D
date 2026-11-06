@@ -15,6 +15,7 @@ var flash := 0.0  ## hurt flash (seconds)
 var sprinting := false
 var _step := 0.0
 var _moving := false
+var idle_sheet: Texture2D  ## the same recolour of the idle sheet
 var sheet: Texture2D  ## K2: player sheet recoloured to your look (null = stock art)
 
 
@@ -32,7 +33,9 @@ func _ready() -> void:
 
 func refresh_look() -> void:
 	var g = GameState.game
-	sheet = Art.recolored("chars/player.png", Style.player_swaps(g.data, g.style)) if g != null else null
+	var swaps: Dictionary = Style.player_swaps(g.data, g.style) if g != null else {}
+	sheet = Art.recolored("chars/player.png", swaps) if g != null else null
+	idle_sheet = Art.recolored("chars/player_idle.png", swaps) if g != null else null
 	queue_redraw()
 
 
@@ -63,7 +66,8 @@ func _draw() -> void:
 	var look := aim_dir if aim_dir != Vector2.ZERO else facing
 	if flash > 0.0:
 		draw_circle(Vector2(0, 0), 13.0, Color(1, 0.2, 0.2, minf(0.5, flash * 2.0)))
-	if Art.draw_character(self, "player", look, int(_step * 4.0 / TAU) if _moving else 0, Vector2(0, 12), sheet):
+	if Art.draw_character(self, "player", look, int(_step * 4.0 / TAU) if _moving else 0, Vector2(0, 12), sheet,
+			-1.0 if _moving else Time.get_ticks_msec() / 1000.0, idle_sheet):
 		return
 	var swing := sin(_step) * 4.0 if _moving else 0.0
 	var leg := Color("#2a2f45")

@@ -4,6 +4,7 @@ extends CanvasLayer
 
 const UI = preload("res://scripts/ui/ui_theme.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
+const Art = preload("res://scripts/core/art.gd")
 
 var layer_ref: Node2D  ## combat_layer.gd (hit flash)
 var _hull: ProgressBar
@@ -33,24 +34,25 @@ func _ready() -> void:
 	box.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	box.offset_left = 12
 	box.offset_bottom = -40
-	box.offset_top = -150
+	box.offset_top = -250
 	add_child(box)
-	_hull = _add_row(box, "Hull", Color("#ff6b5f"))
-	_shield = _add_row(box, "Shield", Color("#6ac4ff"))
+	_hull = _add_row(box, "Hull", Color("#ff6b5f"), "hud_hull")
+	_shield = _add_row(box, "Shield", Color("#6ac4ff"), "hud_shield")
 	_shield_row = _shield.get_parent()
-	_boost = _add_row(box, "Boost", UI.GOLD)
+	_boost = _add_row(box, "Boost", UI.GOLD, "hud_boost")
 	_missiles = UI.label("", 15, UI.MUTED)
-	box.add_child(_missiles)
+	_missile_row = Art.with_icon("hud_missile", _missiles)
+	box.add_child(_missile_row)
 	_hint = UI.label("", 14, UI.MUTED)
 	box.add_child(_hint)
 
 
-func _add_row(parent: Control, text: String, color: Color) -> ProgressBar:
+func _add_row(parent: Control, text: String, color: Color, icon := "") -> ProgressBar:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	var l := UI.label(text, 15, UI.TEXT)
 	l.custom_minimum_size.x = 54
-	row.add_child(l)
+	row.add_child(Art.with_icon(icon, l) if icon != "" else l)
 	var b := UI.bar(color)
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	b.custom_minimum_size = Vector2(170, 14)
@@ -72,7 +74,11 @@ func _process(_delta: float) -> void:
 	_boost.max_value = float(g.data.space_combat.boost.max)
 	_boost.value = g.combat.boost
 	var sec := SpaceCombat.secondary(g)
-	_missiles.visible = sec != ""
+	_missile_row.visible = sec != ""
+	if _missile_row != _missiles and sec != "":  # icon row: missile / flak / ion icon follows the selected secondary
+		var ic: Texture2D = Art.icon_for("hud_missile" if sec == "missile" else "up_" + sec)
+		if ic != null:
+			_missile_row.get_child(0).texture = ic
 	match sec:
 		"missile":
 			_missiles.text = "Missiles %d / %d" % [int(g.combat.missiles), SpaceCombat.missile_cap(g)]

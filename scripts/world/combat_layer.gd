@@ -185,6 +185,7 @@ func fire_ion(g) -> bool:
 
 ## Pirates within `r` of `p` take splash damage (missile blast).
 func _blast(g, p: Vector2, dmg: float, r: float) -> void:
+	_sprite_fx("explosion", p, 0.45, 4, r / 32.0)
 	_burst(p, 14, Color(1.0, 0.7, 0.3), 160.0, 0.55)
 	for t in pirates.duplicate():
 		if t.position.distance_to(p) <= r + t.radius:
@@ -215,6 +216,7 @@ func _damage_pirate(g, p: Node2D, dmg: float) -> void:
 	if p.hit(dmg):
 		pirates.erase(p)
 		var r := SpaceCombat.enemy_down(g, p.kind, p.cartel, rng)
+		_sprite_fx("explosion", p.position, 0.6, 4, 2.2 if p.kind == "gunship" else 1.6)
 		_burst(p.position, 30 if p.kind == "gunship" else 22, Color(1.0, 0.55, 0.25), 260.0 if p.kind == "gunship" else 220.0, 0.8)
 		shake = maxf(shake, 5.0 if p.kind == "gunship" else 2.0)
 		AudioManager.play("boom")
@@ -224,6 +226,7 @@ func _damage_pirate(g, p: Node2D, dmg: float) -> void:
 			drop_loot(p.position, r.loot)
 		p.queue_free()
 	else:
+		_sprite_fx("hit", p.position, 0.2, 3, 1.0)
 		_burst(p.position, 4, Color(1.0, 0.9, 0.6), 90.0, 0.25)
 
 
@@ -519,12 +522,15 @@ func hurt_player(g, amount: float) -> void:
 		AudioManager.play("hit")
 	else:
 		_ring = 1.0
+	if float(res.hull) > 0.0:
+		_sprite_fx("hit", ship.position + Vector2.from_angle(rng.randf() * TAU) * 10.0, 0.2, 3, 1.3)
 	_burst(ship.position, 6, Color(0.6, 0.9, 1.0) if float(res.hull) <= 0.0 else Color(1.0, 0.5, 0.3), 140.0, 0.35)
 	if res.destroyed:
 		_wreck(g)
 
 
 func _wreck(g) -> void:
+	_sprite_fx("explosion", ship.position, 0.8, 4, 3.0)
 	_burst(ship.position, 30, Color(1.0, 0.6, 0.2), 300.0, 1.0)
 	var r := SpaceCombat.defeat(g)
 	AudioManager.play("bust")
@@ -543,6 +549,12 @@ func _burst(pos: Vector2, n: int, color: Color, speed: float, life: float) -> vo
 		fx.append({"pos": pos, "vel": v, "life": life * rng.randf_range(0.5, 1.0), "max": life, "color": color, "size": rng.randf_range(1.5, 4.0)})
 
 
+## One-shot sprite effect from a fx strip (art pass 4): plays `frames` frames over `life` seconds. Nothing without the art.
+func _sprite_fx(sprite: String, pos: Vector2, life: float, frames: int, scale: float) -> void:
+	if Art.fx(sprite) != null:
+		fx.append({"pos": pos, "vel": Vector2.ZERO, "life": life, "max": life, "sprite": sprite, "frames": frames, "scale": scale})
+
+
 func _step_fx(delta: float) -> void:
 	for f in fx.duplicate():
 		f.life -= delta
@@ -559,6 +571,8 @@ func _draw() -> void:
 	for b in bolts:
 		var dir: Vector2 = b.vel.normalized()
 		if b.missile:
+			if Art.draw_fx(self, "missile", b.pos - dir * 4.0, dir.angle(), 0, 1, 0.75):
+				continue
 			draw_line(b.pos - dir * 10.0, b.pos + dir * 6.0, Color(0.95, 0.95, 1.0), 4.0)
 			draw_circle(b.pos + dir * 6.0, 3.0, Color(1.0, 0.4, 0.3))
 		elif b.kind == "ion":
@@ -567,9 +581,13 @@ func _draw() -> void:
 		elif b.kind == "flak":
 			draw_circle(b.pos, 2.5, Color(1.0, 0.8, 0.4))
 		elif b.mine:
+			if Art.draw_fx(self, "bolt_laser", b.pos - dir * 2.0, dir.angle(), 0, 1, 0.8):
+				continue
 			draw_line(b.pos - dir * 12.0, b.pos + dir * 8.0, Color(0.4, 1.0, 0.9), 3.0)
 			draw_line(b.pos - dir * 12.0, b.pos + dir * 8.0, Color(0.9, 1.0, 1.0), 1.0)
 		else:
+			if Art.draw_fx(self, "bolt_pirate", b.pos - dir * 1.0, dir.angle(), 0, 1, 0.8):
+				continue
 			draw_line(b.pos - dir * 10.0, b.pos + dir * 8.0, Color(1.0, 0.35, 0.3), 3.0)
 			draw_line(b.pos - dir * 10.0, b.pos + dir * 8.0, Color(1.0, 0.85, 0.7), 1.0)
 	var crate := Art.tex("space/loot.png")
@@ -594,6 +612,10 @@ func _draw() -> void:
 		for i in (b.cd as Array).size():
 			draw_circle(turret_pos(n, i), 5.0, Color(1.0, 0.3, 0.25, 0.35 + 0.35 * sin(Time.get_ticks_msec() / 150.0 + i)))
 	for f in fx:
+		if f.has("sprite"):
+			var k := 1.0 - clampf(float(f.life) / float(f.max), 0.0, 0.999)
+			Art.draw_fx(self, f.sprite, f.pos, 0.0, int(k * int(f.frames)), int(f.frames), float(f.scale))
+			continue
 		var c: Color = f.color
 		c.a *= clampf(f.life / f.max, 0.0, 1.0)
 		draw_circle(f.pos, f.size, c)
@@ -602,4 +624,7 @@ func _draw() -> void:
 		var ratio := SpaceCombat.shield_ratio(g)
 		if ratio > 0.0 or _ring > 0.0:
 			var a := 0.12 + 0.5 * _ring + 0.15 * ratio
+			var spin := int(Time.get_ticks_msec() / 160) % 3
+			if Art.draw_fx(self, "shield", ship.position, 0.0, spin, 3, 1.0, Color(1, 1, 1, clampf(a + 0.15, 0.0, 1.0))):
+				return
 			draw_arc(ship.position, 30.0, 0.0, TAU, 40, Color(0.5, 0.85, 1.0, clampf(a, 0.0, 0.9)), 2.0 + 2.0 * _ring)

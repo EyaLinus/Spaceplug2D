@@ -414,6 +414,21 @@ func _run() -> void:
 	for i in 4:
 		await physics_frame
 	await _save(out, "space_combat")
+	# art pass 4: explosion + hit sprites mid-animation, then the ship inside a nebula cloud
+	w.combat._sprite_fx("explosion", w.ship.position + Vector2(-140, -120), 0.8, 4, 2.0)
+	w.combat._sprite_fx("explosion", w.ship.position + Vector2(160, -150), 0.8, 4, 1.0)
+	w.combat._sprite_fx("hit", w.ship.position + Vector2(40, -90), 0.8, 3, 1.5)
+	for i in 14:
+		await physics_frame
+	await _save(out, "space_fx")
+	w.combat.fx.clear()
+	if not w._nebulae.is_empty():
+		w.ship.position = w._nebulae[0][0]
+		w.ship.stop()
+		w.camera.reset_smoothing()
+		for i in 4:
+			await physics_frame
+		await _save(out, "space_nebula")
 	w.combat.clear()
 	# space combat II: a Comet wing with a gunship, flak in the air, a loot crate; then the Comet Nest turrets
 	g.combat.secondary = "flak"

@@ -306,8 +306,9 @@ func _build_stash(g) -> Control:
 	var t: Dictionary = Bench.tray(g)
 	if not t.is_empty():
 		var nxt: String = Bench.next_station(g, t)
-		v.add_child(UI.label("On your tray: %d × %s, next stop %s." % [t.qty, g.data.bases[t.base].name,
-			g.data.stations[nxt].name if nxt != "" else "done"], 16, UI.GOLD))
+		var tray_l := UI.label("On your tray: %d × %s, next stop %s." % [t.qty, g.data.bases[t.base].name,
+			g.data.stations[nxt].name if nxt != "" else "done"], 16, UI.GOLD)
+		v.add_child(Art.with_icon("st_" + nxt, tray_l) if nxt != "" else tray_l)
 	v.add_child(UI.heading("Cooking"))
 	if g.lab_queue.is_empty():
 		v.add_child(UI.label("Nothing in the cooker. Start a batch at the Trim Table or the Precursor Scale.", 15, UI.MUTED))

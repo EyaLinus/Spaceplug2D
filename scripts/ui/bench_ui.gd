@@ -37,7 +37,14 @@ var _wait := 0.0
 var _panel: PanelContainer
 var _body: VBoxContainer
 var _title: Label
+var _title_icon: TextureRect  ## art pass 4 station icon (st_<station>) next to the title
 var _sub: Label
+
+
+func _set_title(text: String) -> void:
+	_title.text = text
+	_title_icon.texture = Art.icon_for("st_" + station_id)
+	_title_icon.visible = _title_icon.texture != null
 
 
 func _ready() -> void:
@@ -58,6 +65,12 @@ func _ready() -> void:
 	_panel.add_child(v)
 	var head := HBoxContainer.new()
 	v.add_child(head)
+	_title_icon = TextureRect.new()
+	_title_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_title_icon.custom_minimum_size = Vector2(32, 32)
+	_title_icon.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	_title_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(_title_icon)
 	_title = UI.label("", 24, UI.GOLD)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_title)
@@ -83,7 +96,7 @@ func open_station(id: String, index: int) -> void:
 	building_index = index
 	last_result = {}
 	var st: Dictionary = g.data.stations[id]
-	_title.text = st.name
+	_set_title(st.name)
 	_sub.text = "%s  ·  improves %s" % [st.get("hint", ""), st.affects]
 	var m: Dictionary = Bench.use_mode(g, id)
 	mode = m.mode
@@ -396,7 +409,7 @@ func _line_strip(g) -> Control:
 		var col: Color = UI.ACCENT if st in t.done else (UI.GOLD if st == nxt else UI.MUTED)
 		if st == Bench.MIX and not t.mixed:
 			mark = "± "
-		h.add_child(UI.label(mark + g.data.stations[st].name, 14, col))
+		h.add_child(Art.with_icon("st_" + st, UI.label(mark + g.data.stations[st].name, 14, col)))
 	return h
 
 
@@ -454,7 +467,7 @@ func _play() -> void:
 	for c in _body.get_children():
 		c.queue_free()
 	var st: Dictionary = g.data.stations[station_id]
-	_title.text = "%s · %d × %s" % [st.name, t.qty, g.data.bases[t.base].name]
+	_set_title("%s · %d × %s" % [st.name, t.qty, g.data.bases[t.base].name])
 	_sub.text = st.get("hint", "")
 	var holder := CenterContainer.new()
 	holder.custom_minimum_size = Vector2(840, 340)
@@ -478,7 +491,7 @@ func _run_machine(g) -> void:
 	last_result = {"title": title, "text": str(r.msg), "score": Machines.score(g.data, station_id), "ok": r.ok}
 	_clear_minigame()
 	mode = "result"
-	_title.text = st.name
+	_set_title(st.name)
 	_rebuild()
 
 
@@ -514,7 +527,7 @@ func _process(dt: float) -> void:
 		if _wait <= 0.0:
 			_clear_minigame()
 			mode = "result"
-			_title.text = GameState.data.stations[station_id].name
+			_set_title(GameState.data.stations[station_id].name)
 			_rebuild()
 		return
 	if current != null and autoplay:
