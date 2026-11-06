@@ -6,6 +6,7 @@ extends Node2D
 signal interacted(action: String, payload: Dictionary)
 
 const WalkerScript = preload("res://scripts/planet/walker.gd")
+const Chatter = preload("res://scripts/core/chatter.gd")
 const NpcScript = preload("res://scripts/planet/npc.gd")
 const OfficerScript = preload("res://scripts/planet/officer.gd")
 const Art = preload("res://scripts/core/art.gd")
@@ -60,6 +61,8 @@ var _repath := 0.0
 var _overlay: Node2D  ## redrawn every frame (focus ring); the ground below is drawn once
 var _rng := RandomNumberGenerator.new()
 var _walk_t := 0.0
+var _chat_rng := RandomNumberGenerator.new()
+var _chatter: Dictionary = {}  ## npc id -> Chatter state
 var _spot_of: Dictionary = {}  ## named npc id -> schedule spot it is at / walking to
 var _schedule_t := 0.0
 var worker_nodes: Dictionary = {}  ## worker id -> walker node (estate interiors only, purely visual)
@@ -195,6 +198,27 @@ func _worker_name(g, id: String) -> String:
 		if c.id == id:
 			return str(c.name).get_slice(" ", 0)
 	return ""
+## Idle chatter: people near the player now and then say a short line (planet + time-of-day flavoured).
+func _update_chatter(delta: float) -> void:
+	var g = GameState.game
+	if g == null or GameState.paused or player == null or player.frozen:
+		return
+	var data: Dictionary = GameState.data
+	var rl := Chatter.rules(data)
+	var radius := float(rl.get("radius", 240.0))
+	var visible_n := 0
+	for id in npcs:
+		if npcs[id].bubble_t > 0.0:
+			visible_n += 1
+	for id in npcs:
+		var npc: Node2D = npcs[id]
+		if not _chatter.has(id):
+			_chatter[id] = Chatter.new_state(data, _chat_rng)
+		var line := Chatter.tick(data, _chatter[id], delta, player.position.distance_to(npc.position) < radius, npc.hold,
+				visible_n < int(rl.get("max_visible", 2)), loc_id, People.hour(g), _chat_rng)
+		if line != "":
+			npc.say(line, float(rl.get("show", 3.6)))
+			visible_n += 1
 
 
 func _update_daylight() -> void:
@@ -281,6 +305,7 @@ func _ready() -> void:
 	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED  # tinted roof/wall pieces are tiled
 	_rng.seed = hash(loc_id)
 	_fire_rng.seed = hash(loc_id) + 11
+	_chat_rng.seed = hash(loc_id) + 23
 	EventBus.game_event.connect(func(kind: String, _p: Dictionary):
 		if kind == "upgraded":
 			queue_redraw())  # the parked ship shows its new module
@@ -445,6 +470,7 @@ func _physics_process(delta: float) -> void:
 	_update_walkups(delta)
 	_update_schedules(delta)
 	_update_workers(delta)
+	_update_chatter(delta)
 	_update_daylight()
 	for it in interactables:
 		if it.has("npc"):

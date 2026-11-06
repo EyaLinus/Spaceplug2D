@@ -515,6 +515,17 @@
 - Gaps: no map marker for drops on the surface; the customer collects instantly in the sim (no walking NPC);
   A5 (dealers) can reuse `Deaddrops.at()` / jobs; courier only goes drop -> hub stash.
 
+## B1: idle chatter bubbles (wave 19)
+- **Core:** `scripts/core/chatter.gd` (pure functions) + `data/chatter.json` (merged into `data.chatter`): rules (radius 240 px,
+  gap 9-22 s, show 3.6 s, max 2 bubbles at once), time-of-day periods (morning/day/evening/night, night wraps midnight) and
+  a line pool where each line may be tagged with a planet `loc` and a `period`. `pool`/`pick` (no immediate repeat),
+  `tick` advances one person's timer (silent out of earshot, while talking to the player, or when too many bubbles show).
+- **UI:** `npc.gd` `say(text, secs)` draws a white speech bubble above the head (fades out); `surface.gd`
+  `_update_chatter` runs it for every person on the surface with its own seeded RNG (does not disturb officer paths).
+- Verified: new `test_idle_chatter` (periods, every planet has lines at every hour, loc/period filtering, no repeats,
+  cooldown/earshot/busy rules). NOT run locally in the authoring session (no Godot binary allowed); CI is the check.
+- Gaps: officers and anonymous walkers do not chatter; lines are not reactive (heat, deals, mood); no sound.
+
 ## B1: NPC schedules on foot (2026-11-02)
 - Surfaces have `spots` (schedule place name → tile, `surfaces.json`). `People.spot(c, spots, hour, slot)` picks the
   spot of the current schedule place, nudged by the person's index on the surface so people sharing a place stand
@@ -526,7 +537,7 @@
 - Verified: 1816 unit checks (every schedule place has a spot on the person's surface, every spot walkable and
   reachable at every hour, day start, daylight), UI smoke (schedule change → Okka walks, her interaction point
   follows, light changes), menu smoke, night screenshot.
-- Gaps vs. the old draft PR #5: no idle chatter bubbles; anonymous walkers keep roaming; people stand at a spot in front
+- Gaps vs. the old draft PR #5: (idle chatter bubbles: done, see "B1: idle chatter" below); anonymous walkers keep roaming; people stand at a spot in front
   of "Home" instead of going indoors (keeps them dealable).
 
 ## B2: ship cargo bay estate (2026-10-30)

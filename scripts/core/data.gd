@@ -8,6 +8,8 @@ const SURFACES_PATH := "res://data/surfaces.json"
 const QUESTS_PATH := "res://data/quests.json"
 const INTERIORS_PATH := "res://data/interiors.json"
 const Locals =preload("res://scripts/core/locals.gd")
+const CHATTER_PATH := "res://data/chatter.json"
+const Locals = preload("res://scripts/core/locals.gd")
 
 
 static func load_all(path: String = CONTENT_PATH) -> Dictionary:
@@ -20,6 +22,8 @@ static func load_all(path: String = CONTENT_PATH) -> Dictionary:
 		parsed["quests"] = _load_json(QUESTS_PATH) if FileAccess.file_exists(QUESTS_PATH) else {}
 	if not parsed.has("interiors"):
 		parsed["interiors"] = _load_json(INTERIORS_PATH) if FileAccess.file_exists(INTERIORS_PATH) else {}
+	if not parsed.has("chatter"):
+		parsed["chatter"] = _load_json(CHATTER_PATH) if FileAccess.file_exists(CHATTER_PATH) else {}
 	Locals.add_to(parsed)  # named townsfolk on every planet join the contacts
 	return parsed
 

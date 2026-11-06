@@ -29,6 +29,7 @@ const Locals = preload("res://scripts/core/locals.gd")
 const Hiding = preload("res://scripts/core/hiding.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const PriceWar = preload("res://scripts/core/pricewar.gd")
+const Chatter = preload("res://scripts/core/chatter.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Escort = preload("res://scripts/core/escort.gd")
 const Interiors = preload("res://scripts/core/interiors.gd")
@@ -105,6 +106,7 @@ func _init() -> void:
 		"test_people_deals",
 		"test_people_save",
 		"test_people_schedules_on_surfaces",
+		"test_idle_chatter",
 		"test_planet_districts",
 		"test_locals",
 		"test_walkups",
@@ -1618,6 +1620,37 @@ func test_locals() -> void:
 	var g2 := Game.new()
 	g2.from_dict(data, d)
 	check(g2.people[first.id].known and g2.people[got[0].contact].known, "met and referred locals survive a save")
+
+
+func test_idle_chatter() -> void:
+	check(Chatter.period(data, 6.0) == "morning" and Chatter.period(data, 12.0) == "day", "chatter periods by hour")
+	check(Chatter.period(data, 23.0) == "night" and Chatter.period(data, 2.0) == "night" and Chatter.period(data, 30.0) == "morning", "night wraps past midnight")
+	for loc in data.surfaces:
+		for h in 24:
+			check(not Chatter.pool(data, loc, h + 0.5).is_empty(), "%s has chatter at %d:00" % [loc, h])
+	check(Chatter.pool(data, "cinder", 12.0).has("Dust in my teeth again."), "planet line in its pool")
+	check(not Chatter.pool(data, "mireth", 12.0).has("Dust in my teeth again."), "other planet's line is excluded")
+	check(not Chatter.pool(data, "mireth", 12.0).has("Shouldn't be out this late."), "night line excluded at noon")
+	check(Chatter.pool(data, "mireth", 23.0).has("Shouldn't be out this late."), "night line at night")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var last := ""
+	var repeats := 0
+	for i in 60:
+		var l := Chatter.pick(data, "mireth", 12.0, rng, last)
+		check(l != "", "pick returns a line")
+		repeats += 1 if l == last else 0
+		last = l
+	check(repeats == 0, "no immediate repeats")
+	check(Chatter.pick({}, "mireth", 12.0, rng) == "", "empty data gives no line")
+	var st := Chatter.new_state(data, rng)
+	check(Chatter.tick(data, st, 0.1, false, false, true, "mireth", 12.0, rng) == "" and float(st.cd) > 0.5, "out of earshot: silent, timer paused")
+	check(Chatter.tick(data, st, 100.0, true, true, true, "mireth", 12.0, rng) == "", "silent while in conversation")
+	check(Chatter.tick(data, st, 100.0, true, false, false, "mireth", 12.0, rng) == "", "silent when too many bubbles")
+	var said := Chatter.tick(data, st, 100.0, true, false, true, "mireth", 12.0, rng)
+	check(said != "" and said == st.last, "speaks when timer ran out")
+	check(float(st.cd) >= float(Chatter.rules(data).gap[0]), "cooldown reset after speaking")
+	check(Chatter.tick(data, st, 0.1, true, false, true, "mireth", 12.0, rng) == "", "no second line during cooldown")
 
 
 func test_people_schedules_on_surfaces() -> void:

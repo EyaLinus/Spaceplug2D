@@ -17,12 +17,15 @@ var marker := false  ## gold "$" above the head: you have an agreed deal with th
 var bubble := ""  ## speech bubble text: a customer on foot asking for product (walkups.gd)
 var sheet: Texture2D  ## recoloured sheet (hired workers); null = the plain look sheet
 var heading := Vector2.DOWN  ## last walking direction, picks the sprite row
+var bubble := ""  ## idle chatter line shown above the head
+var bubble_t := 0.0  ## seconds the bubble stays
 var _step := 0.0
 var _t := 0.0
 
 
 func _process(delta: float) -> void:
 	_t += delta
+	bubble_t = maxf(0.0, bubble_t - delta)
 	if path.is_empty() and pick_next.is_valid():
 		path = pick_next.call(position)
 	if not path.is_empty() and not hold:
@@ -56,6 +59,25 @@ func _draw() -> void:
 	_draw_name()
 
 
+## Shows a speech bubble for `secs` seconds.
+func say(text: String, secs: float) -> void:
+	bubble = text
+	bubble_t = secs
+
+
+func _draw_bubble() -> void:
+	if bubble == "" or bubble_t <= 0.0:
+		return
+	var f := ThemeDB.fallback_font
+	var w := f.get_string_size(bubble, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+	var a := minf(1.0, bubble_t * 3.0)  # fades out
+	var r := Rect2(-w / 2.0 - 5, -58, w + 10, 17)
+	draw_rect(r, Color(0.96, 0.96, 0.98, 0.92 * a))
+	draw_rect(r, Color(0.2, 0.2, 0.28, a), false, 1.0)
+	draw_colored_polygon(PackedVector2Array([Vector2(-3, -41), Vector2(3, -41), Vector2(0, -36)]), Color(0.96, 0.96, 0.98, 0.92 * a))
+	draw_string(f, Vector2(-w / 2.0, -45), bubble, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.1, 0.1, 0.16, a))
+
+
 func _draw_name() -> void:
 	if bubble != "":
 		var bf := ThemeDB.fallback_font
@@ -65,6 +87,7 @@ func _draw_name() -> void:
 		draw_rect(Rect2(-bw / 2.0, by, bw, 20), Color("#ffd166"), false, 1.5)
 		draw_colored_polygon(PackedVector2Array([Vector2(-4, by + 20), Vector2(4, by + 20), Vector2(0, by + 27)]), Color("#ffd166"))
 		draw_string(bf, Vector2(-bw / 2.0 + 7.0, by + 14.5), bubble, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#ffe9b0"))
+	_draw_bubble()
 	if marker:
 		var f := ThemeDB.fallback_font
 		var bob := sin(_t * 4.0) * 2.0
