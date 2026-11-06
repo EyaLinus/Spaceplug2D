@@ -10,6 +10,7 @@ const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const Corruption = preload("res://scripts/core/corruption.gd")
+const Packaging = preload("res://scripts/core/packaging.gd")
 const Workers = preload("res://scripts/core/workers.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Deals = preload("res://scripts/core/deals.gd")
@@ -576,7 +577,7 @@ func queue_batch(base: String, additives: Array, qty: int, scores: Dictionary = 
 		return _fail("Lab queue is full.")
 	var res := Production.outcome(data, scores)
 	var out_qty := Production.output_qty(qty, res.yield_mult)
-	var product := Mixing.key(base, Mixing.traits_for(data, base, additives), res.grade)
+	var product := Mixing.key(base, Mixing.traits_for(data, base, additives), res.grade, res.pack)
 	var t := batch_seconds(qty)
 	Products.discover(self, base, additives, res.grade, out_qty)
 	lab_queue.append({"product": product, "qty": out_qty, "remaining": t, "total": t})
@@ -753,19 +754,18 @@ func bribe(heat_amount: float) -> Dictionary:
 func bust() -> Dictionary:
 	if Corruption.scan_pass(self):
 		return _ok("A customs officer waved your cargo through.")
-	var lost := 0
-	for k in cargo.keys():
-		if Mixing.is_product(k):
-			lost += int(cargo[k])
-			cargo.erase(k)
+	var scan := Packaging.scan(data, cargo, rng)
+	var lost := int(scan.lost)
+	var kept := int(scan.kept)
 	var h: Dictionary = data.heat
 	var fine := mini(credits, maxi(int(h.bust_fine_min), int(credits * float(h.bust_fine_ratio))))
 	credits -= fine
 	stats.busts += 1
 	_set_heat(heat - float(h.bust_heat_drop))
 	Corruption.on_bust(self)
-	_emit("busted", {"lost": lost, "fine": fine})
-	return _ok("Busted! Lost %d units and paid %d cr." % [lost, fine])
+	_emit("busted", {"lost": lost, "fine": fine, "kept": kept})
+	var shield_note := " Your packaging hid %d units." % kept if kept > 0 else ""
+	return _ok("Busted! Lost %d units and paid %d cr.%s" % [lost, fine, shield_note])
 
 
 # ---------------------------------------------------------------- estates

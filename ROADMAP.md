@@ -223,3 +223,6 @@ later screen builds on it. Conflict hot spots as in phase 2, plus `ui_theme.gd` 
 - Patrol feel in space: ✅ done (wave 12 PR; warning before scan range, asteroid fields shrink scan range and break pursuit, screen shake on bust now also in space)
 - Packaging tiers (shielded product survives a scan with a chance) → P4 packaging table
 - [x] Price board with per-location history → P2/P6 (Map app price comparison)
+- Patrol feel in space: warning before scan range, asteroid fields to break pursuit, screen shake on bust
+- [x] Packaging tiers (shielded product survives a scan with a chance) → P4 packaging table (wave 12, `packaging.gd`)
+- Price board with per-location history → P2/P6

@@ -829,3 +829,16 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
   people, stranger shows job, prompt shows want, talking opens Deals and makes a contact, name appears), menu smoke, screenshot.
 - Gaps: locals reuse the 8 NPC sprite looks (no per-planet outfits yet); no dialogue lines beyond the deal screen; the Contacts app
   grows long once you know many people (no search/filter yet, K3).
+
+## Packaging tiers (2026-11-04, wave 12)
+- **Core** `scripts/core/packaging.gd`; data in `content.json` → `packaging.tiers` (Loose 0.0 / Sealed 0.45 / Shielded 0.8 minimum
+  Packaging Table score; `scan_survive` 0 / 0.15 / 0.55 per unit). `Production.outcome` returns `pack` (0 without a pack_table score,
+  so quick batches stay Loose). The tier is part of the product key as `#<tier>` after the grade (`weed:glow@2#2`), Loose has no
+  suffix, so old saves load unchanged and tiers stack separately in cargo. `Mixing.key(.., pack)`, `parse_key().pack`, display name
+  gets " (Shielded)". Lab queue, estate lab hands (workers.gd) and the bench all go through `queue_batch`/`outcome`.
+- **Scan:** `Game.bust()` (after the customs `scan_pass`) rolls every product unit against its tier via `Game.rng`; survivors stay in
+  cargo, fine and heat drop are unchanged; the message says how many units the packaging hid.
+- **UI:** minigame result line shows the packaging tier; value is unaffected by tier.
+- Verified: unit tests (`test_packaging_tiers`: thresholds, key round-trip, name, bust survival, save, batch stores the tier; two
+  existing tests adjusted for the suffix) 0 failures; UI smoke ran through. Sim and screenshots not run.
+- Gaps: tier is not shown in every list (only names and the batch result); no sell-price effect; Sealed/Shielded numbers are unbalanced guesses.
