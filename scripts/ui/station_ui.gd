@@ -12,6 +12,7 @@ const People = preload("res://scripts/core/people.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Products = preload("res://scripts/core/products.gd")
 const Bench = preload("res://scripts/core/bench.gd")
+const Vault = preload("res://scripts/core/vault.gd")
 const ShipPreview = preload("res://scripts/ui/ship_preview.gd")
 const OfficialsApp = preload("res://scripts/ui/phone/apps/officials_app.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
@@ -339,7 +340,43 @@ func _build_stash(g) -> Control:
 	load.disabled = g.stash.is_empty() and g.estate_stock.get(g.inside_estate, {}).is_empty()
 	v.add_child(load)
 	v.add_child(UI.label("Hold %d/%d" % [g.cargo_used(), g.cargo_capacity()], 14, UI.MUTED))
+	_build_vault(g, v)
 	return v
+
+
+## Hidden crate (vault.gd): product in here survives a bust or a knock-out.
+func _build_vault(g, v: VBoxContainer) -> void:
+	v.add_child(UI.heading("Hidden crate"))
+	var info := UI.label("%d/%d units, safe from busts and knock-outs." % [Vault.used(g), Vault.capacity(g)], 15, UI.MUTED)
+	info.name = "VaultInfo"
+	v.add_child(info)
+	for k in g.cargo.keys():
+		if not Mixing.is_product(k):
+			continue
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 10)
+		h.add_child(Art.with_icon(k, UI.label("%d × %s" % [g.cargo[k], g.item_name(k)], 15)))
+		var key: String = k
+		var b := UI.button("Hide all", func(): GameState.act(Vault.deposit(g, key, int(g.cargo.get(key, 0)))), 110)
+		b.tooltip_text = "Move this product from the hold into the hidden crate."
+		h.add_child(b)
+		v.add_child(h)
+	for k in g.vault.items.keys():
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 10)
+		h.add_child(Art.with_icon(k, UI.label("%d × %s (crate)" % [g.vault.items[k], g.item_name(k)], 15, UI.GOLD)))
+		var key: String = k
+		var b := UI.button("Take all", func(): GameState.act(Vault.withdraw(g, key, int(g.vault.items.get(key, 0)))), 110)
+		b.tooltip_text = "Move this product from the crate back into the hold, as far as it fits."
+		h.add_child(b)
+		v.add_child(h)
+	var cost := Vault.upgrade_cost(g)
+	if cost >= 0:
+		var up := UI.button("Bigger crate (%d cr)" % cost, func(): GameState.act(Vault.upgrade(g)), 220)
+		up.name = "VaultUpgrade"
+		up.disabled = g.credits < cost
+		up.tooltip_text = "Add %d units of hidden room." % int(g.data.vault.cap_per_tier)
+		v.add_child(up)
 
 
 func _add_agreed_deal(g, box: VBoxContainer, c: Dictionary) -> void:

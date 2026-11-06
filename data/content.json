@@ -382,6 +382,7 @@
     "chase_heat": 40,
     "give_up_range": 480
   },
+  "vault": {"base_cap": 40, "cap_per_tier": 40, "upgrade_costs": [500, 1200, 2500]},
   "estates": {
     "ship_bay": {"name": "Cargo Bay", "ship": true, "size": [7, 4], "desc": "The hold of your own ship, fitted out as a cramped workshop. Only usable while docked."},
     "cannery_rig": {"name": "Old Cannery", "location": "mireth", "price": 0, "size": [11, 6], "starter": true,
