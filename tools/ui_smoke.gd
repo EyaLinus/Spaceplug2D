@@ -931,6 +931,9 @@ func _run() -> void:
 	await frames(2)
 	_assert(g.cargo.get("weed:glow@2", 0) == 8, "cured weed is Premium and 20%% lighter (%s)" % [g.cargo])
 	g.cargo.erase("weed:glow@2")
+	if m.bench.visible:
+		m.bench.close()
+		await frames(2)
 	# sealing bench: build it, wrap loose weed as Shielded, wait it out, take the packs
 	g.credits += 2000
 	_assert(gs.act(g.place_building("cannery_annex", "seal_bench", 0, 4)).ok, "sealing bench placed")

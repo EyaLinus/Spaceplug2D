@@ -121,11 +121,9 @@ func _rebuild() -> void:
 		"mix": _build_mix(g)
 		"wait": _build_wait(g)
 		"dry": _build_dry(g)
-		"result": _build_result(g)
-	if mode != "dry":
 		"seal": _build_seal(g)
 		"result": _build_result(g)
-	if mode != "seal":
+	if mode != "dry" and mode != "seal":
 		_body.add_child(_line_strip(g))
 	_body.add_child(_footer(g))
 
@@ -276,6 +274,8 @@ func _build_journal(g, t: Dictionary) -> void:
 		b.disabled = why != ""
 		b.tooltip_text = "Pour this exact mix again and go straight to the stations." if why == "" else why
 		h.add_child(b)
+
+
 # ---------------------------------------------------------------- drying table (passive building, see drying.gd)
 
 func _build_dry(g) -> void:
@@ -501,8 +501,7 @@ func _input(ev: InputEvent) -> void:
 	elif current != null and _wait <= 0.0:
 		current.key(ev.keycode, ev.pressed)
 	elif ev.pressed and ev.keycode in [KEY_E, KEY_ENTER, KEY_KP_ENTER]:
-		if mode == "dry":
-		if mode == "seal":
+		if mode == "dry" or mode == "seal":
 			close()
 		elif mode in ["start", "mix", "result"]:
 			_confirm()

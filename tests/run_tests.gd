@@ -165,7 +165,6 @@ func _init() -> void:
 		"test_curfew",
 		"test_debt_win_and_loss",
 		"test_save_roundtrip",
-		"test_sealing_bench",
 		"test_style",
 		"test_price_board",
 		"test_raids",
@@ -173,6 +172,7 @@ func _init() -> void:
 		"test_grow",
 		"test_map_marker",
 		"test_drying_table",
+		"test_sealing_bench",
 		"test_drug_ladder",
 		"test_old_save_names_migrate",
 		"test_core_loop_is_profitable",
@@ -1311,8 +1311,7 @@ func test_production_stations() -> void:
 	for id in data.stations:
 		var st: Dictionary = data.stations[id]
 		if st.get("passive", false):
-			continue  # no minigame (drying table)
-			continue  # no minigame (sealing bench)
+			continue  # no minigame (drying table, sealing bench)
 		check(Runner.MINIGAMES.has(st.minigame), "station %s minigame %s is registered" % [id, st.minigame])
 		check(st.affects in ["yield", "quality", "purity", "heat"], "station %s affects a known stat" % id)
 		check(id in data.station_order, "station %s is in station_order" % id)
@@ -4638,7 +4637,6 @@ func test_vault() -> void:
 	g3.from_dict(data, old)
 	check(Vault.used(g3) == 0 and int(g3.vault.tier) == 0, "old saves load with an empty crate")
 func test_drying_table() -> void:
-func test_sealing_bench() -> void:
 	var g := new_game()
 	var e := "cannery_annex"
 	g.credits = 5000
@@ -4719,6 +4717,12 @@ func test_autopilot_avoid() -> void:
 		pos += Vector2.from_angle(ang) * 6.0
 		min_d = minf(min_d, pos.distance_to(big.pos))
 	check(pos.distance_to(goal) < 100.0 and min_d > 250.0, "flight arrives without touching the rock (closest %d)" % int(min_d))
+
+func test_sealing_bench() -> void:
+	var g := new_game()
+	var e := "cannery_annex"
+	g.credits = 5000
+	g.estates[e] = {"buildings": []}
 	var prod := Mixing.key("weed", ["glow"], 2)
 	g.cargo[prod] = 10
 	check(not Sealing.load_bench(g, e, prod, 5, 1).ok, "no bench, no wrapping")
