@@ -27,6 +27,7 @@ const Drones = preload("res://scripts/core/drones.gd")
 const Vault = preload("res://scripts/core/vault.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
+const PriceWar = preload("res://scripts/core/pricewar.gd")
 const Style = preload("res://scripts/core/style.gd")
 const PriceBoard = preload("res://scripts/core/price_board.gd")
 const Grow = preload("res://scripts/core/grow.gd")
@@ -109,6 +110,8 @@ var grow: Dictionary = {}  ## estate id -> {"trays": [{raw, start_day, watered}]
 var grow_q: Dictionary = {}  ## raw id -> mean quality 0..1 of the grown part of the stash pile (see grow.gd), saved
 var style: Dictionary = {}  ## K2 look, ship paint/decal and estate decor (see style.gd), saved
 var map_marker := ""  ## K3 hand-placed map marker: location or system id, "" = none (see marker.gd), saved
+var price_wars: Dictionary = {}  ## active cartel price wars {loc: {cartel, started, ends}} (see pricewar.gd), saved
+var price_truce: Dictionary = {}  ## {loc: last truce day}, saved
 var cartels: Dictionary = {}  ## sector influence per location and cartel hostility (see cartels.gd), saved
 
 
@@ -166,6 +169,8 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	drone_seq = 0
 	quests = Quests.empty_state()  # the opening quests start in GameState.new_game (tests and sims run without)
 	cartels = Cartels.init_state(data)
+	price_wars = {}
+	price_truce = {}
 	style = Style.init_state(data)
 	price_board = {}
 	raids = Raids.init_state()
@@ -332,6 +337,7 @@ func sale_heat_mult(base: String, loc: String = location) -> float:
 func sell_price(product_key: String, contact_id: String = "", loc: String = location) -> int:
 	var p := Mixing.parse_key(product_key)
 	var v := Mixing.value(data, product_key) * float(demand.get(loc, {}).get(p.base, 0.0)) * Cartels.price_mult(self, loc) * Laws.price_mult(self, loc, p.base)
+	var v := Mixing.value(data, product_key) * float(demand.get(loc, {}).get(p.base, 0.0)) * Cartels.price_mult(self, loc) * PriceWar.sell_mult(self, loc)
 	if contact_id == "":
 		return int(round(v * float(data.market.fence_ratio)))
 	var c := contact(contact_id)
@@ -439,6 +445,7 @@ func _new_day() -> void:
 	Drones.new_day(self)
 	Cartels.new_day(self)
 	_note_prices()
+	PriceWar.new_day(self)
 	_emit("new_day", {"day": day})
 	if debt > 0 and day > debt_due_day:
 		state = "lost"
@@ -533,9 +540,9 @@ func buy_price(item: String, loc: String = location) -> int:
 	if ld.is_empty():
 		return -1
 	if ld.sells_raw.has(item):
-		return int(ld.sells_raw[item])
+		return int(round(int(ld.sells_raw[item]) * PriceWar.buy_mult(self, loc)))
 	if ld.get("sells_additives", false) and data.additives.has(item):
-		return int(data.additives[item].price)
+		return int(round(int(data.additives[item].price) * PriceWar.buy_mult(self, loc)))
 	return -1
 
 
@@ -980,6 +987,8 @@ func to_dict() -> Dictionary:
 		"grow": Grow.to_save(self), "grow_q": Grow.quality_to_save(self),
 		"vault": Vault.to_save(self),
 		"marker": Marker.to_save(self),
+		"pricewar": PriceWar.to_save(self), 
+		
 	}
 
 
@@ -1068,6 +1077,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Drones.from_save(self, d.get("drones", []))
 	Quests.from_save(self, d.get("quests", {}), d.has("quests"))
 	Cartels.from_save(self, d.get("cartels", {}))
+	PriceWar.from_save(self, d.get("pricewar", {}))
 	Style.from_save(self, d.get("style", {}))
 	Escort.from_save(self, d.get("escort", {}))
 	PriceBoard.from_save(self, d.get("price_board", {}))
@@ -1117,6 +1127,7 @@ static func _add(dict: Dictionary, k: String, n: int) -> void:
 func _emit(kind: String, payload: Dictionary) -> void:
 	event.emit(kind, payload)
 	Cartels.on_event(self, kind, payload)
+	PriceWar.on_event(self, kind, payload)
 	Quests.on_event(self, kind, payload)
 
 

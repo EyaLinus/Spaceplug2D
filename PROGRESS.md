@@ -94,6 +94,21 @@
   avg win day 4.6 (unchanged; bot rebuilds the rig).
 - Gaps: no rent/upkeep yet (the rig is just free and `starter`); tiers only change batch size and speed, no new stations
   gated by tier; the tier can be bought only from the shipyard tab, not from inside the estate; `up_lab`/module sprites unused.
+## P6: cartel price wars (first slice, 2026-11-05)
+- **Core** `scripts/core/pricewar.gd`, data `content.json` "pricewar". State `Game.price_wars` {loc: {cartel, started, ends}} and
+  `Game.price_truce` {loc: day}, saved under "pricewar" (old saves: none). A cartel holding >= 45 % of a trade location, hostile
+  (>= 10) and not weakened can start a war there while you are present (>= 5 % share or a dealer); daily roll
+  (5 % + 0.4 %/hostility, max 2 wars) uses its own seeded RNG so the game RNG is untouched.
+  Effect for 4 days: `sell_price` x0.7, `buy_price` (raws, additives) x1.25 at that location (all products, not per product).
+  Ends by: expiry, your share >= 30 % and above the aggressor (checked on every influence change), `pay_off` (120 + 60/day left,
+  up to half off with your own share), a cartel base raid (new event `cartel_raided` from Cartels.on_raid) or the cartel being
+  weakened. 3 days of truce afterwards. Events `price_war_started` / `price_war_ended` {loc, cartel, why}.
+- **UI** HUD day label shows "PRICE WAR" at the current location (tooltip: details and how to end it), toasts on start/end;
+  Map app location rows show the war line and a "Pay off (N cr)" button with tooltip (disabled when too poor).
+- Verified: unit tests 10863 checks 0 failures (start conditions, prices, every way out, determinism, save/old save/garbage),
+  UI smoke 50 steps (HUD flag, map line, pay-off), tip audit 0, menu smoke, sim 5/5 avg win day 4.6 (bot unaffected).
+- Gaps: wars hit every product, not only the one you compete with; cartel-vs-cartel wars missing; numbers eyeballed;
+  not played by a human; the HUD flag only shows while docked (location set).
 
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,

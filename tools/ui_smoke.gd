@@ -14,6 +14,7 @@ const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
+const PriceWar = preload("res://scripts/core/pricewar.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Escort = preload("res://scripts/core/escort.gd")
 const Interiors = preload("res://scripts/core/interiors.gd")
@@ -1309,6 +1310,29 @@ func _map_and_drive(m, g) -> void:
 	m.phone.find_child("MapMode_heat", true, false).pressed.emit()
 	await frames(3)
 	step("map influence overlay and cartels")
+	# price war: HUD flag, map line and the pay-off button
+	PriceWar.start(g, "varrow", "veil")
+	var was_loc: String = g.location
+	g.location = "mireth"  # docked flag: the HUD only flags the place you stand in
+	PriceWar.start(g, "mireth", "comets")
+	await frames(3)
+	_assert(str(m.hud._day.text).contains("PRICE WAR"), "HUD flags a price war at the current location")
+	_assert(str(m.hud._day.tooltip_text).contains("pay"), "HUD tooltip explains how to end it")
+	root.get_node("EventBus").game_event.emit("map_ui", {})
+	await frames(3)
+	var pay = m.phone.find_child("MapPayOff_varrow", true, false)
+	_assert(pay != null and pay.tooltip_text != "" and m.phone.find_child("MapWar_varrow", true, false) != null, "map lists the war with a pay-off button and tooltip")
+	g.credits = 5000
+	var before: int = g.credits
+	await frames(2)
+	pay = m.phone.find_child("MapPayOff_varrow", true, false)
+	pay.pressed.emit()
+	await frames(3)
+	_assert(not PriceWar.active(g, "varrow") and g.credits < before, "paying off ends the war and costs credits")
+	PriceWar.end(g, "mireth", "expired")
+	await frames(2)
+	_assert(not str(m.hud._day.text).contains("PRICE WAR"), "HUD flag goes away")
+	g.location = was_loc
 	# charge the drive from the phone
 	var credits: int = g.credits
 	m.phone.find_child("MapJump", true, false).pressed.emit()

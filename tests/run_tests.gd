@@ -28,6 +28,7 @@ const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const Hiding = preload("res://scripts/core/hiding.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
+const PriceWar = preload("res://scripts/core/pricewar.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Escort = preload("res://scripts/core/escort.gd")
 const Interiors = preload("res://scripts/core/interiors.gd")
@@ -128,6 +129,10 @@ func _init() -> void:
 		"test_cartels_influence",
 		"test_cartels_daily_and_robbery",
 		"test_cartels_save",
+		"test_pricewar_start",
+		"test_pricewar_prices",
+		"test_pricewar_ending",
+		"test_pricewar_save",
 		"test_space_enemies_and_loot",
 		"test_space_secondaries",
 		"test_space_wings",
@@ -3642,6 +3647,135 @@ func test_cartels_save() -> void:
 	var b := Game.new()
 	b.from_dict(data, bad)
 	check(Cartels.share(b, "mireth") + Cartels.share(b, "mireth", "comets") <= 1.0001, "garbage shares are normalised")
+
+
+# ---------------------------------------------------------------- price wars (P6)
+
+func _war_game() -> Game:
+	var g := new_game()
+	g.state = "playing"
+	return g
+
+
+func test_pricewar_start() -> void:
+	var g := _war_game()
+	check(data.pricewar.days > 0 and data.pricewar.sell_cut > 0.0 and data.pricewar.buy_spike > 0.0, "price war data present")
+	check(PriceWar.start_chance(g, "cinder") > 0.0, "Comets on Cinder (45%, hostile, you present) can start a war")
+	check(PriceWar.start_chance(g, "mireth") == 0.0, "no war where no cartel dominates")
+	check(PriceWar.start_chance(g, "glacis") == 0.0, "no war where you have no presence")
+	g.dealers.append({"id": "d", "loc": "glacis", "stock": {}, "cash": 0, "sold": 0, "jail": 0.0})
+	check(PriceWar.start_chance(g, "glacis") == 0.0, "Tide is not hostile enough yet")
+	Cartels.state(g, "tide").hostility = 50.0
+	check(PriceWar.start_chance(g, "glacis") > 0.0, "a dealer on their turf counts as presence")
+	Cartels.state(g, "tide").weakened = g.day + 3
+	check(PriceWar.start_chance(g, "glacis") == 0.0, "a weakened cartel starts nothing")
+	var evs: Array = []
+	g.event.connect(func(k, p): if k == "price_war_started": evs.append(p))
+	check(PriceWar.start(g, "cinder", "comets") and PriceWar.active(g, "cinder"), "start sets the war")
+	check(not PriceWar.start(g, "cinder", "comets"), "no second war at the same place")
+	check(evs.size() == 1 and evs[0].loc == "cinder", "start event")
+	check(PriceWar.days_left(g, "cinder") == int(data.pricewar.days), "days left = duration")
+	check(PriceWar.label(g, "cinder").contains("Black Comets"), "label names the cartel")
+	# cap on parallel wars
+	data.pricewar.max_wars = 1
+	check(PriceWar.start_chance(g, "bazaar") == 0.0, "max_wars caps parallel wars")
+	data.pricewar.max_wars = 2
+	# daily roll is deterministic and leaves the game RNG alone
+	var h := _war_game()
+	data.pricewar.chance_base = 5.0
+	var st := h.rng.state
+	PriceWar.new_day(h)
+	data.pricewar.chance_base = 0.05
+	check(PriceWar.active(h, "cinder"), "the daily roll starts a war when the chance is certain")
+	check(h.rng.state == st, "the game RNG is untouched")
+
+
+func test_pricewar_prices() -> void:
+	var g := _war_game()
+	g.location = "cinder"
+	g.system = g.loc_system("cinder")
+	var base_sell := g.sell_price("weed:glow", "", "cinder")
+	var raw := ""
+	for it in g.data.locations.cinder.sells_raw:
+		raw = it
+		break
+	var base_buy := g.buy_price(raw, "cinder")
+	PriceWar.start(g, "cinder", "comets")
+	var war_sell := g.sell_price("weed:glow", "", "cinder")
+	check(war_sell < base_sell and absf(float(war_sell) / base_sell - (1.0 - float(data.pricewar.sell_cut))) < 0.02, "selling fetches less: %d -> %d" % [base_sell, war_sell])
+	check(g.buy_price(raw, "cinder") > base_buy, "buying costs more")
+	check(g.sell_price("weed:glow", "", "mireth") == g.sell_price("weed:glow", "", "mireth"), "other places unaffected")
+	var other := _war_game()
+	check(g.sell_price("weed:glow", "", "mireth") == other.sell_price("weed:glow", "", "mireth"), "mireth price identical with and without war elsewhere")
+	PriceWar.end(g, "cinder", "expired")
+	check(g.sell_price("weed:glow", "", "cinder") == base_sell and g.buy_price(raw, "cinder") == base_buy, "prices recover")
+
+
+func test_pricewar_ending() -> void:
+	# expiry
+	var g := _war_game()
+	PriceWar.start(g, "cinder", "comets")
+	data.pricewar.chance_base = 0.0
+	data.pricewar.chance_per_hostility = 0.0
+	for i in int(data.pricewar.days) - 1:
+		g.day += 1
+		PriceWar.new_day(g)
+	check(PriceWar.active(g, "cinder"), "still on during the last day")
+	g.day += 1
+	PriceWar.new_day(g)
+	check(not PriceWar.active(g, "cinder"), "expires")
+	check(PriceWar.start_chance(g, "cinder") == 0.0, "truce after the end")
+	# influence
+	var h := _war_game()
+	PriceWar.start(h, "cinder", "comets")
+	var whys: Array = []
+	h.event.connect(func(k, p): if k == "price_war_ended": whys.append(p.why))
+	Cartels.gain(h, "cinder", "you", 0.5)
+	check(not PriceWar.active(h, "cinder") and whys == ["influence"], "raising influence ends it: %s" % [whys])
+	# paying off
+	var p := _war_game()
+	PriceWar.start(p, "cinder", "comets")
+	var cost := PriceWar.pay_cost(p, "cinder")
+	check(cost > 0 and PriceWar.howto(p, "cinder").contains(str(cost)), "pay cost listed in the how-to")
+	p.credits = cost - 1
+	check(not PriceWar.pay_off(p, "cinder").ok and PriceWar.active(p, "cinder") and p.credits == cost - 1, "too poor to pay off")
+	p.credits = cost + 10
+	check(PriceWar.pay_off(p, "cinder").ok and p.credits == 10 and not PriceWar.active(p, "cinder"), "paying ends it and costs credits")
+	check(not PriceWar.pay_off(p, "cinder").ok, "nothing left to pay")
+	# raiding a base
+	var r := _war_game()
+	PriceWar.start(r, "cinder", "comets")
+	PriceWar.start(r, "glacis", "tide")
+	Cartels.on_raid(r, "comets")
+	check(not PriceWar.active(r, "cinder") and PriceWar.active(r, "glacis"), "wrecking a base ends that cartel's wars only")
+	# a cartel weakened by other means ends it on the next day
+	Cartels.state(r, "tide").weakened = r.day + 2
+	PriceWar.new_day(r)
+	check(not PriceWar.active(r, "glacis"), "weakened aggressor drops the war")
+	data.pricewar.chance_base = 0.05
+	data.pricewar.chance_per_hostility = 0.004
+
+
+func test_pricewar_save() -> void:
+	var g := _war_game()
+	PriceWar.start(g, "cinder", "comets")
+	g.price_truce["mireth"] = g.day + 2
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(PriceWar.active(h, "cinder") and PriceWar.days_left(h, "cinder") == PriceWar.days_left(g, "cinder"), "war survives a save")
+	check(int(h.price_truce.get("mireth", 0)) == g.day + 2, "truce survives a save")
+	var old := g.to_dict()
+	old.erase("pricewar")
+	var o := Game.new()
+	o.from_dict(data, old)
+	check(o.price_wars.is_empty(), "old saves have no wars")
+	var bad := g.to_dict()
+	bad.pricewar = {"wars": {"nowhere": {"cartel": "comets"}, "cinder": {"cartel": "ghost"}, "bazaar": 5}, "truce": {"x": 3}}
+	var b := Game.new()
+	b.from_dict(data, bad)
+	check(b.price_wars.is_empty() and b.price_truce.is_empty(), "garbage is dropped")
+	var n := new_game()
+	check(n.price_wars.is_empty(), "new game has no wars")
 
 
 # ---------------------------------------------------------------- space combat II (E4)

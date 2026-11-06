@@ -6,6 +6,8 @@ const UI = preload("res://scripts/ui/ui_theme.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Marker = preload("res://scripts/core/marker.gd")
+const Cartels = preload("res://scripts/core/cartels.gd")
+const PriceWar = preload("res://scripts/core/pricewar.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Escort = preload("res://scripts/core/escort.gd")
 const HeatZones = preload("res://scripts/core/heat_zones.gd")
@@ -188,6 +190,9 @@ func _process(_delta: float) -> void:
 	_credits.text = "%d cr" % g.credits
 	_debt.text = "Debt %d cr · due day %d" % [g.debt, g.debt_due_day] if g.debt > 0 else "Debt cleared"
 	_day.text = "Day %d · %s" % [g.day, g.system_data().get("name", "")]
+	var war_here: bool = PriceWar.active(g, g.location)
+	if war_here:
+		_day.text += " · ⚔ PRICE WAR"
 	_day_bar.value = g.day_time / g.day_seconds() * 100.0
 	_heat.value = g.heat
 	_heat_label.text = "Heat %d · %d patrol%s" % [int(g.heat), g.patrol_count(), "" if g.patrol_count() == 1 else "s"]
@@ -265,6 +270,8 @@ func _update_tips(g) -> void:
 	_debt.tooltip_text = ("You owe the Ouroboros Consortium %d cr. Pay at any bank terminal before day %d or it is game over." % [g.debt, g.debt_due_day]) if g.debt > 0 else "Your debt is paid. Everything you make now is yours."
 	var mins := int(g.day_time / g.day_seconds() * 24.0 * 60.0)
 	_day.tooltip_text = "Day %d, %02d:%02d in %s. Contacts keep their meeting times on this clock." % [g.day, mins / 60, mins % 60, g.system_data().get("name", "")]
+	if PriceWar.active(g, g.location):
+		_day.tooltip_text += "\n" + PriceWar.label(g, g.location) + ". " + PriceWar.howto(g, g.location)
 	_day_bar.tooltip_text = _day.tooltip_text
 	var tip_heat := "Heat %d/100. Selling, fighting and being seen with product raise it; it cools over time. More heat = more patrols; from %d they hunt you." % [int(g.heat), int(g.data.heat.chase_heat)]
 	_heat_label.tooltip_text = tip_heat
@@ -346,6 +353,11 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		"heat_level":
 			if p.heat >= float(g.data.heat.chase_heat):
 				show_toast("Heat %d: patrols will hunt you." % int(p.heat), false)
+		"price_war_started":
+			show_toast("%s start a price war at %s: sales down, buying up. Open the Map app." % [Cartels.gang(g, p.cartel).get("name", p.cartel), g.data.locations[p.loc].name], false)
+		"price_war_ended":
+			var why: String = {"expired": "burnt out", "influence": "broken by your influence", "paid": "bought off", "raid": "ended by the raid", "weakened": "dropped, the cartel is in disarray"}.get(p.why, "ended")
+			show_toast("Price war at %s %s." % [g.data.locations[p.loc].name, why])
 		"quest_started":
 			var q: Dictionary = Quests.defs(g).get(p.quest, {})
 			show_card(str(q.get("giver", "")), str(q.get("intro", "")))
