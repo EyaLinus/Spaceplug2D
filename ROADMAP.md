@@ -43,6 +43,8 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [ ] Running away raises heat
 - [ ] Curfew at night, hiding spots, bribable officers
 - [x] Planet heat zones: dealing in the plaza is hotter than in the back alleys
+- [x] Curfew at night + bribable officers (hiding spots still open)
+- [ ] Planet heat zones: dealing in the plaza is hotter than in the back alleys
 
 ## P4 – Estates & production buildings
 - [x] Core: properties per planet (price, size in grid cells), buy, ownership in the save (upkeep/selling later)

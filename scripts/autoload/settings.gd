@@ -31,6 +31,7 @@ const BINDABLE := [
 	{"action": "move_right", "label": "Walk right", "group": "On foot"},
 	{"action": "interact", "label": "Use / talk", "group": "On foot"},
 	{"action": "build_menu", "label": "Build menu (estate)", "group": "On foot"},
+	{"action": "bribe_officer", "label": "Bribe officer (curfew)", "group": "On foot"},
 	{"action": "sprint", "label": "Sprint (hold)", "group": "On foot"},
 	{"action": "map_zoom", "label": "Minimap zoom", "group": "On foot"},
 	{"action": "weapon_wheel", "label": "Weapon wheel", "group": "On foot"},

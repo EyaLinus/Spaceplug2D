@@ -3,6 +3,7 @@ extends Node
 ## paused and menu states. Docking at a location with an entry in data/surfaces.json lands on its surface instead of
 ## opening the docked menu; each surface is its own instance, created on landing and freed on take-off.
 
+const Curfew = preload("res://scripts/core/curfew.gd")
 const UI = preload("res://scripts/ui/ui_theme.gd")
 const WorldScript = preload("res://scripts/world/world.gd")
 const HudScript = preload("res://scripts/ui/hud.gd")
@@ -195,6 +196,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				surface.interact()
 		elif event.is_action_pressed("build_menu") and not GameState.paused and surface.cfg.has("estate") and not station.visible:
 			open_build_menu()
+		elif event.is_action_pressed("bribe_officer") and not GameState.paused and not station.visible and GameState.game.curfew_enforced():
+			GameState.act(Curfew.bribe(GameState.game))
 	elif event.is_action_pressed("ship_dock") and not GameState.paused:
 		if station.visible:
 			undock()

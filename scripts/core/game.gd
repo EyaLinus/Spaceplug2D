@@ -28,6 +28,7 @@ const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Escort = preload("res://scripts/core/escort.gd")
 const Raids = preload("res://scripts/core/raids.gd")
 const HeatZones = preload("res://scripts/core/heat_zones.gd")
+const Curfew = preload("res://scripts/core/curfew.gd")
 const SAVE_VERSION := 1
 
 var data: Dictionary
@@ -41,6 +42,7 @@ var day_time: float = 0.0
 var total_time: float = 0.0
 var heat_zone := ""  ## zone of the street spot you stand on (heat_zones.gd, set by the surface, runtime only)
 var heat: float = 0.0  ## heat of the system the ship is in (other systems: corruption.heat)
+var curfew_pass_until := 0.0  ## total_time until which a bribe pass lasts (runtime, see curfew.gd)
 var corruption: Dictionary = {}  ## wanted level, parked heat of other systems, officials (see corruption.gd)
 var location: String = ""  ## location id while docked, "" while flying
 var system: String = ""  ## star system the ship is in (content.json "systems"); travel between systems = jump()
@@ -229,11 +231,16 @@ func patrol_count() -> int:
 	return mini(n, int(h.patrol_max))
 
 
+func curfew_enforced() -> bool:
+	return Curfew.enforced(self)
+
+
 ## Reach Authority officers walking a planet surface. security: the surface's police factor (0 = lawless).
 func police_on_foot(security: float) -> int:
 	var p: Dictionary = data.police
 	var n := int(floor((float(p.base) + (heat + Corruption.heat_bonus(self)) / float(p.per_heat)) * security))
-	return clampi(n, 0, int(p.max))
+	n = clampi(n, 0, int(p.max))
+	return n + Curfew.extra_officers(self, security)
 
 
 func has_contraband() -> bool:

@@ -21,6 +21,14 @@
 - **UI**: small label under the district name above the minimap ("Plaza · sales x1.6 heat", warn/muted/teal colour).
 - Verified: unit test `test_heat_zones` (zones, exact multiplier, every surface), UI smoke 50 steps, menu smoke, tip audit 0,
   sim 5/5 avg win day 4.6 identical to main. Gaps: only sale heat (not officer sight or frisk odds) depends on the zone; not looked at by eye.
+## P3: night curfew + bribable officers (2026-11-04)
+- **Core** `scripts/core/curfew.gd`, data `content.json` "curfew". Window 22:00–05:00 on the game clock; while enforced
+  `Game.police_on_foot` adds `extra_officers` (not on lawless planets) and the surface spawns officers with
+  `vision_mult` 1.3. `Curfew.bribe` (key G, rebindable `bribe_officer`): 60 cr + 2 × heat, pass for 3 game hours
+  (`Game.curfew_pass_until`, runtime only), heat −10, event `curfew_bribe`.
+- Verified: 10841 unit checks (new `test_curfew`), UI smoke 50 steps, tip audit 0, menu smoke, sim 5/5 avg win day 4.6.
+- Gaps: hiding spots not built; no on-screen curfew indicator or toast; G key not exercised in the UI smoke; numbers
+  eyeballed; not played by a human. Branches off main without the open wave-11 PRs (#68–#74).
 
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,
