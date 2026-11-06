@@ -965,3 +965,16 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
 - Loading takes finished product (not raws) out of the hold; a batch comes off one grade higher (`weed:glow` -> `weed:glow@2`) and lighter. Rack capacity is shared by an estate's tables; the last table can't come down while the rack is loaded.
 - Building `drying_table` (300 cr, 2x1, `passive` station: no minigame, not in `station_order`), build-menu card with tooltip, sprite `assets/src/stations/drying_table.txt`, rack panel in `bench_ui.gd` (mode `dry`). `_rebuild` now removes old children immediately so rebuilt nodes keep their names.
 - Verified: unit tests (`test_drying_table`), UI smoke (place, load, cure, collect), menu smoke, tip audit. Gaps: only weed, no workers/auto-load, raws are not dried (grow tray not on main), no sim run.
+## P5: Visible workers (2026-11-05, wave 18)
+- **Core** `scripts/core/worker_walk.gd` (read-only on the Game): `activity` (idle / cook / fetch / haul from the existing job state:
+  running job or stocked lab hand = cook at the station, unstocked lab hand with a startable recipe = fetch from storage, stocker with
+  tray output or a short bench = haul), `target_cell` (estate cells: storage crate corner, cell in front of the first station the
+  recipe needs, idle spot beside the door per role; a hauling stocker swings between storage and station along the trip timer),
+  `look_swaps` (stable per-worker outfit from the K2 style catalogue applied to the player sheet via `Art.recolored`).
+- **Surface:** `_update_workers` in `surface.gd` (estate interiors only, every 0.4 s) spawns an `npc.gd` walker per worker assigned to
+  the estate (new `sheet` var for the recoloured sheet), paths to the target cell with `Nav.path_between`, removes it when he is fired
+  or unassigned. Nothing writes to the game.
+- Verified: unit test `test_worker_walk` and a UI smoke step were added, but the Godot binary was not runnable in this session's
+  sandbox, so unit tests, smoke, tip audit and sim were NOT run locally; CI is the first run.
+- Gaps: workers vanish from the room view while you are away (they only exist while you stand in the estate); they do not collide
+  with the player or each other; no cooking/carry animation, no speech.

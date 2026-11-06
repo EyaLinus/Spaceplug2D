@@ -24,6 +24,7 @@ const HeatZones = preload("res://scripts/core/heat_zones.gd")
 const Curfew = preload("res://scripts/core/curfew.gd")
 const Walkups = preload("res://scripts/core/walkups.gd")
 const Hiding = preload("res://scripts/core/hiding.gd")
+const WorkerWalk = preload("res://scripts/core/worker_walk.gd")
 
 const INPUT := {
 	"move_up": [KEY_W, KEY_UP],
@@ -61,6 +62,9 @@ var _rng := RandomNumberGenerator.new()
 var _walk_t := 0.0
 var _spot_of: Dictionary = {}  ## named npc id -> schedule spot it is at / walking to
 var _schedule_t := 0.0
+var worker_nodes: Dictionary = {}  ## worker id -> walker node (estate interiors only, purely visual)
+var _worker_t := 0.0
+var _worker_cell: Dictionary = {}  ## worker id -> estate cell he is walking to
 var _daylight: CanvasModulate
 ## Estate interiors (cfg has "estate"): while `placing` holds a station id, a ghost of it sits on the cells in front
 ## of the player and E asks main to place it there. can_place(station, x, y) -> bool is set by main.
@@ -143,6 +147,54 @@ func _update_schedules(delta: float) -> void:
 			continue
 		_spot_of[n.id] = sp
 		npc.path = Nav.path_between(nav, tile, npc.position, _px(sp))
+
+
+## Hired workers of this estate walk between storage, their station and their idle spot (worker_walk.gd decides where).
+## Purely visual: nothing here writes to the game.
+func _update_workers(delta: float) -> void:
+	var g = GameState.game
+	if g == null or not cfg.has("estate") or GameState.paused:
+		return
+	_worker_t -= delta
+	if _worker_t > 0.0:
+		return
+	_worker_t = 0.4
+	var here := {}
+	for w in g.workers:
+		if w.estate == cfg.estate:
+			here[w.id] = true
+	for id in worker_nodes.keys():
+		if not here.has(id):
+			worker_nodes[id].queue_free()
+			worker_nodes.erase(id)
+			_worker_cell.erase(id)
+	var off := float(cfg.get("estate_offset", 0))
+	for id in here:
+		var cell := WorkerWalk.target_cell(g, id)
+		if cell.x < 0.0:
+			continue
+		var to := (cell + Vector2(off, off)) * tile
+		if not worker_nodes.has(id):
+			var npc := NpcScript.new()
+			npc.display_name = str(_worker_name(g, id))
+			npc.color = Color("#9fd4ff")
+			npc.speed = 45.0
+			npc.sheet = Art.recolored("chars/player.png", WorkerWalk.look_swaps(GameState.data, id))
+			npc.look = "npc_slate"
+			npc.position = _px([cfg.spawn[0], cfg.spawn[1]])
+			add_child(npc)
+			worker_nodes[id] = npc
+		if _worker_cell.get(id, Vector2(-9, -9)) != cell:
+			_worker_cell[id] = cell
+			var node: Node2D = worker_nodes[id]
+			node.path = Nav.path_between(nav, tile, node.position, to)
+
+
+func _worker_name(g, id: String) -> String:
+	for c in g.data.get("workers", {}).get("candidates", []):
+		if c.id == id:
+			return str(c.name).get_slice(" ", 0)
+	return ""
 
 
 func _update_daylight() -> void:
@@ -392,6 +444,7 @@ func _physics_process(delta: float) -> void:
 	_update_deal_markers()
 	_update_walkups(delta)
 	_update_schedules(delta)
+	_update_workers(delta)
 	_update_daylight()
 	for it in interactables:
 		if it.has("npc"):
