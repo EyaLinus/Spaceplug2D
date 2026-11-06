@@ -328,6 +328,28 @@
       "passive": true,
       "affects": "packaging",
       "hint": "Re-wrap finished product from your hold into Sealed or Shielded packs. Costs wrap supplies and time; packed units can slip through patrol scans."
+    },
+    "auto_trimmer": {
+      "name": "Auto-Trimmer",
+      "machine": true,
+      "minigame": "",
+      "affects": "yield",
+      "bases": ["weed"],
+      "hint": "Automation (C2): runs the trim step on its own for a few credits per unit. No minigame, a steady Standard-grade result."
+    },
+    "drip_mixer": {
+      "name": "Drip Mixer",
+      "machine": true,
+      "minigame": "",
+      "affects": "quality",
+      "hint": "Automation (C2): pours the additives you picked on its own for a few credits per unit. No minigame, a steady Standard-grade result."
+    },
+    "packing_machine": {
+      "name": "Packing Machine",
+      "machine": true,
+      "minigame": "",
+      "affects": "heat",
+      "hint": "Automation (C2): seals and packs the batch on its own for a few credits per unit. Looser seals than a good hand, so a bit more heat."
     }
   },
   "packaging": {
@@ -469,7 +491,10 @@
     "refiner": {"cost": 550, "size": [2, 2]},
     "pack_table": {"cost": 250, "size": [2, 1]},
     "drying_table": {"cost": 300, "size": [2, 1]},
-    "seal_bench": {"cost": 320, "size": [2, 1]}
+    "seal_bench": {"cost": 320, "size": [2, 1]},
+    "auto_trimmer": {"cost": 900, "size": [2, 1]},
+    "drip_mixer": {"cost": 1100, "size": [2, 1]},
+    "packing_machine": {"cost": 800, "size": [2, 1]}
   },
   "orders": {
     "markup": 0.35, "fee_pct": 0.06, "fee_min": 12, "express_fee_mult": 2.0,
@@ -643,5 +668,10 @@
   "sealing": {
     "capacity": 30,
     "offers": [{"tier": 1, "seconds": 45, "cost": 4}, {"tier": 2, "seconds": 90, "cost": 10}]
+  },
+  "machines": {
+    "auto_trimmer": {"station": "trim_table", "score": 0.55, "run_cost": 2},
+    "drip_mixer": {"station": "mixing_station", "score": 0.6, "run_cost": 3},
+    "packing_machine": {"station": "pack_table", "score": 0.5, "run_cost": 1}
   }
 }

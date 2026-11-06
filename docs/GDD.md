@@ -44,6 +44,13 @@ bought at the mechanic) and the dodge boost (Shift: short burst, invulnerable fo
 credits at the mechanic. At 0 hull the wreck is looted (half the hold), you pay a 10 % tow fine and respawn at half hull
 next to the system's patrol base. Rules: `scripts/core/spacecombat.gd`; numbers: content.json "combat".
 
+## Automation machines (C2)
+Estate buildings that run one production step for you: Auto-Trimmer (weed trim, 900 cr), Drip Mixer (pours the additives
+you picked, 1100 cr), Packing Machine (seals and packs, 800 cr). No minigame: each has a fixed score (0.50-0.60, below the
+Premium line of 0.72, so a machine line never makes Premium) and costs 1-3 cr per unit each run. A machine counts as the
+table it replaces when an estate is checked for a recipe, and lab hands use machine-only steps with the machine's score.
+Rules: `scripts/core/machines.gd`; numbers: content.json "machines".
+
 ## Planned systems (see ROADMAP)
 Growing your own raws (planting/harvest cycles), packaging tiers, hired runners and automated drones,
 multiple star systems with jump lanes, raids on bases at high heat, customer network with loyalty and referrals,

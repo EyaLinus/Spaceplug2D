@@ -223,6 +223,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
   rebindable everything, settings for text size; long balance sims and a first real balance pass if Linus asks.
 - **Q3 Main quest chapter 3.** ✅ done (see PROGRESS.md). Ninth Veil base quest: 6 missions from Varrow to Veil Spire.
 - **C2 Automation machines.** ⏳ open, moved to the next phase. Auto-trimmer, drip mixer, packing machine: estate buildings that run a station step on
+- **C2 Automation machines.** ✅ done (see PROGRESS.md; machines run on interaction or for lab hands, no timers). Auto-trimmer, drip mixer, packing machine: estate buildings that run a station step on
   their own (lower quality than a good minigame, but no worker needed).
 - → **Release v0.1.13**.
 

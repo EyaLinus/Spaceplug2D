@@ -11,6 +11,7 @@ const Workers = preload("res://scripts/core/workers.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Drying = preload("res://scripts/core/drying.gd")
 const Sealing = preload("res://scripts/core/sealing.gd")
+const Machines = preload("res://scripts/core/machines.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
@@ -1122,6 +1123,9 @@ func _run() -> void:
 	_assert(g.inside_estate == "" and sf.loc_id == "mireth", "out of the cannery")
 	step("minigame stop, scrap, stash crate")
 
+	await _machines(m, g)
+	sf = m.surface
+
 	sf.place_player_at("okka")
 	await physics_frame
 	await physics_frame
@@ -1643,6 +1647,97 @@ func _space_combat_2(m, g) -> void:
 	Cartels.state(g, "comets").weakened = 0
 	w.place_ship_at("mireth")
 	await frames(2)
+
+
+## C2: the estate Build tab has a Machines section; machines placed in the annex run the trim, mix and pack steps for
+## credits, no minigame; the batch lands in the cooker.
+func _machines(m, g) -> void:
+	var gs = root.get_node("GameState")
+	var sf = m.surface
+	g.credits = 50000
+	sf.place_player_at("annex")
+	await physics_frame
+	await physics_frame
+	_assert(sf.interact(), "annex door (machines)")
+	await frames(2)
+	m.station.estate_enter_requested.emit("cannery_annex")
+	await frames(2)
+	var es = m.surface
+	_assert(es.cfg.get("estate", "") == "cannery_annex" and g.inside_estate == "cannery_annex", "inside the annex for the machines")
+	m.open_build_menu()
+	await frames(1)
+	var sec = m.station.find_child("MachinesSection", true, false)
+	_assert(sec != null, "Build tab has a Machines section")
+	for k in ["auto_trimmer", "drip_mixer", "packing_machine"]:
+		var card = sec.find_child("Build_" + k, true, false)
+		_assert(card != null and card.tooltip_text != "" and not card.disabled, "machine card %s with tooltip" % k)
+		_assert(m.station.find_children("Build_" + k, "Button", true, false).size() == 1, "%s listed once" % k)
+	for k in ["auto_trimmer", "extractor", "drip_mixer", "packing_machine"]:
+		m.station.place_requested.emit(k)
+		await frames(1)
+		_assert(es.placing == k, "placing %s" % k)
+		var done := false
+		for cy in range(0, 5):
+			for cx in range(0, 9):
+				es.player.position = Vector2((cx + 1) * 32 + 16, (cy + 1) * 32 + 10)
+				es.player.facing = Vector2.DOWN
+				await physics_frame
+				var gc: Vector2i = es.ghost_cell()
+				if es.can_place.call(k, gc.x, gc.y):
+					es.interact()
+					await frames(2)
+					done = true
+					break
+			if done:
+				break
+		_assert(done, "%s placed in the annex" % k)
+		es = m.surface
+	_assert(g.missing_stations_in("cannery_annex", "weed", ["nanoflux"]).is_empty(), "machines and tables cover the weed line with additives")
+	g.cargo = {"cannabis": 5, "nanoflux": 5}
+	var queue_before: int = g.lab_queue.size()
+	var cr: int = g.credits
+	var use := func(station: String) -> void:
+		for b in es.cfg.buildings:
+			if b.get("station", "") == station:
+				es.place_player_at(b.id)
+				break
+		await physics_frame
+		await physics_frame
+		_assert(es.interact(), "use the %s" % station)
+		await frames(2)
+	await use.call("auto_trimmer")
+	var bench = m.bench
+	_assert(bench.visible and bench.auto and bench.mode == "start", "the trimmer opens a start card (mode %s)" % bench.mode)
+	var go = bench.find_child("StartBatch", true, false)
+	_assert("Auto-Trimmer" in go.text and "cr" in go.text and go.tooltip_text != "", "start button names the machine and its cost")
+	bench._qty = 5
+	go.pressed.emit()
+	await frames(2)
+	_assert(bench.mode == "result" and bench.current == null, "the machine ran with no minigame")
+	_assert(Bench.tray(g).done == ["trim_table"] and g.credits == cr - Machines.cost_for(g.data, "auto_trimmer", 5) and g.stats.machine_runs == 1, "trim step done and paid")
+	bench.close()
+	Bench.record(g, "extractor", 0.8)
+	await use.call("drip_mixer")
+	_assert(bench.mode == "mix" and bench.auto, "the mixer takes additives first")
+	bench.find_child("Add_nanoflux", true, false).pressed.emit()
+	await frames(1)
+	bench.find_child("MixGo", true, false).pressed.emit()
+	await frames(2)
+	_assert(bench.mode == "result" and Bench.tray(g).done.has("mixing_station"), "the drip mixer poured by itself")
+	bench.close()
+	Bench.record(g, "cook_stove", 0.8)
+	await use.call("packing_machine")
+	await frames(2)
+	_assert(bench.mode == "result" and Bench.tray(g).is_empty() and g.lab_queue.size() == queue_before + 1, "the packing machine finished the batch (mode %s)" % bench.mode)
+	_assert(g.stats.machine_runs == 3, "three machine runs counted")
+	bench.close()
+	es.place_player_at("exit")
+	await physics_frame
+	await physics_frame
+	es.interact()
+	await frames(2)
+	_assert(g.inside_estate == "", "left the annex")
+	step("automation machines: build tab, place, run trimmer, mixer, packer")
 
 
 ## D3: an interdiction card pauses the flight; paying closes it, fighting spawns the wing ahead of the ship.

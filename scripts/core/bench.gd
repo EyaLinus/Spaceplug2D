@@ -59,7 +59,18 @@ static func bases_starting_at(data: Dictionary, station: String) -> Array:
 
 ## What happens when the player uses `station` in the estate they stand in:
 ## {"mode": "start"|"mix"|"play"|"wait", "msg": why not / hint}
+## An automation machine (C2) behaves like its station and adds "auto": true: the UI runs it with Machines.run
+## instead of a minigame.
 static func use_mode(g, station: String) -> Dictionary:
+	var machines: Dictionary = g.data.get("machines", {})
+	if not machines.has(station):
+		return _use_mode(g, station)
+	var m := _use_mode(g, str(machines[station].station))
+	m["auto"] = true
+	return m
+
+
+static func _use_mode(g, station: String) -> Dictionary:
 	var t := tray(g)
 	if t.is_empty():
 		if bases_starting_at(g.data, station).is_empty():

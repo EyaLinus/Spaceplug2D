@@ -254,6 +254,31 @@
   junk ids, old saves), UI smoke +1 step (buy a jacket by tapping, walker recoloured, decor), tip audit 0, screenshots.
 - Gaps: cosmetic only (no gameplay effect); decor can't be placed by hand; NPCs don't react to your outfit.
 
+## C2: automation machines (phase 3 wave 10, 2026-11-03)
+- **Core** `scripts/core/machines.gd`, data `content.json` "machines" (station, fixed score, run_cost per unit):
+  Auto-Trimmer (trim step, weed, score 0.55, 2 cr/unit, 900 cr), Drip Mixer (mixing step, 0.60, 3 cr/unit, 1100 cr),
+  Packing Machine (pack step, 0.50, 1 cr/unit, 800 cr). All below the Premium line (0.72), above a botched minigame.
+  Machines are also `stations` (flag `machine`, no minigame, not in `station_order`) and `buildables`, so placing,
+  kits in the Orders app, refunds and saving need no special code; `Machines.provides` makes a machine count as the
+  station it automates in `Game.missing_stations_in` and `Workers.blocker`.
+- **On foot** `Machines.run(g, machine, base, qty)`: at the prep machine with no tray it starts the tray, otherwise
+  the tray's next step has to be the machine's station (the mixer needs `Bench.mix` first, so you still pick the
+  additives). Charges credits per unit, then `Bench.record` with the machine's score (the packer queues the batch).
+  `Bench.use_mode` returns `auto: true` for machines. Event `machine_run`, `stats.machine_runs`, per-building `runs`.
+- **Lab hands** run a line step that only a machine covers with the machine's score and pay its run cost from the
+  credits (they wait with the ingredients when you are broke); tables still use the worker's skill.
+- **Saves**: `SAVE_VERSION` 2 (stats.machine_runs, building `runs`); version 1 saves load (zeroed), buildings the data
+  no longer knows are dropped on load.
+- **UI**: `scripts/ui/machines_ui.gd` = "Machines" section of the estate Build tab (one call in station_ui.gd, the
+  Stations grid skips machine ids); `bench_ui.gd` runs a machine at once and shows the result card (cost on the start
+  button). Three station sprites (assets/src/stations/*.txt).
+- Verified (Godot 4.3 headless): 10643 unit checks (new section test_machines_*), UI smoke 48 steps (+1: Build tab
+  section, placing, trimmer/mixer/packer runs), tip audit 0 missing, menu smoke, sim 5/5 avg win day 4.6 (bot does
+  not use machines).
+- Gaps: machines run when you use them or a lab hand cooks; there are no timers or an unattended machine with no
+  worker at all. A Precursor Scale / Extractor / Cook Stove / Refiner machine does not exist (spec: three machines).
+  Machine numbers eyeballed, not played by a human.
+
 ## K1: action feedback + tooltips (phase 3 wave 10, 2026-11-03)
 - **Feedback layer** `scripts/ui/fx.gd` (HUD child, drawn last): watches credits/heat and pops the delta under the HUD
   stat, floats text over the player on game events (sold, loot, discoveries, referrals, batches), full-screen flashes

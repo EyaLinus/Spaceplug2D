@@ -1,0 +1,31 @@
+# Auto-Trimmer 2x1: steel hopper of buds, a blade drum and an output tray, teal status light. Top-down, front face at the bottom.
+legend:
+k = ink
+S = slate
+L = slate_light
+d = slate_dark
+x = white
+t = teal
+g = leaf
+G = grass_light
+o = stone
+y = gold
+a = sand
+e = grass_dark
+---
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+kLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kSSkkkkkkkkSSkkkkkkkSSSttSSSSSSk
+kSSkeeeeeekSSkoooookSSSttSSSSSSk
+kSSkeGGGgekSSkoxxxokSSSSSSSSSSSk
+kSSkeGgGGekSSkoxkxokSSkkkkkkkSSk
+kSSkeGGGGekSSkoxxxokSSkaaGaakSSk
+kSSkeeeeeekSSkoooookSSkaaaaakSSk
+kSSkkkkkkkkSSkkkkkkkSSkkkkkkkSSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+kddkykdddddddddddddddddddddddddk
+kddkkkdddddddddddddddddddddddddk
+kddddddddddddddddddddddddddddddk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk

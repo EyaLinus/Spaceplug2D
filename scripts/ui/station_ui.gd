@@ -20,6 +20,7 @@ const Style = preload("res://scripts/core/style.gd")
 const Grow = preload("res://scripts/core/grow.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Raids = preload("res://scripts/core/raids.gd")
+const MachinesUI = preload("res://scripts/ui/machines_ui.gd")
 
 var tabs: TabContainer
 var _title: Label
@@ -488,6 +489,8 @@ func _build_build_menu(g) -> Control:
 	for k in g.data.buildables:
 		var bd: Dictionary = g.data.buildables[k]
 		var st: Dictionary = g.data.stations[k]
+		if st.get("machine", false):
+			continue  # shown in the Machines section below (machines_ui.gd)
 		var kit_n := int(g.kits.get(k, 0))
 		var card := Button.new()
 		card.name = "Build_" + k
@@ -512,6 +515,7 @@ func _build_build_menu(g) -> Control:
 	var est: String = _filter.get("estate", "")
 	if g.estates.has(est):
 		v.add_child(_build_grow_trays(g, est))
+	v.add_child(MachinesUI.section(g, func(k): place_requested.emit(k)))
 	v.add_child(UI.label("Pick a station, then walk to a free spot: it goes on the cells in front of you. Station kits ordered in the phone's Orders app are placed for free.", 14, UI.MUTED))
 	return v
 
