@@ -161,7 +161,7 @@ static func on_event(g, kind: String, p: Dictionary) -> void:
 	var a := active(g)
 	match kind:
 		"undocked":
-			if str(a.status) == "waiting" and str(p.get("loc", "")) == str(route(g, str(a.id))[0]):
+			if str(a.status) == "waiting" and str(p.get("location", "")) == str(route(g, str(a.id))[0]):
 				a.status = "enroute"
 				g._emit("escort_launched", {"id": a.id})
 		"jumped":
