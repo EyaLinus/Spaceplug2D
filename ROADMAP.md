@@ -42,7 +42,7 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [x] Officers path around buildings (AStarGrid2D on the tile grid, `scripts/planet/nav.gd`)
 - [ ] Running away raises heat
 - [ ] Curfew at night, hiding spots, bribable officers
-- [ ] Planet heat zones: dealing in the plaza is hotter than in the back alleys
+- [x] Planet heat zones: dealing in the plaza is hotter than in the back alleys
 
 ## P4 – Estates & production buildings
 - [x] Core: properties per planet (price, size in grid cells), buy, ownership in the save (upkeep/selling later)

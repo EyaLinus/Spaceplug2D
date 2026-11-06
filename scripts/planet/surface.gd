@@ -18,6 +18,7 @@ const Bench = preload("res://scripts/core/bench.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const CombatHud = preload("res://scripts/planet/combat_hud.gd")
 const Locals = preload("res://scripts/core/locals.gd")
+const HeatZones = preload("res://scripts/core/heat_zones.gd")
 
 const INPUT := {
 	"move_up": [KEY_W, KEY_UP],
@@ -250,6 +251,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	GameState.game.heat_zone = ""
 	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 
 
@@ -343,6 +345,8 @@ func _walker_path(from: Vector2) -> Array:
 
 func _physics_process(delta: float) -> void:
 	focus = {}
+	if player != null:
+		GameState.game.heat_zone = HeatZones.zone_at(cfg, player.position / tile)
 	_update_deal_markers()
 	_update_schedules(delta)
 	_update_daylight()

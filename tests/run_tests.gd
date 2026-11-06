@@ -26,6 +26,7 @@ const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Escort = preload("res://scripts/core/escort.gd")
 const Interiors = preload("res://scripts/core/interiors.gd")
 const Raids = preload("res://scripts/core/raids.gd")
+const HeatZones = preload("res://scripts/core/heat_zones.gd")
 
 var data: Dictionary
 var failures := 0
@@ -131,6 +132,7 @@ func _init() -> void:
 		"test_style",
 		"test_price_board",
 		"test_raids",
+		"test_heat_zones",
 		"test_drug_ladder",
 		"test_old_save_names_migrate",
 		"test_core_loop_is_profitable",
@@ -3537,3 +3539,34 @@ func test_escort_save() -> void:
 	var b := Game.new()
 	b.from_dict(data, bad)
 	check(not Escort.active(b), "a job with an unknown mission is dropped")
+func test_heat_zones() -> void:
+	var m: Dictionary = data.surfaces.mireth
+	var plaza: Array = m.plazas[0]
+	var inside := Vector2(float(plaza[0]) + 1.0, float(plaza[1]) + 1.0)
+	check(HeatZones.zone_at(m, inside) == "plaza", "plaza rect is the plaza zone")
+	check(HeatZones.zone_at(m, Vector2(float(plaza[0]) + float(plaza[2]), float(plaza[1]))) != "plaza", "plaza edge is exclusive")
+	var road: Array = m.roads[0]
+	check(HeatZones.zone_at(m, Vector2(float(road[0]) + 0.5, float(road[1]) + 0.5)) in ["street", "plaza"], "road cell is street (or plaza)")
+	check(HeatZones.zone_at(m, Vector2(-5, -5)) == "alley", "off the roads is an alley")
+	check(HeatZones.zone_at({"roads": [], "plazas": []}, Vector2(3, 3)) == "street", "no roads/plazas (estate) = street")
+	for loc in data.surfaces:
+		var seen := {}
+		var s: Dictionary = data.surfaces[loc]
+		for x in range(0, int(s.size[0])):
+			for y in range(0, int(s.size[1])):
+				seen[HeatZones.zone_at(s, Vector2(x + 0.5, y + 0.5))] = true
+		check(seen.has("alley") or s.roads.is_empty(), "%s has back alleys" % loc)
+	var z: Dictionary = data.heat_zones.zones
+	check(z.plaza.mult > z.street.mult and z.street.mult > z.alley.mult, "plaza hotter than street hotter than alley")
+	check(HeatZones.zone_mult(new_game(), "nonsense") == 1.0, "unknown zone = neutral")
+	check(HeatZones.tip(new_game(), "plaza").contains("160%"), "tooltip names the percentage")
+	var heats := {}
+	for zone in ["plaza", "street", "alley", ""]:
+		var g := new_game()
+		g.heat_zone = zone
+		g.cargo["weed:glow"] = 4
+		check(g.sell("weed:glow", 4, "okka").ok, "sell in zone '%s'" % zone)
+		heats[zone] = g.heat
+	check(heats.plaza > heats.street and heats.street > heats.alley, "sale heat follows the zone: %s" % str(heats))
+	check(is_equal_approx(heats[""], heats.street), "no zone = street heat (sim/space unchanged)")
+	check(is_equal_approx(heats.plaza / heats.street, float(z.plaza.mult)), "plaza multiplier applied exactly")

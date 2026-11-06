@@ -193,6 +193,13 @@
     "lead_hours_min": 6, "lead_hours_max": 16, "early_hours": 2, "grace_hours": 1, "window_hours": 3, "remind_hours": 1,
     "affinity_late": -0.04, "affinity_on_time": 0.02, "any_product_chance": 0.3, "qty_stretch": 2, "time_accept": 0.75
   },
+  "heat_zones": {
+    "zones": {
+      "plaza": {"name": "Plaza", "mult": 1.6, "blurb": "Open and watched: every sale is noticed."},
+      "street": {"name": "Street", "mult": 1.0, "blurb": "Normal attention."},
+      "alley": {"name": "Back alley", "mult": 0.6, "blurb": "Off the roads, few eyes."}
+    }
+  },
   "deaddrops": {
     "kinds": ["planet", "station", "asteroid"], "fee": 60, "max_open": 3, "ttl": 600, "pickup_seconds": 25,
     "heat_mult": 0.3, "theft_chance": 0.07, "theft_heat": 0.15, "courier_extra_theft": 0.05,
