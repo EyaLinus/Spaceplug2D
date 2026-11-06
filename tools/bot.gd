@@ -78,7 +78,10 @@ static func play(data: Dictionary, seed_value: int, speed: float = 1.0, max_days
 			Corruption.recruit(g, "vell")  # the fixer is a hired inspector now
 		if g.heat > 55.0 and g.credits > g.bribe_cost(g.heat - 20.0) + 200:
 			g.bribe(g.heat - 20.0)
-		for u in ["lab", "cargo", "stealth", "engine"]:
+		var tc := g.estate_tier_cost("cannery_rig")
+		if tc > 0 and g.credits > tc + 400 and g.debt > 0 and g.day < g.debt_due_day - 3:
+			g.buy_estate_tier("cannery_rig")
+		for u in ["cargo", "stealth", "engine"]:
 			var c := g.upgrade_cost(u)
 			if c > 0 and g.credits > c + 400 and g.debt > 0 and g.day < g.debt_due_day - 3:
 				g.buy_upgrade(u)

@@ -5,6 +5,10 @@ extends "res://scripts/ui/phone/phone_app.gd"
 
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
+const PriceBoard = preload("res://scripts/core/price_board.gd")
+const Laws = preload("res://scripts/core/laws.gd")
+const Marker = preload("res://scripts/core/marker.gd")
+const PriceWar = preload("res://scripts/core/pricewar.gd")
 
 const CANVAS_H := 170.0
 const COLD := Color("#4fe3c1")
@@ -207,10 +211,45 @@ func _system_panel(g) -> Control:
 		ib.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		ir.add_child(ib)
 		col.add_child(ir)
+	col.add_child(_marker_row(g))
 	var best := _best_buys(g)
 	for loc in g.locations_in(_sel):
 		col.add_child(_location_row(g, loc, best))
 	return panel
+
+
+## K3: hand-placed marker. The ship autopilot (T) and the HUD arrow use it when no quest waypoint is active.
+func _marker_row(g) -> Control:
+	var row := HBoxContainer.new()
+	row.name = "MapMarker"
+	row.add_theme_constant_override("separation", 6)
+	var cur: String = g.map_marker
+	var txt := "Marker: " + Marker.label(g, cur) if cur != "" else "No marker set."
+	var l := UI.label(txt, 12, UI.ACCENT if cur != "" else UI.MUTED)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(l)
+	if _sel != cur:
+		var sb := UI.button("Set marker", func():
+			_set_marker(g, _sel), 0)
+		sb.name = "MapMarkSys"
+		sb.tooltip_text = "Mark this system: the autopilot (T) and the HUD arrow lead you to its gate."
+		row.add_child(sb)
+	if cur != "":
+		var cb := UI.button("Clear marker", func():
+			Marker.clear(g)
+			AudioManager.play("click")
+			_refresh_soon(), 0)
+		cb.name = "MapMarkClear"
+		cb.tooltip_text = "Remove the map marker."
+		row.add_child(cb)
+	return row
+
+
+func _set_marker(g, id: String) -> void:
+	var r: Dictionary = Marker.set_marker(g, id)
+	AudioManager.play("click")
+	EventBus.toast.emit(r.msg, r.ok)
+	_refresh_soon()
 
 
 ## Strongest actor of a system: [actor id ("you" or a cartel), average share].
@@ -300,12 +339,57 @@ func _location_row(g, loc: String, best: Dictionary) -> Control:
 			goods.append("fence")
 		sub = ", ".join(PackedStringArray(goods)) if not goods.is_empty() else "sells nothing"
 	box.add_child(UI.label(line, 14))
+	if ld.get("dockable", true) and not ld.has("jump_to"):
+		box.mouse_filter = Control.MOUSE_FILTER_STOP
+		box.tooltip_text = Laws.tooltip(g, loc)
 	var s := UI.label(sub, 12, UI.MUTED)
 	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var top := HBoxContainer.new()
+	box.add_child(top)
+	var nm: Label = box.get_child(0)
+	box.remove_child(nm)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(nm)
+	if g.map_marker != loc:
+		var mb := UI.button("Mark", func():
+			_set_marker(g, loc), 0)
+		mb.name = "MapMark_" + loc
+		mb.tooltip_text = "Set the map marker here: the autopilot (T) and the HUD arrow lead you to it."
+		top.add_child(mb)
+	else:
+		top.add_child(UI.label("marked", 12, UI.ACCENT))
 	box.add_child(s)
+	if ld.get("dockable", true) and not ld.has("jump_to") and _mode != "influence":
+		box.add_child(_laws_label(g, loc))
+	if PriceWar.active(g, loc):
+		var wl := UI.label("⚔ " + PriceWar.label(g, loc), 12, UI.WARN)
+		wl.name = "MapWar_" + loc
+		wl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		wl.tooltip_text = PriceWar.howto(g, loc)
+		box.add_child(wl)
+		var cost := PriceWar.pay_cost(g, loc)
+		var pb := UI.button("Pay off (%d cr)" % cost, func():
+			PriceWar.pay_off(g, loc)
+			_refresh_soon(), 0)
+		pb.name = "MapPayOff_" + loc
+		pb.tooltip_text = "Pay the cartel to call off the price war here. " + PriceWar.howto(g, loc)
+		pb.disabled = g.credits < cost
+		box.add_child(pb)
 	if _mode == "influence" and g.cartels.influence.has(loc):
 		box.add_child(_share_bar(g, loc))
 	return box
+
+
+## One line per location: how each drug tier is treated by the local law, coloured by the strictest level.
+func _laws_label(g, loc: String) -> Control:
+	var worst := "legal"
+	for r in Laws.summary(g, loc):
+		if Laws.RANK[r.level] > Laws.RANK[worst]:
+			worst = r.level
+	var l := UI.label("Laws: " + Laws.line(g, loc), 12, Color(str(Laws.rule(g, worst).get("color", "#cccccc"))))
+	l.name = "MapLaws_" + loc
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	return l
 
 
 # ---------------------------------------------------------------- cartels
@@ -456,9 +540,23 @@ func _price_row(g, row: Dictionary) -> Control:
 		var where := UI.label("%s  (%s)" % [g.data.locations[o.loc].name, g.data.systems[o.system].name], 12, UI.TEXT if i == 0 else UI.MUTED)
 		where.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		line.add_child(where)
+		line.add_child(_history_label(g, o.loc, PriceBoard.key_buy(str(row.item)) if row.has("item") else PriceBoard.key_sell(str(row.base))))
 		line.add_child(UI.label("%d cr%s" % [o.price, "  best" if i == 0 else ""], 12, UI.GOLD if i == 0 else UI.MUTED))
 		col.add_child(line)
 	return panel
+
+
+## Price board: trend arrow + sparkline of the prices you saw at `loc`, last days as tooltip. "no data" until you docked there.
+func _history_label(g, loc: String, key: String) -> Label:
+	var h := PriceBoard.history(g, loc, key)
+	var c := PriceBoard.cfg(g.data)
+	var t := PriceBoard.trend(g, loc, key)
+	var l := UI.label("%s %s" % [PriceBoard.arrow(t), PriceBoard.sparkline(h, c.spark_days)] if h.size() >= 2 else ("seen" if h.size() == 1 else "no data"), 11,
+		UI.MUTED if t == 0 else (UI.ACCENT if t < 0 else UI.WARN))
+	l.name = "PriceHist_%s_%s" % [loc, key.replace(":", "_")]
+	l.mouse_filter = Control.MOUSE_FILTER_STOP
+	l.tooltip_text = ("Prices you saw here (last %d days):\n%s" % [mini(h.size(), c.spark_days), PriceBoard.lines(h, c.spark_days)]) if not h.is_empty() else "You have not docked here yet, so there is no price history."
+	return l
 
 
 func _refresh_soon() -> void:

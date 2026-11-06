@@ -43,6 +43,7 @@ func _ready() -> void:
 		"flak": _sweep(500.0, 140.0, 0.12, 0.45, "square"),
 		"ion": _sweep(200.0, 1600.0, 0.25, 0.35),
 		"cook": _chord([392.0, 587.0], 0.22, 0.3),  ## K1: a station step of a tray is done
+		"warn": _chord([880.0, 660.0, 880.0], 0.4, 0.4),  ## wave 12: a patrol scan range is close
 		"toast": _tone(1320.0, 0.04, 0.18),  ## K1: soft tick for a good notification
 	}
 	for i in POOL:
@@ -106,6 +107,7 @@ func _on_game_event(kind: String, _payload: Dictionary) -> void:
 		"docked": play("dock")
 		"undocked": play("undock")
 		"busted", "knocked_out": play("bust")
+		"patrol_warning": play("warn")
 		"shot": play("shot")
 		"lab_done", "order_delivered": play("lab_done")
 		"upgraded": play("upgrade")

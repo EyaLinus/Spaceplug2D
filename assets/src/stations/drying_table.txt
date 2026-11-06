@@ -1,0 +1,27 @@
+# Drying Table 2x1: wooden frame with a hanging line of weed bunches and a slatted drying tray below.
+legend:
+k = ink
+w = wood
+W = wood_dark
+a = sand
+l = leaf
+g = grass_light
+G = grass
+S = slate_light
+---
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+kWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWk
+kaaaaaaaaaaaaaaaaaaaaaaaaaaaaaak
+kwlgwwlgwwlgwwlgwwlgwwlgwwlgwwwk
+kwGlwwGlwwGlwwGlwwGlwwGlwwGlwwwk
+kwwGwwwGwwwGwwwGwwwGwwwGwwwGwwwk
+kwwWwwwWwwwWwwwWwwwWwwwWwwwWwwwk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWk
+kSkSkSkSkSkSkSkSkSkSkSkSkSkSkSkk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWk
+kWaWWWWWWWWWWWWWWWWWWWWWWWWWWaWk
+kWaWWWWWWWWWWWWWWWWWWWWWWWWWWaWk
+kWaWWWWWWWWWWWWWWWWWWWWWWWWWWaWk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk

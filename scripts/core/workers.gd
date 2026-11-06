@@ -12,6 +12,7 @@ extends RefCounted
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const Products = preload("res://scripts/core/products.gd")
+const Machines = preload("res://scripts/core/machines.gd")
 
 
 static func cfg(g) -> Dictionary:
@@ -126,7 +127,7 @@ static func set_recipe(g, estate_id: String, base: String, additives: Array, qty
 		return g._ok("Auto cooking off.")
 	if not g.data.bases.has(base):
 		return g._fail("Unknown product.")
-	qty = clampi(qty, 1, g.lab_capacity())
+	qty = clampi(qty, 1, g.lab_capacity(estate_id))
 	g.estates[estate_id].recipe = {"base": base, "additives": additives.duplicate(), "qty": qty}
 	g._emit("worker_recipe", {"estate": estate_id})
 	return g._ok("Auto recipe: %d %s." % [qty, g.data.bases[base].name])
@@ -176,7 +177,7 @@ static func blocker(g, estate_id: String) -> String:
 		return "No recipe set."
 	var have: Array = []
 	for b in e.buildings:
-		have.append(b.id)
+		have.append_array(Machines.provides(g.data, b.id))  # machines (C2) cover the station they automate
 	for st in Production.stations_for(g.data, e.recipe.base, e.recipe.additives):
 		if not st in have:
 			return "Missing station: %s." % g.data.stations[st].name
@@ -199,7 +200,7 @@ static func tick(g, dt: float) -> void:
 			var trip := float(cfg(g).haul_seconds) / (0.5 + float(c.skill))
 			while e.haul_t >= trip:
 				e.haul_t -= trip
-				_haul(g, e, c)
+				_haul(g, id, e, c)
 		else:
 			e.haul_t = 0.0
 
@@ -217,23 +218,31 @@ static func _tick_cook(g, id: String, e: Dictionary, hand: Dictionary, stocked: 
 	if blocker(g, id) != "":
 		return
 	var r: Dictionary = e.recipe
-	var qty := mini(int(r.qty), g.lab_capacity())
+	var qty := mini(int(r.qty), g.lab_capacity(id))
 	var need: Dictionary = g.batch_needs(r.base, r.additives, qty)
 	var src: Dictionary = e.bench if stocked else e.storage
 	for k in need:
 		if int(src.get(k, 0)) < need[k]:
 			return
+	var line: Array = Production.stations_for(g.data, r.base, r.additives)
+	var machine_cost := Machines.worker_cost(g.data, e.buildings, line, qty)  # machine-only steps cost credits per unit
+	if g.credits < machine_cost:
+		return
 	for k in need:
 		g._add(src, k, -need[k])
+	if machine_cost > 0:
+		g.credits -= machine_cost
+		Machines.worker_ran(g, e.buildings, line)
 	var skill := float(candidate(g, hand.id).skill)
 	var noise := float(cfg(g).score_noise)
 	var scores := {}
-	for st in Production.stations_for(g.data, r.base, r.additives):
-		scores[st] = clampf(skill + g.rng.randf_range(-noise, noise), 0.0, 1.0)
+	for st in line:
+		var ms := Machines.worker_score(g.data, e.buildings, st, skill)
+		scores[st] = ms if ms >= 0.0 else clampf(skill + g.rng.randf_range(-noise, noise), 0.0, 1.0)
 	var res := Production.outcome(g.data, scores)
-	var product := Mixing.key(r.base, Mixing.traits_for(g.data, r.base, r.additives), res.grade)
+	var product := Mixing.key(r.base, Mixing.traits_for(g.data, r.base, r.additives), res.grade, res.pack)
 	Products.discover(g, r.base, r.additives, res.grade, Production.output_qty(qty, res.yield_mult))
-	var t: float = g.batch_seconds(qty) * (float(cfg(g).time_base) - float(cfg(g).time_skill) * skill)
+	var t: float = g.batch_seconds(qty, id) * (float(cfg(g).time_base) - float(cfg(g).time_skill) * skill)
 	if not stocked:
 		t *= float(cfg(g).unstocked_time_mult)
 	e.job = {"product": product, "qty": Production.output_qty(qty, res.yield_mult), "remaining": t, "total": t}
@@ -245,7 +254,7 @@ static func _trip_cap(g, c: Dictionary) -> int:
 
 
 ## One trip: output tray -> storage, then storage -> bench (what the recipe still lacks).
-static func _haul(g, e: Dictionary, c: Dictionary) -> void:
+static func _haul(g, id: String, e: Dictionary, c: Dictionary) -> void:
 	var cap := _trip_cap(g, c)
 	for k in e.out.keys():
 		var n := mini(int(e.out[k]), cap)
@@ -256,7 +265,7 @@ static func _haul(g, e: Dictionary, c: Dictionary) -> void:
 			break
 	if e.recipe.is_empty():
 		return
-	var need: Dictionary = g.batch_needs(e.recipe.base, e.recipe.additives, mini(int(e.recipe.qty), g.lab_capacity()))
+	var need: Dictionary = g.batch_needs(e.recipe.base, e.recipe.additives, mini(int(e.recipe.qty), g.lab_capacity(id)))
 	cap = _trip_cap(g, c)
 	for k in need:
 		var n := mini(mini(int(need[k]) - int(e.bench.get(k, 0)), int(e.storage.get(k, 0))), cap)

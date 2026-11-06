@@ -1,0 +1,25 @@
+# Rooftop air-handler box with a fan grille. Neutral colours, drawn on top of any roof.
+legend:
+. = transparent
+k = ink
+s = slate
+S = slate_light
+n = night
+w = white
+---
+................
+................
+................
+..kkkkkkkkkkkk..
+.kwSSSSSSSSSSsk.
+.kSkkkkkkkkkksk.
+.kSknsnsnsnsksk.
+.kSkkkkkkkkkksk.
+.kSknsnsnsnsksk.
+.kSkkkkkkkkkksk.
+.kSSSSSSSSSSssk.
+.kssssssssssssk.
+..kkkkkkkkkkkk..
+................
+................
+................

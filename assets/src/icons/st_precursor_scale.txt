@@ -1,0 +1,38 @@
+# Lab dropdown/minigame icon: Precursor Scale (balance).
+legend:
+. = transparent
+k = ink
+S = slate_light
+s = slate
+d = slate_dark
+W = white
+Y = gold
+y = gold_dark
+L = gold_light
+R = red
+r = red_dark
+T = teal
+t = teal_dark
+b = blue_light
+B = blue
+G = leaf
+w = wood
+o = wood_dark
+n = rust_light
+---
+................
+.......kk.......
+......kYYk......
+.kkkkkkYYkkkkkk.
+.k.....kk.....k.
+.k.....kk.....k.
+kSSk...kk...kWWk
+.kkkk..kk..kkkk.
+.......kk.......
+.......kk.......
+......kSSk......
+....kkSSSSkk....
+...kSSSSSSSSk...
+...kkkkkkkkkk...
+................
+................

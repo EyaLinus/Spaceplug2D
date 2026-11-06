@@ -5,6 +5,7 @@ extends "res://scripts/ui/phone/phone_app.gd"
 const Workers = preload("res://scripts/core/workers.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
+const Drones = preload("res://scripts/core/drones.gd")
 const Products = preload("res://scripts/core/products.gd")
 
 
@@ -287,7 +288,7 @@ func estate(g, _phone, eid: String) -> Control:
 			cur = k + 1
 	opt.select(cur)
 	opt.item_selected.connect(func(idx: int):
-		var q: int = int(e.recipe.get("qty", g.lab_capacity()))
+		var q: int = int(e.recipe.get("qty", g.lab_capacity(eid)))
 		GameState.act(Workers.set_recipe(g, eid, "" if idx == 0 else choices[idx - 1][0], [] if idx == 0 else choices[idx - 1][1], q)))
 	v.add_child(opt)
 	if not e.recipe.is_empty():
@@ -331,7 +332,38 @@ func estate(g, _phone, eid: String) -> Control:
 	v.add_child(tb)
 	if not inside:
 		v.add_child(UI.label("Stand inside the estate to move goods.", 13, UI.MUTED))
+	_drones(g, v, eid)
 	return v
+
+
+## Courier drones of one estate (rules in drones.gd): buy one per route, flip the route, scrap.
+func _drones(g, v: VBoxContainer, eid: String) -> void:
+	if not Drones.eligible(g, eid):
+		return
+	var dc: Dictionary = Drones.cfg(g)
+	v.add_child(UI.label("COURIER DRONES %d/%d · %d cr/day each" % [g.drones.size(), int(dc.max_total), int(dc.upkeep)], 13, UI.MUTED))
+	for d in Drones.at_estate(g, eid):
+		var did: int = int(d.id)
+		var st := Drones.status(g, d)
+		v.add_child(_wrap("#%d %s · %s" % [did, Drones.route_name(d.route), st if st != "" else "%d s per trip" % int(Drones.trip_seconds(g, eid))], 14))
+		var row := HBoxContainer.new()
+		var other: String = "to_estate" if d.route == "to_port" else "to_port"
+		var fb := UI.button("Fly " + Drones.route_name(other).to_lower(), func(): GameState.act(Drones.set_route(g, did, other)))
+		fb.name = "DroneRoute_%d" % did
+		fb.tooltip_text = "Switch this drone to the other direction."
+		row.add_child(fb)
+		var xb := UI.button("Scrap", func(): GameState.act(Drones.scrap(g, did)), 80)
+		xb.name = "DroneScrap_%d" % did
+		xb.tooltip_text = "Sell the drone for %d%% of its price." % int(round(float(dc.scrap_refund) * 100.0))
+		row.add_child(xb)
+		v.add_child(row)
+	for route in Drones.ROUTES:
+		var bb := UI.button("Buy drone: %s (%d cr)" % [Drones.route_name(route).to_lower(), int(dc.price)], func(): GameState.act(Drones.buy(g, eid, route)))
+		bb.name = "DroneBuy_%s_%s" % [eid, route]
+		bb.disabled = g.credits < int(dc.price) or g.drones.size() >= int(dc.max_total) or Drones.at_estate(g, eid).size() >= int(dc.max_per_estate)
+		bb.tooltip_text = ("Carries finished product to your hub stash at the spaceport." if route == "to_port"
+			else "Carries what the auto recipe lacks from the hub stash to this estate.") + " Up to %d units per trip." % int(dc.capacity)
+		v.add_child(bb)
 
 
 func _items(g, v: VBoxContainer, label: String, items: Dictionary) -> void:

@@ -230,7 +230,7 @@ static func _sell_round(g, d: Dictionary) -> void:
 	var dem: Dictionary = g.demand[d.loc]
 	dem[p.base] = maxf(float(dem[p.base]) - float(g.data.market.saturation_per_unit) * n, float(g.data.market.min_demand))
 	if g.loc_system(d.loc) == g.system:
-		g.add_heat(float(g.loc_data(d.loc).heat_per_unit) * n * g.heat_mult(p.base) * float(cfg(g).get("heat_mult", 0.5)))
+		g.add_heat(float(g.loc_data(d.loc).heat_per_unit) * n * g.sale_heat_mult(p.base, d.loc) * float(cfg(g).get("heat_mult", 0.5)))
 	g._emit("dealer_sold", {"dealer": d.id, "product": best, "qty": n, "credits": net})
 	if int(d.cash) >= int(cfg(g).get("max_cash", 2000)):
 		g._emit("dealer_cash_full", {"dealer": d.id})

@@ -5,9 +5,15 @@ extends Control
 const UI = preload("res://scripts/ui/ui_theme.gd")
 const Art = preload("res://scripts/core/art.gd")
 const Quests = preload("res://scripts/core/quests.gd")
+const Marker = preload("res://scripts/core/marker.gd")
+const Cartels = preload("res://scripts/core/cartels.gd")
+const PriceWar = preload("res://scripts/core/pricewar.gd")
 const Bench = preload("res://scripts/core/bench.gd")
+const Escort = preload("res://scripts/core/escort.gd")
+const HeatZones = preload("res://scripts/core/heat_zones.gd")
 const FxScript = preload("res://scripts/ui/fx.gd")
 
+const ESCORT_COLOR := Color("#6fe3d0")
 const MAX_TOASTS := 5
 const TOAST_SECONDS := 4.0
 
@@ -36,6 +42,7 @@ const MINIMAP_AREAS := {"water": Color("#2f6f8a"), "pit": Color("#0a0806"), "sla
 	"arena": Color("#c27447", 0.5), "salt": Color("#ece8dc", 0.4)}
 var map_zoom := 0  ## index into MAP_ZOOMS
 var _district: Label  ## name of the district you stand in, above the minimap
+var _zone: Label  ## heat zone you stand in (heat_zones.gd), under the district name
 var _district_name := ""
 var _district_t := 0.0  ## seconds the "you entered" highlight still shows
 var _nav: Control  ## edge arrows pointing at off-screen locations
@@ -142,6 +149,16 @@ func _ready() -> void:
 	_district.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_district.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_district)
+	_zone = UI.label("", 13, UI.MUTED)
+	_zone.name = "HeatZone"
+	_zone.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_zone.offset_left = -240
+	_zone.offset_right = -12
+	_zone.offset_top = -246
+	_zone.offset_bottom = -228
+	_zone.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_zone)
 
 	var help := UI.label("", 14, UI.MUTED)
 	help.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
@@ -173,6 +190,9 @@ func _process(_delta: float) -> void:
 	_credits.text = "%d cr" % g.credits
 	_debt.text = "Debt %d cr · due day %d" % [g.debt, g.debt_due_day] if g.debt > 0 else "Debt cleared"
 	_day.text = "Day %d · %s" % [g.day, g.system_data().get("name", "")]
+	var war_here: bool = PriceWar.active(g, g.location)
+	if war_here:
+		_day.text += " · ⚔ PRICE WAR"
 	_day_bar.value = g.day_time / g.day_seconds() * 100.0
 	_heat.value = g.heat
 	_heat_label.text = "Heat %d · %d patrol%s" % [int(g.heat), g.patrol_count(), "" if g.patrol_count() == 1 else "s"]
@@ -194,7 +214,7 @@ func _process(_delta: float) -> void:
 	elif world != null and world.active and world.nearby != "":
 		var nl: Dictionary = g.data.locations[world.nearby]
 		if nl.has("jump_to"):
-			_prompt.text = "[%s] Jump to %s (%d cr toll)" % [Settings.key_label("ship_dock"), g.system_data(nl.jump_to).get("name", nl.jump_to), int(g.data.jump.fee)]
+			_prompt.text = "[%s] Jump to %s (%d cr toll)" % [Settings.key_label("ship_dock"), g.system_data(nl.jump_to).get("name", nl.jump_to), g.gate_toll(world.nearby)]
 		else:
 			_prompt.text = "[%s] Dock at %s" % [Settings.key_label("ship_dock"), nl.name]
 	else:
@@ -217,6 +237,11 @@ func _update_district(delta: float) -> void:
 	_district.visible = d != ""
 	var zoom_hint := "" if map_zoom == 0 else "  ×%d" % int(MAP_ZOOMS[map_zoom])
 	_district.text = d.to_upper() + zoom_hint
+	var g = GameState.game
+	_zone.visible = d != "" and g.heat_zone != ""
+	if _zone.visible:
+		_zone.text = "%s · sales ×%.1f heat" % [HeatZones.label(g, g.heat_zone), HeatZones.mult(g)]
+		_zone.add_theme_color_override("font_color", UI.WARN if HeatZones.mult(g) > 1.0 else (UI.MUTED if HeatZones.mult(g) == 1.0 else UI.ACCENT))
 	_district.add_theme_color_override("font_color", UI.GOLD if _district_t > 0.0 else UI.MUTED)
 
 
@@ -245,6 +270,8 @@ func _update_tips(g) -> void:
 	_debt.tooltip_text = ("You owe the Ouroboros Consortium %d cr. Pay at any bank terminal before day %d or it is game over." % [g.debt, g.debt_due_day]) if g.debt > 0 else "Your debt is paid. Everything you make now is yours."
 	var mins := int(g.day_time / g.day_seconds() * 24.0 * 60.0)
 	_day.tooltip_text = "Day %d, %02d:%02d in %s. Contacts keep their meeting times on this clock." % [g.day, mins / 60, mins % 60, g.system_data().get("name", "")]
+	if PriceWar.active(g, g.location):
+		_day.tooltip_text += "\n" + PriceWar.label(g, g.location) + ". " + PriceWar.howto(g, g.location)
 	_day_bar.tooltip_text = _day.tooltip_text
 	var tip_heat := "Heat %d/100. Selling, fighting and being seen with product raise it; it cools over time. More heat = more patrols; from %d they hunt you." % [int(g.heat), int(g.data.heat.chase_heat)]
 	_heat_label.tooltip_text = tip_heat
@@ -318,9 +345,19 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		"rumour":
 			var up: bool = p.demand >= 1.0
 			show_toast("Rumour: %s demand %s at %s." % [g.data.bases[p.base].name, "hot" if up else "cooling", g.data.locations[p.location].name])
+		"patrol_warning":
+			show_toast("Patrol scan range ahead: change course or hide in an asteroid field.", false)
+			fx.flash(UI.WARN, 0.12)
+		"pursuit_lost":
+			show_toast("Lost them in the rocks: the patrol dropped the chase.")
 		"heat_level":
 			if p.heat >= float(g.data.heat.chase_heat):
 				show_toast("Heat %d: patrols will hunt you." % int(p.heat), false)
+		"price_war_started":
+			show_toast("%s start a price war at %s: sales down, buying up. Open the Map app." % [Cartels.gang(g, p.cartel).get("name", p.cartel), g.data.locations[p.loc].name], false)
+		"price_war_ended":
+			var why: String = {"expired": "burnt out", "influence": "broken by your influence", "paid": "bought off", "raid": "ended by the raid", "weakened": "dropped, the cartel is in disarray"}.get(p.why, "ended")
+			show_toast("Price war at %s %s." % [g.data.locations[p.loc].name, why])
 		"quest_started":
 			var q: Dictionary = Quests.defs(g).get(p.quest, {})
 			show_card(str(q.get("giver", "")), str(q.get("intro", "")))
@@ -350,10 +387,16 @@ func _draw_minimap() -> void:
 	var qp = quest_point()
 	if qp != null:
 		_minimap.draw_arc(to_map.call(qp), 6.0, 0, TAU, 16, UI.GOLD, 2.0)
+	if world.freighter != null:  # escort mission: the freighter and where it is going
+		_minimap.draw_circle(to_map.call(world.freighter.position), 3.5, ESCORT_COLOR)
+		var ep: Vector2 = escort_goal_point()
+		if ep != Vector2.INF:
+			_minimap.draw_arc(to_map.call(ep), 7.0, 0, TAU, 16, ESCORT_COLOR, 2.0)
 
 
 func _draw_nav() -> void:
 	_draw_quest_marker()
+	_draw_escort()
 	if world == null or not world.active:
 		return
 	var view := _nav.size
@@ -505,8 +548,25 @@ func _update_quest_ui(g, delta: float) -> void:
 		_card_left = clampf(4.0 + str(m[1]).length() / 22.0, 6.0, 14.0)
 
 
-## World position the tracked quest points at right now, or null (no target, target is a phone app, docked menu).
+## Waypoint for the arrow and the autopilot: the tracked quest's, else the hand-placed map marker's (K3), else null.
 func quest_point():
+	var qp = _quest_target_point()
+	return qp if qp != null else marker_point()
+
+
+## World position of the map marker while flying (marker.gd), or null.
+func marker_point():
+	var g = GameState.game
+	if g == null or surface != null or world == null or not world.active:
+		return null
+	var goal := Marker.goal_location(g)
+	if goal == "" or not world.locations.has(goal):
+		return null
+	return world.locations[goal].position
+
+
+## World position the tracked quest points at right now, or null (no target, target is a phone app, docked menu).
+func _quest_target_point():
 	var g = GameState.game
 	if g == null:
 		return null
@@ -540,6 +600,10 @@ func _surface_point(g, t: Dictionary):
 				var r: Array = b.rect
 				return (Vector2(r[0], r[1]) + Vector2(r[2], r[3]) / 2.0) * surface.tile
 		return null
+	if cfg.has("interior"):  # inside a building: the counter if that is the target, else the way out
+		if str(t.get("building", "")) == str(cfg.interior.building) and str(t.get("loc", g.location)) == g.location:
+			return _interactable_pos("counter")
+		return _interactable_pos("exit")
 	if str(t.get("loc", "")) != g.location:
 		return _interactable_pos("pad")
 	if t.has("contact"):
@@ -563,13 +627,17 @@ func _interactable_pos(id: String):
 
 ## Gold diamond over the quest target, or an edge arrow when it is off screen.
 func _draw_quest_marker() -> void:
-	var wp = quest_point()
+	var is_mark: bool = _quest_target_point() == null
+	_draw_marker(quest_point(), UI.ACCENT if is_mark else UI.GOLD, "MARK" if is_mark else "QUEST")
+
+
+## Gold diamond over `wp` (a world position or null), or an edge arrow labelled `label` when it is off screen.
+func _draw_marker(wp, col: Color, label: String) -> void:
 	if wp == null:
 		return
 	var view := _nav.size
 	var p: Vector2 = get_viewport().get_canvas_transform() * (wp as Vector2)
 	var bob := sin(Time.get_ticks_msec() / 220.0) * 4.0
-	var col := UI.GOLD
 	var margin := 48.0
 	if Rect2(Vector2(margin, margin), view - Vector2(margin, margin) * 2.0).has_point(p):
 		var c := p + Vector2(0, -34 + bob)
@@ -583,5 +651,50 @@ func _draw_quest_marker() -> void:
 	var tip := e + dir * (18.0 + bob)
 	_nav.draw_colored_polygon(PackedVector2Array([tip, e + dir.orthogonal() * 11.0, e - dir.orthogonal() * 11.0]), col)
 	var font := ThemeDB.fallback_font
-	var w := font.get_string_size("QUEST", HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	_nav.draw_string(font, e - dir * 20.0 - Vector2(w / 2.0, -5.0), "QUEST", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
+	var w := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	_nav.draw_string(font, e - dir * 20.0 - Vector2(w / 2.0, -5.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
+
+
+## World position of the escort destination (or the gate on the way) in the current system, Vector2.INF if none.
+func escort_goal_point() -> Vector2:
+	var g = GameState.game
+	if g == null or world == null or not Escort.active(g):
+		return Vector2.INF
+	var goal := Escort.goal(g)
+	return world.locations[goal].position if world.locations.has(goal) else Vector2.INF
+
+
+## Escort mission: markers on the freighter and its destination plus a status line under the top bar.
+func escort_status() -> String:
+	var g = GameState.game
+	if g == null or not Escort.active(g):
+		return ""
+	var m: Dictionary = Escort.mission(g)
+	var j: Dictionary = Escort.job(g)
+	var hint := ""
+	if bool(j.get("at_gate", false)):
+		hint = "  ·  holding at the gate: jump with it"
+	elif bool(j.get("waiting", false)):
+		hint = "  ·  waiting for you"
+	var dist := ""
+	if world != null and world.freighter != null:
+		var ep := escort_goal_point()
+		if ep != Vector2.INF:
+			dist = "  ·  %.1fk to %s" % [Escort.pos(g).distance_to(ep) / 1000.0, g.data.locations[Escort.goal(g)].name]
+	return "ESCORT %s  ·  hull %d%%%s  ·  %d waves to come%s" % [m.get("name", ""), int(round(Escort.hull_ratio(g) * 100.0)), dist, Escort.waves_left(g), hint]
+
+
+func _draw_escort() -> void:
+	var g = GameState.game
+	if g == null or world == null or not world.active or not Escort.active(g) or world.freighter == null:
+		return
+	_draw_marker(world.freighter.position, ESCORT_COLOR, "FREIGHTER")
+	var ep := escort_goal_point()
+	if ep != Vector2.INF and world.camera != null:
+		_draw_marker(ep, UI.GOLD.lerp(ESCORT_COLOR, 0.5), "DEST")
+	var text := escort_status()
+	var font := ThemeDB.fallback_font
+	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+	var at := Vector2((_nav.size.x - w) / 2.0, 118.0)
+	_nav.draw_rect(Rect2(at - Vector2(10, 18), Vector2(w + 20, 26)), Color(0.04, 0.1, 0.1, 0.78))
+	_nav.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, ESCORT_COLOR)

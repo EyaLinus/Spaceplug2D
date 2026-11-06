@@ -9,11 +9,18 @@ const People = preload("res://scripts/core/people.gd")
 
 const Workers = preload("res://scripts/core/workers.gd")
 const Bench = preload("res://scripts/core/bench.gd")
+const Drying = preload("res://scripts/core/drying.gd")
+const Sealing = preload("res://scripts/core/sealing.gd")
+const Machines = preload("res://scripts/core/machines.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
+const PriceWar = preload("res://scripts/core/pricewar.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Escort = preload("res://scripts/core/escort.gd")
+const Interiors = preload("res://scripts/core/interiors.gd")
+const Walkups = preload("res://scripts/core/walkups.gd")
 
 var steps := 0
 
@@ -202,9 +209,8 @@ func _run() -> void:
 	sf.player.sprinting = false
 	step("districts, canal, minimap zoom, sprint")
 
-	# every door and person opens exactly its own panel
-	var expect := {"spaceport": "Shipyard", "market": "Market", "office": "Office",
-		"rusk": "Shipyard", "okka": "Deals", "sen": "Deals"}
+	# every person opens exactly their own panel; key buildings lead into a room first (D4)
+	var expect := {"rusk": "Shipyard", "okka": "Deals", "sen": "Deals"}
 	for id in expect:
 		sf.place_player_at(id)
 		await physics_frame
@@ -218,7 +224,29 @@ func _run() -> void:
 		m.station.close_requested.emit()
 		await frames(1)
 		_assert(not m.station.visible, "panel closes")
-	step("doors and people")
+	var doors := {"spaceport": "Shipyard", "market": "Market", "office": "Office"}
+	for id in doors:
+		var rs = await _enter(m, sf, id)
+		_assert(rs.player.position.distance_to(rs.interactable("exit").stand) < 40.0, "%s: you stand at the inside of the door" % id)
+		_assert(rs.npcs.has("clerk") and rs.cfg.npcs.size() == 1, "%s: a clerk is in the room" % id)
+		_assert(m.hud._prompt.text.contains("Leave"), "%s: the exit prompt reads Leave (%s)" % [id, m.hud._prompt.text])
+		var cb: Rect2 = rs._rect(rs.cfg.buildings.filter(func(b): return b.id == "counter")[0].rect)
+		rs.player.position = Vector2(cb.get_center().x, cb.end.y + 30.0)
+		for i in 60:
+			rs.player.walk(1.0 / 60.0, Vector2.UP)
+			await physics_frame
+		_assert(rs.player.position.y >= cb.end.y - 2.0, "%s: the counter blocks the player (y=%.0f, counter=%.0f)" % [id, rs.player.position.y, cb.end.y])
+		_assert(await _use_counter(m, rs) == [doors[id]], "%s counter opens %s (got %s)" % [id, doors[id], m.station.tab_names()])
+		_assert(rs.player.frozen, "player frozen while a panel is open")
+		m.station.close_requested.emit()
+		await frames(1)
+		_assert(not m.station.visible and m.surface == rs, "closing the panel keeps you in the room")
+		_assert(await _use_counter(m, rs, "clerk") == [doors[id]], "%s clerk opens %s" % [id, doors[id]])
+		m.station.close_requested.emit()
+		await frames(1)
+		sf = await _leave(m)
+	_assert(sf.loc_id == "mireth" and sf.suspicion == 0.0, "back on Mireth")
+	step("people, key building rooms")
 
 	# B4: the townsfolk are named customers; unknown ones show their job, talking makes them a contact
 	var g0 = gs.game
@@ -241,11 +269,8 @@ func _run() -> void:
 	step("named townsfolk")
 
 	# market shop screen: item cards fill a basket, one checkout buys it all
-	sf.place_player_at("market")
-	await physics_frame
-	await physics_frame
-	sf.interact()
-	await frames(2)
+	var ms = await _enter(m, sf, "market")
+	await _use_counter(m, ms)
 	var have_c := int(g.cargo.get("cannabis", 0))
 	m.station.find_child("Item_cannabis", true, false).pressed.emit()
 	await frames(1)
@@ -260,6 +285,7 @@ func _run() -> void:
 	_assert(int(g.cargo.get("cannabis", 0)) == have_c + 2 and g.credits < cr_before and m.station._basket.is_empty(), "checkout buys the basket")
 	m.station.close_requested.emit()
 	await frames(1)
+	sf = await _leave(m)
 	# shipyard cards: one button per upgrade
 	sf.place_player_at("rusk")
 	await physics_frame
@@ -382,6 +408,23 @@ func _run() -> void:
 	m.phone.find_child("TakeProducts", true, false).pressed.emit()
 	await frames(2)
 	_assert(g.has_contraband(), "take button loads the products")
+	# courier drone: buy one in the estate screen, it flies finished product to the hub stash
+	var DronesM = load("res://scripts/core/drones.gd")
+	g.estates.cannery_annex.out = {"weed:glow": 4}
+	g.credits = maxi(g.credits, 1000)
+	g._emit("storage_changed", {})
+	await frames(2)
+	var dbuy: Button = m.phone.find_child("DroneBuy_cannery_annex_to_port", true, false)
+	_assert(dbuy != null and not dbuy.disabled and dbuy.tooltip_text != "", "drone buy button with a tooltip")
+	dbuy.pressed.emit()
+	await frames(2)
+	_assert(g.drones.size() == 1 and m.phone.find_child("DroneRoute_%d" % g.drones[0].id, true, false) != null, "drone bought from the phone")
+	var stash0: int = int(g.stash.get("weed:glow", 0))
+	g.tick(DronesM.trip_seconds(g, "cannery_annex") + 0.5)
+	_assert(int(g.stash.get("weed:glow", 0)) == stash0 + 4, "the drone delivered the product to the hub stash")
+	m.phone.find_child("DroneScrap_%d" % g.drones[0].id, true, false).pressed.emit()
+	await frames(2)
+	_assert(g.drones.is_empty(), "drone scrapped from the phone")
 	g.inside_estate = ""
 	var c1: int = g.credits
 	var w1: int = int(g.stats.get("wages", 0))
@@ -645,6 +688,45 @@ func _run() -> void:
 	cop.path = []
 	step("police pathfinding")
 
+	# hiding spots (P3): standing still in a spot hides you; a chasing officer far away loses you, a close one finds you
+	_assert(sf.hide_rects.size() >= 3, "Mireth has hiding spots")
+	var spot: Rect2 = sf.hide_rects[0]
+	g.cargo["weed:glow"] = 1
+	g.heat = 45.0
+	sf.player.position = spot.get_center() - Vector2(0, 12)
+	cop.pick_next = Callable()
+	cop.chasing = true
+	cop.speed = float(gs.data.police.chase_speed)
+	var lost_ok := false
+	for i in 260:
+		cop.position = sf.player.position + Vector2(260, 0)
+		cop.chasing = cop.chasing or not sf.hiding.hidden
+		await physics_frame
+		if not cop.chasing and sf.hiding.hidden:
+			lost_ok = true
+			break
+	_assert(lost_ok and sf.player.modulate.a < 1.0, "standing in a hiding spot hides you and the far chaser gives up")
+	var busts_h: int = g.stats.busts
+	cop.facing = Vector2.LEFT
+	for i in 200:
+		cop.position = sf.player.position + Vector2(120, 0)
+		await physics_frame
+	_assert(sf.hiding.hidden and g.stats.busts == busts_h and sf.suspicion == 0.0, "hidden: an officer in front of you does not frisk you")
+	cop.position = sf.player.position + Vector2(20, 0)
+	await physics_frame
+	await physics_frame
+	_assert(not sf.hiding.hidden and sf.player.modulate.a == 1.0, "an officer who walks up finds you")
+	g.cargo.erase("weed:glow")
+	g.heat = 0.0
+	cop.chasing = false
+	cop.pick_next = sf._walker_path
+	cop.speed = float(gs.data.police.speed)
+	cop.path = []
+	sf.hiding = sf.Hiding.fresh()
+	sf.place_player_at("spaceport")
+	await physics_frame
+	step("hiding spots")
+
 	# ground combat: aim, fire, cover, armed officers, knock-out, weapon wheel
 	sf.use_mouse = false
 	for o in sf.officers:
@@ -773,6 +855,24 @@ func _run() -> void:
 	m.open_build_menu()
 	await frames(1)
 	_assert(m.station.tab_names() == ["Build"], "build menu")
+	# grow tray from the build menu: build, plant, water, ripen, harvest
+	g.credits += 500
+	g.cargo["cannabis"] = 4
+	m.station.find_child("GrowBuild", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.grow.get("cannery_annex", {}).get("trays", []).size() == 1, "grow tray built from the build menu")
+	m.station.find_child("GrowPlant_0_cannabis", true, false).pressed.emit()
+	await frames(2)
+	m.station.find_child("GrowWater_0", true, false).pressed.emit()
+	await frames(2)
+	g.day += int(g.data.grow.crops.cannabis.days)
+	g._emit("grow_changed", {})
+	await frames(2)
+	m.station.find_child("GrowHarvest_0", true, false).pressed.emit()
+	await frames(2)
+	_assert(int(g.stash.get("cannabis", 0)) > 0, "grow tray harvest lands in the stash")
+	g.stash.erase("cannabis")
+	g.cargo.erase("cannabis")
 	m.station.place_requested.emit("cook_stove")
 	await frames(1)
 	_assert(es.placing == "cook_stove" and not m.station.visible, "placing mode")
@@ -785,6 +885,16 @@ func _run() -> void:
 	_assert(g.estates.cannery_annex.buildings.size() == 1, "station placed")
 	es = m.surface
 	_assert(es.cfg.buildings.any(func(b): return b.get("station", "") == "cook_stove"), "room rebuilt with the stove")
+	# P5: hired workers show up as walkers inside the estate and head for their post (presentation only)
+	g.credits += 2000
+	_assert(g.credits > 0 and Workers.hire(g, "moss").ok and Workers.assign(g, "moss", "cannery_annex").ok, "stocker hired for the annex")
+	es._worker_t = 0.0
+	await frames(3)
+	_assert(es.worker_nodes.has("moss") and es.worker_nodes.moss.sheet != null, "the stocker walks around the annex with a recoloured sprite")
+	Workers.fire(g, "moss")
+	es._worker_t = 0.0
+	await frames(3)
+	_assert(not es.worker_nodes.has("moss"), "fired worker leaves the room")
 	es.place_player_at("b0")
 	await physics_frame
 	await physics_frame
@@ -793,6 +903,67 @@ func _run() -> void:
 	_assert(m.bench.visible and m.bench.mode == "wait" and not m.station.visible, "a station without a tray explains where batches start (mode %s)" % m.bench.mode)
 	_assert(m.bench.find_child("TakeDown", true, false) != null, "placed stations can be taken down from their overlay")
 	_assert(g.inside_estate == "cannery_annex" and g.lab_here(), "the estate counts as a lab")
+	m.bench.close()
+	# drying table: build it, hang weed on the rack, wait out the cure, take it off one grade higher
+	_assert(gs.act(g.place_building("cannery_annex", "drying_table", 5, 0)).ok, "drying table placed")
+	m.enter_estate("cannery_annex", es.player.position)
+	await frames(2)
+	es = m.surface
+	var dry_idx := -1
+	for bi in g.estates.cannery_annex.buildings.size():
+		if g.estates.cannery_annex.buildings[bi].id == "drying_table":
+			dry_idx = bi
+	es.place_player_at("b%d" % dry_idx)
+	await physics_frame
+	await physics_frame
+	g.cargo["weed:glow"] = 10
+	_assert(es.interact(), "use the drying table")
+	await frames(2)
+	_assert(m.bench.visible and m.bench.mode == "dry" and m.bench.find_child("DryLoad", true, false) != null, "drying table opens the rack panel")
+	m.bench.find_child("DryLoad", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.cargo.get("weed:glow", 0) == 0 and Drying.loaded(g, "cannery_annex") == 10, "load button hangs the weed on the rack")
+	_assert(m.bench.find_child("DryCollect", true, false).disabled, "wet product can't be collected")
+	for db in g.drying.cannery_annex:
+		db.left = 0.0  # fast-forward the cure without moving the world clock
+	m.bench.open_station("drying_table", dry_idx)
+	await frames(2)
+	m.bench.find_child("DryCollect", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.cargo.get("weed:glow@2", 0) == 8, "cured weed is Premium and 20%% lighter (%s)" % [g.cargo])
+	g.cargo.erase("weed:glow@2")
+	if m.bench.visible:
+		m.bench.close()
+		await frames(2)
+	# sealing bench: build it, wrap loose weed as Shielded, wait it out, take the packs
+	g.credits += 2000
+	_assert(gs.act(g.place_building("cannery_annex", "seal_bench", 0, 4)).ok, "sealing bench placed")
+	m.enter_estate("cannery_annex", es.player.position)
+	await frames(2)
+	es = m.surface
+	var seal_idx := -1
+	for bi in g.estates.cannery_annex.buildings.size():
+		if g.estates.cannery_annex.buildings[bi].id == "seal_bench":
+			seal_idx = bi
+	es.place_player_at("b%d" % seal_idx)
+	await physics_frame
+	await physics_frame
+	g.cargo["weed:glow"] = 10
+	_assert(es.interact(), "use the sealing bench")
+	await frames(2)
+	_assert(m.bench.visible and m.bench.mode == "seal" and m.bench.find_child("SealLoad_2", true, false) != null, "sealing bench opens the wrap panel")
+	m.bench.find_child("SealLoad_2", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.cargo.get("weed:glow", 0) == 0 and Sealing.loaded(g, "cannery_annex") == 10, "wrap button puts the weed on the bench")
+	_assert(m.bench.find_child("SealCollect", true, false).disabled, "unfinished packs can't be collected")
+	for sb in g.sealing.cannery_annex:
+		sb.left = 0.0  # fast-forward the wrapping without moving the world clock
+	m.bench.open_station("seal_bench", seal_idx)
+	await frames(2)
+	m.bench.find_child("SealCollect", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.cargo.get("weed:glow#2", 0) == 10, "packed weed is Shielded and nothing is lost (%s)" % [g.cargo])
+	g.cargo.erase("weed:glow#2")
 	m.bench.close()
 	es.place_player_at("exit")
 	await physics_frame
@@ -906,6 +1077,31 @@ func _run() -> void:
 	await frames(2)
 	_assert(Bench.tray(g).is_empty() and int(g.stash.get("cannabis", 0)) >= 2, "scrapped tray, raws in the stash")
 	bench.close()
+	# mixing journal: the finished overclock mix is listed with a one-click re-cook and the preview shows trait values
+	gs.act(g.buy("cannabis", 3))
+	g.cargo.nanoflux = 3
+	_assert(Bench.begin(g, "trim_table", "weed", 3).ok and Bench.record(g, "trim_table", 0.8).ok and Bench.record(g, "extractor", 0.8).ok, "journal test tray ready for the mixing station")
+	cs.place_player_at("b3")
+	await physics_frame
+	await physics_frame
+	cs.interact()
+	await frames(2)
+	_assert(bench.mode == "mix" and bench.find_child("Journal", true, false) != null, "mixing station shows the journal")
+	var rc: Button = bench.find_child("Recook_weed_overclock_radiant", true, false)
+	_assert(rc != null and not rc.disabled and rc.tooltip_text != "", "journal lists the earlier mix with an enabled re-cook button")
+	bench.find_child("Add_nanoflux", true, false).pressed.emit()
+	await frames(2)
+	_assert("+35%" in bench.find_child("Preview", true, false).text, "preview shows trait values")
+	bench.find_child("Add_nanoflux", true, false).pressed.emit()
+	await frames(2)
+	bench.find_child("Recook_weed_overclock_radiant", true, false).pressed.emit()
+	await frames(2)
+	_assert(Bench.tray(g).additives == ["nanoflux"] and bench.mode == "play", "re-cook pours the journal mix and starts the next station")
+	step("journal re-cook")
+	bench.close()
+	bench.autoplay = false
+	gs.act(Bench.abandon(g))
+	bench.close()
 	# stash crate: cook queue + loading the stash into the hold
 	g.tick(60.0)
 	cs.place_player_at("stash")
@@ -927,6 +1123,9 @@ func _run() -> void:
 	_assert(g.inside_estate == "" and sf.loc_id == "mireth", "out of the cannery")
 	step("minigame stop, scrap, stash crate")
 
+	await _machines(m, g)
+	sf = m.surface
+
 	sf.place_player_at("okka")
 	await physics_frame
 	await physics_frame
@@ -937,10 +1136,14 @@ func _run() -> void:
 	await frames(2)
 	m.station.close()
 	step("cook and sell")
+	await _walkup(m, g)
+	step("customer on foot")
 
 	g.credits = 20000
-	for u in ["cargo", "engine", "stealth", "lab", "laser", "missile", "shield", "hull"]:
+	for u in ["cargo", "engine", "stealth", "laser", "missile", "shield", "hull"]:
 		gs.act(g.buy_upgrade(u))
+	gs.act(g.buy_estate_tier("cannery_rig"))
+	_assert(g.estate_tier("cannery_rig") == 1 and g.lab_capacity() == 10, "hydro rig rebuilt as building tier")
 	_assert(g.upgrades.laser == 1 and g.upgrades.missile == 1 and g.upgrades.shield == 1 and g.upgrades.hull == 1, "weapon and shield modules bought at the mechanic")
 	_assert(g.combat.missiles == 4 and g.combat.shield == 40.0 and g.combat.hull == 130.0, "new modules arrive charged")
 	g.add_heat(30)
@@ -974,6 +1177,7 @@ func _run() -> void:
 	ship.goal_provider = old_provider
 	ship.velocity = Vector2.ZERO
 	step("autopilot")
+	await _map_marker(m, g)
 	_assert(not is_instance_valid(sf) or sf.is_queued_for_deletion(), "surface instance freed")
 	for i in 120:
 		m.world.ship.steer(1.0 / 60.0, true, false)
@@ -987,6 +1191,11 @@ func _run() -> void:
 	_assert(m.world.ship.velocity.length() < 50.0, "brake stops the ship")
 	step("flight")
 
+	# no customers on foot during the door sweep: a local who turns into a walk-up opens the deal card instead of a panel
+	var walkup_rules: Dictionary = g.data.get("walkups", {})
+	var walkup_max = walkup_rules.get("max_active", 2)
+	walkup_rules["max_active"] = 0
+	Walkups.active(g).clear()
 	for loc in ["cinder", "bazaar", "halvane_gate", "varrow", "glacis", "kovar_gate"]:
 		if g.data.locations[loc].has("jump_to"):
 			await _jump(m, g, loc)
@@ -1000,26 +1209,38 @@ func _run() -> void:
 		var ls = m.surface
 		_assert(ls != null and ls.loc_id == loc, "landed on %s" % loc)
 		var opened: Array = []
-		for it in ls.interactables:
+		for it in ls.interactables.duplicate():
 			if it.action == "takeoff" or it.action == "enter_ship_bay":
 				continue
 			ls.place_player_at(it.payload.id)
 			await physics_frame
 			await physics_frame
+			var room: bool = Interiors.has(g.data, loc, it.payload.id)
 			_assert(ls.interact(), "interact with %s/%s" % [loc, it.payload.id])
 			await frames(2)
+			if room:  # D4: key buildings: through the door, then the counter
+				_assert(m.surface != ls and m.surface.cfg.has("interior") and not m.station.visible, "%s/%s door leads into a room" % [loc, it.payload.id])
+				var rs = m.surface
+				rs.place_player_at("counter")
+				await physics_frame
+				await physics_frame
+				_assert(rs.interact(), "%s/%s counter" % [loc, it.payload.id])
+				await frames(2)
 			_assert(m.station.visible and m.station.tab_names().size() == 1, "%s/%s opens one panel" % [loc, it.payload.id])
 			if it.action == "fence":
 				_assert(m.station._filter.get("fence_only", false), "fence door opens fence-only deals")
 			opened.append("%s:%s" % [it.payload.id, m.station.tab_names()[0]])
 			m.station.close_requested.emit()
 			await frames(1)
+			if room:
+				ls = await _leave(m)
 		step("walked %s %s" % [loc, opened])
 		ls.place_player_at("pad")
 		await physics_frame
 		await physics_frame
 		_assert(ls.interact() and m.surface == null and m.world.active, "took off from %s" % loc)
 		await frames(1)
+	walkup_rules["max_active"] = walkup_max
 
 	# Galaxy map app + jump drive: plan a route, charge, jump with the hyperspace transition, cancel, come back
 	await _map_and_drive(m, g)
@@ -1037,7 +1258,10 @@ func _run() -> void:
 		if g.stats.busts > busts:
 			break
 	_assert(g.stats.busts > busts, "patrol scan busts the player")
+	_assert(m.world.shake > 0.0, "a bust in space shakes the camera")
 	step("bust")
+	await _patrol_feel(m, g)
+	step("patrol feel: warning, asteroid field")
 
 	await _space_combat(m, g)
 	step("space combat")
@@ -1045,6 +1269,8 @@ func _run() -> void:
 	step("space combat II: wings, flak, ion, loot, cartel base")
 	await _interdiction(m, g)
 	step("interdiction card")
+	await _escort(m, g)
+	step("escort mission")
 
 	m.toggle_pause()
 	await frames(2)
@@ -1097,11 +1323,26 @@ func _map_and_drive(m, g) -> void:
 	_assert(m.phone.find_child("MapLoc_varrow", true, false) != null and m.phone.find_child("MapLoc_mireth", true, false) == null, "Kovar locations shown")
 	_assert(m.phone.find_child("MapRoute", true, false).text.contains("Kovar Expanse"), "route planned to Kovar")
 	_assert(m.phone.find_child("MapCost", true, false).text.contains("80 cr"), "tolls shown")
+	_assert(m.phone.find_child("MapSys_thessaly", true, false) != null, "Thessaly Drift is on the map")
+	m.phone.find_child("MapSys_thessaly", true, false).pressed.emit()
+	await frames(3)
+	_assert(m.phone.find_child("MapLoc_quillon", true, false) != null and m.phone.find_child("MapLoc_ashfall", true, false) != null, "Thessaly locations shown")
+	_assert(m.phone.find_child("MapRoute", true, false).text.contains("Kovar Expanse > Thessaly Drift"), "route to Thessaly goes via Kovar")
+	_assert(m.phone.find_child("MapCost", true, false).text.contains("220 cr") and m.phone.find_child("MapCost", true, false).text.contains("2 hops"), "two tolls summed (80 + 140)")
+	m.phone.find_child("MapSys_kovar", true, false).pressed.emit()
+	await frames(3)
 	step("map app overlays and route")
 	# price comparison screen
 	m.phone.find_child("MapPrices", true, false).pressed.emit()
 	await frames(3)
 	_assert(m.phone.current_title() == "Prices" and m.phone.find_child("Price_cannabis", true, false) != null, "price comparison lists raws")
+	var any_hist: Array = m.phone.find_children("PriceHist_*", "Label", true, false)
+	_assert(not any_hist.is_empty() and any_hist[0].tooltip_text != "", "price rows carry a history label with a tooltip (%d)" % any_hist.size())
+	g.price_board["mireth"] = {"buy:cannabis": [[1, 30], [2, 36]]}
+	root.get_node("EventBus").game_event.emit("map_ui", {})
+	await frames(3)
+	var seen: Label = m.phone.find_child("PriceHist_mireth_buy_cannabis", true, false)
+	_assert(seen != null and seen.text.begins_with("▲") and seen.tooltip_text.contains("day 2: 36 cr"), "price history shows trend arrow, sparkline and tooltip")
 	m.phone.find_child("MapTab_sell", true, false).pressed.emit()
 	await frames(3)
 	_assert(m.phone.find_child("Price_cocaine", true, false) != null, "price comparison lists product demand")
@@ -1120,6 +1361,29 @@ func _map_and_drive(m, g) -> void:
 	m.phone.find_child("MapMode_heat", true, false).pressed.emit()
 	await frames(3)
 	step("map influence overlay and cartels")
+	# price war: HUD flag, map line and the pay-off button
+	PriceWar.start(g, "varrow", "veil")
+	var was_loc: String = g.location
+	g.location = "mireth"  # docked flag: the HUD only flags the place you stand in
+	PriceWar.start(g, "mireth", "comets")
+	await frames(3)
+	_assert(str(m.hud._day.text).contains("PRICE WAR"), "HUD flags a price war at the current location")
+	_assert(str(m.hud._day.tooltip_text).contains("pay"), "HUD tooltip explains how to end it")
+	root.get_node("EventBus").game_event.emit("map_ui", {})
+	await frames(3)
+	var pay = m.phone.find_child("MapPayOff_varrow", true, false)
+	_assert(pay != null and pay.tooltip_text != "" and m.phone.find_child("MapWar_varrow", true, false) != null, "map lists the war with a pay-off button and tooltip")
+	g.credits = 5000
+	var before: int = g.credits
+	await frames(2)
+	pay = m.phone.find_child("MapPayOff_varrow", true, false)
+	pay.pressed.emit()
+	await frames(3)
+	_assert(not PriceWar.active(g, "varrow") and g.credits < before, "paying off ends the war and costs credits")
+	PriceWar.end(g, "mireth", "expired")
+	await frames(2)
+	_assert(not str(m.hud._day.text).contains("PRICE WAR"), "HUD flag goes away")
+	g.location = was_loc
 	# charge the drive from the phone
 	var credits: int = g.credits
 	m.phone.find_child("MapJump", true, false).pressed.emit()
@@ -1169,6 +1433,44 @@ func _jump(m, g, gate: String) -> void:
 	_assert(m.world.locations.keys().all(func(l): return g.loc_system(l) == to), "only %s locations are shown" % to)
 	_assert(m.world.active and m.surface == null, "flying after the jump")
 	step("jump to %s" % to)
+
+
+## D4: opens a key building's door on the street and returns the room (surface) behind it.
+func _enter(m, sf, id: String):
+	sf.place_player_at(id)
+	await physics_frame
+	await physics_frame
+	_assert(sf.interact(), "open the %s door" % id)
+	await frames(2)
+	var rs = m.surface
+	_assert(rs != null and rs != sf and rs.cfg.has("interior") and rs.cfg.interior.building == id and not m.station.visible, "the %s door leads into its room, not to a panel" % id)
+	return rs
+
+
+## Uses the counter of a room: opens its panel (the caller closes it). Returns the panel's tab names.
+func _use_counter(m, rs, who := "counter") -> Array:
+	rs.place_player_at(who)
+	await physics_frame
+	await physics_frame
+	_assert(not rs.focus.is_empty() and rs.focus.payload.id == who, "focus on the %s (got %s)" % [who, rs.focus.get("payload", {})])
+	_assert(rs.interact(), "use the %s" % who)
+	await frames(2)
+	_assert(m.station.visible, "%s opens a panel" % who)
+	return m.station.tab_names()
+
+
+## Walks out of a room through its exit; returns the street surface, with the player in front of the door.
+func _leave(m):
+	var rs = m.surface
+	var bid: String = rs.cfg.interior.building
+	rs.place_player_at("exit")
+	await physics_frame
+	await physics_frame
+	_assert(rs.interact(), "use the exit of %s" % bid)
+	await frames(2)
+	var sf = m.surface
+	_assert(sf != null and sf != rs and not sf.cfg.has("interior") and sf.player.position.distance_to(sf.interactable(bid).stand) < 1.0, "back on the street in front of %s" % bid)
+	return sf
 
 
 func _assert(cond: bool, msg: String) -> void:
@@ -1347,7 +1649,154 @@ func _space_combat_2(m, g) -> void:
 	await frames(2)
 
 
+## C2: the estate Build tab has a Machines section; machines placed in the annex run the trim, mix and pack steps for
+## credits, no minigame; the batch lands in the cooker.
+func _machines(m, g) -> void:
+	var gs = root.get_node("GameState")
+	var sf = m.surface
+	g.credits = 50000
+	sf.place_player_at("annex")
+	await physics_frame
+	await physics_frame
+	_assert(sf.interact(), "annex door (machines)")
+	await frames(2)
+	m.station.estate_enter_requested.emit("cannery_annex")
+	await frames(2)
+	var es = m.surface
+	_assert(es.cfg.get("estate", "") == "cannery_annex" and g.inside_estate == "cannery_annex", "inside the annex for the machines")
+	m.open_build_menu()
+	await frames(1)
+	var sec = m.station.find_child("MachinesSection", true, false)
+	_assert(sec != null, "Build tab has a Machines section")
+	for k in ["auto_trimmer", "drip_mixer", "packing_machine"]:
+		var card = sec.find_child("Build_" + k, true, false)
+		_assert(card != null and card.tooltip_text != "" and not card.disabled, "machine card %s with tooltip" % k)
+		_assert(m.station.find_children("Build_" + k, "Button", true, false).size() == 1, "%s listed once" % k)
+	for k in ["auto_trimmer", "extractor", "drip_mixer", "packing_machine"]:
+		m.station.place_requested.emit(k)
+		await frames(1)
+		_assert(es.placing == k, "placing %s" % k)
+		var done := false
+		for cy in range(0, 5):
+			for cx in range(0, 9):
+				es.player.position = Vector2((cx + 1) * 32 + 16, (cy + 1) * 32 + 10)
+				es.player.facing = Vector2.DOWN
+				await physics_frame
+				var gc: Vector2i = es.ghost_cell()
+				if es.can_place.call(k, gc.x, gc.y):
+					es.interact()
+					await frames(2)
+					done = true
+					break
+			if done:
+				break
+		_assert(done, "%s placed in the annex" % k)
+		es = m.surface
+	_assert(g.missing_stations_in("cannery_annex", "weed", ["nanoflux"]).is_empty(), "machines and tables cover the weed line with additives")
+	g.cargo = {"cannabis": 5, "nanoflux": 5}
+	var queue_before: int = g.lab_queue.size()
+	var cr: int = g.credits
+	var use := func(station: String) -> void:
+		for b in es.cfg.buildings:
+			if b.get("station", "") == station:
+				es.place_player_at(b.id)
+				break
+		await physics_frame
+		await physics_frame
+		_assert(es.interact(), "use the %s" % station)
+		await frames(2)
+	await use.call("auto_trimmer")
+	var bench = m.bench
+	_assert(bench.visible and bench.auto and bench.mode == "start", "the trimmer opens a start card (mode %s)" % bench.mode)
+	var go = bench.find_child("StartBatch", true, false)
+	_assert("Auto-Trimmer" in go.text and "cr" in go.text and go.tooltip_text != "", "start button names the machine and its cost")
+	bench._qty = 5
+	go.pressed.emit()
+	await frames(2)
+	_assert(bench.mode == "result" and bench.current == null, "the machine ran with no minigame")
+	_assert(Bench.tray(g).done == ["trim_table"] and g.credits == cr - Machines.cost_for(g.data, "auto_trimmer", 5) and g.stats.machine_runs == 1, "trim step done and paid")
+	bench.close()
+	Bench.record(g, "extractor", 0.8)
+	await use.call("drip_mixer")
+	_assert(bench.mode == "mix" and bench.auto, "the mixer takes additives first")
+	bench.find_child("Add_nanoflux", true, false).pressed.emit()
+	await frames(1)
+	bench.find_child("MixGo", true, false).pressed.emit()
+	await frames(2)
+	_assert(bench.mode == "result" and Bench.tray(g).done.has("mixing_station"), "the drip mixer poured by itself")
+	bench.close()
+	Bench.record(g, "cook_stove", 0.8)
+	await use.call("packing_machine")
+	await frames(2)
+	_assert(bench.mode == "result" and Bench.tray(g).is_empty() and g.lab_queue.size() == queue_before + 1, "the packing machine finished the batch (mode %s)" % bench.mode)
+	_assert(g.stats.machine_runs == 3, "three machine runs counted")
+	bench.close()
+	es.place_player_at("exit")
+	await physics_frame
+	await physics_frame
+	es.interact()
+	await frames(2)
+	_assert(g.inside_estate == "", "left the annex")
+	step("automation machines: build tab, place, run trimmer, mixer, packer")
+
+
 ## D3: an interdiction card pauses the flight; paying closes it, fighting spawns the wing ahead of the ship.
+func _patrol_feel(m, g) -> void:
+	var w = m.world
+	var PF = load("res://scripts/core/patrolfeel.gd")
+	var bus = root.get_node("EventBus")
+	var warned := [0]
+	var lost := [0]
+	bus.game_event.connect(func(k, _p):
+		if k == "patrol_warning": warned[0] += 1
+		if k == "pursuit_lost": lost[0] += 1)
+	g.cargo["weed:glow"] = 3
+	g.add_heat(60)
+	w.active = true
+	await pframes(2)
+	_assert(not w.fields.is_empty() and w.fields.size() == PF.fields(g.data, w.system).size(), "world builds the system's asteroid fields")
+	var open_pos := Vector2(3400, -3400)
+	var p = w.patrols[0]
+	var radius: float = g.scan_radius()
+	var gap: float = radius + float(g.data.patrol_feel.warn_margin) * 0.5
+	# 1. warning just outside the scan range, before any scan starts
+	w.ship.stop()
+	w.ship.position = open_pos
+	w._warn = {}
+	for i in 3:
+		p.position = open_pos + Vector2(gap, 0)
+		await physics_frame
+	_assert(warned[0] == 1 and w.scan == 0.0, "warning fires once before the scan range, no scan yet")
+	await frames(2)
+	var found := false
+	for c in m.hud._toasts.get_children():
+		if str(c.get_meta("text", "")).begins_with("Patrol scan range ahead"):
+			found = true
+	_assert(found, "HUD toast announces the patrol range")
+	# 2. inside an asteroid field: smaller scan range, no chase, lock lost
+	var f: Dictionary = w.fields[0]
+	w.ship.stop()
+	w.ship.position = f.pos
+	p.position = f.pos + Vector2(900, 0)
+	p.chasing = true
+	w._hunted = true
+	for i in 5:
+		p.position = f.pos + Vector2(250, 0)  # inside the open-space radius, outside the field-reduced one
+		await physics_frame
+	_assert(w.scan == 0.0, "reduced scan range inside the field: patrol at 250 does not scan")
+	_assert(not p.chasing and lost[0] >= 1, "patrol loses lock inside the field and the HUD hears of it")
+	# 3. leaving the field: the same distance scans again
+	w.ship.position = open_pos
+	for i in 30:
+		p.position = open_pos + Vector2(250, 0)
+		await physics_frame
+	_assert(w.scan > 0.0, "back in open space the same distance scans")
+	w.scan = 0.0
+	g.cargo.erase("weed:glow")
+	g.heat = 0.0
+	await physics_frame
+
+
 func _interdiction(m, g) -> void:
 	var w = m.world
 	g.cargo["weed:glow"] = 6
@@ -1374,3 +1823,172 @@ func _interdiction(m, g) -> void:
 	g.cargo.erase("weed:glow")
 	g.heat = 0.0
 
+
+
+## E4 escort: accept the job in the phone while docked, the freighter appears, a wave goes for it, a bolt hurts it,
+## arrival pays; a second job fails when it is shot down.
+func _escort(m, g) -> void:
+	var w = m.world
+	var cb = w.combat
+	var home: String = g.location
+	w.clear_patrols()
+	cb.clear()
+	g.heat = 0.0
+	g.escort = Escort.empty_state()
+	g.location = "mireth"  # the offer list is for docked players
+	m.phone.open_app("quests")
+	await frames(2)
+	var day0: int = g.day
+	g.day = 1
+	m.phone.refresh()
+	await frames(2)
+	var btn = m.phone.find_child("EscortAccept_mireth_bazaar", true, false)
+	_assert(btn != null and not btn.disabled and btn.tooltip_text != "", "phone lists the Mireth freight job with a tooltip")
+	_assert(m.phone.find_child("EscortAccept_mireth_varrow", true, false).disabled, "the Varrow charter is locked on day 1")
+	g.day = day0
+	btn.pressed.emit()
+	await frames(2)
+	_assert(Escort.active(g) and m.phone.find_child("EscortCancel", true, false) != null, "accepting starts the job, the card offers Cut loose")
+	await key(KEY_TAB)
+	g.location = ""
+	w.show_system("halvane")
+	w.active = true
+	w.ship.position = Escort.pos(g) + Vector2(200, 0)
+	w.ship.stop()
+	await pframes(6)
+	_assert(w.freighter != null and w.freighter.position.distance_to(Escort.pos(g)) < 1.0, "the freighter is in space")
+	var p0: Vector2 = w.freighter.position
+	w.ship.position = w.freighter.position + Vector2(200, 0)
+	await pframes(30)
+	_assert(w.freighter.position.distance_to(p0) > 10.0, "it flies towards Drift Bazaar (%.0f px)" % w.freighter.position.distance_to(p0))
+	_assert(m.hud.escort_status().begins_with("ESCORT") and m.hud.escort_goal_point() != Vector2.INF, "HUD status and destination marker")
+	# a wave arrives around it and the raiders pick the freighter as the target
+	Escort.job(g).clock = 999.0
+	w.ship.position = w.freighter.position + Vector2(300, 0)
+	await pframes(3)
+	_assert(cb.pirates.size() >= 1 and Escort.job(g).spawned == 1, "a wave arrives (%d ships)" % cb.pirates.size())
+	_assert(Escort.prefers_freighter(g, w.freighter.position + Vector2(700, 0), w.ship.position + Vector2(2000, 0)), "raiders go for the freighter")
+	cb.clear()
+	var hull0: float = Escort.job(g).hull
+	cb._add_bolt(w.freighter.position, Vector2.ZERO, 1.0, 25.0, false)
+	await pframes(2)
+	_assert(float(Escort.job(g).hull) <= hull0 - 24.0, "an enemy bolt hurts the freighter")
+	# arrival pays
+	var dest: Vector2 = Escort.loc_pos(g, "bazaar")
+	Escort.job(g).pos = [dest.x, dest.y - 400.0]
+	w.ship.position = dest + Vector2(0, -500)
+	var cr: int = g.credits
+	await pframes(90)
+	_assert(not Escort.active(g) and g.credits > cr and w.freighter == null and int(g.escort.done) == 1, "arrival pays and the freighter is gone")
+	# a second job is shot down
+	g.escort.last = {}
+	g.location = "cinder"
+	_assert(Escort.accept(g, "cinder_mireth").ok, "second job accepted")
+	g.location = ""
+	w.ship.position = Escort.pos(g) + Vector2(200, 0)
+	await pframes(4)
+	cr = g.credits
+	cb._add_bolt(w.freighter.position, Vector2.ZERO, 1.0, 500.0, false)
+	await pframes(3)
+	_assert(not Escort.active(g) and g.credits == cr and w.freighter == null, "a destroyed freighter fails the job without pay")
+	cb.clear()
+	g.escort = Escort.empty_state()
+	g.location = home
+## P2: a customer on foot walks up with a speech bubble, talking opens the deal card, Accept sells and Walk away declines.
+func _walkup(m, g) -> void:
+	var gs = root.get_node("GameState")
+	var sf = m.surface
+	var had: int = int(g.cargo.get("weed:glow", 0))
+	g.cargo["weed:glow"] = 8
+	g.contact_ready_at.erase("okka")
+	People.state(g, "okka").spent = 0
+	sf.place_player_at("pad")
+	await physics_frame
+	await physics_frame
+	Walkups.active(g)["okka"] = Walkups.offer_for(g, "okka")
+	_assert(not Walkups.find(g, "okka").is_empty(), "Okka has a walk-up to make")
+	var npc = sf.npcs.okka
+	var d0: float = npc.position.distance_to(sf.player.position)
+	for i in 90:
+		await physics_frame
+	_assert(npc.bubble != "" and npc.bubble.contains("cr"), "speech bubble over the customer (%s)" % npc.bubble)
+	_assert(npc.position.distance_to(sf.player.position) < d0 - 5.0, "the customer walks towards the player (%d -> %d)" % [d0, npc.position.distance_to(sf.player.position)])
+	sf.player.position = npc.position + Vector2(0, 22)
+	for i in 4:
+		await physics_frame
+	_assert(sf.focus.get("action", "") == "walkup" and sf.prompt().contains("Deal with"), "the prompt offers the deal (%s)" % sf.prompt())
+	sf.interact()
+	await frames(2)
+	_assert(m.walkup.visible and m.walkup.find_child("Walkup_accept", true, false) != null, "deal card is up")
+	_assert(m.walkup.find_child("Walkup_decline", true, false) != null and m.walkup.find_child("Walkup_haggle_10", true, false) != null, "card offers haggle and walk away")
+	m.walkup.find_child("Walkup_haggle_10", true, false).pressed.emit()
+	await frames(2)
+	_assert(m.walkup.visible and m.walkup.find_child("Walkup_haggle_10", true, false) == null, "one haggle only")
+	var cr: int = g.credits
+	var prod: String = Walkups.find(g, "okka").product
+	var stock: int = int(g.cargo[prod])
+	m.walkup.find_child("Walkup_accept", true, false).pressed.emit()
+	await frames(2)
+	_assert(not m.walkup.visible and g.credits > cr and int(g.cargo.get(prod, 0)) < stock and Walkups.count(g) == 0, "accepted: paid, goods gone, card closed")
+	for i in 3:
+		await physics_frame
+	_assert(npc.bubble == "" and sf.interactable("okka").action == "deal", "back to a normal conversation afterwards")
+	# walking away turns them down
+	g.contact_ready_at.erase("okka")
+	People.state(g, "okka").spent = 0
+	g.cargo["weed:glow"] = 8
+	Walkups.active(g)["okka"] = Walkups.offer_for(g, "okka")
+	sf.player.position = npc.position + Vector2(0, 22)
+	for i in 4:
+		await physics_frame
+	sf.interact()
+	await frames(2)
+	_assert(m.walkup.visible, "card up again")
+	m.walkup.find_child("Walkup_decline", true, false).pressed.emit()
+	await frames(2)
+	_assert(not m.walkup.visible and Walkups.count(g) == 0 and g.credits >= cr, "walked away: card closed, nothing sold")
+	gs.paused = false
+	if had > 0:
+		g.cargo["weed:glow"] = had
+	else:
+		g.cargo.erase("weed:glow")
+## K3: a hand-placed map marker from the Map app feeds the HUD arrow and the autopilot when no quest waypoint is active.
+func _map_marker(m, g) -> void:
+	var ship = m.world.ship
+	var saved_quests: Dictionary = g.quests.duplicate(true)
+	g.quests.tracked = ""
+	g.quests.active = []
+	_assert(m.hud.quest_point() == null and g.map_marker == "", "no quest waypoint and no marker: no goal")
+	m.toggle_phone()
+	m.phone.open_app("map")
+	await frames(3)
+	var goal_loc := "mireth"
+	for l in g.locations_in(g.system):
+		if m.world.locations.has(l) and l != g.location:
+			goal_loc = l
+			break
+	m.phone.find_child("MapMark_" + goal_loc, true, false).pressed.emit()
+	await frames(3)
+	_assert(g.map_marker == goal_loc, "Mark button sets the marker")
+	_assert(m.phone.find_child("MapMarkClear", true, false) != null, "map offers Clear marker")
+	var pt = m.hud.quest_point()
+	_assert(pt != null and (pt as Vector2).is_equal_approx(m.world.locations[goal_loc].position), "HUD waypoint falls back to the marker")
+	ship.position = (pt as Vector2) + Vector2(-1400, 500)
+	ship.velocity = Vector2.ZERO
+	ship.set_autopilot(true)
+	_assert(ship.autopilot, "autopilot engages on a marker")
+	for i in 1500:
+		if not ship.autopilot:
+			break
+		var ap: Dictionary = ship.autopilot_step(1.0 / 60.0)
+		ship.rotation += float(ap.turn) * float(ship.cfg.turn_speed) / 60.0
+		ship.steer(1.0 / 60.0, ap.thrust, ap.brake)
+	_assert(not ship.autopilot and ship.position.distance_to(pt) < 400.0, "autopilot flew to the marker and switched off")
+	ship.velocity = Vector2.ZERO
+	m.phone.find_child("MapMarkClear", true, false).pressed.emit()
+	await frames(3)
+	_assert(g.map_marker == "" and m.hud.quest_point() == null, "Clear marker removes the waypoint")
+	m.toggle_phone()
+	await frames(2)
+	g.quests = saved_quests
+	step("map marker")

@@ -61,6 +61,31 @@ func _run() -> void:
 	for i in 40:
 		await physics_frame
 	await _save(out, "surface_plaza")
+	# every planet's ground, roofs and facades: stand at one door per planet (art pass shots)
+	var doors := {"cinder": "depot", "bazaar": "hullmarket", "varrow": "saltmarket", "glacis": "exchange", "mireth": "market"}
+	for pl in doors:
+		m._land(pl, false)
+		sf = m.surface
+		sf.place_player_at(doors[pl])
+		for i in 30:
+			await physics_frame
+		await _save(out, "planet_" + pl)
+		var bd: Dictionary = {}
+		for bb in sf.cfg.buildings:
+			if bb.id == doors[pl]:
+				bd = bb
+		sf.player.position = Vector2(bd.rect[0] + bd.rect[2] * 0.5, bd.rect[1] + 1.0) * sf.tile  # roof view
+		sf.camera.reset_smoothing()
+		for i in 10:
+			await physics_frame
+		await _save(out, "planet_%s_roof" % pl)
+		sf.place_player_at("pad")
+		for i in 30:
+			await physics_frame
+		await _save(out, "planet_%s_pad" % pl)
+	if args.has("--surfaces-only"):
+		quit()
+		return
 	g.credits += 3000
 	g.buy_upgrade("engine")
 	g.buy_upgrade("cargo")
@@ -75,10 +100,25 @@ func _run() -> void:
 	for i in 5:
 		await physics_frame
 	sf.interact()
+	var room = m.surface  # D4: market room, then its counter
+	room.player.position += Vector2(0, -50)
+	for i in 10:
+		await physics_frame
+	await _save(out, "interior_market")
+	room.place_player_at("counter")
+	for i in 5:
+		await physics_frame
+	room.interact()
 	m.station._basket = {"cannabis": 4, "nanoflux": 2}
 	m.station.refresh()
 	await _save(out, "market")
 	m.station.close()
+	room.place_player_at("exit")
+	for i in 5:
+		await physics_frame
+	room.interact()
+	await physics_frame
+	sf = m.surface
 	g.buy("cannabis", 5)
 	g.buy("nanoflux", 5)
 	g.buy("ion_syrup", 5)

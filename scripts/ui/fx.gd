@@ -124,6 +124,9 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		"interdicted":
 			flash(Color("#7a4fff"), 0.3)
 			EventBus.shake.emit(8.0)
+		"raided":
+			flash(UI.WARN, 0.4)
+			EventBus.shake.emit(8.0)
 		"base_raided":
 			flash(UI.GOLD, 0.3)
 		"upgraded", "ship_bought", "estate_bought", "weapon_bought":

@@ -3,6 +3,7 @@ extends Node
 ## paused and menu states. Docking at a location with an entry in data/surfaces.json lands on its surface instead of
 ## opening the docked menu; each surface is its own instance, created on landing and freed on take-off.
 
+const Curfew = preload("res://scripts/core/curfew.gd")
 const UI = preload("res://scripts/ui/ui_theme.gd")
 const WorldScript = preload("res://scripts/world/world.gd")
 const HudScript = preload("res://scripts/ui/hud.gd")
@@ -10,6 +11,7 @@ const StationScript = preload("res://scripts/ui/station_ui.gd")
 const BenchScript = preload("res://scripts/ui/bench_ui.gd")
 const SurfaceScript = preload("res://scripts/planet/surface.gd")
 const EstateLayout = preload("res://scripts/planet/estate_layout.gd")
+const Interiors = preload("res://scripts/core/interiors.gd")
 const MainMenuScript = preload("res://scripts/ui/menu/main_menu.gd")
 const PauseMenuScript = preload("res://scripts/ui/menu/pause_menu.gd")
 const SlotPanelScript = preload("res://scripts/ui/menu/slot_panel.gd")
@@ -17,7 +19,9 @@ const SettingsPanelScript = preload("res://scripts/ui/menu/settings_panel.gd")
 const PhoneScript = preload("res://scripts/ui/phone/phone.gd")
 const HyperspaceScript = preload("res://scripts/ui/hyperspace.gd")
 const InterdictCardScript = preload("res://scripts/ui/interdict_card.gd")
+const WalkupCardScript = preload("res://scripts/ui/walkup_card.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Escort = preload("res://scripts/core/escort.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
@@ -51,6 +55,7 @@ var station: Control
 var bench: Control  ## station overlay on foot: start a tray, mix, play the station minigame (G2)
 var hyper: Control  ## jump-drive charge streaks and the hyperspace transition
 var interdict: Control  ## interdiction card after a jump (D3)
+var walkup: Control  ## deal card for a customer on foot (P2)
 var phone: Control  ## Com-Phone overlay (scripts/ui/phone), usable in flight and on foot
 var menu: Control
 var pause_menu: Control
@@ -82,6 +87,7 @@ func _ready() -> void:
 	hud = HudScript.new()
 	hud.world = world
 	world.ship.goal_provider = hud.quest_point
+	world.ship.hazard_provider = world.autopilot_hazards
 	root.add_child(hud)
 	station = StationScript.new()
 	root.add_child(station)
@@ -98,6 +104,8 @@ func _ready() -> void:
 	interdict = InterdictCardScript.new()
 	root.add_child(interdict)
 	interdict.resolved.connect(_on_interdiction_resolved)
+	walkup = WalkupCardScript.new()
+	root.add_child(walkup)
 	station.estate_enter_requested.connect(func(eid: String): enter_estate(eid))
 	station.place_requested.connect(func(st: String):
 		station.close()
@@ -158,6 +166,7 @@ func _input(event: InputEvent) -> void:
 func toggle_phone() -> void:
 	if not phone.visible:
 		station.close()
+		walkup.close()
 		bench.close()
 		if surface != null:
 			surface.placing = ""
@@ -183,16 +192,20 @@ func _unhandled_input(event: InputEvent) -> void:
 			surface.placing = ""
 		elif surface != null and station.visible and not GameState.paused:
 			station.close()
+		elif walkup.visible and not GameState.paused:
+			walkup.close()
 		else:
 			toggle_pause()
 	elif surface != null:
 		if event.is_action_pressed("interact") and not GameState.paused:
 			if station.visible:
 				station.close()
-			else:
+			elif not walkup.visible:
 				surface.interact()
 		elif event.is_action_pressed("build_menu") and not GameState.paused and surface.cfg.has("estate") and not station.visible:
 			open_build_menu()
+		elif event.is_action_pressed("bribe_officer") and not GameState.paused and not station.visible and GameState.game.curfew_enforced():
+			GameState.act(Curfew.bribe(GameState.game))
 	elif event.is_action_pressed("ship_dock") and not GameState.paused:
 		if station.visible:
 			undock()
@@ -250,7 +263,7 @@ func load_slot(i: int) -> void:
 
 func _process(_delta: float) -> void:
 	if surface != null:
-		surface.player.frozen = GameState.paused or station.visible or bench.visible or end_screen.visible or phone.visible
+		surface.player.frozen = GameState.paused or station.visible or bench.visible or end_screen.visible or phone.visible or walkup.visible
 	world.input_blocked = phone.visible
 	var gm = GameState.game
 	hyper.charge = Galaxy.progress(gm) if gm != null and Galaxy.charging(gm) else 0.0
@@ -396,6 +409,7 @@ func _leave_surface() -> void:
 	if surface == null:
 		return
 	station.close()
+	walkup.close()
 	surface.queue_free()
 	remove_child(surface)
 	surface = null
@@ -420,6 +434,9 @@ func _on_surface_action(action: String, p: Dictionary) -> void:
 		"exit_estate":
 			leave_estate()
 			return
+		"exit_interior":
+			leave_interior()
+			return
 		"stash":
 			station.open({"tabs": ["Stash"], "title": "Stash crate", "estate": surface.cfg.estate})
 			return
@@ -430,11 +447,18 @@ func _on_surface_action(action: String, p: Dictionary) -> void:
 			var bd: Dictionary = surface.cfg.buildings.filter(func(b): return b.id == p.id)[0]
 			bench.open_station(bd.station, bd.index)
 			return
+		"walkup":
+			g.meet(p.contact)
+			walkup.open(p.contact)
+			return
 		"place":
 			if GameState.act(g.place_building(surface.cfg.estate, p.station, p.x, p.y)).ok:
 				enter_estate(surface.cfg.estate, surface.player.position)
 			return
 	if not SURFACE_TABS.has(action):
+		return
+	if not surface.cfg.has("interior") and not surface.cfg.has("estate") and action in Interiors.PANELS and Interiors.has(GameState.data, g.location, str(p.get("id", ""))):
+		enter_interior(g.location, str(p.id))  # D4: key buildings open their room instead of the panel at the door
 		return
 	if p.get("contact", "") != "":
 		GameState.game.meet(p.contact)
@@ -476,6 +500,33 @@ func leave_estate() -> void:
 	for b in GameState.data.surfaces[loc].buildings:
 		if b.get("estate", "") == eid:
 			surface.place_player_at(b.id)
+
+
+## D4: instances the room of a key building (shop, hangar, office, back room) and puts the player inside the door.
+## Its counter and its clerk open the building's own panel; the exit leads back to the street in front of the door.
+func enter_interior(loc: String, building_id: String) -> void:
+	var g = GameState.game
+	var cfg: Dictionary = Interiors.build_cfg(GameState.data, loc, building_id)
+	if cfg.is_empty():
+		return
+	station.close()
+	_leave_surface()
+	surface = SurfaceScript.new()
+	surface.setup("interior:%s:%s" % [loc, building_id], cfg)
+	surface.interacted.connect(_on_surface_action)
+	add_child(surface)
+	move_child(surface, world.get_index() + 1)
+	world.visible = false
+	hud.surface = surface
+	surface.place_player_at("exit")
+	g.note("entered_building", {"loc": loc, "building": building_id})
+
+
+## Back out onto the planet, in front of the building's door.
+func leave_interior() -> void:
+	var id: String = Interiors.outside_id(surface.cfg)
+	_land(GameState.game.location, false)
+	surface.place_player_at(id)
 
 
 func open_build_menu() -> void:
@@ -533,7 +584,7 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		if p.won:
 			var left: int = (g.quests.active as Array).filter(func(q): return Quests.defs(g).get(q, {}).get("main", false)).size()
 			_end_label.text = "DEBT CLEARED · CHAPTER 1 COMPLETE\n\nThe Consortium closes your account. Day %d, %d cr earned, %d units moved, busted %d×.\n%s" % [g.day, g.stats.earned, g.stats.units_sold, g.stats.busts,
-				"Your main quest goes on: check the Quests app." if left > 0 else "The cartel war is over for now. Chapter 3 arrives in a later build."]
+				"Your main quest goes on: check the Quests app." if left > 0 else "The cartel war is over for now. Chapter 4 arrives in a later build."]
 		else:
 			_end_label.text = "THE CONSORTIUM CAME TO COLLECT\n\nYou still owed %d cr on day %d.\nEarned %d cr, moved %d units, busted %d×." % [g.debt, g.day, g.stats.earned, g.stats.units_sold, g.stats.busts]
 		end_screen.visible = true
@@ -584,6 +635,10 @@ func _on_game_event(kind: String, p: Dictionary) -> void:
 		EventBus.toast.emit(str(p.why), false)
 	elif kind == "busted":
 		EventBus.toast.emit("BUSTED: lost %d units, fined %d cr." % [p.lost, p.fine], false)
+	elif kind == "escort_done":
+		EventBus.toast.emit("Freighter delivered: +%d cr%s." % [p.credits, " (intact hull bonus)" if float(p.hull_ratio) >= 0.99 else ""], true)
+	elif kind == "escort_failed":
+		EventBus.toast.emit(Escort.fail_text(GameState.game, str(p.mission), str(p.why)), false)
 	elif kind == "quest_started":
 		EventBus.toast.emit("New quest: %s" % Quests.defs(GameState.game).get(p.quest, {}).get("title", p.quest), true)
 	elif kind == "quest_step":

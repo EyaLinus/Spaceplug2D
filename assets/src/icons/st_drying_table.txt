@@ -1,0 +1,38 @@
+# Lab dropdown/minigame icon: Drying Table (rack of hanging buds).
+legend:
+. = transparent
+k = ink
+S = slate_light
+s = slate
+d = slate_dark
+W = white
+Y = gold
+y = gold_dark
+L = gold_light
+R = red
+r = red_dark
+T = teal
+t = teal_dark
+b = blue_light
+B = blue
+G = leaf
+w = wood
+o = wood_dark
+n = rust_light
+---
+................
+..kkkkkkkkkkkk..
+..kooooooooook..
+..k..G..G..G.k..
+..k.GGG..GGG.k..
+..k..G..G..G.k..
+..kooooooooook..
+..k.G..G..G..k..
+..kGGG.GGG.G.k..
+..k.G..G..G..k..
+..kooooooooook..
+..kw........wk..
+..kw........wk..
+..kk........kk..
+................
+................

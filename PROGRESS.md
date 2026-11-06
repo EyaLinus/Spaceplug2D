@@ -1,9 +1,237 @@
 # Progress log
 
+## Release v0.1.13 (2026-11-06) – open-PR cleanup
+- The hourly automation opened ~35 draft PRs after v0.1.12 and never merged them (45 open in total). Cleanup thread:
+  16 closed as superseded/duplicate (#5, #19, #27, #28, #40, #42, #48, #51, #58, #64, #70, #81, #99, #100, #102, #103;
+  for each duplicate pair the Godot-verified, more complete one was kept), 30 merged in one integration PR in creation
+  order: #69 #71 #72 #73 #74 #75 #76 #77 #78 #79 #80 #82 #83 #84 #85 #86 #87 #88 #89 #90 #91 #92 #93 #94 #95 #97 #98
+  #101 #68 #39.
+- Integration fixes on top of the PRs: sale heat = law multiplier x heat zone, sell price = laws x price wars, frisk
+  count = laws + curfew officers, chatter bubble kept apart from the walk-up deal bubble, map marker uses the shared
+  escort marker drawer, sealing bench + drying table share the bench UI, Thessaly got asteroid fields and building
+  interiors, loc key for the bribe binding, station icons for the machines/drying table/sealing bench, `test_hiding`
+  registered, smoke door sweep runs without walk-ups (it was flaky when a local turned into a walk-up customer).
+- Verified (Godot 4.3 headless): 14081 unit checks 0 failures, UI smoke, tip audit 0, menu smoke, sim 5/5 won avg day 4.8.
+  Nothing played by a human; numbers of all new systems are eyeballed.
+- Left open: #96 estate upkeep/seizure/selling – branched from v0.1.5 code, the estate save format and tiers changed since;
+  needs a rebuild on current main, not a merge.
+
+## Estate raids (phase 4, 2026-11-04)
+- **Core** `scripts/core/raids.gd`, data `content.json` "raids", state `Game.raids` {streak per system, warn, own LCG roll,
+  count}, saved (old saves start clean). Hook: `Raids.new_day` after `Corruption.new_day` in `Game._new_day`.
+- Rules: system heat >= 80 for 3 consecutive days -> each night a chance (0.3 + 0.01 per heat above, max 0.8, halved by a
+  hired patrol captain in that system) to pick one owned estate there (never the ship bay). A warning comes one day ahead
+  (`raid_warning` event + notice toast, captain also emits `tip_off`). On the next day change `raided` fires: half of
+  `estate_stock` and the tray are seized, fine up to 150 cr (only if something was found), heat -30 (-10 on an empty
+  estate), wanted +10 on a haul, streak resets. If the system cooled below 40 the raid is called off.
+- Uses its own RNG, so the game RNG is untouched; the 5-seed sim is identical to origin/main (threshold 80 on purpose:
+  at 70 seed 102 got raided in the sim).
+- UI: toasts via the existing `notice` event, a RAID WARNING / streak line in the estate screen (`station_ui`), flash +
+  shake in `fx.gd` on `raided`.
+- Gaps: the global hub stash and the cook queue are not raided; no way to bribe a raid away; no raid on the ship bay.
+## P3: planet heat zones (phase 3 wave 12, 2026-11-04)
+- **Core** `scripts/core/heat_zones.gd`, data `content.json` "heat_zones": `zone_at(cfg, cell)` = plaza (surface `plazas`
+  rects, x1.6) / street (`roads`, x1.0) / alley (anywhere else, x0.6); surfaces without roads and plazas (estates) are
+  always street. `Game.heat_zone` (runtime, set by `surface.gd` each physics frame, cleared on exit) multiplies the heat of
+  `Game.sell` and `Deals.fulfill`. Dead drops, dealers and lab heat are untouched. No zone (space/sim) = x1, sim unchanged.
+- **UI**: small label under the district name above the minimap ("Plaza · sales x1.6 heat", warn/muted/teal colour).
+- Verified: unit test `test_heat_zones` (zones, exact multiplier, every surface), UI smoke 50 steps, menu smoke, tip audit 0,
+  sim 5/5 avg win day 4.6 identical to main. Gaps: only sale heat (not officer sight or frisk odds) depends on the zone; not looked at by eye.
+## P3: night curfew + bribable officers (2026-11-04)
+- **Core** `scripts/core/curfew.gd`, data `content.json` "curfew". Window 22:00–05:00 on the game clock; while enforced
+  `Game.police_on_foot` adds `extra_officers` (not on lawless planets) and the surface spawns officers with
+  `vision_mult` 1.3. `Curfew.bribe` (key G, rebindable `bribe_officer`): 60 cr + 2 × heat, pass for 3 game hours
+  (`Game.curfew_pass_until`, runtime only), heat −10, event `curfew_bribe`.
+- Verified: 10841 unit checks (new `test_curfew`), UI smoke 50 steps, tip audit 0, menu smoke, sim 5/5 avg win day 4.6.
+- Gaps: hiding spots not built; no on-screen curfew indicator or toast; G key not exercised in the UI smoke; numbers
+  eyeballed; not played by a human. Branches off main without the open wave-11 PRs (#68–#74).
+## Wave 12: patrol feel in space (2026-11-04)
+- **Core** `scripts/core/patrolfeel.gd` (numbers in `content.json` -> `patrol_feel`): `warn_level`/`warn_tick` (warning margin 240 px
+  outside the scan range, edge-triggered, 6 s cooldown, re-arms after 3 s clear, only while carrying product), asteroid fields per
+  system (3 each in Halvane and Kovar, kept clear of every location): `scan_radius_at` shrinks the range to x0.4 at the centre,
+  `breaks_pursuit` (depth >= 0.2) makes patrols drop the chase.
+- **World/HUD/audio:** `world.gd` draws the fields with rocks, applies both rules, emits game events `patrol_warning` (HUD toast + red
+  flash + new "warn" sound) and `pursuit_lost` (toast).
+- **Screen shake on bust:** the K1 `EventBus.shake` only reached the planet surface; the space world never listened, so busts in flight
+  did not shake. Fixed (world listens while active); smoke asserts it.
+- Verified: unit tests (`test_patrol_feel_fields`, `test_patrol_feel_warning`; 10884 checks, 0 failures), UI smoke (warning fires once before
+  the range, toast, smaller range and lost lock in a field, open space scans again, bust shakes), tip audit, menu smoke, sim 5/5 won.
+- Gaps: the bot ignores fields and warnings; no minimap marking of fields; patrols do not hunt actively for a lost target.
+## Courier drones (P5, phase 3 wave 12, 2026-11-04)
+- **Core** `scripts/core/drones.gd`, numbers in `content.json "drones"`: buy a drone for an owned, fixed estate (not the
+  ship bay) with a route. `to_port` flies finished product (output tray, then shelf) to the hub stash, where
+  `collect_stash()` loads it; `to_estate` flies what the auto recipe still lacks (bench + shelf) from the stash to the
+  shelf. One trip per `trip_seconds` (+`far_seconds` for estates in another system), `capacity` units, only when
+  there is cargo (parked otherwise). Each trip can be shot down (`loss_base` + `loss_per_heat` x heat): drone and cargo lost.
+  Upkeep per drone each new day; unpaid = grounded until it can be paid. Max 4 drones, 2 per estate. Saved under `drones`.
+- **UI**: COURIER DRONES block at the bottom of the estate screen in the HR app (buy per route, flip route, scrap, status).
+- Verified (Godot 4.3 headless, run in the container): unit tests 10875 checks 0 failures (+47, `test_drones`,
+  `test_drones_loss_upkeep_save`), UI smoke 50 steps (+assertions in the hr app step), tip audit 0, menu smoke, sim 5/5 won.
+- Gaps: no drone sprite or flight animation in the world; drones do not carry between estates or ferry cash; supplies are
+  only topped up for the auto recipe; not played by a human, balance numbers (price 350, upkeep 15/day) are guesses.
+## Grow tray, second slice (phase 4 wave 14, 2026-11-05)
+- Stacked on #81. `Grow.visuals` feeds `surface._draw_grow_trays` (overlay row along the estate's bottom wall, plant height =
+  progress, gold frame when ripe). Third crop `pseudo` (5 days, yield 5). Quality grade on the item: `Game.grow_q`
+  (raw -> weighted mean quality of the stash pile, un-graded stock counts as 0.5, saved as `grow_q`), `Grow.stash_grade`.
+- Tests: `test_grow` extended (third crop, visuals, grades, blending, save). Not run locally (no Godot binary); CI is the check.
+- Unverified: the tray row can overlap buildings placed along the bottom wall; grade not yet shown in the sell UI;
+  no price effect from grade yet. Still open: worker automation, minigame.
+
+## Grow tray, first slice (phase 4 wave 12, 2026-11-04)
+- **Core** `scripts/core/grow.gd`, data `content.json` "grow" (tray cost/cap, seed qty, crops with days and yield).
+  State `Game.grow` {estate -> {trays: [{raw, start_day, watered: [days]}]}}, saved; old saves load with none.
+  Actions `build_tray`, `plant` (seeds leave the hold), `water` (once per game day), `harvest` (into `stash`).
+  Quality = watered days / growth days, yield scales from `min_yield_factor` to 1.0. No tick hook: ripeness is `Game.day`.
+- **UI** Grow trays section in the estate Build tab (`station_ui._build_grow_trays`); `surface.gd` untouched.
+- Tests `test_grow` and a UI smoke block in the estate step. Not run locally (no Godot binary in the routine
+  container); CI is the check.
+- Gaps: trays are not drawn in the estate room, no worker automation, only two crops, harvest has no quality grade
+  on the item itself (only the yield), no minigame.
+## P6: per-planet laws (2026-11-05)
+- **Laws:** `data/content.json` `laws` rates each drug tier legal / tolerated / banned per planet; `scripts/core/laws.gd` scales sale heat (all sale paths), patrol scan radius and on-foot frisk density by the strictest carried tier, and sell price (banned +20%, legal -5%). Stateless, old saves load unchanged. Map app shows a laws line and tooltip per location.
+- Numbers are eyeballed. NOT verified locally: Godot could not be run in the authoring sandbox, so unit tests (`test_planet_laws`), UI smoke and sim are left to CI; the balance impact on the sim is unchecked.
+- Gaps: scan law uses the last docked planet; no per-system laws; no laws UI in the shop.
+## Hidden crate (P4 storage, 2026-11-05)
+- `scripts/core/vault.gd` (headless), numbers in `content.json` "vault"; state `Game.vault` {tier, items}, saved (old saves load empty).
+- Inside an estate, product moves hold <-> crate. Bust and knock-out only take the hold, so the crate is safe. 40 units, 3 upgrades (+40 each, 500/1200/2500 cr).
+- UI: "Hidden crate" block in the estate Stash tab (`station_ui._build_vault`). Test `test_vault`; changelog fragment `hidden-crate.md`.
+- Verified (Godot 4.3 headless): unit 10840 checks 0 failures, UI smoke 50 steps ok, tip audit 0 missing.
+- Gaps: crate is global (not per estate), no raid interaction (#73 not merged), no playtest, capacity/prices are guesses, no UI smoke step for the new block.
+## P4: estate building tiers (2026-11-05)
+- The starter estate `cannery_rig` already was the hub lab; the leftover global "Hydro Rig" upgrade is now a per-estate
+  **tier**. Data `content.json` "estate_tiers" {names, capacity [5,10,20,35], costs [800,2000,4500]}; "lab" removed
+  from `upgrades` (and from the ship module overlay).
+- Core (`game.gd`): `estate_tier`, `rig_estate` (given id, else the estate you stand in, else the starter estate that is
+  this planet's hub lab), `estate_tier_cost`, `buy_estate_tier` (must be on the planet), event `estate_tier`.
+  `lab_capacity(id)` / `batch_seconds(qty, id)` take the estate; workers use their own estate's tier.
+- Save: `estates[id].tier` only written when > 0. Old saves: `upgrades.lab` becomes the tier of `cannery_rig`.
+- UI: shipyard tab lists a "Rebuild as ..." card per owned estate on this planet (+ ship bay); bench shows the tier name.
+- Verified: 10830 unit checks (new test_estate_tiers incl. old-save migration), UI smoke 50 steps, tip audit 0, sim 5/5
+  avg win day 4.6 (unchanged; bot rebuilds the rig).
+- Gaps: no rent/upkeep yet (the rig is just free and `starter`); tiers only change batch size and speed, no new stations
+  gated by tier; the tier can be bought only from the shipyard tab, not from inside the estate; `up_lab`/module sprites unused.
+## P6: cartel price wars (first slice, 2026-11-05)
+- **Core** `scripts/core/pricewar.gd`, data `content.json` "pricewar". State `Game.price_wars` {loc: {cartel, started, ends}} and
+  `Game.price_truce` {loc: day}, saved under "pricewar" (old saves: none). A cartel holding >= 45 % of a trade location, hostile
+  (>= 10) and not weakened can start a war there while you are present (>= 5 % share or a dealer); daily roll
+  (5 % + 0.4 %/hostility, max 2 wars) uses its own seeded RNG so the game RNG is untouched.
+  Effect for 4 days: `sell_price` x0.7, `buy_price` (raws, additives) x1.25 at that location (all products, not per product).
+  Ends by: expiry, your share >= 30 % and above the aggressor (checked on every influence change), `pay_off` (120 + 60/day left,
+  up to half off with your own share), a cartel base raid (new event `cartel_raided` from Cartels.on_raid) or the cartel being
+  weakened. 3 days of truce afterwards. Events `price_war_started` / `price_war_ended` {loc, cartel, why}.
+- **UI** HUD day label shows "PRICE WAR" at the current location (tooltip: details and how to end it), toasts on start/end;
+  Map app location rows show the war line and a "Pay off (N cr)" button with tooltip (disabled when too poor).
+- Verified: unit tests 10863 checks 0 failures (start conditions, prices, every way out, determinism, save/old save/garbage),
+  UI smoke 50 steps (HUD flag, map line, pay-off), tip audit 0, menu smoke, sim 5/5 avg win day 4.6 (bot unaffected).
+- Gaps: wars hit every product, not only the one you compete with; cartel-vs-cartel wars missing; numbers eyeballed;
+  not played by a human; the HUD flag only shows while docked (location set).
+## P6 slice: Thessaly Drift, a third system via content pack (2026-11-05)
+- **Data** `data/system_thessaly.json` (content pack: systems, locations, officials; a location's `surface` clones an existing
+  surface). `Data.merge_pack` adds only ids that do not exist yet, so merging twice is a no-op. Quillon (security 1.9,
+  heat/sale 4.0, cocaine 1.4, patrol base) and Ashfall (security 0.1, heat 0.5, meth 1.5, fence, cheap raws); clones of
+  Glacis/Varrow surfaces and cover, placeholder space sprites. No generated locals yet.
+- **Lanes** gates take an optional `toll` and `seconds` (`Game.gate_toll/gate_seconds`, fallback `jump.fee/seconds`);
+  `Galaxy.plan` sums them per hop. Kovar-Thessaly: 140 cr, 30 s. HUD gate prompt shows the gate's toll.
+- Old saves: no new saved fields; missing demand/heat/official entries default. Verified: 11472 unit checks (new
+  `test_second_system`), UI smoke (Map shows Thessaly, route via Kovar, 220 cr), tip audit, menu smoke.
+- Not done: planet laws (separate PRs), locals for the new planets, real art, a quest into Thessaly.
+## Sealing Bench (2026-11-05, wave 22)
+- **Core** `scripts/core/sealing.gd`, numbers in `content.json` -> `sealing` (30 units per bench, offers: Sealed 4 cr/unit 45 s, Shielded 10 cr/unit 90 s) and `packaging.tiers`. State `Game.sealing` (estate id -> batches `{product, qty, tier, left, total}`), saved under `sealing`; old saves load empty, junk entries dropped. `Sealing.tick` runs in `Game.tick`.
+- Input: Loose finished product from the hold (wrap supplies paid per unit up front); output: the same units with the tier in the key (`weed:glow@2#2`), nothing lost, picked up by hand. Bench capacity is shared by an estate's benches; the last bench can't come down while loaded.
+- Key format `#<tier>` after the grade in `Mixing.key/parse_key/display_name` and `Products.recipe_key` is copied from the packaging-tiers PR (#77) so the hunks merge cleanly. The tier data block `packaging.tiers` is identical to #77's.
+- Building `seal_bench` (320 cr, 2x1, `passive` station like the drying table: no minigame, not in `station_order`), build-menu card, sprite `assets/src/stations/seal_bench.txt`, wrap panel in `bench_ui.gd` (mode `seal`).
+- Gaps: patrol scans only use the tier once #77's `Packaging.scan` is merged (this PR does not touch `Game.bust`); no workers/auto-wrap; the existing Packaging Table (`pack_table`, minigame) stays as the batch-line station, this is a separate building; storage crate and grow tray still open.
+
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,
-  version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building
+  version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, building
   interiors (D4), a real balance pass (waits for Linus), Ninth Veil base quest (chapter 3), duplicate PRs #48 and #64.
+  version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building
+  interiors (D4), a real balance pass (waits for Linus), duplicate PRs #48 and #64.
+
+## Q3: main quest chapter 3, the Ninth Veil (2026-11-03)
+- 6 missions in `data/quests.json` (`chapter: 3`), chained after Cold Front (`main_rig.next`): Whispers on Varrow (land,
+  Rhea), Cheap Faith (turf_changed by you, was veil; Jex Ferro), The Quiet Toll (interdiction_resolved by the Veil;
+  Ines Okoro), Lanterns Out (4 pirate_down with cartel veil), Veil Spire (base_raided veil, waypoint on `veil_spire`),
+  Quill's Ledger (land on Glacis, then 5000 cr; Inspector Pavo Brandt). Rewards 400 to 3000 cr. Officials (Ferro, Okoro,
+  Brandt) are givers only: they live in the corruption system, not the People contacts, so no `meet` rewards.
+- Win screen text now points at chapter 4. Pure data and text, no core changes.
+- Verified: test_quest_chapter3 plays the whole chapter through the core (wrong-cartel events do not count); 10883
+  unit checks 0 failures, UI smoke, tip audit and menu smoke clean on Godot 4.3 headless.
+- Gaps: not played by a human; the Veil interdiction and kill steps depend on random encounters; Veil fighters only
+  spawn near the Spire/Kovar; no chapter 4 yet.
+
+## E4 leftover: escort missions (phase 3 wave 11, 2026-11-03)
+- **Core** `scripts/core/escort.gd`, data `content.json` "escort" (freighter stats, wave rules, 5 missions: Mireth to
+  Bazaar, Cinder to Mireth, Bazaar to Cinder, and the cross-gate charters Mireth to Varrow and back from day 2). State
+  `Game.escort` {job, last, done} (saved; old saves start empty). The freighter's kinematics are in the core (positions
+  from the location data): it follows the route (destination, or the gate on the way) at 200 px/s, waits when you are
+  more than `leash` away and resumes inside 70 % of it. At a gate it holds; `Game.jump` calls `Escort.on_jump`, the
+  freighter follows only if it is within `jump_follow` of you, otherwise the job fails (`left_behind`).
+- **Waves**: `tick_wave` (first after 10 s, then every 15 s, the mission's wave count, max 4 enemies alive, only while
+  you are near the freighter) returns `SpaceCombat.pick_spawn`, so cartel wings come exactly as in free flight; they
+  spawn 900-1200 px around the freighter. `prefers_freighter`: raiders in range target it unless you are within 380 px
+  of them. Enemy bolts that reach it call `Escort.damage`; zero hull = `escort_failed` (no pay, no penalty, retake at once).
+- **Pay**: `reward + bonus * hull left` on arrival (`escort_done`), 2 day cooldown per job after a success. Events
+  `escort_started/done/failed` go through `Game._emit`, so quests can match them (no quest uses them yet).
+- **UI**: Quests app (phone) lists the jobs of the place you are docked at (Accept, disabled with a reason when locked or
+  cooling down) and the running job with Cut loose; `scripts/world/freighter.gd` draws the freighter (procedural
+  polygon, hull bar); HUD status line (hull, distance, waves left, gate/waiting hints), FREIGHTER and DEST edge markers,
+  minimap dot and destination ring; toasts for delivery and failure.
+- Verified (Godot 4.3 headless, this session): unit tests 10889 checks 0 failures (new: data, flow, enemies/waves,
+  gate jump, save/old save), UI smoke 51 steps (accept via phone, freighter flies, wave spawns, bolt damage, arrival
+  pays, destroyed freighter fails), tip audit 0, menu smoke, sim 5/5 won avg day 4.6 (unchanged; the bot never flies).
+- Not verified: how it looks and feels (headless only, no rendered screenshot; the freighter art is a placeholder
+  polygon), a full cross-gate escort played in the real scene (the gate path is tested in the core only, the smoke
+  covers one system), difficulty/pay numbers are eyeballed, nothing played by a human. The Galaxy Map drive reuses
+  `Game.jump`, so it should behave the same but was not exercised with an escort.
+## D4 leftover: building interiors (2026-11-04, wave 11)
+- **Core** (`scripts/core/interiors.gd`, data in new `data/interiors.json`, merged as `data.interiors`): a surface building
+  with a panel action (market, shipyard, office, fence) has a room when `interiors[loc][building]` exists. `build_cfg`
+  returns a surface config like the estate layout: wall ring with an exit gap, a counter (4 tiles, opens the building's own
+  panel), one clerk beside it (same panel), props, no police, no walkers, no cover, no day/night tint. 9 rooms: Mireth
+  spaceport/market/office, Cinder depot, Bazaar hull market + back room, Varrow salt market + cantina, Glacis exchange.
+  Estates keep their own entry; outdoor people (Rusk, Okka, ...) still open their panel in the street.
+- **Surface/main**: `cfg.interior` marks a room. Door press (`_on_surface_action`) calls `enter_interior` instead of opening
+  the panel; `exit_interior` -> `leave_interior` re-lands the planet and stands you at the door. `entered_building` event
+  emitted. HUD quest waypoint inside a room points at the counter (building target) or the exit. New `counter` building style.
+- **Verified** (Godot 4.3 headless): unit tests 11173 checks, 0 failures (new `test_interiors`: a room iff panel door, layout
+  inside the room, counter clear of walls, spawn/exit/counter/clerk on free floor and connected, one clerk with the same
+  panel, props inside); UI smoke 50 steps (every key building: door -> room, counter blocks walking, counter and clerk open
+  the right panel, exit returns to the door; all five planets walked); tip audit `TIPS DONE 0`; menu smoke 6 steps;
+  `tools/shot.gd` under Xvfb renders `interior_market` and it looks right.
+- **Not verified / gaps**: not played by a human. The street is rebuilt on exit (NPCs and officers re-roll their positions,
+  like leaving an estate). Interiors are not saved: a save made inside loads on the landing pad. Rooms are placeholder art
+  (procedural counter, existing props); the clerks are anonymous and generic, named contacts still stand in the street.
+  The balance sim was not run (no economy change).
+
+## Price board with per-location history (2026-11-04)
+- **Core** `scripts/core/price_board.gd` (headless, no autoloads): `Game.price_board` = `{loc: {"buy:<item>"|"sell:<base>": [[day, price], ...]}}`.
+  `observe(g, loc)` notes every good the location trades at most once per game day, capped to `history_days` (14);
+  `trend()`, `sparkline()`, `lines()` are pure helpers. Numbers in `content.json` -> `price_board` (history_days,
+  spark_days, flat_pct). Saved; old saves load empty; `from_save` drops junk (unknown loc/good, bad entries), sorts and de-dups.
+- **Hook** `Game._note_prices()` (docked only) called from `dock()` and `_new_day()`. No RNG, no economy numbers touched.
+- **UI** Map app > Price comparison: per offer a trend arrow + block sparkline (or "seen" / "no data") with the last days as
+  tooltip. Only locations you docked at have history. Market cards (station_ui.gd) untouched.
+- Verified: unit tests (new `test_price_board`: record, once per day, cap, trend, RNG/economy unchanged, save round trip, old save, garbage), UI smoke (+ history label step), menu smoke, tip audit 0, sim 5/5 avg win day 4.6 (unchanged).
+- Gaps: buy prices are static data so their sparkline is flat; sell values move with demand. No market-card tooltip yet.
+## K3 follow-up: map marker (2026-11-05)
+- **Core** `scripts/core/marker.gd`, state `Game.map_marker` ("" / location id / system id, saved as "marker"; old or bogus
+  values load as none). `goal_location(g)` = the marker itself, or the gate towards its system; "" when none or reached.
+- **HUD** `quest_point()` = quest waypoint, else `marker_point()` (flying only); the arrow says MARK in teal for a marker.
+  The ship's `goal_provider` is `hud.quest_point`, so the autopilot (T) follows it and switches off on arrival.
+- **UI** Map app: "Mark" per location, "Set marker"/"Clear marker" row in the system panel.
+- Verified: unit tests (test_map_marker), UI smoke 51 steps (+ map marker step), tip audit 0, menu smoke.
+- Gaps: no marker on the surface/minimap-on-foot; autopilot still ignores asteroids/patrols.
+## K3 follow-up: autopilot avoidance (2026-11-05)
+- `scripts/core/steering.gd` `avoid_heading()` (pure): detours around circular hazards ahead of the course (tangent
+  aim on the clear side, 90 px margin, ignores hazards containing the goal, pushes out when already inside).
+  `ship.autopilot_step()` now aims along it via `ship.hazard_provider` (set in main to `World.autopilot_hazards()`:
+  every location body at 1.2x radius, plus each patrol's scan zone while you carry contraband).
+- Verified (Godot 4.3 headless): unit tests 10837 checks / 0 failures (new `test_autopilot_avoid`: left/right
+  detour, ignored far/behind/goal hazards, point-ship flight clears a rock), UI smoke 50 steps, tip audit 0, menu
+  smoke. Not verified: real in-game feel (no playtest/screenshot), balance sim not run, no moving-patrol prediction,
+  hazards are only re-evaluated each frame (no path memory, so a very wide patrol zone can still be clipped).
 
 ## K3: QoL (phase 3 wave 10, 2026-11-03)
 - **Autopilot** (`ship.gd`): action `ship_autopilot` (T) toggles; `goal_provider` = `hud.quest_point` (set in main);
@@ -41,6 +269,31 @@
 - Verified: unit test `test_style` (buy/afford/equip/toggle, swaps, decor spots for every estate, save round trip,
   junk ids, old saves), UI smoke +1 step (buy a jacket by tapping, walker recoloured, decor), tip audit 0, screenshots.
 - Gaps: cosmetic only (no gameplay effect); decor can't be placed by hand; NPCs don't react to your outfit.
+
+## C2: automation machines (phase 3 wave 10, 2026-11-03)
+- **Core** `scripts/core/machines.gd`, data `content.json` "machines" (station, fixed score, run_cost per unit):
+  Auto-Trimmer (trim step, weed, score 0.55, 2 cr/unit, 900 cr), Drip Mixer (mixing step, 0.60, 3 cr/unit, 1100 cr),
+  Packing Machine (pack step, 0.50, 1 cr/unit, 800 cr). All below the Premium line (0.72), above a botched minigame.
+  Machines are also `stations` (flag `machine`, no minigame, not in `station_order`) and `buildables`, so placing,
+  kits in the Orders app, refunds and saving need no special code; `Machines.provides` makes a machine count as the
+  station it automates in `Game.missing_stations_in` and `Workers.blocker`.
+- **On foot** `Machines.run(g, machine, base, qty)`: at the prep machine with no tray it starts the tray, otherwise
+  the tray's next step has to be the machine's station (the mixer needs `Bench.mix` first, so you still pick the
+  additives). Charges credits per unit, then `Bench.record` with the machine's score (the packer queues the batch).
+  `Bench.use_mode` returns `auto: true` for machines. Event `machine_run`, `stats.machine_runs`, per-building `runs`.
+- **Lab hands** run a line step that only a machine covers with the machine's score and pay its run cost from the
+  credits (they wait with the ingredients when you are broke); tables still use the worker's skill.
+- **Saves**: `SAVE_VERSION` 2 (stats.machine_runs, building `runs`); version 1 saves load (zeroed), buildings the data
+  no longer knows are dropped on load.
+- **UI**: `scripts/ui/machines_ui.gd` = "Machines" section of the estate Build tab (one call in station_ui.gd, the
+  Stations grid skips machine ids); `bench_ui.gd` runs a machine at once and shows the result card (cost on the start
+  button). Three station sprites (assets/src/stations/*.txt).
+- Verified (Godot 4.3 headless): 10643 unit checks (new section test_machines_*), UI smoke 48 steps (+1: Build tab
+  section, placing, trimmer/mixer/packer runs), tip audit 0 missing, menu smoke, sim 5/5 avg win day 4.6 (bot does
+  not use machines).
+- Gaps: machines run when you use them or a lab hand cooks; there are no timers or an unattended machine with no
+  worker at all. A Precursor Scale / Extractor / Cook Stove / Refiner machine does not exist (spec: three machines).
+  Machine numbers eyeballed, not played by a human.
 
 ## K1: action feedback + tooltips (phase 3 wave 10, 2026-11-03)
 - **Feedback layer** `scripts/ui/fx.gd` (HUD child, drawn last): watches credits/heat and pops the delta under the HUD
@@ -279,6 +532,23 @@
   them); loyalty has no gameplay beyond quitting (no theft/strikes, no raises); no skill growth or training; auto cooking
   ignores the shared lab queue and lab-level capacity of the hub; worker-cooked batches are not wired into the sim bot;
   estates cannot be sold, so assignment cleanup on removal is not needed yet; wage balance (15-110 cr/day) is eyeballed.
+## Art pass 4 (2026-11-03)
+- **New art** (all from source grids / `tools/art/build_art.py`, palette-checked by the build): 7 lab station icons
+  `st_<station>`, 3 ground weapon icons `wpn_<weapon>`, combat HUD icons (`hud_hull/shield/missile/boost`), galaxy map
+  markers (`map_star/gate/ship/hostile`); combat fx strips in `gfx/fx/` (laser + pirate bolt, missile, 4-frame explosion,
+  3-frame hit spark, 3-frame shield bubble); idle sheets `chars/<look>_idle.png` (stand, breathe, stand, blink x
+  down/up/right, derived from the walk grids); `tiles/<set>_edge.png` (8 fringe tiles N,E,S,W,NE,SE,SW,NW built from each
+  ground tile's own pixels); `space/stars.png` (8 star/twinkle sprites) and `space/nebula.png` (3 neutral dithered clouds).
+- **Registry:** `art.gd` gets `idle_sheet()`, `edge_strip()`, `fx()` one-liners plus `IDLE_FRAMES`/`EDGE_ORDER`; the icons
+  work through the existing `Art.icon_for`/`with_icon`. Manifest and `changelog.d/art-pass-4.md` updated, new
+  `test_art_pass4` (2459 checks pass), UI smoke and menu smoke pass, 23 screenshots rendered.
+- Gaps: art-only task, so **nothing new is drawn in the game yet** (existing screenshots are unchanged): the station/weapon/
+  HUD/map icons need `Art.with_icon` calls in station_ui/hud/map_app, `combat_layer.gd` still draws bolts/missiles/explosions
+  procedurally, `surface.gd` does not draw edge fringes (it needs a neighbour check per road/plaza cell), walker/npc do not
+  play the idle sheet, `world.gd` still draws plain pixel stars. Previewed as contact sheets, not in-engine. Weapon icons
+  are the weakest (small silhouettes). Not covered: building interiors, menu art, ramp art, per-system star colour on
+  the map marker (tint at runtime).
+
 ## A6: Galaxy Map app + Jump Drive (2026-11-02)
 - **Core** `scripts/core/galaxy.gd`, one runtime field `Game.jump_plan` (not saved), one `Galaxy.tick` line in `Game.tick`.
   Lanes come from the gates of D1 (`jump_to`), `route()` is a breadth-first search (multi-hop works for any number of
@@ -342,6 +612,17 @@
 - Gaps: no map marker for drops on the surface; the customer collects instantly in the sim (no walking NPC);
   A5 (dealers) can reuse `Deaddrops.at()` / jobs; courier only goes drop -> hub stash.
 
+## B1: idle chatter bubbles (wave 19)
+- **Core:** `scripts/core/chatter.gd` (pure functions) + `data/chatter.json` (merged into `data.chatter`): rules (radius 240 px,
+  gap 9-22 s, show 3.6 s, max 2 bubbles at once), time-of-day periods (morning/day/evening/night, night wraps midnight) and
+  a line pool where each line may be tagged with a planet `loc` and a `period`. `pool`/`pick` (no immediate repeat),
+  `tick` advances one person's timer (silent out of earshot, while talking to the player, or when too many bubbles show).
+- **UI:** `npc.gd` `say(text, secs)` draws a white speech bubble above the head (fades out); `surface.gd`
+  `_update_chatter` runs it for every person on the surface with its own seeded RNG (does not disturb officer paths).
+- Verified: new `test_idle_chatter` (periods, every planet has lines at every hour, loc/period filtering, no repeats,
+  cooldown/earshot/busy rules). NOT run locally in the authoring session (no Godot binary allowed); CI is the check.
+- Gaps: officers and anonymous walkers do not chatter; lines are not reactive (heat, deals, mood); no sound.
+
 ## B1: NPC schedules on foot (2026-11-02)
 - Surfaces have `spots` (schedule place name → tile, `surfaces.json`). `People.spot(c, spots, hour, slot)` picks the
   spot of the current schedule place, nudged by the person's index on the surface so people sharing a place stand
@@ -353,7 +634,7 @@
 - Verified: 1816 unit checks (every schedule place has a spot on the person's surface, every spot walkable and
   reachable at every hour, day start, daylight), UI smoke (schedule change → Okka walks, her interaction point
   follows, light changes), menu smoke, night screenshot.
-- Gaps vs. the old draft PR #5: no idle chatter bubbles; anonymous walkers keep roaming; people stand at a spot in front
+- Gaps vs. the old draft PR #5: (idle chatter bubbles: done, see "B1: idle chatter" below); anonymous walkers keep roaming; people stand at a spot in front
   of "Home" instead of going indoors (keeps them dealable).
 
 ## B2: ship cargo bay estate (2026-10-30)
@@ -732,3 +1013,112 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
   people, stranger shows job, prompt shows want, talking opens Deals and makes a contact, name appears), menu smoke, screenshot.
 - Gaps: locals reuse the 8 NPC sprite looks (no per-planet outfits yet); no dialogue lines beyond the deal screen; the Contacts app
   grows long once you know many people (no search/filter yet, K3).
+
+## Packaging tiers (2026-11-04, wave 12)
+- **Core** `scripts/core/packaging.gd`; data in `content.json` → `packaging.tiers` (Loose 0.0 / Sealed 0.45 / Shielded 0.8 minimum
+  Packaging Table score; `scan_survive` 0 / 0.15 / 0.55 per unit). `Production.outcome` returns `pack` (0 without a pack_table score,
+  so quick batches stay Loose). The tier is part of the product key as `#<tier>` after the grade (`weed:glow@2#2`), Loose has no
+  suffix, so old saves load unchanged and tiers stack separately in cargo. `Mixing.key(.., pack)`, `parse_key().pack`, display name
+  gets " (Shielded)". Lab queue, estate lab hands (workers.gd) and the bench all go through `queue_batch`/`outcome`.
+- **Scan:** `Game.bust()` (after the customs `scan_pass`) rolls every product unit against its tier via `Game.rng`; survivors stay in
+  cargo, fine and heat drop are unchanged; the message says how many units the packaging hid.
+- **UI:** minigame result line shows the packaging tier; value is unaffected by tier.
+- Verified: unit tests (`test_packaging_tiers`: thresholds, key round-trip, name, bust survival, save, batch stores the tier; two
+  existing tests adjusted for the suffix) 0 failures; UI smoke ran through. Sim and screenshots not run.
+- Gaps: tier is not shown in every list (only names and the batch result); no sell-price effect; Sealed/Shielded numbers are unbalanced guesses.
+## P2: Customers on foot (2026-11-04, wave 12)
+- **Core** `scripts/core/walkups.gd` (numbers in `content.json` → `walkups`): while you stand on a planet surface, every 12 s a customer
+  of that planet may walk up. Eligible: holds a drug you carry (they ask for a liked-trait product first, otherwise your cheapest),
+  your asking price is within their ceiling, budget left, not on cooldown, no open Deal-O-Matic request. Chance rises with addiction and
+  affinity; strangers (unmet townsfolk) come at half the rate and are met when you talk. At most 2 at once, they linger 70 s.
+  The roll uses its own seeded RNG, so `Game.rng` (and every existing seeded test/sim) is untouched. State `Game.walkups` is momentary and
+  not saved.
+- **Answers:** `accept` is `Game.sell` (budget, cooldown, demand saturation, heat, referral, `sold` event for quests/cartels) plus the
+  haggled extra on top and a `walkup_sold` event; `haggle` (+10 %/+20 %, one try, chance from `Deals.counter_chance`, never above their
+  ceiling, failure costs affinity); `decline` (affinity dent, 240 s cooldown). `total()` quotes the real sum including demand saturation.
+- **Surface/UI:** the customer's npc gets a gold speech bubble and walks to the player, the interaction becomes "Deal with ..." and
+  opens `scripts/ui/walkup_card.gd` (product, amount, price, total, mood; Esc closes; the player is frozen while it is up). Afterwards they
+  return to their schedule and the interaction goes back to the Deals panel.
+- Verified (Godot 4.3 headless): unit tests (`test_walkups`: eligibility incl. no stock / steep asking price / open text request, stranger vs
+  regular chance, Game.rng untouched, accept pays the quote and fires `sold`, heat rises, haggle success/failure/greedy/only once,
+  decline + cooldown, linger expiry, stock gone, taking off, not saved), UI smoke (bubble, customer walks to the player, prompt, card,
+  haggle once, accept pays, decline), tip audit `TIPS DONE 0` with the new card.
+- Gaps: **the contacts menu is not trimmed yet** (Contacts app and the Deals panel work as before; walk-ups are an additional way to
+  sell, so the ROADMAP wording "replaces part of the contacts menu" is only partly met); no screenshot of the bubble/card (headless only,
+  so placement and readability are unseen); a customer who cannot path to the player just stands still; numbers (interval, chance,
+  linger) are eyeballed and the balance bot does not use walk-ups; walk-ups only appear on planet surfaces, not inside estates or on
+  stations without a surface; no dialogue variety beyond one quote line.
+
+## Mixing journal + trait values (2026-11-04, wave 12)
+- **Core:** the recipe book (`Game.recipes`, `scripts/core/products.gd`) is the journal: entries now also store `last` (day last cooked) and `runs`
+  (batches); `Products.journal(g, base)` returns recipes with a known additive list, newest first. `Bench.recook(g, key)` pours a journal mix into
+  the tray (same checks as `Bench.mix`), `Bench.recook_block` gives the reason it cannot. `Bench.preview` returns `trait_values`.
+- **UI** (`bench_ui.gd`): Mixing Station shows a "Mixing journal" (up to 4 recipes for the tray's drug, price, units made, Re-cook button with tooltip)
+  and the preview chips carry the trait value (`Overclock +35%`).
+- Old saves: new fields default from `day`/0, so nothing breaks. Verified: see PR (unit test `test_mixing_journal`, ui_smoke step "journal re-cook").
+- Gaps: only the last 4 recipes show; no re-cook from the start screen (additives are poured at the Mixing Station); mixes cooked by workers are
+  journaled too (shared recipe book).
+## Localisation foundation (2026-11-04, wave 13)
+- `scripts/core/loc.gd`: `Loc.t(key, fallback)` over `data/loc/<lang>.json` (flat key -> text; lookup order: current language, English, fallback, key). `Settings.language` ("en"/"de", `[display] language` in settings.cfg, `language_changed` signal); selector in Settings > Display.
+- Converted: `scripts/ui/menu/main_menu.gd`, `pause_menu.gd`, `settings_panel.gd` (build code moved into `_build()`, rebuilt on `language_changed`). Slot panel, HUD, station UI, phone, world and quests are NOT converted (14 open PRs touch them) - convert per screen in follow-ups, add keys to both json files; `test_loc_tables` enforces key parity and equal `%` placeholder counts.
+- Convention: key = `<screen>.<name>`, English text stays as the `fallback` argument in code so a missing table never shows a bare key. Export include filter extended to `data/loc/*.json`.
+- Gaps: content data (items, quests, contacts in content.json/quests.json) has no translation mechanism yet; fonts only checked for Latin + umlauts by reading, not on screen.
+## P3: hiding spots (2026-11-05, wave 16)
+- **Core** `scripts/core/hiding.gd` (rules in `data/hiding.json`, spots in `surfaces.json` -> `hide`, 4 per planet as 2x1 tile rects with a kind).
+  Pure `step(state, dt, in_spot, speed, nearest_officer)`: still (<= 18 px/s) in a spot for 0.8 s = hidden; hidden for 2.0 s = officers stand down
+  (`lost` event); an officer within 46 px finds you and burns the spots for 4 s; moving, leaving the spot, shooting or being shot reveals you.
+  State is a runtime dict on the surface, not saved (no `game.gd` change).
+- **Surface hooks** (`surface.gd`, narrow): officer sight and the provoked-aim shortcut ignore a hidden player, chasers/armed officers are reset on `lost`,
+  spots are drawn as shade plus a prop, the player sprite fades to 45 % while hidden, toasts on hide / found / lost.
+- Verified: new `test_hiding` (state machine, once-per-hide `lost`, found + cooldown, move/leave/reveal, layout on all 5 planets: inside the map, off buildings and
+  cover, known kind, reachable on the nav grid), 10828 unit checks 0 failures, UI smoke (51 steps: hide, far chaser gives up, no frisk while hidden, close officer
+  finds you), tip audit 0 missing, menu smoke, sim 5/5.
+- Gaps: not played by a human, so settle/lose times and the 4 positions are guesses (positions were picked by script beside buildings, not hand-placed);
+  spots are mostly away from the main streets; no prompt or HUD indicator before you are hidden besides the toast; officers do not search the last seen
+  spot; armed officers already shooting at you only stop when `hostile_t` runs out or `lost` fires; hiding is not available inside estates; art is placeholder.
+## Running away raises heat (2026-11-05, wave 17)
+- **Core** `scripts/core/pursuit.gd`: `Pursuit.tick(g, dt, sprinting, seen, chasing)` adds heat while the player sprints in an officer's sight:
+  `heat.flee_chase_per_second` (1.2) when an officer chases or is armed and hostile, else `flee_carry_per_second` (0.5) when carrying product;
+  never above `flee_heat_cap` (80). Out of sight or walking adds nothing. Tunables live in `content.json` -> `heat`.
+- **Surface:** `_update_police` only reports "any officer sees me / any chasing" and calls `Pursuit.tick` (6 lines in surface.gd).
+- Verified: static review only. Godot is not installed in this sandbox, so unit tests (`test_flee_heat` added), UI smoke, tip audit and sim were NOT run locally; CI is the check.
+- Gaps: no toast or HUD hint yet when flee heat starts; no UI smoke assertion for the surface hook.
+## Drying Table (2026-11-05, wave 17)
+- **Core** `scripts/core/drying.gd`, numbers in `content.json` -> `drying` (120 s, 20 units per table, keeps 80 % of the units, bases `["weed"]`, up to grade 3). State `Game.drying` (estate id -> batches `{product, qty, left, total}`), saved under `drying`; old saves load with empty racks, junk entries are dropped. `Drying.tick` runs in `Game.tick`.
+- Loading takes finished product (not raws) out of the hold; a batch comes off one grade higher (`weed:glow` -> `weed:glow@2`) and lighter. Rack capacity is shared by an estate's tables; the last table can't come down while the rack is loaded.
+- Building `drying_table` (300 cr, 2x1, `passive` station: no minigame, not in `station_order`), build-menu card with tooltip, sprite `assets/src/stations/drying_table.txt`, rack panel in `bench_ui.gd` (mode `dry`). `_rebuild` now removes old children immediately so rebuilt nodes keep their names.
+- Verified: unit tests (`test_drying_table`), UI smoke (place, load, cure, collect), menu smoke, tip audit. Gaps: only weed, no workers/auto-load, raws are not dried (grow tray not on main), no sim run.
+## P5: Visible workers (2026-11-05, wave 18)
+- **Core** `scripts/core/worker_walk.gd` (read-only on the Game): `activity` (idle / cook / fetch / haul from the existing job state:
+  running job or stocked lab hand = cook at the station, unstocked lab hand with a startable recipe = fetch from storage, stocker with
+  tray output or a short bench = haul), `target_cell` (estate cells: storage crate corner, cell in front of the first station the
+  recipe needs, idle spot beside the door per role; a hauling stocker swings between storage and station along the trip timer),
+  `look_swaps` (stable per-worker outfit from the K2 style catalogue applied to the player sheet via `Art.recolored`).
+- **Surface:** `_update_workers` in `surface.gd` (estate interiors only, every 0.4 s) spawns an `npc.gd` walker per worker assigned to
+  the estate (new `sheet` var for the recoloured sheet), paths to the target cell with `Nav.path_between`, removes it when he is fired
+  or unassigned. Nothing writes to the game.
+- Verified: unit test `test_worker_walk` and a UI smoke step were added, but the Godot binary was not runnable in this session's
+  sandbox, so unit tests, smoke, tip audit and sim were NOT run locally; CI is the first run.
+- Gaps: workers vanish from the room view while you are away (they only exist while you stand in the estate); they do not collide
+  with the player or each other; no cooking/carry animation, no speech.
+## Surface art pass, slice 1: ground variation and building facades (2026-11-06, wave 23)
+- **Audit (before):** ground strips were 4 near-identical speckle tiles per planet; `areas` of kind grass/sand/salt/ice/rubble were
+  tinted rectangles with scattered lines; every building used the same roof, wall and window, so a street read as copies; doors were
+  a bare sprite; no roof detail. Characters (down/up/right + mirror), props and the ship were already real art and left alone.
+- **Pipeline** (`tools/art/build_art.py`, nothing hand-edited): ground strips are now 8 tiles (4 plain + 4 per-planet feature tiles:
+  Mireth flowers/pebbles/clover/mushrooms, Cinder ore/crack/ash/scrap, Bazaar hatch/cable/oil/caution stripes, Varrow pebbles/crack/
+  shrub/bone, Glacis crack/frost/ice shard/drift); `tiles/area_<kind>.png` paint strips; building pieces `roof_b/roof_c`
+  (shingles, panels), `wall_b/wall_c` (brick, planks), `awning` (all neutral, tinted at runtime) and pixel sprites `roof_vent`,
+  `roof_skylight`, `roof_chimney`, `roof_dish`, `window_shut`, `window_dark` (`assets/src/sprites/*.txt`). Palette-locked, 16 px grid
+  exported 2x; `assets/manifest.yaml` updated.
+- **Runtime:** `Art.pick_variant` (feature tiles on ~14% of cells for strips with more than 4 tiles; 4-tile strips unchanged),
+  `Art.facade_variant` (stable hash of planet/building id). `surface.gd`: per-building roof/wall surface, 20% shuttered and 20% dark
+  windows, eave shadow on the wall, awning over bottom doors that have an action, rooftop gear on big roofs (clear of the sign),
+  area paint strips with the old tinted drawing as fallback.
+- **Tooling:** `tools/shot.gd` now shoots every planet (`planet_<id>`, `_roof`, `_pad`); `--surfaces-only` stops after those.
+- Verified: unit tests (new asserts in `test_art_registry`: new parts, feature tiles per ground strip, area strips, variant
+  distribution and stability), UI smoke, menu smoke, tip audit; before/after screenshots of all five planets checked.
+- Gaps: roads and plazas still have only 4 plain variants and no edge/corner or curb tiles; roofs are tinted neutral pieces so
+  per-district looks come from variant mix only, not from district-specific materials; water, pit, slag, void and chasm areas are
+  still drawn procedurally; no animated tiles (water, neon); building doors beyond door/hatch are not varied; NPC outfits per
+  planet and interiors are untouched. Feature tiles on Cinder and Mireth are subtle at 14%; tune `FEATURE_CHANCE` after a playtest.

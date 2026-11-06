@@ -553,6 +553,170 @@
 		"reward": {
 			"credits": 2000
 		},
-		"outro": "Two cartels bleeding, one still watching from Varrow. That's the Ninth Veil's game, and it's a longer one. Chapter 3 is coming."
+		"outro": "Two cartels bleeding, one still watching from Varrow. That's the Ninth Veil's game, and it's a longer one.",
+		"next": [
+			"main_veil_whisper"
+		]
+	},
+	"main_veil_whisper": {
+		"title": "Whispers on Varrow",
+		"giver": "Rhea Dunmore",
+		"main": true,
+		"chapter": 3,
+		"intro": "Two cartels down and the dust towns on Varrow still hum like nothing happened. That's the Ninth Veil: Sister Quill buys faith with cheap product and keeps it with knives. Go back to Varrow and find Captain Jex Ferro. He's sick of sweeping up after them.",
+		"steps": [
+			{
+				"text": "Land on Varrow",
+				"on": "landed",
+				"match": {
+					"location": "varrow"
+				},
+				"target": {
+					"loc": "varrow"
+				},
+				"hint": "Kovar's gate is on the far side of Halvane. Varrow is the dune town."
+			}
+		],
+		"reward": {
+			"credits": 400
+		},
+		"outro": "Ferro will tell you where the Veil is soft, if you can keep him out of the report.",
+		"next": [
+			"main_veil_ground"
+		]
+	},
+	"main_veil_ground": {
+		"title": "Cheap Faith",
+		"giver": "Captain Jex Ferro",
+		"main": true,
+		"chapter": 3,
+		"intro": "The Veil hands out free first doses in every dust town and calls it a blessing. Take a street off them. Better product, better prices, a dealer on the corner. When people have a choice they stop praying to Quill.",
+		"steps": [
+			{
+				"text": "Take a location away from the Ninth Veil",
+				"on": "turf_changed",
+				"match": {
+					"by": "you",
+					"was": "veil"
+				},
+				"hint": "Com-Phone → Map → Influence. Varrow and the Bazaar are where the Veil holds ground."
+			}
+		],
+		"reward": {
+			"credits": 600
+		},
+		"outro": "You'll hear about this in church on Sunday. Expect the Veil to answer, they never forgive a lost street.",
+		"next": [
+			"main_veil_toll"
+		]
+	},
+	"main_veil_toll": {
+		"title": "The Quiet Toll",
+		"giver": "Ines Okoro",
+		"main": true,
+		"chapter": 3,
+		"intro": "My scanner has been seeing a lot of purple lanterns near the Kovar gate. The Veil does not tax haulers, it recruits them. Fly through their space with product aboard and see what they want from you. Survive the conversation.",
+		"steps": [
+			{
+				"text": "Get through an interdiction by the Ninth Veil",
+				"on": "interdiction_resolved",
+				"match": {
+					"kind": "cartel",
+					"cartel": "veil"
+				},
+				"hint": "Jump into Kovar with product aboard. The more the Veil dislikes you, the likelier they stop you."
+			}
+		],
+		"reward": {
+			"credits": 700
+		},
+		"outro": "Now you've met their lantern-bearers. Polite, quiet and armed. I put your name on my good list. It costs extra.",
+		"next": [
+			"main_veil_wing"
+		]
+	},
+	"main_veil_wing": {
+		"title": "Lanterns Out",
+		"giver": "Rhea Dunmore",
+		"main": true,
+		"chapter": 3,
+		"intro": "Sister Quill's novices fly the fighters out of Veil Spire, and they are fearless in a way that gets people killed. Put four of them down before you go anywhere near the Spire. Her wing is thin, but she'll replace it fast.",
+		"steps": [
+			{
+				"text": "Shoot down 4 Ninth Veil ships",
+				"on": "pirate_down",
+				"match": {
+					"cartel": "veil"
+				},
+				"need": 4,
+				"hint": "They fly near the Spire and in Kovar space. Missiles and flak clear fighter packs."
+			}
+		],
+		"reward": {
+			"credits": 900
+		},
+		"outro": "That should thin the choir. The Spire itself is next. Bring the best hull you own.",
+		"next": [
+			"main_veil_spire"
+		]
+	},
+	"main_veil_spire": {
+		"title": "Veil Spire",
+		"giver": "Rhea Dunmore",
+		"main": true,
+		"chapter": 3,
+		"intro": "A shrine-station lit like a lantern, deep in Kovar's southern dark. Sister Quill sleeps there and prays there and keeps her ledger there. Burn the Spire and the Ninth Veil loses its voice.",
+		"steps": [
+			{
+				"text": "Destroy Veil Spire",
+				"on": "base_raided",
+				"match": {
+					"cartel": "veil"
+				},
+				"target": {
+					"loc": "veil_spire"
+				},
+				"hint": "Ion bolts hit bases twice as hard. Repair and restock at Mireth's mechanic first."
+			}
+		],
+		"reward": {
+			"credits": 2500
+		},
+		"outro": "The lanterns went out one by one. Jex Ferro says the dust towns are quiet. Quiet in a good way, for once.",
+		"next": [
+			"main_veil_ledger"
+		]
+	},
+	"main_veil_ledger": {
+		"title": "Quill's Ledger",
+		"giver": "Inspector Pavo Brandt",
+		"main": true,
+		"chapter": 3,
+		"intro": "Among the wreckage of the Spire they found Quill's ledger, and half the Kovar books are in it. My signature can make that disappear, or put it in front of the Consortium. Come to Glacis with money and we will discuss which.",
+		"steps": [
+			{
+				"text": "Land on Glacis",
+				"on": "landed",
+				"match": {
+					"location": "glacis"
+				},
+				"target": {
+					"loc": "glacis"
+				},
+				"hint": "Glacis is the cryo dome planet in Kovar."
+			},
+			{
+				"text": "Bring 5,000 cr to settle the audit",
+				"check": {
+					"type": "credits",
+					"min": 5000
+				},
+				"hint": "Sell product, or collect from your dealers."
+			}
+		],
+		"reward": {
+			"credits": 3000
+		},
+		"outro": "Pleasure doing business. Three cartels broken, one empire's worth of ground on your side of the table. Chapter 3 closed. What you build on it is up to you."
 	}
 }

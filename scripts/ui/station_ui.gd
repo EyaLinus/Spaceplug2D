@@ -12,11 +12,15 @@ const People = preload("res://scripts/core/people.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Products = preload("res://scripts/core/products.gd")
 const Bench = preload("res://scripts/core/bench.gd")
+const Vault = preload("res://scripts/core/vault.gd")
 const ShipPreview = preload("res://scripts/ui/ship_preview.gd")
 const OfficialsApp = preload("res://scripts/ui/phone/apps/officials_app.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Style = preload("res://scripts/core/style.gd")
+const Grow = preload("res://scripts/core/grow.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
+const Raids = preload("res://scripts/core/raids.gd")
+const MachinesUI = preload("res://scripts/ui/machines_ui.gd")
 
 var tabs: TabContainer
 var _title: Label
@@ -316,6 +320,9 @@ func _build_stash(g) -> Control:
 		b.tooltip_text = "%d s left" % int(ceil(job.remaining))
 		h.add_child(b)
 		v.add_child(h)
+	var raid_line: String = Raids.status_text(g, g.inside_estate)
+	if raid_line != "":
+		v.add_child(UI.label(raid_line, 14, UI.WARN))
 	v.add_child(UI.heading("Stash"))
 	if g.stash.is_empty():
 		v.add_child(UI.label("Empty.", 15, UI.MUTED))
@@ -334,7 +341,43 @@ func _build_stash(g) -> Control:
 	load.disabled = g.stash.is_empty() and g.estate_stock.get(g.inside_estate, {}).is_empty()
 	v.add_child(load)
 	v.add_child(UI.label("Hold %d/%d" % [g.cargo_used(), g.cargo_capacity()], 14, UI.MUTED))
+	_build_vault(g, v)
 	return v
+
+
+## Hidden crate (vault.gd): product in here survives a bust or a knock-out.
+func _build_vault(g, v: VBoxContainer) -> void:
+	v.add_child(UI.heading("Hidden crate"))
+	var info := UI.label("%d/%d units, safe from busts and knock-outs." % [Vault.used(g), Vault.capacity(g)], 15, UI.MUTED)
+	info.name = "VaultInfo"
+	v.add_child(info)
+	for k in g.cargo.keys():
+		if not Mixing.is_product(k):
+			continue
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 10)
+		h.add_child(Art.with_icon(k, UI.label("%d × %s" % [g.cargo[k], g.item_name(k)], 15)))
+		var key: String = k
+		var b := UI.button("Hide all", func(): GameState.act(Vault.deposit(g, key, int(g.cargo.get(key, 0)))), 110)
+		b.tooltip_text = "Move this product from the hold into the hidden crate."
+		h.add_child(b)
+		v.add_child(h)
+	for k in g.vault.items.keys():
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 10)
+		h.add_child(Art.with_icon(k, UI.label("%d × %s (crate)" % [g.vault.items[k], g.item_name(k)], 15, UI.GOLD)))
+		var key: String = k
+		var b := UI.button("Take all", func(): GameState.act(Vault.withdraw(g, key, int(g.vault.items.get(key, 0)))), 110)
+		b.tooltip_text = "Move this product from the crate back into the hold, as far as it fits."
+		h.add_child(b)
+		v.add_child(h)
+	var cost := Vault.upgrade_cost(g)
+	if cost >= 0:
+		var up := UI.button("Bigger crate (%d cr)" % cost, func(): GameState.act(Vault.upgrade(g)), 220)
+		up.name = "VaultUpgrade"
+		up.disabled = g.credits < cost
+		up.tooltip_text = "Add %d units of hidden room." % int(g.data.vault.cap_per_tier)
+		v.add_child(up)
 
 
 func _add_agreed_deal(g, box: VBoxContainer, c: Dictionary) -> void:
@@ -446,6 +489,8 @@ func _build_build_menu(g) -> Control:
 	for k in g.data.buildables:
 		var bd: Dictionary = g.data.buildables[k]
 		var st: Dictionary = g.data.stations[k]
+		if st.get("machine", false):
+			continue  # shown in the Machines section below (machines_ui.gd)
 		var kit_n := int(g.kits.get(k, 0))
 		var card := Button.new()
 		card.name = "Build_" + k
@@ -467,7 +512,55 @@ func _build_build_menu(g) -> Control:
 	v.add_theme_constant_override("separation", 8)
 	v.add_child(UI.heading("Stations"))
 	v.add_child(grid)
+	var est: String = _filter.get("estate", "")
+	if g.estates.has(est):
+		v.add_child(_build_grow_trays(g, est))
+	v.add_child(MachinesUI.section(g, func(k): place_requested.emit(k)))
 	v.add_child(UI.label("Pick a station, then walk to a free spot: it goes on the cells in front of you. Station kits ordered in the phone's Orders app are placed for free.", 14, UI.MUTED))
+	return v
+
+
+## Grow trays of the estate: build one, plant a raw from the hold, water it on growing days, harvest into the stash.
+func _build_grow_trays(g, est: String) -> Control:
+	var v := VBoxContainer.new()
+	v.name = "GrowTrays"
+	v.add_theme_constant_override("separation", 6)
+	v.add_child(UI.heading("Grow trays"))
+	var list: Array = Grow.trays(g, est)
+	for i in list.size():
+		var t: Dictionary = list[i]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		if t.raw == "":
+			row.add_child(UI.label("Tray %d: empty" % (i + 1), 15, UI.MUTED))
+			for raw in Grow.crops(g):
+				var need := int(Grow.cfg(g).get("seed_qty", 1))
+				var pb := UI.button("Plant " + g.data.raws[raw].name, func(): GameState.act(Grow.plant(g, est, i, raw)))
+				pb.name = "GrowPlant_%d_%s" % [i, raw]
+				pb.tooltip_text = "Takes %d %s from your hold. Grows in %d days." % [need, g.data.raws[raw].name, int(Grow.crops(g)[raw].days)]
+				pb.disabled = int(g.cargo.get(raw, 0)) < need
+				row.add_child(pb)
+		else:
+			var ripe: bool = Grow.is_ripe(g, t)
+			row.add_child(UI.label("Tray %d: %s, %s" % [i + 1, g.data.raws[t.raw].name,
+				("ripe, %d units (%s)" % [Grow.expected_yield(g, t), Grow.grade(Grow.quality(g, t))]) if ripe else "%d day(s) to go" % Grow.days_left(g, t)], 15))
+			if ripe:
+				var hb := UI.button("Harvest", func(): GameState.act(Grow.harvest(g, est, i)))
+				hb.name = "GrowHarvest_%d" % i
+				hb.tooltip_text = "Moves the crop into your stash; collect it at the lab."
+				row.add_child(hb)
+			else:
+				var wb := UI.button("Water", func(): GameState.act(Grow.water(g, est, i)))
+				wb.name = "GrowWater_%d" % i
+				wb.tooltip_text = "Once a day. Quality is the share of growth days you watered; it scales the yield."
+				wb.disabled = (t.watered as Array).has(g.day)
+				row.add_child(wb)
+		v.add_child(row)
+	var add := UI.button("Build grow tray (%d cr)" % int(Grow.cfg(g).get("tray_cost", 0)), func(): GameState.act(Grow.build_tray(g, est)))
+	add.name = "GrowBuild"
+	add.tooltip_text = "Adds a tray (max %d per estate). Plant raws, water daily, harvest into the stash." % Grow.max_trays(g)
+	add.disabled = list.size() >= Grow.max_trays(g) or g.credits < int(Grow.cfg(g).get("tray_cost", 0))
+	v.add_child(add)
 	return v
 
 
@@ -501,6 +594,7 @@ func _build_shipyard(g) -> Control:
 	var right := VBoxContainer.new()  # the tab itself scrolls
 	right.add_theme_constant_override("separation", 10)
 	right.add_child(grid)
+	right.add_child(_build_rig_tiers(g))
 	right.add_child(_build_hulls(g))
 	right.add_child(_build_mechanic(g))
 	var h := HBoxContainer.new()
@@ -522,7 +616,6 @@ const UPGRADE_TIPS := {
 	"cargo": "More hold slots: carry bigger hauls per trip.",
 	"engine": "More thrust: outrun patrols and pirates, shorter jump drive charge.",
 	"stealth": "Smaller patrol scan radius in space.",
-	"lab": "More units per batch at every station line.",
 	"laser": "Damage per laser bolt in space combat [J].",
 	"missile": "Homing missile pods [K]; restock at the mechanic.",
 	"flak": "Secondary weapon: a cone of flak pellets, shreds fighter swarms up close. No ammo. Switch with [Q].",
@@ -586,12 +679,39 @@ func _build_mechanic(g) -> Control:
 	return v
 
 
+## Building tiers: the old global Hydro Rig upgrade, now rebuilt per estate you own on this planet (and the ship bay).
+func _build_rig_tiers(g) -> Control:
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	var t: Dictionary = g.data.estate_tiers
+	for id in g.estates:
+		var e: Dictionary = g.data.estates[id]
+		if not e.get("ship", false) and e.get("location", "") != g.location:
+			continue
+		var tier: int = g.estate_tier(id)
+		var cost: int = g.estate_tier_cost(id)
+		var col := VBoxContainer.new()
+		col.add_child(UI.label("%s  ·  %s" % [e.name, t.names[tier]], 16, UI.GOLD))
+		if cost < 0:
+			col.add_child(UI.label("%d units/batch · best line" % int(t.capacity[tier]), 14, UI.MUTED))
+		else:
+			col.add_child(UI.label("%d  →  %d units/batch, faster cooking" % [int(t.capacity[tier]), int(t.capacity[tier + 1])], 14, UI.ACCENT))
+			var b := UI.accent_button("Rebuild as %s · %d cr" % [t.names[tier + 1], cost], func(): GameState.act(g.buy_estate_tier(id)))
+			b.name = "Tier_" + id
+			b.disabled = cost > g.credits
+			b.tooltip_text = "Bigger batches and faster cooking in this estate only."
+			col.add_child(b)
+		var card := UI.card(col)
+		card.tooltip_text = "Production line of this estate: more units per batch and faster cooking."
+		v.add_child(card)
+	return v
+
+
 static func _upgrade_value(key: String, v) -> String:
 	match key:
 		"cargo": return "%d slots" % int(v)
 		"engine": return "%d%% thrust" % int(float(v) * 100.0)
 		"stealth": return "-%d%% scan range" % int(float(v) * 100.0)
-		"lab": return "%d units/batch" % int(v)
 		"laser": return "%d damage/shot" % int(v)
 		"missile": return "no pods" if int(v) == 0 else "%d missiles" % int(v)
 		"flak": return "no battery" if int(v) == 0 else "%d dmg/pellet" % int(v)

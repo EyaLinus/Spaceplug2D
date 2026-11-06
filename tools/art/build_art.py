@@ -114,7 +114,9 @@ def build_sprites() -> list[Path]:
     for name, folder in [("crate", "props"), ("barrel", "props"), ("rock", "props"), ("tree", "props"),
                          ("lamp", "props"), ("vent", "props"), ("stall", "props"), ("cactus", "props"), ("ice_rock", "props"), ("ship", "ships"),
                          ("patrol", "ships"), ("pirate", "ships"), ("fighter", "ships"), ("gunship", "ships"), ("loot", "space"), ("beacon", "space"),
-                         ("plant", "props"), ("rug", "props"), ("sofa", "props"), ("neon", "props"), ("aquarium", "props"), ("trophy", "props")]:
+                         ("plant", "props"), ("rug", "props"), ("sofa", "props"), ("neon", "props"), ("aquarium", "props"), ("trophy", "props"),
+                         ("roof_vent", "buildings"), ("roof_skylight", "buildings"), ("roof_chimney", "buildings"), ("roof_dish", "buildings"),
+                         ("window_shut", "buildings"), ("window_dark", "buildings")]:
         legend, frames = parse_grid(SRC / "sprites" / f"{name}.txt")
         out.append(save(grid_image(frames[0], legend), f"{folder}/{name}.png"))
     return out
@@ -244,38 +246,144 @@ def grate(base: str, bar: str, hi: str) -> Image.Image:
     return img
 
 
+
+def stamp(img: Image.Image, x: int, y: int, rows: list[str], legend: dict[str, str]) -> Image.Image:
+    """Pastes a small ascii grid (legend: char -> palette name, '.' = keep) onto a copy of the tile at x, y."""
+    img = img.copy()
+    for dy, row in enumerate(rows):
+        for dx, ch in enumerate(row):
+            if ch in legend and 0 <= x + dx < T and 0 <= y + dy < T:
+                img.putpixel((x + dx, y + dy), color(legend[ch]))
+    return img
+
+
+def feature(base: Image.Image, spots: list[tuple[int, int, list[str]]], legend: dict[str, str]) -> Image.Image:
+    for x, y, rows in spots:
+        base = stamp(base, x, y, rows, legend)
+    return base
+
+
+def rand_cells(seed: int, n: int, margin: int = 2) -> list[tuple[int, int]]:
+    r = random.Random(seed)
+    return [(r.randint(margin, T - margin - 3), r.randint(margin, T - margin - 3)) for _ in range(n)]
+
+
+def ground_with_features(base_fn, plain_seeds: list[int], features: list) -> Image.Image:
+    """4 plain variants (the common tiles) followed by len(features) rarer feature tiles; art.gd picks feature tiles ~14% of cells."""
+    tiles = [base_fn(s) for s in plain_seeds]
+    for i, fn in enumerate(features):
+        tiles.append(fn(base_fn(plain_seeds[i % len(plain_seeds)] + 7)))
+    return strip(tiles)
+
+
+def area_tiles(base: str, specks: list[tuple[str, float]], seed: int, detail) -> Image.Image:
+    return strip([detail(speckle(base, specks, seed + s), seed + s) for s in range(4)])
+
+
 def build_tiles() -> list[Path]:
     out = []
+
+    def f(spots, legend):
+        return lambda t: feature(t, spots, legend)
+
+    def caution(t):  # warning-stripe corner on a deck plate
+        t = t.copy()
+        for y in range(T - 5, T - 1):
+            for x in range(T):
+                t.putpixel((x, y), color("gold_dark" if (x + y) % 6 < 3 else "night"))
+        return t
+
+    flower = {"p": "pink", "g": "gold", "l": "leaf"}
+    pebble = {"S": "slate_light", "s": "slate", "d": "slate_dark"}
     sets = {
         "mireth": {
-            "ground": [speckle("grass", [("grass_dark", 0.06), ("grass_light", 0.025)], s, "grass_light" if s % 2 else "leaf") for s in range(4)],
-            "road": [speckle("slate_dark", [("shadow", 0.05), ("slate", 0.015)], 10 + s) for s in range(4)],
-            "plaza": [paving("slate", "slate_dark", "slate_light", 20 + s) for s in range(4)],
+            "ground": ground_with_features(
+                lambda s: speckle("grass", [("grass_dark", 0.06), ("grass_light", 0.025)], s, "grass_light" if s % 2 else "leaf"), list(range(4)), [
+                    f([(3, 4, ["p", "l"]), (10, 9, ["g", "l"]), (6, 12, ["p", "l"]), (12, 3, ["g", "l"])], flower),
+                    f([(2, 3, ["Ss.", "sdd"]), (9, 10, [".Ss", "sdd"])], pebble),
+                    f([(3, 5, ["l.lL", "LlLl", ".lL."]), (9, 10, ["lLl", ".l."])], {"l": "leaf", "L": "grass_light"}),
+                    f([(4, 6, [".rr.", "rwrr", ".ww."]), (10, 4, [".rr", "rwr", ".w."])], {"r": "red", "w": "white"}),
+                ]),
+            "road": strip([speckle("slate_dark", [("shadow", 0.05), ("slate", 0.015)], 10 + s) for s in range(4)]),
+            "plaza": strip([paving("slate", "slate_dark", "slate_light", 20 + s) for s in range(4)]),
         },
         "cinder": {
-            "ground": [speckle("dirt", [("dirt_dark", 0.07), ("rust", 0.02)], 30 + s, "rust" if s % 2 else None) for s in range(4)],
-            "road": [speckle("rust", [("dirt", 0.08), ("rust_light", 0.02), ("dirt_dark", 0.02)], 40 + s) for s in range(4)],
-            "plaza": [plates("slate", "slate_dark", "shadow", "slate_light", 50 + s, s % 2 == 0) for s in range(4)],
+            "ground": ground_with_features(
+                lambda s: speckle("dirt", [("dirt_dark", 0.07), ("rust", 0.02)], 30 + s, "rust" if s % 2 else None), list(range(4)), [
+                    f([(3, 4, [".dd.", "dGgd", ".dd."]), (10, 10, ["dd", "gd"])], {"d": "dirt_dark", "g": "gold_dark", "G": "gold"}),
+                    f([(2, 3, ["dd......", "..d.....", "...dd...", ".....d..", "......dd"])], {"d": "dirt_dark"}),
+                    f([(3, 5, ["..ss..", ".ssss.", "sssss.", ".ss..."]), (10, 10, ["ss", "s."])], {"s": "slate_dark"}),
+                    f([(3, 4, ["SS", "ss"]), (10, 9, ["S.", "ss"]), (6, 12, ["SS", ".s"])], {"S": "slate_light", "s": "slate"}),
+                ]),
+            "road": strip([speckle("rust", [("dirt", 0.08), ("rust_light", 0.02), ("dirt_dark", 0.02)], 40 + s) for s in range(4)]),
+            "plaza": strip([plates("slate", "slate_dark", "shadow", "slate_light", 50 + s, s % 2 == 0) for s in range(4)]),
         },
         "bazaar": {
-            "ground": [plates("shadow", "night", "slate_dark", "purple_dark", 60 + s, s % 2 == 0) for s in range(4)],
-            "road": [grate("purple_dark", "night", "purple") for _ in range(4)],
-            "plaza": [plates("slate_dark", "night", "slate", "slate", 70 + s, s % 2 == 1) for s in range(4)],
+            "ground": ground_with_features(
+                lambda s: plates("shadow", "night", "slate_dark", "purple_dark", 60 + s, s % 2 == 0), list(range(4)), [
+                    f([(4, 4, ["nnnnnnnn", "nssssssn", "nsggggsn", "nsgnngsn", "nsgnngsn", "nsggggsn", "nssssssn", "nnnnnnnn"])],
+                      {"n": "night", "s": "slate_dark", "g": "gold_dark"}),
+                    f([(0, 6, ["pppppp..........", "......pppp......", ".........ppppppp"])], {"p": "purple"}),
+                    f([(4, 5, ["..nn..", ".nnnn.", "nniinn", ".nnnn."])], {"n": "night", "i": "ink"}),
+                    caution,
+                ]),
+            "road": strip([grate("purple_dark", "night", "purple") for _ in range(4)]),
+            "plaza": strip([plates("slate_dark", "night", "slate", "slate", 70 + s, s % 2 == 1) for s in range(4)]),
         },
         "varrow": {  # desert dust town
-            "ground": [speckle("sand", [("rust_light", 0.07), ("wood", 0.02)], 80 + s, "rust_light" if s % 2 else None) for s in range(4)],
-            "road": [speckle("wood", [("wood_dark", 0.07), ("rust_light", 0.03)], 90 + s) for s in range(4)],
-            "plaza": [paving("rust_light", "rust", "sand", 100 + s) for s in range(4)],
+            "ground": ground_with_features(
+                lambda s: speckle("sand", [("rust_light", 0.07), ("wood", 0.02)], 80 + s, "rust_light" if s % 2 else None), list(range(4)), [
+                    f([(3, 4, ["Rr.", "rrw"]), (10, 10, [".Rr", "rwr"])], {"R": "rust_light", "r": "rust", "w": "wood"}),
+                    f([(2, 3, ["dd......", "..d.....", "...dd...", ".....d..", "......dd"])], {"d": "wood"}),
+                    f([(4, 4, ["..w.w..", ".wWwWw.", "wWwWwWw", ".w.w.w.", "...w..."])], {"w": "wood_dark", "W": "wood"}),
+                    f([(4, 6, ["WW..WW", "wWWWWw", "WW..WW"])], {"W": "white", "w": "stone"}),
+                ]),
+            "road": strip([speckle("wood", [("wood_dark", 0.07), ("rust_light", 0.03)], 90 + s) for s in range(4)]),
+            "plaza": strip([paving("rust_light", "rust", "sand", 100 + s) for s in range(4)]),
         },
         "glacis": {  # ice colony
-            "ground": [speckle("stone", [("white", 0.08), ("slate_light", 0.03), ("blue_light", 0.012)], 110 + s) for s in range(4)],
-            "road": [plates("slate", "slate_dark", "shadow", "slate_light", 120 + s, s % 2 == 0) for s in range(4)],
-            "plaza": [paving("slate_light", "slate", "white", 130 + s) for s in range(4)],
+            "ground": ground_with_features(
+                lambda s: speckle("stone", [("white", 0.08), ("slate_light", 0.03), ("blue_light", 0.012)], 110 + s), list(range(4)), [
+                    f([(2, 2, ["cc......", ".cd.....", "..cc....", "....cd..", ".....cc.", "......cc"])], {"c": "slate", "d": "slate_light"}),
+                    f([(3, 4, ["..WW..", ".WWWW.", "WWbWWW", ".WWWW."]), (10, 10, ["WW", "Wb"])], {"W": "white", "b": "blue_light"}),
+                    f([(5, 3, ["..b..", ".bwb.", "bBwBb", ".bBb.", "..b.."])], {"b": "blue_light", "B": "blue", "w": "white"}),
+                    f([(2, 5, ["..WWWW..", "WW....WW"]), (6, 11, ["..WWWW..", "WW....WW"])], {"W": "white"}),
+                ]),
+            "road": strip([plates("slate", "slate_dark", "shadow", "slate_light", 120 + s, s % 2 == 0) for s in range(4)]),
+            "plaza": strip([paving("slate_light", "slate", "white", 130 + s) for s in range(4)]),
         },
     }
     for biome, kinds in sets.items():
-        for kind, tiles in kinds.items():
-            out.append(save(strip(tiles), f"tiles/{biome}_{kind}.png"))
+        for kind, img in kinds.items():
+            out.append(save(img, f"tiles/{biome}_{kind}.png"))
+
+    # ground paint for surfaces.json "areas" (lawns, dunes, salt flats, ice sheets, rubble); biome neutral, opaque
+    def lawn(t, seed):
+        for x, y in rand_cells(seed, 3):
+            t = stamp(t, x, y, ["p" if seed % 3 == 0 else "g", "l"], {"p": "pink", "g": "gold", "l": "leaf"})
+        return t
+
+    def dunes(t, seed):
+        return feature(t, [(x, y, ["..RRR..", "RR...RR"]) for x, y in rand_cells(seed, 2, 1)], {"R": "rust_light"})
+
+    def crust(t, seed):
+        return feature(t, [(x, y, ["cc.", ".cc", "..c"]) for x, y in rand_cells(seed, 2)], {"c": "slate_light"})
+
+    def sheen(t, seed):
+        return feature(t, [(x, y, ["W", ".W", "..W"]) for x, y in rand_cells(seed, 3)], {"W": "white"})
+
+    def stones(t, seed):
+        return feature(t, [(x, y, ["Ss", "sd"]) for x, y in rand_cells(seed, 3)], {"S": "slate_light", "s": "slate", "d": "slate_dark"})
+
+    areas = {
+        "grass": area_tiles("grass_light", [("leaf", 0.07), ("grass", 0.06)], 200, lawn),
+        "sand": area_tiles("sand", [("rust_light", 0.04), ("white", 0.01)], 210, dunes),
+        "salt": area_tiles("white", [("stone", 0.08), ("slate_light", 0.02)], 220, crust),
+        "ice": area_tiles("blue_light", [("white", 0.06), ("blue", 0.04)], 230, sheen),
+        "rubble": area_tiles("dirt_dark", [("dirt", 0.1), ("rust", 0.02)], 240, stones),
+    }
+    for kind, img in areas.items():
+        out.append(save(img, f"tiles/area_{kind}.png"))
     return out
 
 
@@ -306,6 +414,61 @@ def build_building_parts() -> list[Path]:
                 c = "slate_light" if y < T - 1 else "slate"
             wall.putpixel((x, y), color(c))
     out.append(save(wall, "buildings/wall.png"))
+    # facade variants, picked per building at runtime so one street does not repeat the same roof and wall
+    def piece(fn) -> Image.Image:
+        img = Image.new("RGBA", (T, T), color("stone"))
+        for y in range(T):
+            for x in range(T):
+                img.putpixel((x, y), color(fn(x, y)))
+        return img
+
+    def shingles(x, y):  # overlapping rows, seams offset every other row
+        if y % 4 == 3:
+            return "slate_light"
+        if (x + (y // 4 % 2) * 4) % 8 == 7:
+            return "slate_light"
+        return "white" if y % 4 == 0 else "stone"
+
+    def panels(x, y):  # standing-seam plates with corner rivets
+        if x % 8 == 7 or y % 8 == 7:
+            return "slate_light"
+        if x % 8 == 0 or y % 8 == 0:
+            return "white"
+        return "slate" if (x % 8, y % 8) in ((2, 2), (5, 2), (2, 5), (5, 5)) else "stone"
+
+    def kick(y):
+        return ("slate_light" if y < T - 1 else "slate") if y >= T - 3 else None
+
+    def brick(x, y):
+        if kick(y):
+            return kick(y)
+        if y % 4 == 3 or (x + (y // 4 % 2) * 4) % 8 == 7:
+            return "slate_light"
+        return "white" if y % 4 == 0 and x % 8 < 2 else "stone"
+
+    def planks(x, y):
+        if kick(y):
+            return kick(y)
+        if x % 4 == 3:
+            return "slate_light"
+        if x % 4 == 0:
+            return "white"
+        return "slate_light" if (x, y) in ((6, 4), (6, 5), (13, 9), (2, 8)) else "stone"
+
+    out.append(save(piece(shingles), "buildings/roof_b.png"))
+    out.append(save(piece(panels), "buildings/roof_c.png"))
+    out.append(save(piece(brick), "buildings/wall_b.png"))
+    out.append(save(piece(planks), "buildings/wall_c.png"))
+    # door awning, 24x8 art px, neutral stripes tinted with the building's roof colour at runtime
+    awning = Image.new("RGBA", (24, 8), CLEAR)
+    for x in range(24):
+        stripe = "white" if (x // 4) % 2 == 0 else "slate_light"
+        for y in range(7):
+            if y < 5 or x % 4 in (1, 2) or y == 5:
+                awning.putpixel((x, y), color(stripe))
+        awning.putpixel((x, 0), color("stone"))
+        awning.putpixel((x, 7 if x % 4 in (1, 2) else 5), color("slate"))
+    out.append(save(awning, "buildings/awning.png"))
     legend = {".": "transparent", "k": "ink", "y": "gold", "Y": "gold_light", "d": "gold_dark", "n": "night", "t": "teal",
               "s": "slate", "S": "slate_light"}
     window = [
@@ -585,6 +748,101 @@ def build_space() -> list[Path]:
     return out
 
 
+# ---------------------------------------------------------------- art pass 4: fx, idle frames, ground edges, starfield
+
+def build_fx() -> list[Path]:
+    """Combat effects from sprites/fx_*.txt and the starfield sprites: all frames side by side in one strip each
+    (fx/<name>.png, space/stars.png). Single-frame files are one sprite pointing right; Godot rotates them."""
+    out = []
+    for src in sorted((SRC / "sprites").glob("fx_*.txt")):
+        legend, frames = parse_grid(src)
+        w, h = max(len(r) for r in frames[0]), len(frames[0])
+        sheet = Image.new("RGBA", (w * len(frames), h), CLEAR)
+        for i, f in enumerate(frames):
+            sheet.paste(grid_image(f, legend), (i * w, 0))
+        out.append(save(sheet, f"fx/{src.stem[3:]}.png"))
+    legend, frames = parse_grid(SRC / "sprites" / "stars.txt")
+    sheet = Image.new("RGBA", (8 * len(frames), 8), CLEAR)
+    for i, f in enumerate(frames):
+        sheet.paste(grid_image(f, legend), (i * 8, 0))
+    out.append(save(sheet, "space/stars.png"))
+    out.append(save(nebula_strip(3, 48), "space/nebula.png"))
+    return out
+
+
+def nebula_strip(n: int, d: int) -> Image.Image:
+    """n neutral gas clouds (d art px each): dithered fbm density with a radial falloff, stone ramp so the game can
+    tint each cloud with the system's nebula colour. Transparent where the gas is thin."""
+    import math
+    ramp = ["slate_dark", "slate", "slate_light", "stone"]
+    sheet = Image.new("RGBA", (d * n, d), CLEAR)
+    for i in range(n):
+        f = fbm(200 + i * 7)
+        for y in range(d):
+            for x in range(d):
+                r = math.hypot(x - (d - 1) / 2, y - (d - 1) / 2) / (d / 2)
+                v = f(x / d, y / d) * 1.5 - r * 1.1
+                if v <= 0.05 + 0.35 * (BAYER[y % 4][x % 4] / 15.0) * 0.5:
+                    continue
+                sheet.putpixel((i * d + x, y), color(shade(ramp, min(1.0, v * 1.4), x, y)))
+    return sheet
+
+
+IDLE_FRAMES = 4  # stand, breathe (head and shoulders 1 px lower), stand, blink
+
+
+def build_idle() -> list[Path]:
+    """chars/<look>_idle.png: 4 idle frames x 3 facings (down/up/right) derived from the walk sheet's idle frame."""
+    looks = yaml.safe_load((SRC / "characters.yaml").read_text())
+    dirs = [parse_grid(SRC / "sprites" / f"char_{d}.txt") for d in ("down", "up", "right")]
+    out = []
+    for look, roles in looks.items():
+        sheet = Image.new("RGBA", (T * IDLE_FRAMES, T * 3), CLEAR)
+        for row, (legend, frames) in enumerate(dirs):
+            lg = dict(legend)
+            lg.update(roles)
+            base = frames[0]
+            breathe = ["." * len(base[0])] + base[0:8] + base[9:]
+            blink = [r.replace("E", "S") for r in base]
+            for col, fr in enumerate((base, breathe, base, blink)):
+                sheet.paste(grid_image(fr, lg), (col * T, row * T))
+        out.append(save(sheet, f"chars/{look}_idle.png"))
+    return out
+
+
+def build_edges() -> list[Path]:
+    """tiles/<set>_edge.png: 8 fringe tiles (N, E, S, W, NE, SE, SW, NW) drawn over a road or plaza tile where the
+    ground starts on that side (corners = ground only diagonal). The fringe reuses the ground tile's own pixels,
+    so it matches every set. Run after build_tiles()."""
+    out = []
+    for gp in sorted((OUT / "tiles").glob("*_ground.png")):
+        ground = Image.open(gp).convert("RGBA").resize((T * 4, T), Image.NEAREST)
+        ground = ground.crop((0, 0, T, T))  # first ground variant at art scale
+        name = gp.name.replace("_ground", "_edge")
+        r = random.Random(sum(map(ord, name)))
+
+        def fringe(side: str) -> Image.Image:
+            img = Image.new("RGBA", (T, T), CLEAR)
+            for i in range(T):
+                d = 1 + sum(r.random() < p for p in (0.9, 0.6, 0.3, 0.1))  # 1..5 px deep, ragged
+                for k in range(d):
+                    x, y = {"N": (i, k), "S": (i, T - 1 - k), "W": (k, i), "E": (T - 1 - k, i)}[side]
+                    img.putpixel((x, y), ground.getpixel((x, y)))
+            return img
+
+        tiles = [fringe(side) for side in "NESW"]
+        for cx, cy in ((1, 0), (1, 1), (0, 1), (0, 0)):  # NE, SE, SW, NW
+            img = Image.new("RGBA", (T, T), CLEAR)
+            for dy in range(5):
+                for dx in range(5):
+                    if dx + dy < 4 + (r.random() < 0.4) - (r.random() < 0.3):
+                        x, y = (T - 1 - dx if cx else dx), (T - 1 - dy if cy else dy)
+                        img.putpixel((x, y), ground.getpixel((x, y)))
+            tiles.append(img)
+        out.append(save(strip(tiles), f"tiles/{name}"))
+    return out
+
+
 def contact_sheet(paths: list[Path], dest: Path) -> None:
     pad, scale = 8, 2
     imgs = [Image.open(p) for p in paths]
@@ -673,7 +931,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--preview", help="also write a contact sheet of every output to this PNG")
     args = ap.parse_args()
-    paths = build_characters() + build_sprites() + build_stations() + build_tiles() + build_building_parts() + build_space() + build_icons() + build_ship_modules() + build_ui()
+    paths = build_characters() + build_sprites() + build_stations() + build_tiles() + build_edges() + build_idle() + build_fx() + build_building_parts() + build_space() + build_icons() + build_ship_modules() + build_ui()
     for p in paths:
         print(p.relative_to(ROOT))
     if args.preview:

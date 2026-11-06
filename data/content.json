@@ -26,7 +26,10 @@
     "bust_fine_ratio": 0.15,
     "bust_fine_min": 50,
     "bust_heat_drop": 40,
-    "bribe_credits_per_heat": 12
+    "bribe_credits_per_heat": 12,
+    "flee_chase_per_second": 1.2,
+    "flee_carry_per_second": 0.5,
+    "flee_heat_cap": 80
   },
   "market": {
     "saturation_per_unit": 0.03,
@@ -70,6 +73,21 @@
     "cocaine": {"name": "Cocaine", "tier": 2, "raw": "coca_leaf", "innate": "crisp", "base_value": 62, "heat_mult": 1.3},
     "meth": {"name": "Meth", "tier": 3, "raw": "pseudo", "innate": "crisp", "base_value": 95, "heat_mult": 1.7},
     "fentanyl": {"name": "Fentanyl", "tier": 4, "raw": "fent_precursor", "innate": "deep", "base_value": 150, "heat_mult": 2.4}
+  },
+  "laws": {
+    "_note": "Numbers are eyeballed, not balanced by long sims. Locations not listed count as tolerated everywhere.",
+    "levels": {
+      "legal": {"name": "Legal", "scan_mult": 0.5, "frisk_mult": 0.5, "heat_mult": 0.5, "price_mult": 0.95, "color": "#7fe3a0"},
+      "tolerated": {"name": "Tolerated", "scan_mult": 1.0, "frisk_mult": 1.0, "heat_mult": 1.0, "price_mult": 1.0, "color": "#e8d27a"},
+      "banned": {"name": "Banned", "scan_mult": 1.4, "frisk_mult": 1.6, "heat_mult": 1.4, "price_mult": 1.2, "color": "#ff7a6a"}
+    },
+    "planets": {
+      "mireth": {"1": "legal", "2": "tolerated", "3": "banned", "4": "banned"},
+      "cinder": {"1": "legal", "2": "tolerated", "3": "tolerated", "4": "banned"},
+      "bazaar": {"1": "legal", "2": "legal", "3": "tolerated", "4": "tolerated"},
+      "varrow": {"1": "legal", "2": "legal", "3": "legal", "4": "tolerated"},
+      "glacis": {"1": "tolerated", "2": "banned", "3": "banned", "4": "banned"}
+    }
   },
   "systems": {
     "halvane": {
@@ -186,12 +204,23 @@
       {"id": "sable", "name": "Sable Ortiga", "fee": 600, "cut": 0.3, "skill": 0.65, "capacity": 40, "bio": "Station medic with a side business in 'prescriptions'."}
     ]
   },
+  "drones": {
+    "price": 350, "upkeep": 15, "max_total": 4, "max_per_estate": 2, "capacity": 12, "trip_seconds": 45, "far_seconds": 45,
+    "loss_base": 0.01, "loss_per_heat": 0.0008, "scrap_refund": 0.4
+  },
   "deals": {
     "interval": 40, "chance": 0.3, "max_open": 3, "answer_seconds": 90, "meet_seconds": 150, "premium": 0.15,
     "accept_base": 0.8, "accept_per_raise": 2.6, "accept_affinity": 0.4, "accept_addiction": 0.4,
     "affinity_decline": -0.02, "affinity_counter_fail": -0.03, "affinity_noshow": -0.08, "heat_mult": 0.8, "history": 12,
     "lead_hours_min": 6, "lead_hours_max": 16, "early_hours": 2, "grace_hours": 1, "window_hours": 3, "remind_hours": 1,
     "affinity_late": -0.04, "affinity_on_time": 0.02, "any_product_chance": 0.3, "qty_stretch": 2, "time_accept": 0.75
+  },
+  "heat_zones": {
+    "zones": {
+      "plaza": {"name": "Plaza", "mult": 1.6, "blurb": "Open and watched: every sale is noticed."},
+      "street": {"name": "Street", "mult": 1.0, "blurb": "Normal attention."},
+      "alley": {"name": "Back alley", "mult": 0.6, "blurb": "Off the roads, few eyes."}
+    }
   },
   "deaddrops": {
     "kinds": ["planet", "station", "asteroid"], "fee": 60, "max_open": 3, "ttl": 600, "pickup_seconds": 25,
@@ -207,13 +236,17 @@
     "cargo": {"name": "Cargo Hold", "levels": [20, 35, 55, 80], "costs": [600, 1500, 3500]},
     "engine": {"name": "Ion Engine", "levels": [1.0, 1.25, 1.5, 1.8], "costs": [500, 1400, 3000]},
     "stealth": {"name": "Stealth Plating", "levels": [0.0, 0.15, 0.3, 0.45], "costs": [700, 1800, 4000]},
-    "lab": {"name": "Hydro Rig", "levels": [5, 10, 20, 35], "costs": [800, 2000, 4500]},
     "laser": {"name": "Laser Cannons", "levels": [8, 11, 15, 20], "costs": [500, 1300, 2800]},
     "missile": {"name": "Missile Pods", "levels": [0, 4, 8, 14], "costs": [700, 1500, 3200]},
     "flak": {"name": "Flak Battery", "levels": [0, 6, 9, 13], "costs": [900, 1700, 3000]},
     "ion": {"name": "Ion Emitter", "levels": [0, 12, 18, 26], "costs": [1100, 2000, 3600]},
     "shield": {"name": "Shield Generator", "levels": [0, 40, 80, 140], "costs": [800, 1800, 3800]},
     "hull": {"name": "Hull Armour", "levels": [100, 130, 170, 220], "costs": [600, 1400, 3000]}
+  },
+  "estate_tiers": {
+    "names": ["Rented rig", "Fitted line", "Pro line", "Industrial line"],
+    "capacity": [5, 10, 20, 35],
+    "costs": [800, 2000, 4500]
   },
   "lab": {
     "base_seconds": 3.0,
@@ -236,20 +269,95 @@
   },
   "station_order": ["trim_table", "precursor_scale", "extractor", "mixing_station", "cook_stove", "refiner", "pack_table"],
   "stations": {
-    "trim_table": {"name": "Trim Table", "minigame": "trim", "affects": "yield", "bases": ["weed"],
-      "hint": "Click the fan leaves to snip them off. Don't nick the bud."},
-    "precursor_scale": {"name": "Precursor Scale", "minigame": "measure", "affects": "yield", "bases": ["cocaine", "meth", "fentanyl"],
-      "hint": "Space/click adds a scoop, right-click/Backspace takes a pinch off. Hit the target weight, then press Enter."},
-    "extractor": {"name": "Extractor", "minigame": "extract", "affects": "purity", "bases": ["weed", "cocaine"],
-      "hint": "Hold Space/mouse to heat the solvent column. The green band follows the extraction profile, so ride it. Boiling over (top of the gauge) spoils the extract."},
-    "mixing_station": {"name": "Mixing Station", "minigame": "pour", "affects": "quality", "needs_additives": true,
-      "hint": "Hold Space/mouse to pour each additive. Release inside the green band."},
-    "cook_stove": {"name": "Cook Stove", "minigame": "heat", "affects": "quality",
-      "hint": "Hold Space/mouse to fire the burner. Keep the temperature inside the green band."},
-    "refiner": {"name": "Refiner", "minigame": "equilibrium", "affects": "purity", "bases": ["cocaine", "meth", "fentanyl"],
-      "hint": "Space/left click doses acid (needle up), Backspace/right click doses base (needle down). Doses act with a delay: keep the reaction in the green band and don't overdose."},
-    "pack_table": {"name": "Packaging Table", "minigame": "pack", "affects": "heat",
-      "hint": "Press Space/click when the sealer is over the bag. Tight seals smell less (less heat)."}
+    "trim_table": {
+      "name": "Trim Table",
+      "minigame": "trim",
+      "affects": "yield",
+      "bases": ["weed"],
+      "hint": "Click the fan leaves to snip them off. Don't nick the bud."
+    },
+    "precursor_scale": {
+      "name": "Precursor Scale",
+      "minigame": "measure",
+      "affects": "yield",
+      "bases": ["cocaine", "meth", "fentanyl"],
+      "hint": "Space/click adds a scoop, right-click/Backspace takes a pinch off. Hit the target weight, then press Enter."
+    },
+    "extractor": {
+      "name": "Extractor",
+      "minigame": "extract",
+      "affects": "purity",
+      "bases": ["weed", "cocaine"],
+      "hint": "Hold Space/mouse to heat the solvent column. The green band follows the extraction profile, so ride it. Boiling over (top of the gauge) spoils the extract."
+    },
+    "mixing_station": {
+      "name": "Mixing Station",
+      "minigame": "pour",
+      "affects": "quality",
+      "needs_additives": true,
+      "hint": "Hold Space/mouse to pour each additive. Release inside the green band."
+    },
+    "cook_stove": {
+      "name": "Cook Stove",
+      "minigame": "heat",
+      "affects": "quality",
+      "hint": "Hold Space/mouse to fire the burner. Keep the temperature inside the green band."
+    },
+    "refiner": {
+      "name": "Refiner",
+      "minigame": "equilibrium",
+      "affects": "purity",
+      "bases": ["cocaine", "meth", "fentanyl"],
+      "hint": "Space/left click doses acid (needle up), Backspace/right click doses base (needle down). Doses act with a delay: keep the reaction in the green band and don't overdose."
+    },
+    "pack_table": {
+      "name": "Packaging Table",
+      "minigame": "pack",
+      "affects": "heat",
+      "hint": "Press Space/click when the sealer is over the bag. Tight seals smell less (less heat); very tight ones shield the batch in patrol scans."
+    },
+    "drying_table": {
+      "name": "Drying Table",
+      "passive": true,
+      "affects": "grade",
+      "bases": ["weed"],
+      "hint": "Hang finished weed on the rack to cure. It comes off one grade higher but lighter."
+    },
+    "seal_bench": {
+      "name": "Sealing Bench",
+      "passive": true,
+      "affects": "packaging",
+      "hint": "Re-wrap finished product from your hold into Sealed or Shielded packs. Costs wrap supplies and time; packed units can slip through patrol scans."
+    },
+    "auto_trimmer": {
+      "name": "Auto-Trimmer",
+      "machine": true,
+      "minigame": "",
+      "affects": "yield",
+      "bases": ["weed"],
+      "hint": "Automation (C2): runs the trim step on its own for a few credits per unit. No minigame, a steady Standard-grade result."
+    },
+    "drip_mixer": {
+      "name": "Drip Mixer",
+      "machine": true,
+      "minigame": "",
+      "affects": "quality",
+      "hint": "Automation (C2): pours the additives you picked on its own for a few credits per unit. No minigame, a steady Standard-grade result."
+    },
+    "packing_machine": {
+      "name": "Packing Machine",
+      "machine": true,
+      "minigame": "",
+      "affects": "heat",
+      "hint": "Automation (C2): seals and packs the batch on its own for a few credits per unit. Looser seals than a good hand, so a bit more heat."
+    }
+  },
+  "packaging": {
+    "tiers": [
+      {"name": "Loose", "min": 0.0, "scan_survive": 0.0, "color": "#9a9a9a"},
+      {"name": "Sealed", "min": 0.45, "scan_survive": 0.15, "color": "#e6e9ff"},
+      {"name": "Shielded", "min": 0.8, "scan_survive": 0.55, "color": "#4fe3c1"}
+    ]
   },
   "workers": {
     "max_staff": 6, "hire_days": 2, "paid_loyalty_gain": 0.02, "unpaid_loyalty_loss": 0.3,
@@ -276,6 +384,17 @@
     "brake": 2.5,
     "reverse_ratio": 0.5,
     "dock_range": 90
+  },
+  "patrol_feel": {
+    "warn_margin": 240,
+    "warn_cooldown": 6.0,
+    "rearm_seconds": 3.0,
+    "lock_depth": 0.2,
+    "field_scan_mult": 0.4,
+    "fields": {
+      "halvane": [[1400, -900, 520], [-1300, 900, 480], [-1200, -1700, 420]],
+      "kovar": [[500, -300, 520], [-2000, 1500, 450], [2400, -700, 400]], "thessaly": [[-1000, -1700, 450], [2300, 1300, 480], [1900, -2700, 400]]
+    }
   },
   "patrol": {
     "speed": 300,
@@ -325,6 +444,7 @@
     "corvette": {"name": "Corvette", "price": 6500, "cargo": 0.9, "hull": 1.6, "shield": 1.4, "speed": 1.05, "laser": 1.25, "scale": 1.12, "stripe": "#ff6b5f",
       "desc": "An ex-navy gun boat: heavy armour, strong shield emitters, hotter lasers. Built to take a cartel base apart."}
   },
+  "curfew": {"start": 22, "end": 5, "extra_officers": 2, "vision_mult": 1.3, "bribe_base": 60, "bribe_per_heat": 2, "bribe_heat_cut": 10, "pass_hours": 3},
   "police": {
     "base": 1,
     "per_heat": 20,
@@ -337,6 +457,7 @@
     "chase_heat": 40,
     "give_up_range": 480
   },
+  "vault": {"base_cap": 40, "cap_per_tier": 40, "upgrade_costs": [500, 1200, 2500]},
   "estates": {
     "ship_bay": {"name": "Cargo Bay", "ship": true, "size": [7, 4], "desc": "The hold of your own ship, fitted out as a cramped workshop. Only usable while docked."},
     "cannery_rig": {"name": "Old Cannery", "location": "mireth", "price": 0, "size": [11, 6], "starter": true,
@@ -350,6 +471,17 @@
     "dune_cellar": {"name": "Dune Cellar", "location": "varrow", "price": 1800, "size": [11, 6], "desc": "Cool cellar under a buried water tank. Nobody out here asks, nobody comes looking."},
     "cryo_vault": {"name": "Cryo Vault 4", "location": "glacis", "price": 5200, "size": [12, 7], "desc": "Leased cold-storage vault in the corporate quarter. Pricey, clean, right under the Authority's nose."}
   },
+  "grow": {
+    "tray_cost": 180,
+    "max_trays": 4,
+    "seed_qty": 2,
+    "min_yield_factor": 0.5,
+    "crops": {
+      "cannabis": {"days": 3, "yield": 6},
+      "coca_leaf": {"days": 4, "yield": 6},
+      "pseudo": {"days": 5, "yield": 5}
+    }
+  },
   "buildables": {
     "trim_table": {"cost": 150, "size": [2, 1]},
     "precursor_scale": {"cost": 200, "size": [1, 1]},
@@ -357,7 +489,12 @@
     "mixing_station": {"cost": 350, "size": [2, 1]},
     "cook_stove": {"cost": 400, "size": [2, 2]},
     "refiner": {"cost": 550, "size": [2, 2]},
-    "pack_table": {"cost": 250, "size": [2, 1]}
+    "pack_table": {"cost": 250, "size": [2, 1]},
+    "drying_table": {"cost": 300, "size": [2, 1]},
+    "seal_bench": {"cost": 320, "size": [2, 1]},
+    "auto_trimmer": {"cost": 900, "size": [2, 1]},
+    "drip_mixer": {"cost": 1100, "size": [2, 1]},
+    "packing_machine": {"cost": 800, "size": [2, 1]}
   },
   "orders": {
     "markup": 0.35, "fee_pct": 0.06, "fee_min": 12, "express_fee_mult": 2.0,
@@ -365,6 +502,8 @@
     "max_qty": 40, "max_open": 6, "cancel_refund": 0.8, "kit_price": 0.85
   },
   "estate_refund": 0.5,
+  "raids": {"heat": 80, "days": 3, "chance_base": 0.3, "chance_per_heat": 0.01, "chance_max": 0.8, "tipoff_cut": 0.5, "call_off_heat": 40,
+    "seize": 0.5, "fine": 150, "heat_drop": 30, "heat_drop_empty": 10, "wanted": 10},
   "combat": {
     "player": {"hp": 100, "regen_per_second": 4.0, "regen_delay": 6.0, "radius": 10, "ko_hp_ratio": 0.5,
       "ko_fine_ratio": 0.2, "ko_fine_min": 80, "ko_heat_drop": 20},
@@ -431,6 +570,11 @@
     "hostility_per_share": 150, "hostility_per_kill": 3, "hostility_per_raid": 30, "hostility_decay": 2,
     "weakened_days": 3, "pressure_min": 0.5, "pressure_max": 1.2
   },
+  "pricewar": {
+    "start_share": 0.45, "min_you": 0.05, "min_hostility": 10, "chance_base": 0.05, "chance_per_hostility": 0.004,
+    "max_wars": 2, "days": 4, "truce_days": 3, "sell_cut": 0.3, "buy_spike": 0.25, "end_you": 0.3,
+    "pay_base": 120, "pay_per_day": 60, "pay_you_discount": 0.5
+  },
   "interdiction": {
     "min_day": 2, "cartel_base": 0.05, "cartel_hostility": 0.35, "cargo_bonus": 0.1, "max_chance": 0.5,
     "authority_base": 0.1, "authority_heat": 0.4, "authority_units": ["interceptor", "interceptor"],
@@ -438,6 +582,18 @@
     "dump_influence": 0.03, "dump_heat_drop": 20,
     "flee_base": 0.35, "flee_engine": 0.12, "flee_speed": 0.3, "flee_fail_damage": 30,
     "fight_heat": 25, "authority_kill_heat": 15
+  },
+  "escort": {
+    "freighter": {"name": "Freighter", "hull": 300, "speed": 200, "radius": 30, "leash": 750, "resume": 0.7, "jump_follow": 900, "arrive": 150},
+    "waves": {"first": 10.0, "interval": 15.0, "max_enemies": 4, "spawn_min": 900, "spawn_max": 1200, "target_range": 1500, "provoke": 380},
+    "cooldown_days": 2,
+    "missions": {
+      "mireth_bazaar": {"name": "Hullmarket Convoy", "from": "mireth", "to": "bazaar", "reward": 300, "bonus": 140, "waves": 2, "desc": "A Bazaar salvage hauler wants company across Halvane. Raiders know the route."},
+      "cinder_mireth": {"name": "Ore Run", "from": "cinder", "to": "mireth", "reward": 320, "bonus": 150, "waves": 2, "desc": "A loaded ore freighter bound for the Mireth spaceport. Keep the Comets off it."},
+      "bazaar_cinder": {"name": "Black Market Lift", "from": "bazaar", "to": "cinder", "reward": 480, "bonus": 200, "waves": 3, "desc": "Long haul across the whole system with a hold nobody will name."},
+      "mireth_varrow": {"name": "Frontier Charter", "from": "mireth", "to": "varrow", "min_day": 2, "reward": 950, "bonus": 380, "waves": 4, "desc": "A charter freighter to Varrow through the Kovar gate. Both systems have cartel wings; stay close and jump with it."},
+      "varrow_mireth": {"name": "Salt Return", "from": "varrow", "to": "mireth", "min_day": 2, "reward": 950, "bonus": 380, "waves": 4, "desc": "A salt freighter heading home through the gate. Kovar wings hit hard."}
+    }
   },
   "style": {
     "_doc": "K2 customization (Style app on the phone). Ramps swap palette roles of the player sprite (hair H/h, skin S/s, jacket C/c/A, pants P) and of the ship hull (y/c/A). cost 0 = owned from the start. Decor is shown in the estates you switch it on for.",
@@ -499,5 +655,23 @@
       "aquarium": {"name": "Aquarium", "cost": 400, "desc": "Glowfish from the Glacis domes."},
       "trophy": {"name": "Gold trophy", "cost": 900, "desc": "For the kingpin who has everything."}
     }
+  },
+  "price_board": {
+    "_doc": "Price board (Map app > Price comparison): per location and good one observation per game day while you are docked there, kept for history_days; spark_days = points in the sparkline, flat_pct = change below this share counts as steady.",
+    "history_days": 14, "spark_days": 8, "flat_pct": 0.02
+  },
+  "walkups": {
+    "interval": 12, "max_active": 2, "chance": 0.3, "stranger_mult": 0.5, "linger_seconds": 70, "cooldown": 240,
+    "affinity_decline": -0.01, "affinity_haggle_fail": -0.02, "haggle": [0.1, 0.2]
+  },
+  "drying": {"seconds": 120, "capacity": 20, "weight_keep": 0.8, "max_grade": 3, "bases": ["weed"]},
+  "sealing": {
+    "capacity": 30,
+    "offers": [{"tier": 1, "seconds": 45, "cost": 4}, {"tier": 2, "seconds": 90, "cost": 10}]
+  },
+  "machines": {
+    "auto_trimmer": {"station": "trim_table", "score": 0.55, "run_cost": 2},
+    "drip_mixer": {"station": "mixing_station", "score": 0.6, "run_cost": 3},
+    "packing_machine": {"station": "pack_table", "score": 0.5, "run_cost": 1}
   }
 }

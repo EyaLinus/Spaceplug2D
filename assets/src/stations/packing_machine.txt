@@ -1,0 +1,27 @@
+# Packing Machine 2x1: conveyor belt with sealed bags and a press head that seals them. Top-down, front face at the bottom.
+legend:
+k = ink
+S = slate
+L = slate_light
+d = slate_dark
+t = teal
+o = stone
+r = red
+a = sand
+---
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+kLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLk
+kSSSSSSSSSSSSSSSSSSSSSkkkkkkSSSk
+kSSSSSSSSSSSSSSSSSSSSSkLLLLkSSSk
+kSSSkkkkkSkkkkkSkkkkkSkLLLLkSSSk
+kSSSkarakSkarakSkarakSkLLLLkSSSk
+kSSSkaaakSkaaakSkaaakSkrrrrkSSSk
+kSSSkkkkkSkkkkkSkkkkkSkrrrrkSSSk
+kSkoooooooooooooooooookkkkkkokSk
+kSkkkkkkkkkkkkkkkkkkkkkkkkkkkkSk
+kSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+kddktkdddddddddddddddddddddddddk
+kddkkkdddddddddddddddddddddddddk
+kddddddddddddddddddddddddddddddk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk

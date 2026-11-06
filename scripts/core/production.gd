@@ -7,6 +7,9 @@ extends RefCounted
 ## lerp(quality stations, purity stations, data.quality.purity_weight).
 
 
+const Packaging = preload("res://scripts/core/packaging.gd")
+
+
 ## Ordered station ids a batch of `base` with `additives` passes through.
 static func stations_for(data: Dictionary, base: String, additives: Array) -> Array:
 	var r: Array = []
@@ -38,6 +41,7 @@ static func outcome(data: Dictionary, scores: Dictionary) -> Dictionary:
 		"purity": purity,
 		"quality": quality,
 		"grade": grade_for(data, quality),
+		"pack": Packaging.tier_for(data, clampf(float(scores["pack_table"]), 0.0, 1.0)) if scores.has("pack_table") else 0,
 	}
 
 

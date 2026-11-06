@@ -10,9 +10,13 @@ const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
 const People = preload("res://scripts/core/people.gd")
 const Corruption = preload("res://scripts/core/corruption.gd")
+const Packaging = preload("res://scripts/core/packaging.gd")
 const Workers = preload("res://scripts/core/workers.gd")
 const Bench = preload("res://scripts/core/bench.gd")
+const Drying = preload("res://scripts/core/drying.gd")
+const Sealing = preload("res://scripts/core/sealing.gd")
 const Deals = preload("res://scripts/core/deals.gd")
+const Walkups = preload("res://scripts/core/walkups.gd")
 const Orders = preload("res://scripts/core/orders.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
@@ -20,11 +24,23 @@ const Combat = preload("res://scripts/core/combat.gd")
 const Deaddrops = preload("res://scripts/core/deaddrops.gd")
 const Products = preload("res://scripts/core/products.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
+const Drones = preload("res://scripts/core/drones.gd")
+const Vault = preload("res://scripts/core/vault.gd")
 const Quests = preload("res://scripts/core/quests.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
+const PriceWar = preload("res://scripts/core/pricewar.gd")
 const Style = preload("res://scripts/core/style.gd")
+const PriceBoard = preload("res://scripts/core/price_board.gd")
+const Grow = preload("res://scripts/core/grow.gd")
+const Laws = preload("res://scripts/core/laws.gd")
+const Marker = preload("res://scripts/core/marker.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
-const SAVE_VERSION := 1
+const Escort = preload("res://scripts/core/escort.gd")
+const Raids = preload("res://scripts/core/raids.gd")
+const HeatZones = preload("res://scripts/core/heat_zones.gd")
+const Curfew = preload("res://scripts/core/curfew.gd")
+const Machines = preload("res://scripts/core/machines.gd")
+const SAVE_VERSION := 2  ## 2: automation machines (C2): stats.machine_runs, building "runs"; version 1 saves load
 
 var data: Dictionary
 var rng := RandomNumberGenerator.new()
@@ -35,25 +51,29 @@ var debt_due_day: int = 10
 var day: int = 1
 var day_time: float = 0.0
 var total_time: float = 0.0
+var heat_zone := ""  ## zone of the street spot you stand on (heat_zones.gd, set by the surface, runtime only)
 var heat: float = 0.0  ## heat of the system the ship is in (other systems: corruption.heat)
+var curfew_pass_until := 0.0  ## total_time until which a bribe pass lasts (runtime, see curfew.gd)
 var corruption: Dictionary = {}  ## wanted level, parked heat of other systems, officials (see corruption.gd)
 var location: String = ""  ## location id while docked, "" while flying
 var system: String = ""  ## star system the ship is in (content.json "systems"); travel between systems = jump()
 var cargo: Dictionary = {}  ## item key -> qty (raw ids, additive ids, product keys)
 var stash: Dictionary = {}  ## finished lab output waiting at the hub
+var vault: Dictionary = {}  ## hidden crate (vault.gd): {"tier": int, "items": {key: qty}}, safe from busts and knock-outs
 var lab_queue: Array = []  ## [{product, qty, remaining, total}]
 var demand: Dictionary = {}  ## location -> base -> multiplier
 var contact_ready_at: Dictionary = {}  ## contact id -> total_time when they buy again
 var offers: Array = []  ## Deal-O-Matic requests and agreed deals (see deals.gd)
 var next_offer_id: int = 0
 var offer_clock: float = 0.0  ## seconds since the last round of customer texts
+var walkups: Dictionary = {}  ## customers on foot (walkups.gd), momentary, not saved
 var people: Dictionary = {}  ## contact id -> addiction, affinity, spent today, known, history (see people.gd)
-var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "flak": 0, "ion": 0, "shield": 0, "hull": 0}
+var upgrades: Dictionary = {"cargo": 0, "engine": 0, "stealth": 0, "laser": 0, "missile": 0, "flak": 0, "ion": 0, "shield": 0, "hull": 0}
 var ship_class: String = "courier"  ## hull class you fly (content.json "ship_classes"), saved
 var hulls: Array = ["courier"]  ## hull classes you own; switch between them at a shipyard, saved
 var combat: Dictionary = {}  ## space combat state: hull, shield, missiles, kills (saved), boost, idle (runtime); see spacecombat.gd
 var state: String = "playing"  ## playing | won | lost
-var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0}
+var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0, "machine_runs": 0}
 const SHIP_BAY := "ship_bay"  ## id of the ship's own estate (content.json "estates", flagged "ship"): always owned
 
 var estates: Dictionary = {}  ## owned estate id -> {"buildings": [{"id": station id, "x": int, "y": int}]}
@@ -75,14 +95,26 @@ var next_drop_id: int = 0
 var drops_unseen: int = 0  ## finished drop jobs since the DeadDrop app was opened (runtime only)
 var workers: Array = []  ## hired staff [{id, loyalty, estate, hired_day}] (see workers.gd)
 var bench: Dictionary = {}  ## estate id -> batch tray carried between stations on foot (see bench.gd), saved
+var drying: Dictionary = {}  ## estate id -> cure batches on the drying table racks (see drying.gd), saved
+var sealing: Dictionary = {}  ## estate id -> packs being wrapped on Sealing Benches (see sealing.gd), saved
 var recipes: Dictionary = {}  ## recipe book: recipe key -> {base, additives, made, best, day} (see products.gd), saved
 var prices: Dictionary = {}  ## your asking price per Standard unit, recipe key -> cr; no entry = market price, saved
+var drones: Array = []  ## courier drones [{id, estate, route, t, grounded}] (see drones.gd), saved
+var drone_seq: int = 0
 var dealers: Array = []  ## hired street dealers [{id, loc, stock, cash, sold, jail}] (see dealers.gd), saved
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 var quests: Dictionary = {"active": [], "done": [], "step": {}, "count": {}, "tracked": ""}  ## quest log (see quests.gd), saved
 var interdiction: Dictionary = {}  ## pending interdiction after a jump (runtime only, see interdiction.gd)
+var escort: Dictionary = {"job": {}, "last": {}, "done": 0}  ## freighter escort job and cooldowns (see escort.gd), saved
 var lane_rng := RandomNumberGenerator.new()  ## interdiction rolls only, so the game RNG stays untouched
+var price_board: Dictionary = {}  ## seen prices per location and good, last N days (see price_board.gd), saved
+var raids: Dictionary = {}  ## estate raid streaks, warning and own RNG (see raids.gd), saved
+var grow: Dictionary = {}  ## estate id -> {"trays": [{raw, start_day, watered}]} grow trays (see grow.gd), saved
+var grow_q: Dictionary = {}  ## raw id -> mean quality 0..1 of the grown part of the stash pile (see grow.gd), saved
 var style: Dictionary = {}  ## K2 look, ship paint/decal and estate decor (see style.gd), saved
+var map_marker := ""  ## K3 hand-placed map marker: location or system id, "" = none (see marker.gd), saved
+var price_wars: Dictionary = {}  ## active cartel price wars {loc: {cartel, started, ends}} (see pricewar.gd), saved
+var price_truce: Dictionary = {}  ## {loc: last truce day}, saved
 var cartels: Dictionary = {}  ## sector influence per location and cartel hostility (see cartels.gd), saved
 
 
@@ -103,18 +135,21 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	system = loc_system(location)
 	cargo = s.get("cargo", {}).duplicate()
 	stash = {}
+	vault = Vault.fresh()
 	lab_queue = []
 	contact_ready_at = {}
 	people = People.init_all(data)
 	offers = []
 	next_offer_id = 0
 	offer_clock = 0.0
+	walkups = {}
 	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "lab": 0, "laser": 0, "missile": 0, "flak": 0, "ion": 0, "shield": 0, "hull": 0}
+	upgrades = {"cargo": 0, "engine": 0, "stealth": 0, "laser": 0, "missile": 0, "flak": 0, "ion": 0, "shield": 0, "hull": 0}
 	ship_class = "courier"
 	hulls = ["courier"]
 	SpaceCombat.reset(self)
 	state = "playing"
-	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0}
+	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0, "machine_runs": 0}
 	estates = {SHIP_BAY: {"buildings": []}}
 	orders = []
 	order_seq = 0
@@ -129,13 +164,25 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	workers = []
 	Workers.ensure(estates[SHIP_BAY])
 	bench = {}
+	drying = {}
+	sealing = {}
 	recipes = {}
 	prices = {}
 	dealers = []
+	drones = []
+	drone_seq = 0
 	quests = Quests.empty_state()  # the opening quests start in GameState.new_game (tests and sims run without)
 	cartels = Cartels.init_state(data)
+	price_wars = {}
+	price_truce = {}
 	style = Style.init_state(data)
+	price_board = {}
+	raids = Raids.init_state()
+	grow = {}
+	grow_q = {}
+	map_marker = ""
 	interdiction = {}
+	escort = Escort.empty_state()
 	lane_rng.seed = seed_value * 7919 + 13
 	_add_starter_estates()
 	demand = {}
@@ -195,8 +242,8 @@ func cargo_free() -> int:
 	return cargo_capacity() - cargo_used()
 
 
-func lab_capacity() -> int:
-	return int(data.upgrades.lab.levels[upgrades.lab])
+func lab_capacity(estate_id: String = "") -> int:
+	return int(data.estate_tiers.capacity[estate_tier(rig_estate(estate_id))])
 
 
 func engine_mult() -> float:
@@ -208,7 +255,7 @@ func stealth() -> float:
 
 
 func scan_radius() -> float:
-	return float(data.heat.scan_radius) * (1.0 - stealth())
+	return float(data.heat.scan_radius) * (1.0 - stealth()) * Laws.scan_mult(self)
 
 
 func patrol_count() -> int:
@@ -218,11 +265,16 @@ func patrol_count() -> int:
 	return mini(n, int(h.patrol_max))
 
 
+func curfew_enforced() -> bool:
+	return Curfew.enforced(self)
+
+
 ## Reach Authority officers walking a planet surface. security: the surface's police factor (0 = lawless).
 func police_on_foot(security: float) -> int:
 	var p: Dictionary = data.police
-	var n := int(floor((float(p.base) + (heat + Corruption.heat_bonus(self)) / float(p.per_heat)) * security))
-	return clampi(n, 0, int(p.max))
+	var n := int(floor((float(p.base) + (heat + Corruption.heat_bonus(self)) / float(p.per_heat)) * security * Laws.frisk_mult(self, location)))
+	n = clampi(n, 0, int(p.max))
+	return n + Curfew.extra_officers(self, security)
 
 
 func has_contraband() -> bool:
@@ -280,10 +332,15 @@ func _maybe_referral(from_id: String) -> void:
 		str(n.get("job", "")).to_lower(), data.bases[n.prefers[0]].name if not n.get("prefers", []).is_empty() else "anything"]})
 
 
+## Heat multiplier for selling a drug at `loc`: drug strength times the local law (legal cools, banned heats).
+func sale_heat_mult(base: String, loc: String = location) -> float:
+	return heat_mult(base) * Laws.heat_mult(self, loc, base)
+
+
 ## Price per unit for selling `product_key` here, to a contact (id) or the fence ("").
 func sell_price(product_key: String, contact_id: String = "", loc: String = location) -> int:
 	var p := Mixing.parse_key(product_key)
-	var v := Mixing.value(data, product_key) * float(demand.get(loc, {}).get(p.base, 0.0)) * Cartels.price_mult(self, loc)
+	var v := Mixing.value(data, product_key) * float(demand.get(loc, {}).get(p.base, 0.0)) * Cartels.price_mult(self, loc) * Laws.price_mult(self, loc, p.base) * PriceWar.sell_mult(self, loc)
 	if contact_id == "":
 		return int(round(v * float(data.market.fence_ratio)))
 	var c := contact(contact_id)
@@ -309,9 +366,9 @@ func upgrade_cost(key: String) -> int:
 	return -1 if lvl >= costs.size() else int(costs[lvl])
 
 
-func batch_seconds(qty: int) -> float:
+func batch_seconds(qty: int, estate_id: String = "") -> float:
 	var l: Dictionary = data.lab
-	var speed: float = 1.0 + float(l.speed_per_level) * upgrades.lab
+	var speed: float = 1.0 + float(l.speed_per_level) * estate_tier(rig_estate(estate_id))
 	return (float(l.base_seconds) + float(l.seconds_per_unit) * qty) / speed
 
 
@@ -333,9 +390,13 @@ func tick(dt: float) -> void:
 	Corruption.tick(self, dt)
 	_tick_lab(dt)
 	Workers.tick(self, dt)
+	Drying.tick(self, dt)
+	Sealing.tick(self, dt)
 	_tick_demand(dt)
 	Deals.tick(self, dt)
+	Walkups.tick(self, dt)
 	Dealers.tick(self, dt)
+	Drones.tick(self, dt)
 	Orders.tick(self)
 	Galaxy.tick(self, dt)
 	SpaceCombat.tick(self, dt)
@@ -383,8 +444,12 @@ func _new_day() -> void:
 		_emit("rumour", {"location": loc, "base": b, "demand": demand[loc][b]})
 	People.new_day(self)
 	Corruption.new_day(self)
+	Raids.new_day(self)
 	Workers.new_day(self)
+	Drones.new_day(self)
 	Cartels.new_day(self)
+	_note_prices()
+	PriceWar.new_day(self)
 	_emit("new_day", {"day": day})
 	if debt > 0 and day > debt_due_day:
 		state = "lost"
@@ -412,8 +477,15 @@ func dock(loc: String) -> Dictionary:
 	system = loc_system(loc)
 	Corruption.on_dock(self, loc)
 	SpaceCombat.on_dock(self)
+	_note_prices()
 	_emit("docked", {"location": loc})
 	return _ok("Docked at %s." % ld.name)
+
+
+## Price board: note today's prices where you are docked (no RNG, no economy effect).
+func _note_prices() -> void:
+	if location != "":
+		PriceBoard.observe(self, location)
 
 
 func undock() -> Dictionary:
@@ -427,6 +499,16 @@ func undock() -> Dictionary:
 
 ## Jumps through `gate` (a location with "jump_to") to the next system. Costs the gate toll and some travel time.
 ## The world puts the ship at the arrival gate (`arrive`).
+## Toll of a jump gate: its own "toll" (long or dangerous lanes cost more) or the global jump.fee.
+func gate_toll(gate: String) -> int:
+	return int(loc_data(gate).get("toll", data.get("jump", {}).get("fee", 0)))
+
+
+## Travel time through a jump gate: its own "seconds" or the global jump.seconds.
+func gate_seconds(gate: String) -> float:
+	return float(loc_data(gate).get("seconds", data.get("jump", {}).get("seconds", 0.0)))
+
+
 func jump(gate: String) -> Dictionary:
 	var gd: Dictionary = loc_data(gate)
 	if location != "":
@@ -434,14 +516,15 @@ func jump(gate: String) -> Dictionary:
 	if gd.is_empty() or not gd.has("jump_to") or loc_system(gate) != system:
 		return _fail("No jump gate there.")
 	var j: Dictionary = data.get("jump", {})
-	var fee := int(j.get("fee", 0))
+	var fee := gate_toll(gate)
 	if credits < fee:
 		return _fail("The gate toll is %d cr." % fee)
 	credits -= fee
 	var from := system
 	system = str(gd.jump_to)
 	Corruption.on_jump(self, from, system)
-	tick(float(j.get("seconds", 0.0)))
+	tick(gate_seconds(gate))
+	Escort.on_jump(self, from, system, str(gd.get("arrive", "")))
 	_emit("jumped", {"from": from, "to": system, "gate": gate, "arrive": str(gd.get("arrive", ""))})
 	Interdiction.roll(self, system)
 	return _ok("Jumped to %s (%d cr toll)." % [system_data().get("name", system), fee])
@@ -471,9 +554,9 @@ func buy_price(item: String, loc: String = location) -> int:
 	if ld.is_empty():
 		return -1
 	if ld.sells_raw.has(item):
-		return int(ld.sells_raw[item])
+		return int(round(int(ld.sells_raw[item]) * PriceWar.buy_mult(self, loc)))
 	if ld.get("sells_additives", false) and data.additives.has(item):
-		return int(data.additives[item].price)
+		return int(round(int(data.additives[item].price) * PriceWar.buy_mult(self, loc)))
 	return -1
 
 
@@ -493,7 +576,7 @@ func missing_stations(base: String, additives: Array) -> Array:
 func missing_stations_in(estate_id: String, base: String, additives: Array) -> Array:
 	var have: Array = []
 	for b in estates.get(estate_id, {}).get("buildings", []):
-		have.append(b.id)
+		have.append_array(Machines.provides(data, b.id))  # a machine (C2) counts as the station it automates
 	var r: Array = []
 	for st in Production.stations_for(data, base, additives):
 		if not st in have:
@@ -514,7 +597,7 @@ func check_batch(base: String, additives: Array, qty: int) -> Dictionary:
 			names.append(data.stations[st].name)
 		return _fail("Set up first: %s." % ", ".join(PackedStringArray(names)))
 	if qty <= 0 or qty > lab_capacity():
-		return _fail("Rig holds %d units per batch." % lab_capacity())
+		return _fail("This line holds %d units per batch." % lab_capacity())
 	if lab_queue.size() >= 3:
 		return _fail("Lab queue is full.")
 	var need := batch_needs(base, additives, qty)
@@ -548,7 +631,7 @@ func queue_batch(base: String, additives: Array, qty: int, scores: Dictionary = 
 		return _fail("Lab queue is full.")
 	var res := Production.outcome(data, scores)
 	var out_qty := Production.output_qty(qty, res.yield_mult)
-	var product := Mixing.key(base, Mixing.traits_for(data, base, additives), res.grade)
+	var product := Mixing.key(base, Mixing.traits_for(data, base, additives), res.grade, res.pack)
 	var t := batch_seconds(qty)
 	Products.discover(self, base, additives, res.grade, out_qty)
 	lab_queue.append({"product": product, "qty": out_qty, "remaining": t, "total": t})
@@ -627,7 +710,7 @@ func sell(product_key: String, qty: int, contact_id: String = "") -> Dictionary:
 		if bargain:
 			var s: Dictionary = People.state(self, contact_id)
 			s.affinity = clampf(float(s.affinity) + float(data.get("products", {}).get("affinity_bargain", 0.0)), -1.0, 1.0)
-	add_heat(float(loc_data().heat_per_unit) * qty * heat_mult(p.base))
+	add_heat(float(loc_data().heat_per_unit) * qty * sale_heat_mult(p.base) * HeatZones.mult(self))
 	_emit("sold", {"product": product_key, "qty": qty, "credits": total, "contact": contact_id})
 	return _ok("Sold %d for %d cr." % [qty, total])
 
@@ -725,19 +808,18 @@ func bribe(heat_amount: float) -> Dictionary:
 func bust() -> Dictionary:
 	if Corruption.scan_pass(self):
 		return _ok("A customs officer waved your cargo through.")
-	var lost := 0
-	for k in cargo.keys():
-		if Mixing.is_product(k):
-			lost += int(cargo[k])
-			cargo.erase(k)
+	var scan := Packaging.scan(data, cargo, rng)
+	var lost := int(scan.lost)
+	var kept := int(scan.kept)
 	var h: Dictionary = data.heat
 	var fine := mini(credits, maxi(int(h.bust_fine_min), int(credits * float(h.bust_fine_ratio))))
 	credits -= fine
 	stats.busts += 1
 	_set_heat(heat - float(h.bust_heat_drop))
 	Corruption.on_bust(self)
-	_emit("busted", {"lost": lost, "fine": fine})
-	return _ok("Busted! Lost %d units and paid %d cr." % [lost, fine])
+	_emit("busted", {"lost": lost, "fine": fine, "kept": kept})
+	var shield_note := " Your packaging hid %d units." % kept if kept > 0 else ""
+	return _ok("Busted! Lost %d units and paid %d cr.%s" % [lost, fine, shield_note])
 
 
 # ---------------------------------------------------------------- estates
@@ -758,6 +840,51 @@ func _add_starter_estates() -> void:
 
 func estate_owned(id: String) -> bool:
 	return estates.has(id)
+
+
+## Building tier of an owned estate (0 = as rented); tiers raise batch size and cooking speed there.
+func estate_tier(id: String) -> int:
+	return clampi(int(estates.get(id, {}).get("tier", 0)), 0, data.estate_tiers.capacity.size() - 1)
+
+
+## The estate whose tier applies: `id` if given, else the one you stand in, else the starter estate that is the
+## hub lab of this planet (the old global hydro rig), else "" (tier 0).
+func rig_estate(id: String = "") -> String:
+	if id != "":
+		return id
+	if estates.has(inside_estate):
+		return inside_estate
+	if loc_data().get("lab", false):
+		for k in data.estates:
+			if data.estates[k].get("starter", false) and data.estates[k].get("location", "") == location:
+				return k
+	return ""
+
+
+## Price of the next tier of `id` (-1 = top tier or not owned).
+func estate_tier_cost(id: String) -> int:
+	if not estates.has(id):
+		return -1
+	var costs: Array = data.estate_tiers.costs
+	var t := estate_tier(id)
+	return -1 if t >= costs.size() else int(costs[t])
+
+
+## Upgrades the production line of an owned estate (replaces the old global Hydro Rig upgrade).
+func buy_estate_tier(id: String) -> Dictionary:
+	if not estates.has(id) or id == "":
+		return _fail("You don't own that.")
+	var cost := estate_tier_cost(id)
+	if cost < 0:
+		return _fail("Already the best line.")
+	if credits < cost:
+		return _fail("Needs %d cr." % cost)
+	if not data.estates[id].get("ship", false) and location != data.estates[id].location:
+		return _fail("You have to be on %s to rebuild it." % data.locations[data.estates[id].location].name)
+	credits -= cost
+	estates[id].tier = estate_tier(id) + 1
+	_emit("estate_tier", {"estate": id, "tier": estates[id].tier})
+	return _ok("%s is now a %s." % [data.estates[id].name, data.estate_tiers.names[estates[id].tier]])
 
 
 func buy_estate(id: String) -> Dictionary:
@@ -844,6 +971,10 @@ func remove_building(estate_id: String, index: int) -> Dictionary:
 	var b: Dictionary = estates[estate_id].buildings[index]
 	if b.get("fixed", false):
 		return _fail("The %s came with the place and stays." % data.stations[b.id].name)
+	if b.id == Drying.TABLE and not Drying.can_remove(self, estate_id):
+		return _fail("Empty the drying rack first.")
+	if b.id == Sealing.BENCH and not Sealing.can_remove(self, estate_id):
+		return _fail("Empty the sealing bench first.")
 	var refund := int(round(int(data.buildables[b.id].cost) * float(data.estate_refund)))
 	estates[estate_id].buildings.remove_at(index)
 	credits += refund
@@ -857,16 +988,23 @@ func to_dict() -> Dictionary:
 	return {
 		"version": SAVE_VERSION, "credits": credits, "debt": debt, "debt_due_day": debt_due_day,
 		"day": day, "day_time": snappedf(day_time, 0.01), "total_time": snappedf(total_time, 0.01),
-		"heat": snappedf(heat, 0.01), "corruption": Corruption.to_save(self), "location": location, "system": system, "cargo": cargo.duplicate(), "stash": stash.duplicate(),
+		"heat": snappedf(heat, 0.01), "corruption": Corruption.to_save(self), "raids": Raids.to_save(self), "location": location, "system": system, "cargo": cargo.duplicate(), "stash": stash.duplicate(),
 		"lab_queue": lab_queue.duplicate(true), "demand": demand.duplicate(true),
 		"contact_ready_at": contact_ready_at.duplicate(), "people": people.duplicate(true), "offers": offers.duplicate(true),
 		"next_offer_id": next_offer_id, "offer_clock": snappedf(offer_clock, 0.01), "upgrades": upgrades.duplicate(),
 		"state": state, "stats": stats.duplicate(), "rng_state": str(rng.state), "estates": estates.duplicate(true),
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
 		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
-		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "quests": Quests.to_save(self),
+		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "drones": Drones.to_save(self), "quests": Quests.to_save(self),
+		"drying": Drying.to_save(self),
+		"sealing": Sealing.to_save(self),
 		"cartels": Cartels.to_save(self), "ship_class": ship_class, "hulls": hulls.duplicate(),
-		"style": Style.to_save(self),
+		"style": Style.to_save(self), "escort": Escort.to_save(self),
+		"price_board": PriceBoard.to_save(self),
+		"grow": Grow.to_save(self), "grow_q": Grow.quality_to_save(self),
+		"vault": Vault.to_save(self),
+		"marker": Marker.to_save(self),
+		"pricewar": PriceWar.to_save(self),
 	}
 
 
@@ -909,6 +1047,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 		offers.append(od)
 	next_offer_id = int(d.get("next_offer_id", offers.size()))
 	offer_clock = float(d.get("offer_clock", 0.0))
+	walkups = {}
 	for k in upgrades:
 		upgrades[k] = int(d.get("upgrades", {}).get(k, 0))
 	state = str(d.get("state", "playing"))
@@ -918,11 +1057,18 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 		if data.estates.has(e):
 			var list: Array = []
 			for b in d.estates[e].get("buildings", []):
+				if not data.buildables.has(str(b.id)):
+					continue  # a building the data no longer knows
 				var nb := {"id": str(b.id), "x": int(b.x), "y": int(b.y)}
 				if b.get("fixed", false):
 					nb.fixed = true
+				if int(b.get("runs", 0)) > 0:
+					nb.runs = int(b.runs)
 				list.append(nb)
 			estates[e] = {"buildings": list}
+			var tier := clampi(int(d.estates[e].get("tier", 0)), 0, data.estate_tiers.capacity.size() - 1)
+			if tier > 0:  # tier 0 stays implicit so older saves round-trip unchanged
+				estates[e].tier = tier
 			Workers.load_estate(d.estates[e], estates[e])
 	if not estates.has(SHIP_BAY):
 		estates[SHIP_BAY] = {"buildings": []}
@@ -940,12 +1086,26 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	Deaddrops.from_save(self, d)
 	workers = Workers.from_save(self, d.get("workers", []))
 	_add_starter_estates()
+	# Old saves: the global Hydro Rig level becomes the tier of the rented starter rig.
+	var old_rig := int(d.get("upgrades", {}).get("lab", 0))
+	if old_rig > 0 and not d.get("estates", {}).get("cannery_rig", {}).has("tier") and estates.has("cannery_rig"):
+		estates.cannery_rig.tier = clampi(old_rig, 0, data.estate_tiers.capacity.size() - 1)
 	Bench.from_save(self, d)
+	Drying.from_save(self, d.get("drying", {}))
+	Sealing.from_save(self, d.get("sealing", {}))
 	Products.from_save(self, d.get("products", {}))
 	Dealers.from_save(self, d.get("dealers", []))
+	Drones.from_save(self, d.get("drones", []))
 	Quests.from_save(self, d.get("quests", {}), d.has("quests"))
 	Cartels.from_save(self, d.get("cartels", {}))
+	PriceWar.from_save(self, d.get("pricewar", {}))
 	Style.from_save(self, d.get("style", {}))
+	Escort.from_save(self, d.get("escort", {}))
+	PriceBoard.from_save(self, d.get("price_board", {}))
+	Raids.from_save(self, d.get("raids", {}))
+	Grow.from_save(self, d)
+	Vault.from_save(self, d.get("vault", {}))
+	Marker.from_save(self, d.get("marker", ""))
 	if d.has("rng_state"):
 		rng.state = int(d.rng_state)
 
@@ -988,6 +1148,7 @@ static func _add(dict: Dictionary, k: String, n: int) -> void:
 func _emit(kind: String, payload: Dictionary) -> void:
 	event.emit(kind, payload)
 	Cartels.on_event(self, kind, payload)
+	PriceWar.on_event(self, kind, payload)
 	Quests.on_event(self, kind, payload)
 
 

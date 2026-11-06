@@ -5,6 +5,7 @@ extends SceneTree
 ## godot --headless --path . -s res://tools/tip_audit.gd
 
 const Deals = preload("res://scripts/core/deals.gd")
+const Walkups = preload("res://scripts/core/walkups.gd")
 
 var UI  # loaded at runtime: ui_theme.gd uses autoloads, which a SceneTree script cannot see at compile time
 
@@ -53,8 +54,20 @@ func _run() -> void:
 		for i in 4:
 			await physics_frame
 		sf.interact()
+		if spot == "market":  # D4: the door leads into the room; the counter opens the panel
+			var room = m.surface
+			room.place_player_at("counter")
+			for i in 4:
+				await physics_frame
+			room.interact()
 		await _audit("station " + spot, m.station)
 		m.station.close()
+		if spot == "market":
+			m.surface.place_player_at("exit")
+			for i in 4:
+				await physics_frame
+			m.surface.interact()
+			sf = m.surface
 	g.buy("cannabis", 5)
 	g.buy("nanoflux", 5)
 	sf.place_player_at("cannery")
@@ -76,6 +89,13 @@ func _run() -> void:
 	m.leave_estate()
 	await _frames(3)
 	Deals.request(g, "okka")
+	g.cargo["weed:glow"] = 6
+	Walkups.active(g)["okka"] = Walkups.offer_for(g, "okka")
+	m.walkup.open("okka")
+	await _audit("customer on foot", m.walkup)
+	m.walkup.close()
+	Walkups.decline(g, "okka")
+	g.cargo.erase("weed:glow")
 	m.toggle_phone()
 	await _audit("phone home", m.phone)
 	for app in m.phone.apps:

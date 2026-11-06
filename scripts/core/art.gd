@@ -11,6 +11,7 @@ const WALK := [0, 1, 0, 2]  ## sheet columns for a walk cycle: idle, step A, idl
 ## Surface id -> tile set (tiles/<set>_ground|road|plaza.png). Unknown surfaces keep procedural ground.
 const TILESETS := {
 	"mireth": "mireth", "cinder": "cinder", "bazaar": "bazaar", "varrow": "varrow", "glacis": "glacis",
+	"quillon": "glacis", "ashfall": "varrow",  # clones of Glacis / Varrow until they get their own tiles
 }
 
 ## NPC looks and their coat colour; an NPC gets the look whose coat is closest to its data colour.
@@ -23,7 +24,7 @@ const NPC_LOOKS := {
 ## Ship upgrade modules (ships/mod_<key>_<level>.png, 48 px, level 1..3; level 0 = none) in draw order around the
 ## 32 px hull: UNDER modules are drawn before it, OVER modules after. New upgrade keys (weapons, shields) go here.
 const SHIP_UNDER := ["hull", "engine", "cargo"]
-const SHIP_OVER := ["stealth", "lab", "laser", "missile", "shield"]
+const SHIP_OVER := ["stealth", "laser", "missile", "shield"]
 ## Exhaust nozzles per engine level: [position of the nozzle's bottom edge, flame width], relative to the ship centre.
 const SHIP_NOZZLES := [
 	[[Vector2(0, 12), 1.0]],
@@ -31,6 +32,11 @@ const SHIP_NOZZLES := [
 	[[Vector2(0, 12), 1.0], [Vector2(-11, 18), 0.8], [Vector2(11, 18), 0.8]],
 	[[Vector2(0, 18), 0.9], [Vector2(-11, 20), 0.9], [Vector2(11, 20), 0.9]],
 ]
+
+## Art pass 4 sheets (registry only; callers opt in). Idle sheet: IDLE_FRAMES columns (stand, breathe, stand, blink) x rows
+## down/up/right. Edge strip: 8 fringe tiles in EDGE_ORDER, drawn over road/plaza where ground starts on that side.
+const IDLE_FRAMES := 4
+const EDGE_ORDER := ["N", "E", "S", "W", "NE", "SE", "SW", "NW"]
 
 static var _cache := {}
 
@@ -129,6 +135,26 @@ static func draw_prop(ci: CanvasItem, rel: String, p: Vector2, bottom := 0.0) ->
 	return true
 
 
+## Strips with more than PLAIN_TILES variants hold the common tiles first and rarer feature tiles (flowers, cracks,
+## hatches, bones) after them: feature tiles show up on about FEATURE_CHANCE percent of the cells.
+const PLAIN_TILES := 4
+const FEATURE_CHANCE := 14
+
+
+## Variant index for hash `h` in a strip of `n` tiles (see PLAIN_TILES).
+static func pick_variant(h: int, n: int) -> int:
+	if n <= PLAIN_TILES:
+		return posmod(h, n)
+	if posmod(h, 100) < FEATURE_CHANCE:
+		return PLAIN_TILES + posmod(h >> 8, n - PLAIN_TILES)
+	return posmod(h >> 8, PLAIN_TILES)
+
+
+## Stable pick among `n` looks for a building piece (roof, wall, window ...): same id and salt, same answer.
+static func facade_variant(id: String, salt: int, n: int) -> int:
+	return posmod(hash("%s/%d" % [id, salt]), n)
+
+
 ## Fills `r` with variant tiles from a strip (tiles/<set>_<kind>.png), picked by a stable hash per cell.
 static func fill_tiles(ci: CanvasItem, strip_rel: String, r: Rect2, seed_val: int) -> bool:
 	var t := tex(strip_rel)
@@ -139,7 +165,7 @@ static func fill_tiles(ci: CanvasItem, strip_rel: String, r: Rect2, seed_val: in
 	while y < r.end.y:
 		var x := r.position.x
 		while x < r.end.x:
-			var v := posmod(hash(Vector3i(int(x), int(y), seed_val)), n)
+			var v := pick_variant(hash(Vector3i(int(x), int(y), seed_val)), n)
 			var w := minf(TILE, r.end.x - x)
 			var h := minf(TILE, r.end.y - y)
 			ci.draw_texture_rect_region(t, Rect2(x, y, w, h), Rect2(v * TILE, 0, w, h))
@@ -222,3 +248,8 @@ static func with_icon(key: String, ctrl: Control) -> Control:
 	ctrl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	h.add_child(ctrl)
 	return h
+
+
+static func idle_sheet(look: String) -> Texture2D: return tex("chars/%s_idle.png" % look)
+static func edge_strip(set_name: String) -> Texture2D: return tex("tiles/%s_edge.png" % set_name)
+static func fx(name: String) -> Texture2D: return tex("fx/%s.png" % name)  ## bolt_laser, bolt_pirate, missile, explosion (4 frames of 32 px), hit (3 of 16), shield (3 of 64)

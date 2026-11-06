@@ -20,6 +20,9 @@ static func rules(g) -> Dictionary:
 
 ## Product key without the grade suffix.
 static func recipe_key(product_key: String) -> String:
+	var hash_at := product_key.find("#")
+	if hash_at >= 0:
+		product_key = product_key.substr(0, hash_at)
 	var at := product_key.find("@")
 	return product_key if at < 0 else product_key.substr(0, at)
 
@@ -39,9 +42,31 @@ static func discover(g, base: String, additives: Array, grade: int, qty: int) ->
 		r.additives = additives.duplicate()  # a legacy entry learns its recipe
 	r.made = int(r.made) + qty
 	r.best = maxi(int(r.best), grade)
+	r.last = g.day
+	r.runs = int(r.get("runs", 0)) + 1
 	if fresh:
 		g._emit("product_discovered", {"product": rk, "base": base})
 	return fresh
+
+
+## Mixing journal: the recipes with a known additive list, newest first (last day cooked, then most batches).
+## `base` filters to one drug ("" = all). Entries are copies: {key, base, additives, made, best, last, runs}.
+static func journal(g, base: String = "") -> Array:
+	var r: Array = []
+	for rk in g.recipes:
+		var e: Dictionary = g.recipes[rk]
+		if (e.additives as Array).is_empty() or (base != "" and e.base != base):
+			continue
+		var c: Dictionary = e.duplicate(true)
+		c.key = rk
+		r.append(c)
+	r.sort_custom(func(a, b):
+		if a.last != b.last:
+			return a.last > b.last
+		if a.runs != b.runs:
+			return a.runs > b.runs
+		return a.key < b.key)
+	return r
 
 
 ## Products you carry from before the recipe book existed (old saves) get an entry without a known recipe.
@@ -171,7 +196,8 @@ static func from_save(g, d: Dictionary) -> void:
 		for a in e.get("additives", []):
 			if g.data.additives.has(a):
 				adds.append(str(a))
-		g.recipes[rk] = {"base": base, "additives": adds, "made": int(e.get("made", 0)), "best": int(e.get("best", 1)), "day": int(e.get("day", 1))}
+		g.recipes[rk] = {"base": base, "additives": adds, "made": int(e.get("made", 0)), "best": int(e.get("best", 1)), "day": int(e.get("day", 1)),
+			"last": int(e.get("last", e.get("day", 1))), "runs": int(e.get("runs", 0))}
 	g.prices = {}
 	for rk in d.get("prices", {}):
 		if g.recipes.has(rk):

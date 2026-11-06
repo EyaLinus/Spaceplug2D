@@ -31,8 +31,10 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 
 ## P2 – Living planets
 - [ ] Art pass for the surface via the asset pipeline (tileset, character sprites with 4-direction walk cycles, building sprites)
-- [ ] Building interiors as their own small instances (enter door → interior scene) instead of opening a panel at the door
-- [ ] NPC schedules (home ↔ work ↔ plaza by time of day), day/night tint, idle chatter bubbles
+- [x] Building interiors as their own small instances (enter door → interior scene) instead of opening a panel at the door
+- [~] Art pass for the surface via the asset pipeline (tileset, character sprites with 4-direction walk cycles, building sprites) – partial: characters done earlier; wave 23 added ground feature tiles, area paint tiles and building facade variety (see PROGRESS.md); roads/plazas edges, water/pit/slag/chasm art and per-district materials still open
+- [ ] Customers on foot: NPCs who want product walk up to you; you deal with them directly (replaces part of the contacts menu) (walk-ups and the deal card are in; trimming the contacts menu is still open)
+- [x] NPC schedules (home ↔ work ↔ plaza by time of day), day/night tint, idle chatter bubbles
 - [ ] Customers on foot: NPCs who want product walk up to you; you deal with them directly (replaces part of the contacts menu)
 - [x] Second and third surface: Drift Bazaar as a walkable hull deck (with the fence's back room), Cinder Belt as a mining camp
 
@@ -40,18 +42,21 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [x] Reach Authority officers patrol the streets with vision cones; heat controls their number (shared with space heat), scaled per planet (`security`: Mireth 1, Cinder 0.5, Bazaar 0)
 - [x] Carrying product in an officer's sight → frisk bar; at high heat they chase you; bust on foot = confiscation + fine (same core bust)
 - [x] Officers path around buildings (AStarGrid2D on the tile grid, `scripts/planet/nav.gd`)
-- [ ] Running away raises heat
+- [x] Running away raises heat (sprinting in an officer's sight, `pursuit.gd`)
 - [ ] Curfew at night, hiding spots, bribable officers
-- [ ] Planet heat zones: dealing in the plaza is hotter than in the back alleys
+- [x] Planet heat zones: dealing in the plaza is hotter than in the back alleys
+- [x] Curfew at night + bribable officers (hiding spots still open)
+- [x] Hiding spots: stand still in a dumpster/crate/alcove spot and officers lose you (no frisk, chasers give up); close officers find you
 
 ## P4 – Estates & production buildings
 - [x] Core: properties per planet (price, size in grid cells), buy, ownership in the save (upkeep/selling later)
 - [x] Estate instance: enter your property, grid placement mode (place/remove, no rotation yet) with a build menu [B]
 - [x] Cook in your estate with the stations you placed (station minigames from the lab run on your own stations)
-- [ ] Production buildings as core entities: grow tray (raws with growth time/quality), mixing station (the current lab,
+- [ ] Production buildings as core entities: grow tray (first slice done, `grow.gd`; raws with growth time/quality), mixing station (the current lab,
       one per station), drying/packaging table, storage crate; each has its own input/output inventory
 - [ ] The global "hydro rig" becomes the first rented estate; lab upgrades turn into building tiers
-- [ ] Raids on estates when heat stays high
+- [x] Raids on estates when heat stays high
+- [x] The global "hydro rig" becomes the first rented estate; lab upgrades turn into building tiers (rent itself still open)
 - [x] Station minigames (trim, scale, mixing, cook, packaging) decide yield, quality grade and heat; reusable runner
       for estate buildings (`scripts/ui/minigames/`)
 
@@ -59,10 +64,12 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [ ] Hire workers at the job board (botanist, cook, handler) with daily wages
 - [ ] Assign workers to buildings; simple job system moves items storage → station → storage
 - [ ] Dealers: workers who sell product to customers on their own (with bust risk)
-- [ ] Courier drones between estates and the spaceport
+- [x] Courier drones between estates and the spaceport
 
 ## P6 – Expansion & 1.0
 - [ ] More planets with own laws, demand and security levels; jump lanes to a second system
+- [ ] Rival syndicate with territory and price wars (✅ first slice: cartel price wars, see PROGRESS.md; open: per-product wars, cartel-vs-cartel wars); ship classes (✅ E4)
+- [ ] More planets with own laws, demand and security levels; jump lanes to a second system (first slice: Thessaly Drift, 2 planets, per-lane tolls; laws and more systems still open)
 - [ ] Rival syndicate with territory and price wars; ship classes
 - [x] Menu system: main + pause menu, 3 save slots, settings (volumes, window mode/size, VSync, key rebinding)
 - [ ] Tutorial contract chain, mixing journal, balance pass with long sims, localisation DE/EN
@@ -186,7 +193,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
 - → **Release v0.1.10** (shipped as v0.1.9).
 
 ### Wave 8 – bigger, unique worlds (v0.1.11)
-- **D4 Larger planet maps** (was D4). ✅ done (see PROGRESS.md; interiors for key buildings not built). Each planet 2–3× bigger with its own districts and landmarks (Mireth canal
+- **D4 Larger planet maps** (was D4). ✅ done (see PROGRESS.md; interiors for key buildings added in wave 11). Each planet 2–3× bigger with its own districts and landmarks (Mireth canal
   docks, Cinder mine shafts, Bazaar market decks, Varrow dune town, Glacis domes), interiors for key buildings,
   procedural filler props, minimap zoom.
 - **B4 Everyone is someone.** ✅ done (see PROGRESS.md). Every NPC on a surface is a named person from `people.gd` (generated names + look per
@@ -198,7 +205,7 @@ Finished work from earlier sessions that only had to be merged on top of each ot
 - **I1 Enemy cartels + sector influence.** ✅ done (see PROGRESS.md; cartel bases and wings come with E4). 3 rival cartels with home systems, colours and bosses; every location has an
   influence share (you vs. cartels) that moves with sales, fights and drops; high influence = better prices and
   fewer pirates, low = robberies. Influence overlay in the Map app. (was F2 rival gangs)
-- **E4 Space combat II.** ✅ done (see PROGRESS.md; escort missions not built). Cartel fighter wings and gunships, escort missions, cartel stations you can raid,
+- **E4 Space combat II.** ✅ done (see PROGRESS.md; escort missions added in wave 11). Cartel fighter wings and gunships, escort missions, cartel stations you can raid,
   new weapons (flak, ion), loot drops, ship classes at the shipyard.
 - **D3 Interdiction** (was D3). ✅ done (see PROGRESS.md). Jumps can be intercepted by cartel wings or the Authority: fight, pay, dump or flee.
 - → **Release v0.1.12** (shipped as v0.1.11).
@@ -209,7 +216,9 @@ Finished work from earlier sessions that only had to be merged on top of each ot
 - **K2 Customization.** ✅ done (#65; Style app). Player look (hair, jacket colours), ship paint and decals, estate decoration props.
 - **K3 QoL.** ✅ done (K3 PR; balance pass still waits for Linus). Hold-to-repeat buy, sort/filter in lists, compare prices tooltip, auto-route to marker, quick-save,
   rebindable everything, settings for text size; long balance sims and a first real balance pass if Linus asks.
+- **Q3 Main quest chapter 3.** ✅ done (see PROGRESS.md). Ninth Veil base quest: 6 missions from Varrow to Veil Spire.
 - **C2 Automation machines.** ⏳ open, moved to the next phase. Auto-trimmer, drip mixer, packing machine: estate buildings that run a station step on
+- **C2 Automation machines.** ✅ done (see PROGRESS.md; machines run on interaction or for lab hands, no timers). Auto-trimmer, drip mixer, packing machine: estate buildings that run a station step on
   their own (lower quality than a good minigame, but no worker needed).
 - → **Release v0.1.13**.
 
@@ -218,6 +227,8 @@ Waves run in order; inside a wave milestones are sequential (max 2 threads in th
 later screen builds on it. Conflict hot spots as in phase 2, plus `ui_theme.gd` (G1 only).
 
 ## Carried over from the v0.1 roadmap (fold into the milestones above when they are picked up)
-- Patrol feel in space: warning before scan range, asteroid fields to break pursuit, screen shake on bust
+- Patrol feel in space: ✅ done (wave 12 PR; warning before scan range, asteroid fields shrink scan range and break pursuit, screen shake on bust now also in space)
 - Packaging tiers (shielded product survives a scan with a chance) → P4 packaging table
+- [x] Price board with per-location history → P2/P6 (Map app price comparison)
+- [x] Packaging tiers (shielded product survives a scan with a chance) → P4 packaging table (wave 12, `packaging.gd`)
 - Price board with per-location history → P2/P6

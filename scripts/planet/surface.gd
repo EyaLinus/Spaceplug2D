@@ -6,18 +6,26 @@ extends Node2D
 signal interacted(action: String, payload: Dictionary)
 
 const WalkerScript = preload("res://scripts/planet/walker.gd")
+const Chatter = preload("res://scripts/core/chatter.gd")
 const NpcScript = preload("res://scripts/planet/npc.gd")
 const OfficerScript = preload("res://scripts/planet/officer.gd")
 const Art = preload("res://scripts/core/art.gd")
+const Pursuit = preload("res://scripts/core/pursuit.gd")
 const Nav = preload("res://scripts/planet/nav.gd")
 const FloatText = preload("res://scripts/world/float_text.gd")
 const Style = preload("res://scripts/core/style.gd")
+const Grow = preload("res://scripts/core/grow.gd")
 const EstateLayout = preload("res://scripts/planet/estate_layout.gd")
 const People = preload("res://scripts/core/people.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const CombatHud = preload("res://scripts/planet/combat_hud.gd")
 const Locals = preload("res://scripts/core/locals.gd")
+const HeatZones = preload("res://scripts/core/heat_zones.gd")
+const Curfew = preload("res://scripts/core/curfew.gd")
+const Walkups = preload("res://scripts/core/walkups.gd")
+const Hiding = preload("res://scripts/core/hiding.gd")
+const WorkerWalk = preload("res://scripts/core/worker_walk.gd")
 
 const INPUT := {
 	"move_up": [KEY_W, KEY_UP],
@@ -26,6 +34,7 @@ const INPUT := {
 	"move_right": [KEY_D, KEY_RIGHT],
 	"interact": [KEY_E, KEY_ENTER],
 	"build_menu": [KEY_B],
+	"bribe_officer": [KEY_G],
 	"reload": [KEY_R],
 	"weapon_wheel": [KEY_Q],
 	"weapon_1": [KEY_1],
@@ -51,8 +60,14 @@ var nav: AStarGrid2D  ## tile grid with buildings solid; chasing officers path a
 var _repath := 0.0
 var _overlay: Node2D  ## redrawn every frame (focus ring); the ground below is drawn once
 var _rng := RandomNumberGenerator.new()
+var _walk_t := 0.0
+var _chat_rng := RandomNumberGenerator.new()
+var _chatter: Dictionary = {}  ## npc id -> Chatter state
 var _spot_of: Dictionary = {}  ## named npc id -> schedule spot it is at / walking to
 var _schedule_t := 0.0
+var worker_nodes: Dictionary = {}  ## worker id -> walker node (estate interiors only, purely visual)
+var _worker_t := 0.0
+var _worker_cell: Dictionary = {}  ## worker id -> estate cell he is walking to
 var _daylight: CanvasModulate
 ## Estate interiors (cfg has "estate"): while `placing` holds a station id, a ghost of it sits on the cells in front
 ## of the player and E asks main to place it there. can_place(station, x, y) -> bool is set by main.
@@ -63,6 +78,8 @@ var can_place: Callable
 var use_mouse := true  ## false in tests: they set `aim_point` themselves
 var aim_point := Vector2.ZERO  ## world position the player aims at
 var bullets: Array = []  ## flying bullets (Combat.make_bullet dictionaries)
+var hide_rects: Array = []  ## P3 hiding spots as pixel rects (hiding.gd)
+var hiding: Dictionary = Hiding.fresh()
 var covers: Array = []  ## cover pieces as pixel rects: block walking and bullets, not sight
 var wheel_open := false
 var wheel_sel := -1  ## wheel sector under the mouse, -1 = none
@@ -95,10 +112,11 @@ func setup(id: String, surface_cfg: Dictionary) -> void:
 	cfg = surface_cfg
 	tile = float(cfg.get("tile", 32))
 	map_size = Vector2(cfg.size[0], cfg.size[1]) * tile
-	if not cfg.has("estate"):  # estate interiors have no cover
+	if not cfg.has("estate") and not cfg.has("interior"):  # estate and building interiors have no cover
 		cfg = cfg.duplicate()
 		cfg.cover = Combat.cover_tiles(GameState.data, id)
 		covers = Combat.cover_rects(cfg.cover, tile)
+		hide_rects = Hiding.spot_rects(cfg, tile)
 		cfg.npcs = cfg.get("npcs", []) + Locals.npcs_for(GameState.data, id)  # B4: the townsfolk are named customers
 
 
@@ -122,8 +140,8 @@ func _update_schedules(delta: float) -> void:
 		return
 	_schedule_t = 0.5
 	for n in cfg.get("npcs", []):
-		if n.get("contact", "") == "" or not npcs.has(n.id):
-			continue
+		if n.get("contact", "") == "" or not npcs.has(n.id) or npcs[n.id].bubble != "":
+			continue  # a customer on foot is coming to you, not following their schedule
 		var sp := _schedule_spot(n)
 		if sp.is_empty() or sp == _spot_of.get(n.id, []):
 			continue
@@ -132,6 +150,75 @@ func _update_schedules(delta: float) -> void:
 			continue
 		_spot_of[n.id] = sp
 		npc.path = Nav.path_between(nav, tile, npc.position, _px(sp))
+
+
+## Hired workers of this estate walk between storage, their station and their idle spot (worker_walk.gd decides where).
+## Purely visual: nothing here writes to the game.
+func _update_workers(delta: float) -> void:
+	var g = GameState.game
+	if g == null or not cfg.has("estate") or GameState.paused:
+		return
+	_worker_t -= delta
+	if _worker_t > 0.0:
+		return
+	_worker_t = 0.4
+	var here := {}
+	for w in g.workers:
+		if w.estate == cfg.estate:
+			here[w.id] = true
+	for id in worker_nodes.keys():
+		if not here.has(id):
+			worker_nodes[id].queue_free()
+			worker_nodes.erase(id)
+			_worker_cell.erase(id)
+	var off := float(cfg.get("estate_offset", 0))
+	for id in here:
+		var cell := WorkerWalk.target_cell(g, id)
+		if cell.x < 0.0:
+			continue
+		var to := (cell + Vector2(off, off)) * tile
+		if not worker_nodes.has(id):
+			var npc := NpcScript.new()
+			npc.display_name = str(_worker_name(g, id))
+			npc.color = Color("#9fd4ff")
+			npc.speed = 45.0
+			npc.sheet = Art.recolored("chars/player.png", WorkerWalk.look_swaps(GameState.data, id))
+			npc.look = "npc_slate"
+			npc.position = _px([cfg.spawn[0], cfg.spawn[1]])
+			add_child(npc)
+			worker_nodes[id] = npc
+		if _worker_cell.get(id, Vector2(-9, -9)) != cell:
+			_worker_cell[id] = cell
+			var node: Node2D = worker_nodes[id]
+			node.path = Nav.path_between(nav, tile, node.position, to)
+
+
+func _worker_name(g, id: String) -> String:
+	for c in g.data.get("workers", {}).get("candidates", []):
+		if c.id == id:
+			return str(c.name).get_slice(" ", 0)
+	return ""
+## Idle chatter: people near the player now and then say a short line (planet + time-of-day flavoured).
+func _update_chatter(delta: float) -> void:
+	var g = GameState.game
+	if g == null or GameState.paused or player == null or player.frozen:
+		return
+	var data: Dictionary = GameState.data
+	var rl := Chatter.rules(data)
+	var radius := float(rl.get("radius", 240.0))
+	var visible_n := 0
+	for id in npcs:
+		if npcs[id].chat_t > 0.0:
+			visible_n += 1
+	for id in npcs:
+		var npc: Node2D = npcs[id]
+		if not _chatter.has(id):
+			_chatter[id] = Chatter.new_state(data, _chat_rng)
+		var line := Chatter.tick(data, _chatter[id], delta, player.position.distance_to(npc.position) < radius, npc.hold,
+				visible_n < int(rl.get("max_visible", 2)), loc_id, People.hour(g), _chat_rng)
+		if line != "":
+			npc.say(line, float(rl.get("show", 3.6)))
+			visible_n += 1
 
 
 func _update_daylight() -> void:
@@ -153,6 +240,38 @@ func _update_deal_markers() -> void:
 			npcs[n.id].marker = agreed.has(n.get("contact", ""))
 			if n.get("local", false):
 				_update_local(n, npcs[n.id])
+
+
+## Customers on foot (walkups.gd): the ones who want to deal walk up to the player with a speech bubble, and talking to them
+## opens the deal card instead of the Deals panel. When they leave they go back to their schedule.
+func _update_walkups(delta: float) -> void:
+	var g = GameState.game
+	if g == null or player == null:
+		return
+	_walk_t -= delta
+	var repath := _walk_t <= 0.0
+	if repath:
+		_walk_t = 0.6
+	for n in cfg.get("npcs", []):
+		var cid: String = n.get("contact", "")
+		if cid == "" or not npcs.has(n.id):
+			continue
+		var npc: Node2D = npcs[n.id]
+		var w: Dictionary = Walkups.find(g, cid)
+		var it := interactable(n.id)
+		if w.is_empty():
+			if npc.bubble != "":
+				npc.bubble = ""
+				_spot_of.erase(n.id)  # back to the schedule
+				if not it.is_empty():
+					it.action = n.action
+			continue
+		npc.bubble = Walkups.bubble(g, w)
+		if not it.is_empty():
+			it.action = "walkup"
+			it.label = "Deal with %s · %s" % [g.contact(cid).name if People.state(g, cid).known else str(g.contact(cid).get("job", "a customer")).to_lower(), npc.bubble]
+		if repath and player.position.distance_to(npc.position) > 52.0:
+			npc.path = Nav.path_between(nav, tile, npc.position, player.position + Vector2(0, 30))
 
 
 ## Townsfolk you haven't met show their job instead of a name (only up close); talking or a referral reveals them.
@@ -186,6 +305,7 @@ func _ready() -> void:
 	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED  # tinted roof/wall pieces are tiled
 	_rng.seed = hash(loc_id)
 	_fire_rng.seed = hash(loc_id) + 11
+	_chat_rng.seed = hash(loc_id) + 23
 	EventBus.game_event.connect(func(kind: String, _p: Dictionary):
 		if kind == "upgraded":
 			queue_redraw())  # the parked ship shows its new module
@@ -235,7 +355,7 @@ func _ready() -> void:
 	camera.make_current()
 	EventBus.shake.connect(func(st: float): shake = maxf(shake, st))
 	EventBus.game_event.connect(_on_style_event)
-	if not cfg.has("estate"):  # interiors keep their own lighting
+	if not cfg.has("estate") and not cfg.has("interior"):  # interiors keep their own lighting
 		_daylight = CanvasModulate.new()
 		add_child(_daylight)
 		_update_daylight()
@@ -250,6 +370,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	GameState.game.heat_zone = ""
 	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 
 
@@ -343,8 +464,13 @@ func _walker_path(from: Vector2) -> Array:
 
 func _physics_process(delta: float) -> void:
 	focus = {}
+	if player != null:
+		GameState.game.heat_zone = HeatZones.zone_at(cfg, player.position / tile)
 	_update_deal_markers()
+	_update_walkups(delta)
 	_update_schedules(delta)
+	_update_workers(delta)
+	_update_chatter(delta)
 	_update_daylight()
 	for it in interactables:
 		if it.has("npc"):
@@ -379,7 +505,7 @@ func _update_police(delta: float) -> void:
 		var o := OfficerScript.new()
 		o.hp = float(oc.get("hp", 40))
 		o.max_hp = o.hp
-		o.vision = float(pc.vision)
+		o.vision = float(pc.vision) * Curfew.vision_mult(g)
 		o.cone = deg_to_rad(float(pc.cone_degrees))
 		o.speed = float(pc.speed)
 		o.position = _random_road_point()
@@ -392,14 +518,32 @@ func _update_police(delta: float) -> void:
 		return
 	var watched := false
 	var carrying: bool = g.has_contraband()
-	var drawn := Combat.officers_armed(g)
+	var nearest := INF
 	for o in officers:
-		var seen: bool = OfficerScript.sees(o.position, o.facing, player.position, o.vision, o.cone, _blockers)
+		nearest = minf(nearest, o.position.distance_to(player.position))
+	var hev := Hiding.step(hiding, delta, Hiding.spot_at(hide_rects, player.position + Vector2(0, 12)) >= 0, player.velocity.length(), nearest)
+	if hev.hid:
+		EventBus.toast.emit("Hidden. Stay still: officers lose you unless they walk right up.", true)
+	if hev.found:
+		EventBus.toast.emit("An officer found your hiding spot!", false)
+	if hev.lost:
+		EventBus.toast.emit("The officers lost you.", true)
+		for o in officers:
+			o.chasing = false
+			o.hostile_t = 0.0
+			o.speed = float(pc.speed)
+			o.path = []
+	player.modulate.a = 0.45 if hiding.hidden else 1.0
+	var drawn := Combat.officers_armed(g)
+	var flee_seen := false
+	var flee_chased := false
+	for o in officers:
+		var seen: bool = Hiding.visible_to_officer(hiding, OfficerScript.sees(o.position, o.facing, player.position, o.vision, o.cone, _blockers))
 		var dist: float = o.position.distance_to(player.position)
 		# armed officers (high heat, or shot at) shoot the player they can see; they stop to fire and need a clear line
 		o.armed = drawn or o.provoked
 		o.hostile_t = maxf(0.0, o.hostile_t - delta)
-		if o.armed and (seen or (o.provoked and dist <= float(oc.range) * 1.5 and Combat.line_clear(o.position, player.position, _blockers))):
+		if o.armed and (seen or (o.provoked and not hiding.hidden and dist <= float(oc.range) * 1.5 and Combat.line_clear(o.position, player.position, _blockers))):
 			o.hostile_t = float(oc.alert_seconds)
 		var hostile: bool = o.armed and o.hostile_t > 0.0
 		if hostile and not o.drew:
@@ -418,6 +562,9 @@ func _update_police(delta: float) -> void:
 					EventBus.game_event.emit("shot", {"weapon": "officer"})
 		if seen and carrying and not hostile:
 			watched = true
+		if seen:
+			flee_seen = true
+			flee_chased = flee_chased or o.chasing or hostile
 		if o.chasing:
 			if not (carrying or hostile) or dist > float(pc.give_up_range):
 				o.chasing = false
@@ -435,6 +582,7 @@ func _update_police(delta: float) -> void:
 			o.speed = float(pc.chase_speed)
 			if not hostile:
 				EventBus.toast.emit("An officer spotted you. Lose them!", false)
+	Pursuit.tick(g, delta, player.sprinting, flee_seen, flee_chased)  # running in their sight is suspicious
 	if _repath <= 0.0:
 		_repath = 0.35
 	var old := suspicion
@@ -530,6 +678,7 @@ func shoot() -> bool:
 	if not res.ok:
 		return false
 	bullets.append_array(res.bullets)
+	Hiding.reveal(hiding)  # shooting gives you away
 	_aim_t = 1.5
 	_flash_t = 0.06
 	player.aim_dir = dir
@@ -598,6 +747,8 @@ func _step_bullets(g, delta: float) -> void:
 				pass
 			"target":
 				_impacts.append({"pos": res.pos, "t": 0.15})
+				if b.owner != Combat.PLAYER_BULLET:
+					Hiding.reveal(hiding)  # being shot breaks cover
 				if b.owner == Combat.PLAYER_BULLET:
 					_hit_officer(g, officers[res.idx], float(b.damage))
 				elif Combat.damage_player(g, float(b.damage)):
@@ -769,6 +920,8 @@ func _draw() -> void:
 		_draw_building(b)
 	for p in cfg.get("props", []):
 		_draw_prop(p[0], Vector2(float(p[1]), float(p[2])) * tile)
+	for i in hide_rects.size():
+		_draw_hide_spot(hide_rects[i], str(cfg.hide[i][4]))
 	for i in covers.size():
 		_draw_cover(covers[i], str(cfg.cover[i][4]) if cfg.cover[i].size() > 4 else "barrier")
 	var font := ThemeDB.fallback_font
@@ -820,6 +973,9 @@ func _draw_area(a: Array, index: int) -> void:
 				var p := Vector2(n.randf_range(r.position.x, r.end.x), n.randf_range(r.position.y + 10, r.end.y - 4))
 				draw_line(p, p + Vector2(n.randf_range(-8, 8), 6), Color("#3a2a20"), 2.0)
 		"grass", "sand", "salt", "ice", "rubble":
+			# art: opaque ground-paint strip (lawn, dunes, salt crust, ice sheet, rubble) with variation tiles
+			if Art.fill_tiles(self, "tiles/area_%s.png" % kind, r, 4 + index):
+				return
 			var tint: Color = {"grass": Color("#3f6a3a", 0.6), "sand": Color("#d8b070", 0.35), "salt": Color("#ece8dc", 0.6),
 				"ice": Color("#bfe6f5", 0.55), "rubble": Color(0, 0, 0, 0.14)}[kind]
 			draw_rect(r, tint)
@@ -928,6 +1084,14 @@ func _draw_building(b: Dictionary) -> void:
 		"machine":
 			_draw_machine(b, r)
 			return
+		"counter":  # D4: shop counter inside a building
+			var top := Color(b.wall).lightened(0.2)
+			draw_rect(Rect2(r.position + Vector2(3, 6), r.size), Color(0, 0, 0, 0.3))
+			draw_rect(r, Color(b.wall).darkened(0.2))
+			draw_rect(Rect2(r.position, Vector2(r.size.x, r.size.y * 0.55)), top)
+			draw_rect(r, Color(b.wall).darkened(0.5), false, 2.0)
+			_machine_label(b.name, r)
+			return
 	var wall := Color(b.get("wall", "#666666"))
 	var roof := Color(b.get("roof", "#444444"))
 	draw_rect(Rect2(r.position + Vector2(6, 8), r.size), Color(0, 0, 0, 0.3))
@@ -936,13 +1100,22 @@ func _draw_building(b: Dictionary) -> void:
 	var roof_r := Rect2(r.position, Vector2(r.size.x, r.size.y - wall_h))
 	var wall_r := Rect2(Vector2(r.position.x, r.end.y - wall_h), Vector2(r.size.x, wall_h))
 	# art: neutral roof/wall pieces tiled and tinted with the building's colours, so any building gets art
-	var roof_t := Art.tex("buildings/roof.png")
-	var wall_t := Art.tex("buildings/wall.png")
+	# facade looks vary per building (stable hash of planet + id): three roof and three wall surfaces, lit/shuttered/dark windows
+	var key := "%s/%s" % [loc_id, str(b.get("id", b.get("name", "")))]
+	var roof_t := Art.tex("buildings/%s.png" % ["roof", "roof_b", "roof_c"][Art.facade_variant(key, 1, 3)])
+	var wall_t := Art.tex("buildings/%s.png" % ["wall", "wall_b", "wall_c"][Art.facade_variant(key, 2, 3)])
+	if roof_t == null:
+		roof_t = Art.tex("buildings/roof.png")
+	if wall_t == null:
+		wall_t = Art.tex("buildings/wall.png")
 	var win_t := Art.tex("buildings/window.png")
 	if roof_t != null and wall_t != null:
 		draw_texture_rect(wall_t, wall_r, true, wall.lightened(0.25))
 		draw_texture_rect(roof_t, roof_r, true, roof.lightened(0.3))
 		draw_rect(Rect2(roof_r.position.x, roof_r.end.y - 4, roof_r.size.x, 4), roof.darkened(0.45))
+		# the eave throws a soft shadow onto the top of the wall
+		draw_rect(Rect2(wall_r.position.x, wall_r.position.y, wall_r.size.x, 6), Color(0, 0, 0, 0.22))
+		_draw_roof_gear(b, roof_r, key)
 	else:
 		draw_rect(wall_r, wall)
 		draw_rect(roof_r, roof)
@@ -956,7 +1129,13 @@ func _draw_building(b: Dictionary) -> void:
 	while wx < r.end.x - tile * 0.8:
 		if win_t != null:
 			if absf(wx + tile * 0.5 - door_x) > tile * 0.9:
-				draw_texture(win_t, Vector2(wx, wall_r.position.y + (wall_h - tile) * 0.5))
+				var wt := win_t
+				var roll := Art.facade_variant(key, 10 + int(wx), 10)
+				if roll >= 8:
+					wt = Art.tex("buildings/window_shut.png")
+				elif roll >= 6:
+					wt = Art.tex("buildings/window_dark.png")
+				draw_texture(wt if wt != null else win_t, Vector2(wx, wall_r.position.y + (wall_h - tile) * 0.5))
 		else:
 			draw_rect(Rect2(wx, wall_r.position.y + wall_h * 0.25, tile * 0.45, wall_h * 0.4), Color("#ffe8a3").darkened(0.15))
 		wx += tile * 1.2
@@ -967,6 +1146,10 @@ func _draw_building(b: Dictionary) -> void:
 		var door_t := Art.tex("buildings/hatch.png" if top else "buildings/door.png")
 		if door_t != null:
 			draw_texture(door_t, Vector2(d.x - tile * 0.5, d.y - tile if not top else d.y - tile * 0.15))
+			var awning_t := Art.tex("buildings/awning.png")
+			if awning_t != null and not top and b.has("action"):
+				# shops and services get a striped awning over the door, in a lightened roof colour
+				draw_texture(awning_t, Vector2(d.x - awning_t.get_width() / 2.0, d.y - tile - 12), roof.lightened(0.45))
 	if b.has("door") and Art.tex("buildings/door.png") == null:
 		var d := _px(b.door)
 		var top: bool = b.get("side", "bottom") == "top"
@@ -983,6 +1166,23 @@ func _draw_building(b: Dictionary) -> void:
 		var sp := Vector2(r.get_center().x - w / 2.0, roof_r.get_center().y + 6)
 		draw_rect(Rect2(sp + Vector2(-8, -16), Vector2(w + 16, 22)), Color(0, 0, 0, 0.55))
 		draw_string(font, sp, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("#4fe3c1"))
+
+
+## Rooftop gear (vents, skylights, chimneys, dishes) on roofs tall enough to carry it, kept clear of the sign band.
+func _draw_roof_gear(b: Dictionary, roof_r: Rect2, key: String) -> void:
+	if roof_r.size.y < tile * 3.5 or roof_r.size.x < tile * 4:
+		return
+	var parts := ["roof_vent", "roof_skylight", "roof_chimney", "roof_dish"]
+	var slots := int(roof_r.size.x / (tile * 3.0))
+	for i in mini(slots, 4):
+		if Art.facade_variant(key, 20 + i, 3) == 0:
+			continue
+		var t := Art.tex("buildings/%s.png" % parts[Art.facade_variant(key, 30 + i, parts.size())])
+		if t == null:
+			continue
+		var x := roof_r.position.x + tile * 0.8 + i * (roof_r.size.x - tile * 2.6) / maxf(slots - 1, 1)
+		var y := roof_r.position.y + tile * 0.6 + Art.facade_variant(key, 40 + i, 2) * tile * 0.7
+		draw_texture(t, Vector2(roundf(x), roundf(y)))
 
 
 ## Production station inside an estate: a work surface with a few parts that hint at what it does.
@@ -1091,6 +1291,22 @@ func _draw_prop(kind: String, p: Vector2) -> void:
 			draw_circle(p + Vector2(4, 1), 4.0, Color("#ff9ad5"))
 
 
+## Hiding spot (hiding.gd): walkable shade beside a prop; stand still in it to drop out of sight.
+func _draw_hide_spot(r: Rect2, kind: String) -> void:
+	draw_rect(r, Color(0, 0, 0, 0.32))
+	draw_rect(r, Color(0.55, 0.85, 0.7, 0.35), false, 1.0)
+	var back := Rect2(r.position + Vector2(2, -10), Vector2(r.size.x - 4, 12))
+	if kind == "crates":
+		draw_rect(back, Color("#8a6a3e"))
+		draw_rect(back, Color("#4e3a1e"), false, 2.0)
+	elif kind == "alcove":
+		draw_rect(back, Color("#1d2128"))
+	else:
+		draw_rect(back, Color("#3d5a46"))
+		draw_rect(Rect2(back.position, Vector2(back.size.x, 3)), Color("#5f8a6a"))
+		draw_rect(back, Color("#1b2a20"), false, 2.0)
+
+
 ## Low cover: concrete barrier or stacked crates. Solid for walking and bullets, not for sight.
 func _draw_cover(r: Rect2, kind: String) -> void:
 	draw_rect(Rect2(r.position + Vector2(3, 5), r.size), Color(0, 0, 0, 0.3))
@@ -1134,8 +1350,32 @@ func _draw_next_station() -> void:
 			_overlay.draw_rect(r, col, false, 2.0)
 
 
+## Inside an estate: the grow trays in a row along the bottom wall (soil, a plant that grows with the days,
+## a gold ring when ripe). Data comes from Grow.visuals, so the core stays headless.
+func _draw_grow_trays() -> void:
+	if not cfg.has("estate") or GameState.game == null:
+		return
+	var list: Array = Grow.visuals(GameState.game, str(cfg.estate))
+	var w := tile * 1.5
+	var y := map_size.y - tile * 1.9
+	var x0 := (map_size.x - (w + 6.0) * list.size()) * 0.5
+	for i in list.size():
+		var v: Dictionary = list[i]
+		var r := Rect2(Vector2(x0 + i * (w + 6.0), y), Vector2(w, tile * 0.9))
+		_overlay.draw_rect(r, Color("#4a3322"))
+		_overlay.draw_rect(r, Color("#2a1d13"), false, 2.0)
+		if v.raw == "":
+			continue
+		var col := Color("#6fcf6a") if v.grade != "poor" else Color("#a8b05a")
+		var h := 4.0 + float(v.progress) * (r.size.y - 6.0)
+		_overlay.draw_rect(Rect2(r.position.x + r.size.x * 0.5 - 4.0, r.end.y - 3.0 - h, 8.0, h), col)
+		if v.ripe:
+			_overlay.draw_rect(r.grow(2.0), Color("#ffd166"), false, 2.0)
+
+
 func _draw_overlay() -> void:
 	_draw_next_station()
+	_draw_grow_trays()
 	for b in bullets:
 		var v: Vector2 = b.vel
 		var col := Color("#ffe8a3") if b.owner == Combat.PLAYER_BULLET else Color("#ff6b5f")

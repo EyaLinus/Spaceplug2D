@@ -1,0 +1,155 @@
+{
+ "_doc": "Idle chatter bubbles above nearby people on planet surfaces. A line applies when its optional `loc` (planet id) and `period` match.",
+ "rules": {
+  "radius": 240,
+  "first_gap": [
+   1.0,
+   5.0
+  ],
+  "gap": [
+   9.0,
+   22.0
+  ],
+  "show": 3.6,
+  "max_visible": 2
+ },
+ "periods": [
+  {
+   "id": "morning",
+   "from": 6,
+   "to": 11
+  },
+  {
+   "id": "day",
+   "from": 11,
+   "to": 17
+  },
+  {
+   "id": "evening",
+   "from": 17,
+   "to": 22
+  },
+  {
+   "id": "night",
+   "from": 22,
+   "to": 6
+  }
+ ],
+ "lines": [
+  {
+   "text": "Another day, another debt."
+  },
+  {
+   "text": "You hear that? Nothing. Love it.",
+   "period": "night"
+  },
+  {
+   "text": "Coffee first. Questions later.",
+   "period": "morning"
+  },
+  {
+   "text": "Shift starts soon...",
+   "period": "morning"
+  },
+  {
+   "text": "Is it lunch yet?",
+   "period": "day"
+  },
+  {
+   "text": "Too bright out today.",
+   "period": "day"
+  },
+  {
+   "text": "Long day. Longer night.",
+   "period": "evening"
+  },
+  {
+   "text": "Time for a drink.",
+   "period": "evening"
+  },
+  {
+   "text": "Shouldn't be out this late.",
+   "period": "night"
+  },
+  {
+   "text": "Did you see that light up there?",
+   "period": "night"
+  },
+  {
+   "text": "Patrols are getting twitchy lately."
+  },
+  {
+   "text": "Prices keep going up."
+  },
+  {
+   "text": "Dock fees are robbery.",
+   "loc": "mireth"
+  },
+  {
+   "text": "Smells like engine grease and fried fish.",
+   "loc": "mireth"
+  },
+  {
+   "text": "Rusk says the ship yard is booked solid.",
+   "loc": "mireth",
+   "period": "day"
+  },
+  {
+   "text": "Night market opens soon.",
+   "loc": "mireth",
+   "period": "evening"
+  },
+  {
+   "text": "Dust in my teeth again.",
+   "loc": "cinder"
+  },
+  {
+   "text": "Heard the mines pay double this week.",
+   "loc": "cinder"
+  },
+  {
+   "text": "Stay out of the dunes after dark.",
+   "loc": "cinder",
+   "period": "night"
+  },
+  {
+   "text": "Haggle or go home.",
+   "loc": "bazaar"
+  },
+  {
+   "text": "Everything here fell off a freighter.",
+   "loc": "bazaar"
+  },
+  {
+   "text": "Cheap, fast, and no receipts.",
+   "loc": "bazaar",
+   "period": "day"
+  },
+  {
+   "text": "No law out here but the strong.",
+   "loc": "varrow"
+  },
+  {
+   "text": "Water costs more than fuel.",
+   "loc": "varrow"
+  },
+  {
+   "text": "Sandstorm coming, I can feel it.",
+   "loc": "varrow",
+   "period": "evening"
+  },
+  {
+   "text": "Brr. My fingers are numb.",
+   "loc": "glacis"
+  },
+  {
+   "text": "The Authority is everywhere in this town.",
+   "loc": "glacis"
+  },
+  {
+   "text": "Keep your hands where they can see them.",
+   "loc": "glacis",
+   "period": "day"
+  }
+ ]
+}

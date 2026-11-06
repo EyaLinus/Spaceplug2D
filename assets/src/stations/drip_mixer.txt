@@ -1,0 +1,28 @@
+# Drip Mixer 2x1: three additive bottles dripping into a steel mixing bowl. Top-down, front face at the bottom.
+legend:
+k = ink
+S = slate
+L = slate_light
+d = slate_dark
+t = teal
+o = stone
+y = gold
+b = blue_light
+p = pink
+---
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+kLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLk
+kSSSkkkkSkkkkSkkkkSSSSSSSSSSSSSk
+kSSSkkkkSkkkkSkkkkSSSSSSSSSSSSSk
+kSSSkkkkSkkkkSkkkkSSSkkkkkkkkSSk
+kSSSkbbkSkppkSkyykSSSkooooookSSk
+kSSSkbbkSkppkSkyykSSSkottttokSSk
+kSSSkbbkSkppkSkyykSSSkottttokSSk
+kSSSkkkkSkkkkSkkkkSSSkooooookSSk
+kSSSSkkSSSkkSSSkkSSSSkkkkkkkkSSk
+kSSSSbSSSSpSSSSySSSSSSSSSSSSSSSk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+kddktkdddddddddddddddddddddddddk
+kddkkkdddddddddddddddddddddddddk
+kddddddddddddddddddddddddddddddk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
