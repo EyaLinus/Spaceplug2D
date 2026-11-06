@@ -5,6 +5,7 @@ extends Control
 signal back
 
 const UI = preload("res://scripts/ui/ui_theme.gd")
+const Loc = preload("res://scripts/core/loc.gd")
 
 var box: VBoxContainer
 var panel: PanelContainer
@@ -42,6 +43,13 @@ func focus_first() -> void:
 	var b := _first_button(self)
 	if b != null:
 		b.grab_focus.call_deferred()
+
+
+## Frees everything in `box` (language switch); the caller builds it again.
+func clear_box() -> void:
+	for c in box.get_children():
+		box.remove_child(c)
+		c.queue_free()
 
 
 func title(text: String, size := 30) -> Label:

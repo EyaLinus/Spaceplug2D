@@ -32,6 +32,7 @@ const Raids = preload("res://scripts/core/raids.gd")
 const HeatZones = preload("res://scripts/core/heat_zones.gd")
 const PatrolFeel = preload("res://scripts/core/patrolfeel.gd")
 const Walkups = preload("res://scripts/core/walkups.gd")
+const Loc = preload("res://scripts/core/loc.gd")
 
 var data: Dictionary
 var failures := 0
@@ -41,6 +42,8 @@ var checks := 0
 func _init() -> void:
 	data = Data.load_all()
 	for t in [
+		"test_loc_tables",
+		"test_loc_fallback",
 		"test_data_references",
 		"test_surface_layouts",
 		"test_interiors",
@@ -4000,3 +4003,33 @@ func test_walkups() -> void:
 	back.from_dict(data, JSON.parse_string(JSON.stringify(gh.to_dict())))
 	check(Walkups.count(back) == 0, "walk-ups are not saved")
 	data.walkups.chance = 0.3
+func test_loc_tables() -> void:
+	var en: Dictionary = Loc.table("en")
+	var de: Dictionary = Loc.table("de")
+	check(en.size() >= 50, "English table loaded (%d keys)" % en.size())
+	for k in en:
+		check(de.has(k), "key %s exists in de" % k)
+		check(str(de.get(k, "")) != "", "de text for %s not empty" % k)
+	for k in de:
+		check(en.has(k), "key %s exists in en" % k)
+	# placeholders must survive translation, or the % formatting in the menus breaks
+	for k in en:
+		if de.has(k):
+			check(str(en[k]).count("%") == str(de[k]).count("%"), "placeholders of %s match in de" % k)
+	for b in preload("res://scripts/autoload/settings.gd").BINDABLE:
+		check(en.has("key." + b.action), "binding label key for %s" % b.action)
+		check(en.has("settings.group." + b.group), "group label key for %s" % b.group)
+
+
+func test_loc_fallback() -> void:
+	Loc.set_language("de")
+	check(Loc.t("pause.resume", "x") == "Fortsetzen", "German text used")
+	check(Loc.t("no.such.key", "Fallback") == "Fallback", "unknown key uses the fallback")
+	check(Loc.t("no.such.key") == "no.such.key", "unknown key without fallback shows the key")
+	check(Loc.set_language("xx") == "en" and Loc.t("pause.resume") == "Resume", "unknown language falls back to English")
+	# a key only English has still shows English in German mode
+	Loc._tables["de"] = {}
+	check(Loc.t("pause.resume") == "Resume", "key missing in de falls back to en")
+	Loc.reload()
+	Loc.set_language("en")
+	check(Loc.t("pause.resume") == "Resume", "English restored")

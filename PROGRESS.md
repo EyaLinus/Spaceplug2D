@@ -886,3 +886,8 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
 - Old saves: new fields default from `day`/0, so nothing breaks. Verified: see PR (unit test `test_mixing_journal`, ui_smoke step "journal re-cook").
 - Gaps: only the last 4 recipes show; no re-cook from the start screen (additives are poured at the Mixing Station); mixes cooked by workers are
   journaled too (shared recipe book).
+## Localisation foundation (2026-11-04, wave 13)
+- `scripts/core/loc.gd`: `Loc.t(key, fallback)` over `data/loc/<lang>.json` (flat key -> text; lookup order: current language, English, fallback, key). `Settings.language` ("en"/"de", `[display] language` in settings.cfg, `language_changed` signal); selector in Settings > Display.
+- Converted: `scripts/ui/menu/main_menu.gd`, `pause_menu.gd`, `settings_panel.gd` (build code moved into `_build()`, rebuilt on `language_changed`). Slot panel, HUD, station UI, phone, world and quests are NOT converted (14 open PRs touch them) - convert per screen in follow-ups, add keys to both json files; `test_loc_tables` enforces key parity and equal `%` placeholder counts.
+- Convention: key = `<screen>.<name>`, English text stays as the `fallback` argument in code so a missing table never shows a bare key. Export include filter extended to `data/loc/*.json`.
+- Gaps: content data (items, quests, contacts in content.json/quests.json) has no translation mechanism yet; fonts only checked for Latin + umlauts by reading, not on screen.
