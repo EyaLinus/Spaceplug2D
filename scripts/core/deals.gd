@@ -374,8 +374,7 @@ static func fulfill(g, offer_id: int, product_key: String) -> Dictionary:
 		d[p.base] = maxf(float(d[p.base]) - float(g.data.market.saturation_per_unit) * int(o.qty), float(g.data.market.min_demand))
 	People.record_deal(g, o.contact, product_key, int(o.qty), total, p)
 	g.contact_ready_at[o.contact] = g.total_time + float(g.data.market.contact_cooldown)
-	g.add_heat(float(g.loc_data().heat_per_unit) * int(o.qty) * g.heat_mult(p.base) * float(rules(g).get("heat_mult", 1.0)) * HeatZones.mult(g))
-	g.add_heat(float(g.loc_data().heat_per_unit) * int(o.qty) * g.sale_heat_mult(p.base) * float(rules(g).get("heat_mult", 1.0)))
+	g.add_heat(float(g.loc_data().heat_per_unit) * int(o.qty) * g.sale_heat_mult(p.base) * float(rules(g).get("heat_mult", 1.0)) * HeatZones.mult(g))
 	o.state = "done"
 	if phase == "late":
 		_affinity(g, o.contact, float(rules(g).get("affinity_late", 0.0)))

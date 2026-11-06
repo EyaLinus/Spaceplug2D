@@ -253,11 +253,9 @@ func curfew_enforced() -> bool:
 ## Reach Authority officers walking a planet surface. security: the surface's police factor (0 = lawless).
 func police_on_foot(security: float) -> int:
 	var p: Dictionary = data.police
-	var n := int(floor((float(p.base) + (heat + Corruption.heat_bonus(self)) / float(p.per_heat)) * security))
+	var n := int(floor((float(p.base) + (heat + Corruption.heat_bonus(self)) / float(p.per_heat)) * security * Laws.frisk_mult(self, location)))
 	n = clampi(n, 0, int(p.max))
 	return n + Curfew.extra_officers(self, security)
-	var n := int(floor((float(p.base) + (heat + Corruption.heat_bonus(self)) / float(p.per_heat)) * security * Laws.frisk_mult(self, location)))
-	return clampi(n, 0, int(p.max))
 
 
 func has_contraband() -> bool:
@@ -680,8 +678,7 @@ func sell(product_key: String, qty: int, contact_id: String = "") -> Dictionary:
 		if bargain:
 			var s: Dictionary = People.state(self, contact_id)
 			s.affinity = clampf(float(s.affinity) + float(data.get("products", {}).get("affinity_bargain", 0.0)), -1.0, 1.0)
-	add_heat(float(loc_data().heat_per_unit) * qty * heat_mult(p.base) * HeatZones.mult(self))
-	add_heat(float(loc_data().heat_per_unit) * qty * sale_heat_mult(p.base))
+	add_heat(float(loc_data().heat_per_unit) * qty * sale_heat_mult(p.base) * HeatZones.mult(self))
 	_emit("sold", {"product": product_key, "qty": qty, "credits": total, "contact": contact_id})
 	return _ok("Sold %d for %d cr." % [qty, total])
 
