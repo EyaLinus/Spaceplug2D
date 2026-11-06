@@ -10,6 +10,8 @@ const CombatLayerScript = preload("res://scripts/world/combat_layer.gd")
 const CombatHudScript = preload("res://scripts/ui/combat_hud.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Style = preload("res://scripts/core/style.gd")
+const Escort = preload("res://scripts/core/escort.gd")
+const FreighterScript = preload("res://scripts/world/freighter.gd")
 
 const SECTOR_HALF := 4200.0
 
@@ -20,6 +22,7 @@ var combat_hud: CanvasLayer  ## hull / shield / boost / missile bars, visible wh
 var system: String = ""  ## star system currently built
 var locations: Dictionary = {}  ## id -> location node (current system only)
 var patrols: Array = []
+var freighter: Node2D  ## the escort mission's freighter while one is flying in this system, else null
 var nearby: String = ""  ## dockable location in range, "" if none
 var scan := 0.0  ## 0..1, busted at 1
 var active := false  ## false while docked / in menus
@@ -55,6 +58,7 @@ func show_system(sys: String) -> void:
 		return
 	system = sys
 	clear_patrols()
+	_drop_freighter()
 	for id in locations:
 		locations[id].queue_free()
 	locations.clear()
@@ -122,12 +126,35 @@ func _physics_process(delta: float) -> void:
 	_sync_patrols(g)
 	if not active:
 		combat.clear()
+		_drop_freighter()
 		return
+	_sync_escort(g, delta)
 	_update_nearby()
 	_update_scan(g, delta)
 	combat.step(delta, g)
 	shake = maxf(0.0, shake - delta * 18.0)
 	camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * maxf(combat.shake, shake) * Settings.screen_shake
+
+
+## Escort mission: moves the core freighter and mirrors it as a node while it is flying in this system.
+func _sync_escort(g, delta: float) -> void:
+	if not Escort.active(g) or g.location != "" or g.system != str(Escort.job(g).sys) or g.system != system:
+		_drop_freighter()
+		return
+	Escort.step(g, delta, ship.position)
+	if not Escort.active(g):  # it just arrived
+		_drop_freighter()
+		return
+	if freighter == null:
+		freighter = FreighterScript.new()
+		add_child(freighter)
+	freighter.sync(g)
+
+
+func _drop_freighter() -> void:
+	if freighter != null:
+		freighter.queue_free()
+		freighter = null
 
 
 ## Distance from the ship to the edge of the nearest location (INF if the system has none).

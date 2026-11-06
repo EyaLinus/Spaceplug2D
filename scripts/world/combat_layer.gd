@@ -9,6 +9,7 @@ const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const PirateScript = preload("res://scripts/world/pirate.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Art = preload("res://scripts/core/art.gd")
+const Escort = preload("res://scripts/core/escort.gd")
 
 const SHIP_RADIUS := 16.0
 
@@ -72,7 +73,12 @@ func step(delta: float, g) -> void:
 				EventBus.toast.emit("Secondary weapon: %s" % g.data.upgrades[w].name, true)
 	_spawn(delta, g)
 	for p in pirates.duplicate():
-		var aim: float = p.step(delta, ship.position, ship.velocity)
+		var tgt: Vector2 = ship.position
+		var tvel: Vector2 = ship.velocity
+		if world.freighter != null and Escort.prefers_freighter(g, p.position, ship.position):
+			tgt = world.freighter.position  # escort mission: raiders go for the freighter first
+			tvel = Vector2.ZERO
+		var aim: float = p.step(delta, tgt, tvel)
 		if aim != INF:
 			var ec: Dictionary = p.cfg
 			var shots := int(ec.get("shots", 1))
@@ -345,6 +351,9 @@ func damage_base(g, id: String, dmg: float) -> void:
 # ---------------------------------------------------------------- pirates
 
 func _spawn(delta: float, g) -> void:
+	if Escort.active(g):
+		_spawn_escort(delta, g)
+		return
 	if not SpaceCombat.is_deep_space(g, world.nearest_location_distance()):
 		return
 	_spawn_clock += delta
@@ -358,6 +367,23 @@ func _spawn(delta: float, g) -> void:
 	else:
 		spawn_wing(g, pick.cartel, pick.units)
 		EventBus.toast.emit("%s wing incoming: %d ships!" % [Cartels.gang(g, pick.cartel).get("name", "Cartel"), (pick.units as Array).size()], false)
+
+
+## Escort mission waves: the core clock decides when, a lone raider or a cartel wing arrives around the freighter.
+func _spawn_escort(delta: float, g) -> void:
+	if world.freighter == null:
+		return
+	var pick := Escort.tick_wave(g, delta, pirates.size(), rng)
+	if pick.is_empty():
+		return
+	var w: Dictionary = g.data.escort.waves
+	var at: Vector2 = world.freighter.position + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(float(w.spawn_min), float(w.spawn_max))
+	if pick.cartel == "":
+		spawn_enemy(g, "pirate", "", at)
+		EventBus.toast.emit("Raiders closing on the freighter!", false)
+	else:
+		spawn_wing(g, pick.cartel, pick.units, at)
+		EventBus.toast.emit("%s wing is after the freighter: %d ships!" % [Cartels.gang(g, pick.cartel).get("name", "Cartel"), (pick.units as Array).size()], false)
 
 
 ## Brings one raider in from beyond the screen (also used by the smoke test with `at`).
@@ -434,8 +460,30 @@ func _step_bolts(delta: float, g) -> void:
 			else:
 				hurt_player(g, float(b.dmg))
 				dead = true
+		elif _hit_freighter(g, b):
+			dead = true
 		if dead:
 			bolts.erase(b)
+
+
+## An enemy bolt reaching the escort freighter hurts it; at zero hull the core fails the job.
+func _hit_freighter(g, b: Dictionary) -> bool:
+	var f: Node2D = world.freighter
+	if f == null or not Escort.active(g) or b.pos.distance_to(f.position) >= f.radius + 4.0:
+		return false
+	var res := Escort.damage(g, float(b.dmg))
+	f.hit()
+	_burst(b.pos, 4, Color(1.0, 0.6, 0.3), 110.0, 0.3)
+	if Settings.damage_numbers:
+		var t: Node2D = FloatText.new().setup("-%d" % int(round(float(b.dmg))), Color("#ff6b5f"), 14)
+		t.position = f.position + Vector2(0, -f.radius - 30.0)
+		add_child(t)
+	if res.destroyed:
+		for i in 3:
+			_burst(f.position + Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.0, 30.0), 24, Color(1.0, 0.55, 0.25), 300.0, 1.0)
+		shake = maxf(shake, 8.0)
+		AudioManager.play("boom")
+	return true
 
 
 func _home(b: Dictionary, delta: float, turn: float, speed: float) -> void:

@@ -23,6 +23,7 @@ const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Escort = preload("res://scripts/core/escort.gd")
 
 var data: Dictionary
 var failures := 0
@@ -109,6 +110,11 @@ func _init() -> void:
 		"test_interdiction_choices",
 		"test_interdiction_on_jump",
 		"test_quest_chapter2",
+		"test_escort_data",
+		"test_escort_flow",
+		"test_escort_enemies",
+		"test_escort_jump",
+		"test_escort_save",
 		"test_bribe",
 		"test_corruption_data",
 		"test_heat_per_system",
@@ -3122,3 +3128,180 @@ func test_quest_chapter2() -> void:
 	check(g.quests.done.has("main_nest") and g.quests.active.has("main_rig"), "raiding the Nest finishes Smoke the Nest")
 	check(Quests.space_goal(g, {"loc": "tide_rig"}) == "halvane_gate", "the Rig waypoint routes through the gate")
 
+
+
+# ---------------------------------------------------------------- escort missions (E4 leftover)
+
+## Runs the freighter until it arrives (or `max_s` seconds pass). Returns the last step state.
+func escort_run(g: Game, ship_pos_of: Callable, max_s := 600.0) -> String:
+	var st := "idle"
+	var t := 0.0
+	while t < max_s and Escort.active(g):
+		st = str(Escort.step(g, 0.1, ship_pos_of.call()).state)
+		t += 0.1
+		if st == "at_gate" or st == "waiting":
+			break
+	return st
+
+
+func test_escort_data() -> void:
+	var ms: Dictionary = Escort.missions(new_game())
+	check(ms.size() >= 4, "escort missions exist")
+	var cross := 0
+	for mid in ms:
+		var m: Dictionary = ms[mid]
+		check(data.locations.has(m.from) and data.locations.has(m.to) and m.from != m.to, "%s: known locations" % mid)
+		check(data.locations[m.from].get("dockable", true) and data.locations[m.to].get("dockable", true), "%s: both ends dockable" % mid)
+		check(int(m.reward) > 0 and int(m.waves) >= 1, "%s: pays and has waves" % mid)
+		if data.locations[m.from].system != data.locations[m.to].system:
+			cross += 1
+	check(cross >= 1, "at least one escort crosses a gate")
+	var f: Dictionary = data.escort.freighter
+	check(float(f.speed) < float(data.ship.max_speed), "the freighter is slower than the player")
+
+
+func test_escort_flow() -> void:
+	var g := new_game()  # docked at Mireth, day 1
+	var offers := Escort.offers_at(g, "mireth")
+	check(offers.size() >= 2 and Escort.offers_at(g, "glacis").is_empty(), "Mireth has jobs, Glacis none")
+	check(not Escort.accept(g, "nope").ok, "unknown job refused")
+	check(not Escort.accept(g, "cinder_mireth").ok, "a job must be taken where it starts")
+	check(not Escort.accept(g, "mireth_varrow").ok, "locked jobs refuse before their day")
+	var r := Escort.accept(g, "mireth_bazaar")
+	check(r.ok and Escort.active(g), "accepted")
+	check(not Escort.accept(g, "mireth_bazaar").ok, "one escort at a time")
+	check(Escort.goal(g) == "bazaar", "same-system goal is the destination")
+	var seen: Array = []
+	g.event.connect(func(k, p): seen.append(k))
+	g.undock()
+	var ship_pos := Escort.pos(g)
+	var cr := g.credits
+	var state := escort_run(g, func(): return Escort.pos(g) + Vector2(100, 0))
+	check(state == "arrived" and not Escort.active(g), "the freighter arrives with its escort (%s)" % state)
+	check(g.credits == cr + Escort.reward(g, "mireth_bazaar", 1.0), "full hull pays reward + bonus")
+	check(seen.has("escort_done") and int(g.escort.done) == 1, "escort_done event and counter")
+	check(Escort.cooldown_left(g, "mireth_bazaar") > 0 and not Escort.accept(g, "mireth_bazaar").ok, "a finished job cools down")
+	# hull scales the bonus
+	var h := new_game()
+	Escort.accept(h, "mireth_bazaar")
+	h.undock()
+	h.escort.job.hull = Escort.max_hull(h) * 0.5
+	var before := h.credits
+	escort_run(h, func(): return Escort.pos(h))
+	var m: Dictionary = data.escort.missions.mireth_bazaar
+	check(h.credits == before + int(m.reward) + int(round(float(m.bonus) * 0.5)), "half hull pays half the bonus")
+	# waits for a player who is far away, resumes when close
+	var w := new_game()
+	Escort.accept(w, "mireth_bazaar")
+	w.undock()
+	var start := Escort.pos(w)
+	var far := start + Vector2(float(data.escort.freighter.leash) + 200.0, 0)
+	check(Escort.step(w, 1.0, far).state == "waiting" and Escort.pos(w) == start, "the freighter waits for a straggler")
+	check(Escort.step(w, 1.0, start).state == "moving" and Escort.pos(w) != start, "and moves again when you are back")
+	# docking pauses it, abandoning ends it
+	w.dock("mireth")
+	var parked := Escort.pos(w)
+	check(Escort.step(w, 5.0, parked).state == "idle" and Escort.pos(w) == parked, "docked: the freighter holds")
+	check(Escort.abandon(w).ok and not Escort.active(w) and not Escort.abandon(w).ok, "abandon")
+
+
+func test_escort_enemies() -> void:
+	var g := new_game()
+	Escort.accept(g, "mireth_bazaar")
+	g.undock()
+	var seen: Array = []
+	g.event.connect(func(k, p): seen.append(k))
+	var hp := float(Escort.job(g).hull)
+	var res := Escort.damage(g, 40.0)
+	check(not res.destroyed and is_equal_approx(float(Escort.job(g).hull), hp - 40.0), "bolts hurt the freighter")
+	check(Escort.hull_ratio(g) < 1.0, "hull ratio drops")
+	# waves: first after the delay, finite count, only while you are near
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var waves := 0
+	var t := 0.0
+	while t < 200.0:
+		var w := Escort.tick_wave(g, 0.5, 0, rng)
+		t += 0.5
+		if not w.is_empty():
+			waves += 1
+			check(not (w.units as Array).is_empty() and (w.cartel == "" or data.cartels.gangs.has(w.cartel)), "a wave is pick_spawn output")
+			if waves == 1:
+				check(t >= float(data.escort.waves.first) - 0.01, "first wave comes after the delay")
+	check(waves == int(data.escort.missions.mireth_bazaar.waves) and Escort.waves_left(g) == 0, "exactly the mission's waves come (%d)" % waves)
+	var n := new_game()
+	Escort.accept(n, "mireth_bazaar")
+	n.undock()
+	var cap := int(data.escort.waves.max_enemies)
+	var blocked := true
+	for i in 100:
+		if not Escort.tick_wave(n, 0.5, cap, rng).is_empty():
+			blocked = false
+	check(blocked, "no new wave while the sky is full")
+	Escort.job(n).near = false
+	var calm := true
+	for i in 100:
+		if not Escort.tick_wave(n, 0.5, 0, rng).is_empty():
+			calm = false
+	check(calm, "no waves while you are away from the freighter")
+	# targeting
+	var f := Escort.pos(g)
+	check(Escort.prefers_freighter(g, f + Vector2(600, 0), f + Vector2(1500, 0)), "raiders go for the freighter")
+	check(not Escort.prefers_freighter(g, f + Vector2(600, 0), f + Vector2(700, 0)), "a player on their tail draws their fire")
+	check(not Escort.prefers_freighter(g, f + Vector2(5000, 0), f), "out of range: they hunt you")
+	# death fails the job without pay
+	var cr := g.credits
+	res = Escort.damage(g, 1000.0)
+	check(res.destroyed and not Escort.active(g) and g.credits == cr, "destroyed: job over, no pay")
+	check(seen.has("escort_failed") and not Escort.damage(g, 5.0).destroyed, "escort_failed fires once; no job, no damage")
+	check(Escort.cooldown_left(g, "mireth_bazaar") == 0, "a failed job can be retaken")
+
+
+func test_escort_jump() -> void:
+	var g := new_game()
+	g.day = 3
+	g.credits = 5000
+	check(Escort.accept(g, "mireth_varrow").ok, "the charter is open from day 2")
+	check(Escort.goal(g) == "halvane_gate", "route goes via the gate")
+	g.undock()
+	var state := escort_run(g, func(): return Escort.pos(g))
+	check(state == "at_gate" and bool(Escort.job(g).at_gate), "the freighter holds at the gate")
+	var r := g.jump("halvane_gate")
+	check(r.ok and Escort.active(g) and Escort.job(g).sys == "kovar", "it follows through the gate")
+	check(Escort.goal(g) == "varrow", "and heads for Varrow")
+	check(Escort.pos(g).distance_to(Escort.loc_pos(g, "kovar_gate")) < 400.0, "it arrives next to the arrival gate")
+	state = escort_run(g, func(): return Escort.pos(g))
+	check(not Escort.active(g) and g.escort.done == 1 and g.credits > 5000 - 80, "arrival in the second system pays")
+	# leaving it behind
+	var h := new_game()
+	h.day = 3
+	h.credits = 5000
+	Escort.accept(h, "mireth_varrow")
+	h.undock()
+	Escort.step(h, 0.1, Escort.pos(h) + Vector2(5000, 0))
+	check(h.jump("halvane_gate").ok and not Escort.active(h) and h.escort.done == 0, "jumping while it is far away fails the job")
+
+
+func test_escort_save() -> void:
+	var g := new_game()
+	Escort.accept(g, "mireth_bazaar")
+	g.undock()
+	Escort.step(g, 2.0, Escort.pos(g))
+	Escort.damage(g, 55.0)
+	g.escort.last["cinder_mireth"] = 1
+	var d := g.to_dict()
+	check(d.has("escort") and d.escort.job.mission == "mireth_bazaar", "escort is saved")
+	var e := Game.new()
+	e.from_dict(data, JSON.parse_string(JSON.stringify(d)))
+	check(Escort.active(e) and Escort.pos(e).distance_to(Escort.pos(g)) < 0.2, "job and freighter position survive a save")
+	check(absf(float(Escort.job(e).hull) - float(Escort.job(g).hull)) < 0.2 and e.escort.last.has("cinder_mireth"), "hull and cooldowns survive")
+	var old := d.duplicate(true)
+	old.erase("escort")
+	var o := Game.new()
+	o.from_dict(data, old)
+	check(not Escort.active(o) and int(o.escort.done) == 0, "old saves have no escort")
+	var bad := d.duplicate(true)
+	bad.escort.job.mission = "ghost"
+	var b := Game.new()
+	b.from_dict(data, bad)
+	check(not Escort.active(b), "a job with an unknown mission is dropped")
