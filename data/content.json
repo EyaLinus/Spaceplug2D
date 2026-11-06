@@ -543,5 +543,9 @@
   "price_board": {
     "_doc": "Price board (Map app > Price comparison): per location and good one observation per game day while you are docked there, kept for history_days; spark_days = points in the sparkline, flat_pct = change below this share counts as steady.",
     "history_days": 14, "spark_days": 8, "flat_pct": 0.02
+  },
+  "walkups": {
+    "interval": 12, "max_active": 2, "chance": 0.3, "stranger_mult": 0.5, "linger_seconds": 70, "cooldown": 240,
+    "affinity_decline": -0.01, "affinity_haggle_fail": -0.02, "haggle": [0.1, 0.2]
   }
 }

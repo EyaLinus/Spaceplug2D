@@ -16,6 +16,7 @@ const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Escort = preload("res://scripts/core/escort.gd")
 const Interiors = preload("res://scripts/core/interiors.gd")
+const Walkups = preload("res://scripts/core/walkups.gd")
 
 var steps := 0
 
@@ -958,6 +959,8 @@ func _run() -> void:
 	await frames(2)
 	m.station.close()
 	step("cook and sell")
+	await _walkup(m, g)
+	step("customer on foot")
 
 	g.credits = 20000
 	for u in ["cargo", "engine", "stealth", "lab", "laser", "missile", "shield", "hull"]:
@@ -1583,3 +1586,61 @@ func _escort(m, g) -> void:
 	cb.clear()
 	g.escort = Escort.empty_state()
 	g.location = home
+## P2: a customer on foot walks up with a speech bubble, talking opens the deal card, Accept sells and Walk away declines.
+func _walkup(m, g) -> void:
+	var gs = root.get_node("GameState")
+	var sf = m.surface
+	var had: int = int(g.cargo.get("weed:glow", 0))
+	g.cargo["weed:glow"] = 8
+	g.contact_ready_at.erase("okka")
+	People.state(g, "okka").spent = 0
+	sf.place_player_at("pad")
+	await physics_frame
+	await physics_frame
+	Walkups.active(g)["okka"] = Walkups.offer_for(g, "okka")
+	_assert(not Walkups.find(g, "okka").is_empty(), "Okka has a walk-up to make")
+	var npc = sf.npcs.okka
+	var d0: float = npc.position.distance_to(sf.player.position)
+	for i in 90:
+		await physics_frame
+	_assert(npc.bubble != "" and npc.bubble.contains("cr"), "speech bubble over the customer (%s)" % npc.bubble)
+	_assert(npc.position.distance_to(sf.player.position) < d0 - 5.0, "the customer walks towards the player (%d -> %d)" % [d0, npc.position.distance_to(sf.player.position)])
+	sf.player.position = npc.position + Vector2(0, 22)
+	for i in 4:
+		await physics_frame
+	_assert(sf.focus.get("action", "") == "walkup" and sf.prompt().contains("Deal with"), "the prompt offers the deal (%s)" % sf.prompt())
+	sf.interact()
+	await frames(2)
+	_assert(m.walkup.visible and m.walkup.find_child("Walkup_accept", true, false) != null, "deal card is up")
+	_assert(m.walkup.find_child("Walkup_decline", true, false) != null and m.walkup.find_child("Walkup_haggle_10", true, false) != null, "card offers haggle and walk away")
+	m.walkup.find_child("Walkup_haggle_10", true, false).pressed.emit()
+	await frames(2)
+	_assert(m.walkup.visible and m.walkup.find_child("Walkup_haggle_10", true, false) == null, "one haggle only")
+	var cr: int = g.credits
+	var prod: String = Walkups.find(g, "okka").product
+	var stock: int = int(g.cargo[prod])
+	m.walkup.find_child("Walkup_accept", true, false).pressed.emit()
+	await frames(2)
+	_assert(not m.walkup.visible and g.credits > cr and int(g.cargo.get(prod, 0)) < stock and Walkups.count(g) == 0, "accepted: paid, goods gone, card closed")
+	for i in 3:
+		await physics_frame
+	_assert(npc.bubble == "" and sf.interactable("okka").action == "deal", "back to a normal conversation afterwards")
+	# walking away turns them down
+	g.contact_ready_at.erase("okka")
+	People.state(g, "okka").spent = 0
+	g.cargo["weed:glow"] = 8
+	Walkups.active(g)["okka"] = Walkups.offer_for(g, "okka")
+	sf.player.position = npc.position + Vector2(0, 22)
+	for i in 4:
+		await physics_frame
+	sf.interact()
+	await frames(2)
+	_assert(m.walkup.visible, "card up again")
+	m.walkup.find_child("Walkup_decline", true, false).pressed.emit()
+	await frames(2)
+	_assert(not m.walkup.visible and Walkups.count(g) == 0 and g.credits >= cr, "walked away: card closed, nothing sold")
+	gs.paused = false
+	if had > 0:
+		g.cargo["weed:glow"] = had
+	else:
+		g.cargo.erase("weed:glow")

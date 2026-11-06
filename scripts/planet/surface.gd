@@ -20,6 +20,7 @@ const CombatHud = preload("res://scripts/planet/combat_hud.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const HeatZones = preload("res://scripts/core/heat_zones.gd")
 const Curfew = preload("res://scripts/core/curfew.gd")
+const Walkups = preload("res://scripts/core/walkups.gd")
 
 const INPUT := {
 	"move_up": [KEY_W, KEY_UP],
@@ -54,6 +55,7 @@ var nav: AStarGrid2D  ## tile grid with buildings solid; chasing officers path a
 var _repath := 0.0
 var _overlay: Node2D  ## redrawn every frame (focus ring); the ground below is drawn once
 var _rng := RandomNumberGenerator.new()
+var _walk_t := 0.0
 var _spot_of: Dictionary = {}  ## named npc id -> schedule spot it is at / walking to
 var _schedule_t := 0.0
 var _daylight: CanvasModulate
@@ -125,8 +127,8 @@ func _update_schedules(delta: float) -> void:
 		return
 	_schedule_t = 0.5
 	for n in cfg.get("npcs", []):
-		if n.get("contact", "") == "" or not npcs.has(n.id):
-			continue
+		if n.get("contact", "") == "" or not npcs.has(n.id) or npcs[n.id].bubble != "":
+			continue  # a customer on foot is coming to you, not following their schedule
 		var sp := _schedule_spot(n)
 		if sp.is_empty() or sp == _spot_of.get(n.id, []):
 			continue
@@ -156,6 +158,38 @@ func _update_deal_markers() -> void:
 			npcs[n.id].marker = agreed.has(n.get("contact", ""))
 			if n.get("local", false):
 				_update_local(n, npcs[n.id])
+
+
+## Customers on foot (walkups.gd): the ones who want to deal walk up to the player with a speech bubble, and talking to them
+## opens the deal card instead of the Deals panel. When they leave they go back to their schedule.
+func _update_walkups(delta: float) -> void:
+	var g = GameState.game
+	if g == null or player == null:
+		return
+	_walk_t -= delta
+	var repath := _walk_t <= 0.0
+	if repath:
+		_walk_t = 0.6
+	for n in cfg.get("npcs", []):
+		var cid: String = n.get("contact", "")
+		if cid == "" or not npcs.has(n.id):
+			continue
+		var npc: Node2D = npcs[n.id]
+		var w: Dictionary = Walkups.find(g, cid)
+		var it := interactable(n.id)
+		if w.is_empty():
+			if npc.bubble != "":
+				npc.bubble = ""
+				_spot_of.erase(n.id)  # back to the schedule
+				if not it.is_empty():
+					it.action = n.action
+			continue
+		npc.bubble = Walkups.bubble(g, w)
+		if not it.is_empty():
+			it.action = "walkup"
+			it.label = "Deal with %s · %s" % [g.contact(cid).name if People.state(g, cid).known else str(g.contact(cid).get("job", "a customer")).to_lower(), npc.bubble]
+		if repath and player.position.distance_to(npc.position) > 52.0:
+			npc.path = Nav.path_between(nav, tile, npc.position, player.position + Vector2(0, 30))
 
 
 ## Townsfolk you haven't met show their job instead of a name (only up close); talking or a referral reveals them.
@@ -350,6 +384,7 @@ func _physics_process(delta: float) -> void:
 	if player != null:
 		GameState.game.heat_zone = HeatZones.zone_at(cfg, player.position / tile)
 	_update_deal_markers()
+	_update_walkups(delta)
 	_update_schedules(delta)
 	_update_daylight()
 	for it in interactables:

@@ -14,6 +14,7 @@ var pick_next: Callable  ## returns a new path when this one is done (walkers on
 var look := ""  ## character sheet name in assets/gfx/chars; "" = closest npc_* look to `color`
 var hold := false  ## named people stop walking while the player stands next to them
 var marker := false  ## gold "$" above the head: you have an agreed deal with this person
+var bubble := ""  ## speech bubble text: a customer on foot asking for product (walkups.gd)
 var heading := Vector2.DOWN  ## last walking direction, picks the sprite row
 var _step := 0.0
 var _t := 0.0
@@ -55,6 +56,14 @@ func _draw() -> void:
 
 
 func _draw_name() -> void:
+	if bubble != "":
+		var bf := ThemeDB.fallback_font
+		var bw := bf.get_string_size(bubble, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 14.0
+		var by := -64.0 + sin(_t * 3.0) * 1.5
+		draw_rect(Rect2(-bw / 2.0, by, bw, 20), Color(0.08, 0.1, 0.14, 0.92))
+		draw_rect(Rect2(-bw / 2.0, by, bw, 20), Color("#ffd166"), false, 1.5)
+		draw_colored_polygon(PackedVector2Array([Vector2(-4, by + 20), Vector2(4, by + 20), Vector2(0, by + 27)]), Color("#ffd166"))
+		draw_string(bf, Vector2(-bw / 2.0 + 7.0, by + 14.5), bubble, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#ffe9b0"))
 	if marker:
 		var f := ThemeDB.fallback_font
 		var bob := sin(_t * 4.0) * 2.0

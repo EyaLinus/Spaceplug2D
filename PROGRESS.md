@@ -842,3 +842,25 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
 - Verified: unit tests (`test_packaging_tiers`: thresholds, key round-trip, name, bust survival, save, batch stores the tier; two
   existing tests adjusted for the suffix) 0 failures; UI smoke ran through. Sim and screenshots not run.
 - Gaps: tier is not shown in every list (only names and the batch result); no sell-price effect; Sealed/Shielded numbers are unbalanced guesses.
+## P2: Customers on foot (2026-11-04, wave 12)
+- **Core** `scripts/core/walkups.gd` (numbers in `content.json` → `walkups`): while you stand on a planet surface, every 12 s a customer
+  of that planet may walk up. Eligible: holds a drug you carry (they ask for a liked-trait product first, otherwise your cheapest),
+  your asking price is within their ceiling, budget left, not on cooldown, no open Deal-O-Matic request. Chance rises with addiction and
+  affinity; strangers (unmet townsfolk) come at half the rate and are met when you talk. At most 2 at once, they linger 70 s.
+  The roll uses its own seeded RNG, so `Game.rng` (and every existing seeded test/sim) is untouched. State `Game.walkups` is momentary and
+  not saved.
+- **Answers:** `accept` is `Game.sell` (budget, cooldown, demand saturation, heat, referral, `sold` event for quests/cartels) plus the
+  haggled extra on top and a `walkup_sold` event; `haggle` (+10 %/+20 %, one try, chance from `Deals.counter_chance`, never above their
+  ceiling, failure costs affinity); `decline` (affinity dent, 240 s cooldown). `total()` quotes the real sum including demand saturation.
+- **Surface/UI:** the customer's npc gets a gold speech bubble and walks to the player, the interaction becomes "Deal with ..." and
+  opens `scripts/ui/walkup_card.gd` (product, amount, price, total, mood; Esc closes; the player is frozen while it is up). Afterwards they
+  return to their schedule and the interaction goes back to the Deals panel.
+- Verified (Godot 4.3 headless): unit tests (`test_walkups`: eligibility incl. no stock / steep asking price / open text request, stranger vs
+  regular chance, Game.rng untouched, accept pays the quote and fires `sold`, heat rises, haggle success/failure/greedy/only once,
+  decline + cooldown, linger expiry, stock gone, taking off, not saved), UI smoke (bubble, customer walks to the player, prompt, card,
+  haggle once, accept pays, decline), tip audit `TIPS DONE 0` with the new card.
+- Gaps: **the contacts menu is not trimmed yet** (Contacts app and the Deals panel work as before; walk-ups are an additional way to
+  sell, so the ROADMAP wording "replaces part of the contacts menu" is only partly met); no screenshot of the bubble/card (headless only,
+  so placement and readability are unseen); a customer who cannot path to the player just stands still; numbers (interval, chance,
+  linger) are eyeballed and the balance bot does not use walk-ups; walk-ups only appear on planet surfaces, not inside estates or on
+  stations without a surface; no dialogue variety beyond one quote line.

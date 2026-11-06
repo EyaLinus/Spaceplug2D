@@ -30,6 +30,7 @@ const Interiors = preload("res://scripts/core/interiors.gd")
 const Raids = preload("res://scripts/core/raids.gd")
 const HeatZones = preload("res://scripts/core/heat_zones.gd")
 const PatrolFeel = preload("res://scripts/core/patrolfeel.gd")
+const Walkups = preload("res://scripts/core/walkups.gd")
 
 var data: Dictionary
 var failures := 0
@@ -89,6 +90,7 @@ func _init() -> void:
 		"test_people_schedules_on_surfaces",
 		"test_planet_districts",
 		"test_locals",
+		"test_walkups",
 		"test_deal_requests",
 		"test_deal_answers",
 		"test_deal_fulfill",
@@ -3690,3 +3692,127 @@ func test_curfew() -> void:
 	check(not Curfew.bribe(g).ok, "broke: no bribe")
 	g.day_time = noon
 	check(not Curfew.bribe(g).ok, "nothing to bribe by day")
+## P2: customers on foot walk up to you on a planet; accept / haggle / decline, all through the normal sell path.
+func test_walkups() -> void:
+	var g := new_game()
+	g.location = "mireth"
+	check(Walkups.offer_for(g, "okka").is_empty(), "no product in the hold, nobody walks up")
+	g.cargo["weed:glow"] = 12
+	var w := Walkups.offer_for(g, "okka")
+	check(not w.is_empty() and w.product == "weed:glow" and w.base == "weed", "Okka wants your weed")
+	check(int(w.price) == g.unit_price("weed:glow", "okka") and int(w.qty) >= 1 and int(w.qty) <= People.max_units(g, "okka"), "price is the sell price, amount within their limit")
+	# your asking price decides what they pay; too steep = they do not come
+	var rk := "weed:glow"
+	g.recipes[rk] = {"base": "weed", "additives": []}
+	g.prices[rk] = 100000
+	check(Walkups.offer_for(g, "okka").is_empty(), "an asking price above their ceiling keeps them away")
+	g.prices[rk] = maxi(int(w.price) - 1, 1)
+	check(int(Walkups.offer_for(g, "okka").price) == Products.asking(g, rk), "they pay your asking price")
+	g.prices.erase(rk)
+	g.recipes.erase(rk)
+	# strangers come over less often than people you know
+	var local: Dictionary = data.contacts.filter(func(c): return c.get("local", false) and c.location == "mireth")[0]
+	var stranger := Walkups.chance(g, local.id)
+	People.state(g, local.id).known = true
+	check(Walkups.chance(g, local.id) > stranger, "strangers come over less often than people you know")
+	People.state(g, local.id).known = false
+	# the roll comes from tick() and leaves Game.rng alone
+	data.walkups.chance = 5.0
+	var state_before := g.rng.state
+	for i in 40:
+		Walkups.tick(g, 12.0)
+		g.total_time += 12.0
+		if Walkups.count(g) > 0:
+			break
+	check(Walkups.count(g) > 0 and g.rng.state == state_before, "customers walk up over time without touching Game.rng (%d)" % Walkups.count(g))
+	check(Walkups.count(g) <= int(data.walkups.max_active), "at most max_active at once")
+	for cid in Walkups.active(g):
+		check(g.contact(cid).location == "mireth" and (g.contact(cid).prefers as Array).has("weed"), "%s lives here and wants weed" % cid)
+	# an open Deal-O-Matic request blocks a walk-up from the same person
+	var g2 := new_game()
+	g2.location = "mireth"
+	g2.cargo["weed:glow"] = 5
+	check(Walkups.eligible(g2, "okka"), "Okka is eligible")
+	Deals.request(g2, "okka")
+	check(not Walkups.eligible(g2, "okka"), "someone with an open text request does not also walk up")
+	# accept = Game.sell: credits, cargo, heat, history, events
+	var gs := new_game()
+	gs.location = "mireth"
+	gs.cargo["weed:glow"] = 12
+	Walkups.active(gs)["okka"] = Walkups.offer_for(gs, "okka")
+	var wa: Dictionary = Walkups.find(gs, "okka")
+	var credits := gs.credits
+	var quoted := Walkups.total(gs, wa)
+	var heat := gs.heat
+	var sold := []
+	gs.event.connect(func(k, _p): if k == "sold" or k == "walkup_sold": sold.append(k))
+	var res := Walkups.accept(gs, "okka")
+	check(res.ok and gs.credits == credits + quoted, "accept pays the quoted total (%d, %s)" % [quoted, res.msg])
+	check(int(gs.cargo["weed:glow"]) == 12 - int(wa.qty) and gs.heat > heat, "goods leave the hold and the sale heats you up")
+	check(sold.has("sold") and sold.has("walkup_sold"), "the normal sold event fires (quests, cartels listen to it)")
+	check(not People.state(gs, "okka").history.is_empty() and Walkups.count(gs) == 0, "sale is in their history, walk-up closed")
+	check(not Walkups.eligible(gs, "okka"), "they leave you alone for a while after a sale")
+	check(not Walkups.accept(gs, "okka").ok, "a closed walk-up cannot be accepted twice")
+	# haggle: one try, never above their ceiling; success pays extra on top of the sale
+	var gh := new_game()
+	gh.location = "mireth"
+	gh.cargo["weed:glow"] = 12
+	var ps := People.state(gh, "okka")
+	ps.affinity = 1.0
+	ps.addiction = 1.0
+	Walkups.active(gh)["okka"] = Walkups.offer_for(gh, "okka")
+	var wh: Dictionary = Walkups.find(gh, "okka")
+	var base_price := int(wh.price)
+	var won := false
+	for sd in 30:
+		wh.price = base_price
+		wh.haggled = false
+		gh.rng.seed = sd
+		if Walkups.haggle(gh, "okka", 0.1).ok:
+			won = true
+			break
+	check(won and int(wh.price) > base_price and wh.haggled, "a loyal, hooked customer can be talked up (%d -> %d)" % [base_price, int(wh.price)])
+	check(int(wh.price) <= Walkups.ceiling(gh, wh), "never above their ceiling")
+	var c2 := gh.credits
+	var quoted_h := Walkups.total(gh, wh)
+	check(Walkups.accept(gh, "okka").ok and gh.credits == c2 + quoted_h and quoted_h > base_price * int(wh.qty) * 0.8, "haggled price is what you get")
+	check(not Walkups.haggle(gh, "okka", 0.1).ok, "no walk-up, no haggle")
+	var gf := new_game()
+	gf.location = "mireth"
+	gf.cargo["weed:glow"] = 12
+	Walkups.active(gf)["okka"] = Walkups.offer_for(gf, "okka")
+	var aff := float(People.state(gf, "okka").affinity)
+	check(not Walkups.haggle(gf, "okka", 9.0).ok and float(People.state(gf, "okka").affinity) < aff, "a greedy ask fails and annoys them")
+	check(not Walkups.haggle(gf, "okka", 0.05).ok, "only one haggle per customer")
+	check(Walkups.accept(gf, "okka").ok, "they still buy at the old price")
+	# decline and lingering
+	var gd := new_game()
+	gd.location = "mireth"
+	gd.cargo["weed:glow"] = 12
+	Walkups.active(gd)["okka"] = Walkups.offer_for(gd, "okka")
+	var aff_d := float(People.state(gd, "okka").affinity)
+	check(Walkups.decline(gd, "okka").ok and float(People.state(gd, "okka").affinity) < aff_d and Walkups.count(gd) == 0, "declining dents affinity and ends it")
+	check(not Walkups.eligible(gd, "okka"), "a customer you turned away stays away for a while")
+	gd.total_time += float(data.walkups.cooldown) + 1.0
+	check(Walkups.eligible(gd, "okka"), "...but comes back later")
+	Walkups.active(gd)["okka"] = Walkups.offer_for(gd, "okka")
+	gd.total_time += float(data.walkups.linger_seconds) + 1.0
+	Walkups.tick(gd, 0.1)
+	check(Walkups.count(gd) == 0, "bored customers walk off")
+	# selling the goods elsewhere, or leaving the planet, ends it
+	Walkups.active(gd)["okka"] = Walkups.offer_for(gd, "okka")
+	gd.cargo.erase("weed:glow")
+	Walkups.tick(gd, 0.1)
+	check(Walkups.count(gd) == 0, "no goods left, no deal")
+	gd.cargo["weed:glow"] = 5
+	gd.total_time += float(data.walkups.cooldown) + 1.0
+	Walkups.active(gd)["okka"] = Walkups.offer_for(gd, "okka")
+	gd.location = ""
+	Walkups.tick(gd, 0.1)
+	check(Walkups.count(gd) == 0, "taking off ends it")
+	# momentary: not in the save, loading does not crash
+	Walkups.active(gh)["okka"] = {"contact": "okka"}
+	var back := Game.new()
+	back.from_dict(data, JSON.parse_string(JSON.stringify(gh.to_dict())))
+	check(Walkups.count(back) == 0, "walk-ups are not saved")
+	data.walkups.chance = 0.3
