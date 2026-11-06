@@ -322,6 +322,12 @@
       "affects": "grade",
       "bases": ["weed"],
       "hint": "Hang finished weed on the rack to cure. It comes off one grade higher but lighter."
+    },
+    "seal_bench": {
+      "name": "Sealing Bench",
+      "passive": true,
+      "affects": "packaging",
+      "hint": "Re-wrap finished product from your hold into Sealed or Shielded packs. Costs wrap supplies and time; packed units can slip through patrol scans."
     }
   },
   "packaging": {
@@ -462,7 +468,8 @@
     "cook_stove": {"cost": 400, "size": [2, 2]},
     "refiner": {"cost": 550, "size": [2, 2]},
     "pack_table": {"cost": 250, "size": [2, 1]},
-    "drying_table": {"cost": 300, "size": [2, 1]}
+    "drying_table": {"cost": 300, "size": [2, 1]},
+    "seal_bench": {"cost": 320, "size": [2, 1]}
   },
   "orders": {
     "markup": 0.35, "fee_pct": 0.06, "fee_min": 12, "express_fee_mult": 2.0,
@@ -632,5 +639,9 @@
     "interval": 12, "max_active": 2, "chance": 0.3, "stranger_mult": 0.5, "linger_seconds": 70, "cooldown": 240,
     "affinity_decline": -0.01, "affinity_haggle_fail": -0.02, "haggle": [0.1, 0.2]
   },
-  "drying": {"seconds": 120, "capacity": 20, "weight_keep": 0.8, "max_grade": 3, "bases": ["weed"]}
+  "drying": {"seconds": 120, "capacity": 20, "weight_keep": 0.8, "max_grade": 3, "bases": ["weed"]},
+  "sealing": {
+    "capacity": 30,
+    "offers": [{"tier": 1, "seconds": 45, "cost": 4}, {"tier": 2, "seconds": 90, "cost": 10}]
+  }
 }

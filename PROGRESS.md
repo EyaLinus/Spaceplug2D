@@ -119,6 +119,12 @@
 - Old saves: no new saved fields; missing demand/heat/official entries default. Verified: 11472 unit checks (new
   `test_second_system`), UI smoke (Map shows Thessaly, route via Kovar, 220 cr), tip audit, menu smoke.
 - Not done: planet laws (separate PRs), locals for the new planets, real art, a quest into Thessaly.
+## Sealing Bench (2026-11-05, wave 22)
+- **Core** `scripts/core/sealing.gd`, numbers in `content.json` -> `sealing` (30 units per bench, offers: Sealed 4 cr/unit 45 s, Shielded 10 cr/unit 90 s) and `packaging.tiers`. State `Game.sealing` (estate id -> batches `{product, qty, tier, left, total}`), saved under `sealing`; old saves load empty, junk entries dropped. `Sealing.tick` runs in `Game.tick`.
+- Input: Loose finished product from the hold (wrap supplies paid per unit up front); output: the same units with the tier in the key (`weed:glow@2#2`), nothing lost, picked up by hand. Bench capacity is shared by an estate's benches; the last bench can't come down while loaded.
+- Key format `#<tier>` after the grade in `Mixing.key/parse_key/display_name` and `Products.recipe_key` is copied from the packaging-tiers PR (#77) so the hunks merge cleanly. The tier data block `packaging.tiers` is identical to #77's.
+- Building `seal_bench` (320 cr, 2x1, `passive` station like the drying table: no minigame, not in `station_order`), build-menu card, sprite `assets/src/stations/seal_bench.txt`, wrap panel in `bench_ui.gd` (mode `seal`).
+- Gaps: patrol scans only use the tier once #77's `Packaging.scan` is merged (this PR does not touch `Game.bust`); no workers/auto-wrap; the existing Packaging Table (`pack_table`, minigame) stays as the batch-line station, this is a separate building; storage crate and grow tray still open.
 
 ## Release v0.1.12 (2026-11-03) – end of phase 3
 - Phase 3 wave 10: K1 feedback + tooltips (#63), K2 customization / Style app (#65), K3 QoL (#66). Changelog folded,

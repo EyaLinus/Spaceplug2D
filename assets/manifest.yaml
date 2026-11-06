@@ -674,6 +674,17 @@ assets:
     source: assets/src/stations/pack_table.txt
     status: done
     updated: '2026-10-30'
+  station_seal_bench:
+    created: '2026-11-05'
+    kind: prop
+    method: pixel
+    note: 'Sealing Bench 2x1: bench with a heat-sealer bar, a stack of wrapped
+      bricks and a roll of foil.'
+    outputs:
+    - assets/gfx/stations/seal_bench.png
+    source: assets/src/stations/seal_bench.txt
+    status: done
+    updated: '2026-11-05'
   station_precursor_scale:
     created: '2026-10-30'
     kind: prop

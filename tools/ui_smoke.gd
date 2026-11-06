@@ -10,6 +10,7 @@ const People = preload("res://scripts/core/people.gd")
 const Workers = preload("res://scripts/core/workers.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Drying = preload("res://scripts/core/drying.gd")
+const Sealing = preload("res://scripts/core/sealing.gd")
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Combat = preload("res://scripts/core/combat.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
@@ -930,6 +931,35 @@ func _run() -> void:
 	await frames(2)
 	_assert(g.cargo.get("weed:glow@2", 0) == 8, "cured weed is Premium and 20%% lighter (%s)" % [g.cargo])
 	g.cargo.erase("weed:glow@2")
+	# sealing bench: build it, wrap loose weed as Shielded, wait it out, take the packs
+	g.credits += 2000
+	_assert(gs.act(g.place_building("cannery_annex", "seal_bench", 0, 4)).ok, "sealing bench placed")
+	m.enter_estate("cannery_annex", es.player.position)
+	await frames(2)
+	es = m.surface
+	var seal_idx := -1
+	for bi in g.estates.cannery_annex.buildings.size():
+		if g.estates.cannery_annex.buildings[bi].id == "seal_bench":
+			seal_idx = bi
+	es.place_player_at("b%d" % seal_idx)
+	await physics_frame
+	await physics_frame
+	g.cargo["weed:glow"] = 10
+	_assert(es.interact(), "use the sealing bench")
+	await frames(2)
+	_assert(m.bench.visible and m.bench.mode == "seal" and m.bench.find_child("SealLoad_2", true, false) != null, "sealing bench opens the wrap panel")
+	m.bench.find_child("SealLoad_2", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.cargo.get("weed:glow", 0) == 0 and Sealing.loaded(g, "cannery_annex") == 10, "wrap button puts the weed on the bench")
+	_assert(m.bench.find_child("SealCollect", true, false).disabled, "unfinished packs can't be collected")
+	for sb in g.sealing.cannery_annex:
+		sb.left = 0.0  # fast-forward the wrapping without moving the world clock
+	m.bench.open_station("seal_bench", seal_idx)
+	await frames(2)
+	m.bench.find_child("SealCollect", true, false).pressed.emit()
+	await frames(2)
+	_assert(g.cargo.get("weed:glow#2", 0) == 10, "packed weed is Shielded and nothing is lost (%s)" % [g.cargo])
+	g.cargo.erase("weed:glow#2")
 	m.bench.close()
 	es.place_player_at("exit")
 	await physics_frame

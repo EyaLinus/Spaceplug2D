@@ -1,0 +1,28 @@
+# Sealing Bench 2x1: wooden bench with a stack of foil-wrapped bricks, a heat-sealer bar and a roll of foil.
+legend:
+k = ink
+S = slate_light
+d = slate_dark
+x = white
+t = teal
+T = teal_dark
+w = wood
+W = wood_dark
+a = sand
+---
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
+kaaaaaaaaaaaaaaaaaaaaaaaaaaaaaak
+kwwkkkkkkkkkwwwwwwwkkkkkkkkkkkwk
+kwwktttxtttkwwwwwwwkSSSSSSSSSkwk
+kwwktTTxTTtkwwkkkwwkdddddddddkwk
+kwwkttttttkkwwkxkwwkkkkkkkkkkkwk
+kwwkkkkkkkwwwwkkkwwwwwwwwwwwwwwk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwk
+kWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWk
+kWdWWWWWWWWWWWWWWWWWWWWWWWWWWdWk
+kWdWWWWWWWWWWWWWWWWWWWWWWWWWWdWk
+kWdWWWWWWWWWWWWWWWWWWWWWWWWWWdWk
+kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk
