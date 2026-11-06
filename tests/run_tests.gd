@@ -52,6 +52,7 @@ func _init() -> void:
 		"test_loc_tables",
 		"test_loc_fallback",
 		"test_data_references",
+		"test_autopilot_avoid",
 		"test_surface_layouts",
 		"test_interiors",
 		"test_art_registry",
@@ -4684,3 +4685,33 @@ func test_drying_table() -> void:
 	g.cargo[prod] = 100
 	Drying.load_rack(g, e, prod, 100)
 	check(Drying.loaded(g, e) == 2 * int(data.drying.capacity), "rack stops at capacity")
+func test_autopilot_avoid() -> void:
+	var Steering = preload("res://scripts/core/steering.gd")
+	var from := Vector2.ZERO
+	var goal := Vector2(3000, 0)
+	var clear: Vector2 = Steering.avoid_heading(from, goal, [], 900.0)
+	check(clear.is_equal_approx(Vector2.RIGHT), "no hazards: straight to the goal")
+	var rock := {"pos": Vector2(1000, 20), "r": 200.0}
+	var h: Vector2 = Steering.avoid_heading(from, goal, [rock], 900.0)
+	check(h.y < -0.1, "rock slightly below the course: detour goes up, got %s" % h)
+	var h2: Vector2 = Steering.avoid_heading(from, goal, [{"pos": Vector2(1000, -20), "r": 200.0}], 900.0)
+	check(h2.y > 0.1, "rock slightly above the course: detour goes down")
+	check(Steering.avoid_heading(from, goal, [{"pos": Vector2(1000, 800), "r": 200.0}], 900.0).is_equal_approx(Vector2.RIGHT), "far-off rock is ignored")
+	check(Steering.avoid_heading(from, goal, [{"pos": Vector2(-1000, 0), "r": 200.0}], 900.0).is_equal_approx(Vector2.RIGHT), "rock behind is ignored")
+	check(Steering.avoid_heading(from, goal, [{"pos": Vector2(2900, 0), "r": 200.0}], 5000.0).is_equal_approx(Vector2.RIGHT), "hazard around the goal itself is not detoured")
+	check(Steering.avoid_heading(from, goal, [{"pos": Vector2(2000, 0), "r": 200.0}], 900.0).is_equal_approx(Vector2.RIGHT), "rock beyond the look-ahead is ignored")
+	var inside: Vector2 = Steering.avoid_heading(Vector2(1000, 50), goal, [rock], 900.0)
+	check(inside.y > 0.5, "inside a hazard the heading pushes out")
+	# simulate flying past with a point ship that turns at a limited rate: never enters the rock
+	var pos := from
+	var ang := 0.0
+	var min_d := INF
+	var big := {"pos": Vector2(1200, 10), "r": 250.0}
+	for i in 1500:
+		if pos.distance_to(goal) < 100.0:
+			break
+		var want: float = Steering.avoid_heading(pos, goal, [big], 900.0).angle()
+		ang += clampf(wrapf(want - ang, -PI, PI), -0.05, 0.05)
+		pos += Vector2.from_angle(ang) * 6.0
+		min_d = minf(min_d, pos.distance_to(big.pos))
+	check(pos.distance_to(goal) < 100.0 and min_d > 250.0, "flight arrives without touching the rock (closest %d)" % int(min_d))

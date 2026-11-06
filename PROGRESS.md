@@ -187,6 +187,15 @@
 - **UI** Map app: "Mark" per location, "Set marker"/"Clear marker" row in the system panel.
 - Verified: unit tests (test_map_marker), UI smoke 51 steps (+ map marker step), tip audit 0, menu smoke.
 - Gaps: no marker on the surface/minimap-on-foot; autopilot still ignores asteroids/patrols.
+## K3 follow-up: autopilot avoidance (2026-11-05)
+- `scripts/core/steering.gd` `avoid_heading()` (pure): detours around circular hazards ahead of the course (tangent
+  aim on the clear side, 90 px margin, ignores hazards containing the goal, pushes out when already inside).
+  `ship.autopilot_step()` now aims along it via `ship.hazard_provider` (set in main to `World.autopilot_hazards()`:
+  every location body at 1.2x radius, plus each patrol's scan zone while you carry contraband).
+- Verified (Godot 4.3 headless): unit tests 10837 checks / 0 failures (new `test_autopilot_avoid`: left/right
+  detour, ignored far/behind/goal hazards, point-ship flight clears a rock), UI smoke 50 steps, tip audit 0, menu
+  smoke. Not verified: real in-game feel (no playtest/screenshot), balance sim not run, no moving-patrol prediction,
+  hazards are only re-evaluated each frame (no path memory, so a very wide patrol zone can still be clipped).
 
 ## K3: QoL (phase 3 wave 10, 2026-11-03)
 - **Autopilot** (`ship.gd`): action `ship_autopilot` (T) toggles; `goal_provider` = `hud.quest_point` (set in main);
