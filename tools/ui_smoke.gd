@@ -15,6 +15,7 @@ const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Escort = preload("res://scripts/core/escort.gd")
+const Interiors = preload("res://scripts/core/interiors.gd")
 
 var steps := 0
 
@@ -203,9 +204,8 @@ func _run() -> void:
 	sf.player.sprinting = false
 	step("districts, canal, minimap zoom, sprint")
 
-	# every door and person opens exactly its own panel
-	var expect := {"spaceport": "Shipyard", "market": "Market", "office": "Office",
-		"rusk": "Shipyard", "okka": "Deals", "sen": "Deals"}
+	# every person opens exactly their own panel; key buildings lead into a room first (D4)
+	var expect := {"rusk": "Shipyard", "okka": "Deals", "sen": "Deals"}
 	for id in expect:
 		sf.place_player_at(id)
 		await physics_frame
@@ -219,7 +219,29 @@ func _run() -> void:
 		m.station.close_requested.emit()
 		await frames(1)
 		_assert(not m.station.visible, "panel closes")
-	step("doors and people")
+	var doors := {"spaceport": "Shipyard", "market": "Market", "office": "Office"}
+	for id in doors:
+		var rs = await _enter(m, sf, id)
+		_assert(rs.player.position.distance_to(rs.interactable("exit").stand) < 40.0, "%s: you stand at the inside of the door" % id)
+		_assert(rs.npcs.has("clerk") and rs.cfg.npcs.size() == 1, "%s: a clerk is in the room" % id)
+		_assert(m.hud._prompt.text.contains("Leave"), "%s: the exit prompt reads Leave (%s)" % [id, m.hud._prompt.text])
+		var cb: Rect2 = rs._rect(rs.cfg.buildings.filter(func(b): return b.id == "counter")[0].rect)
+		rs.player.position = Vector2(cb.get_center().x, cb.end.y + 30.0)
+		for i in 60:
+			rs.player.walk(1.0 / 60.0, Vector2.UP)
+			await physics_frame
+		_assert(rs.player.position.y >= cb.end.y - 2.0, "%s: the counter blocks the player (y=%.0f, counter=%.0f)" % [id, rs.player.position.y, cb.end.y])
+		_assert(await _use_counter(m, rs) == [doors[id]], "%s counter opens %s (got %s)" % [id, doors[id], m.station.tab_names()])
+		_assert(rs.player.frozen, "player frozen while a panel is open")
+		m.station.close_requested.emit()
+		await frames(1)
+		_assert(not m.station.visible and m.surface == rs, "closing the panel keeps you in the room")
+		_assert(await _use_counter(m, rs, "clerk") == [doors[id]], "%s clerk opens %s" % [id, doors[id]])
+		m.station.close_requested.emit()
+		await frames(1)
+		sf = await _leave(m)
+	_assert(sf.loc_id == "mireth" and sf.suspicion == 0.0, "back on Mireth")
+	step("people, key building rooms")
 
 	# B4: the townsfolk are named customers; unknown ones show their job, talking makes them a contact
 	var g0 = gs.game
@@ -242,11 +264,8 @@ func _run() -> void:
 	step("named townsfolk")
 
 	# market shop screen: item cards fill a basket, one checkout buys it all
-	sf.place_player_at("market")
-	await physics_frame
-	await physics_frame
-	sf.interact()
-	await frames(2)
+	var ms = await _enter(m, sf, "market")
+	await _use_counter(m, ms)
 	var have_c := int(g.cargo.get("cannabis", 0))
 	m.station.find_child("Item_cannabis", true, false).pressed.emit()
 	await frames(1)
@@ -261,6 +280,7 @@ func _run() -> void:
 	_assert(int(g.cargo.get("cannabis", 0)) == have_c + 2 and g.credits < cr_before and m.station._basket.is_empty(), "checkout buys the basket")
 	m.station.close_requested.emit()
 	await frames(1)
+	sf = await _leave(m)
 	# shipyard cards: one button per upgrade
 	sf.place_player_at("rusk")
 	await physics_frame
@@ -1001,20 +1021,31 @@ func _run() -> void:
 		var ls = m.surface
 		_assert(ls != null and ls.loc_id == loc, "landed on %s" % loc)
 		var opened: Array = []
-		for it in ls.interactables:
+		for it in ls.interactables.duplicate():
 			if it.action == "takeoff" or it.action == "enter_ship_bay":
 				continue
 			ls.place_player_at(it.payload.id)
 			await physics_frame
 			await physics_frame
+			var room: bool = Interiors.has(g.data, loc, it.payload.id)
 			_assert(ls.interact(), "interact with %s/%s" % [loc, it.payload.id])
 			await frames(2)
+			if room:  # D4: key buildings: through the door, then the counter
+				_assert(m.surface != ls and m.surface.cfg.has("interior") and not m.station.visible, "%s/%s door leads into a room" % [loc, it.payload.id])
+				var rs = m.surface
+				rs.place_player_at("counter")
+				await physics_frame
+				await physics_frame
+				_assert(rs.interact(), "%s/%s counter" % [loc, it.payload.id])
+				await frames(2)
 			_assert(m.station.visible and m.station.tab_names().size() == 1, "%s/%s opens one panel" % [loc, it.payload.id])
 			if it.action == "fence":
 				_assert(m.station._filter.get("fence_only", false), "fence door opens fence-only deals")
 			opened.append("%s:%s" % [it.payload.id, m.station.tab_names()[0]])
 			m.station.close_requested.emit()
 			await frames(1)
+			if room:
+				ls = await _leave(m)
 		step("walked %s %s" % [loc, opened])
 		ls.place_player_at("pad")
 		await physics_frame
@@ -1172,6 +1203,44 @@ func _jump(m, g, gate: String) -> void:
 	_assert(m.world.locations.keys().all(func(l): return g.loc_system(l) == to), "only %s locations are shown" % to)
 	_assert(m.world.active and m.surface == null, "flying after the jump")
 	step("jump to %s" % to)
+
+
+## D4: opens a key building's door on the street and returns the room (surface) behind it.
+func _enter(m, sf, id: String):
+	sf.place_player_at(id)
+	await physics_frame
+	await physics_frame
+	_assert(sf.interact(), "open the %s door" % id)
+	await frames(2)
+	var rs = m.surface
+	_assert(rs != null and rs != sf and rs.cfg.has("interior") and rs.cfg.interior.building == id and not m.station.visible, "the %s door leads into its room, not to a panel" % id)
+	return rs
+
+
+## Uses the counter of a room: opens its panel (the caller closes it). Returns the panel's tab names.
+func _use_counter(m, rs, who := "counter") -> Array:
+	rs.place_player_at(who)
+	await physics_frame
+	await physics_frame
+	_assert(not rs.focus.is_empty() and rs.focus.payload.id == who, "focus on the %s (got %s)" % [who, rs.focus.get("payload", {})])
+	_assert(rs.interact(), "use the %s" % who)
+	await frames(2)
+	_assert(m.station.visible, "%s opens a panel" % who)
+	return m.station.tab_names()
+
+
+## Walks out of a room through its exit; returns the street surface, with the player in front of the door.
+func _leave(m):
+	var rs = m.surface
+	var bid: String = rs.cfg.interior.building
+	rs.place_player_at("exit")
+	await physics_frame
+	await physics_frame
+	_assert(rs.interact(), "use the exit of %s" % bid)
+	await frames(2)
+	var sf = m.surface
+	_assert(sf != null and sf != rs and not sf.cfg.has("interior") and sf.player.position.distance_to(sf.interactable(bid).stand) < 1.0, "back on the street in front of %s" % bid)
+	return sf
 
 
 func _assert(cond: bool, msg: String) -> void:

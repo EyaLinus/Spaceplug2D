@@ -1,0 +1,39 @@
+{
+ "mireth": {
+  "spaceport": {"size": [12, 9], "floor": "#34404f", "floor_alt": "#394655", "counter": "#4b5d7a",
+   "clerk": {"name": "Hangar clerk", "color": "#6fa8ff"},
+   "props": [["crate", 1.6, 2.2], ["crate", 2.5, 2.4], ["barrel", 11.2, 2.4], ["lamp", 6.5, 1.8], ["barrel", 11.2, 7.4]]},
+  "market": {"size": [13, 9], "floor": "#3b3228", "floor_alt": "#40362c", "counter": "#7a5a3a",
+   "clerk": {"name": "Night Market clerk", "color": "#ffb86b"},
+   "props": [["stall", 2.6, 2.4], ["stall", 10.4, 2.4], ["crate", 1.6, 7.4], ["crate", 11.4, 7.4], ["lamp", 6.5, 1.8], ["neon", 6.5, 1.2]]},
+  "office": {"size": [11, 8], "floor": "#2f3138", "floor_alt": "#33353d", "counter": "#5a5d68",
+   "clerk": {"name": "Consortium teller", "color": "#c9d1d9"},
+   "props": [["plant", 1.5, 2.0], ["plant", 9.5, 2.0], ["lamp", 5.5, 1.8], ["sofa", 2.5, 6.6], ["rug", 5.5, 5.2]]}
+ },
+ "cinder": {
+  "depot": {"size": [11, 8], "floor": "#3a3430", "floor_alt": "#403a35", "counter": "#6b5446",
+   "clerk": {"name": "Depot hand", "color": "#ff9a4d"},
+   "props": [["crate", 1.6, 2.2], ["crate", 2.5, 2.4], ["barrel", 9.6, 2.2], ["barrel", 9.6, 6.8], ["lamp", 5.5, 1.8]]}
+ },
+ "bazaar": {
+  "hullmarket": {"size": [12, 8], "floor": "#2d3340", "floor_alt": "#323847", "counter": "#4a5568",
+   "clerk": {"name": "Hull Market vendor", "color": "#4fe3c1"},
+   "props": [["stall", 2.6, 2.4], ["stall", 9.4, 2.4], ["neon", 6.0, 1.2], ["crate", 10.4, 6.6], ["lamp", 6.0, 1.8]]},
+  "backroom": {"size": [9, 7], "floor": "#2a2630", "floor_alt": "#2f2a36", "counter": "#4a3a52",
+   "clerk": {"name": "The fence's runner", "color": "#ff6b5f"},
+   "props": [["crate", 1.6, 2.0], ["crate", 7.4, 2.0], ["crate", 7.4, 5.4], ["neon", 4.5, 1.2]]}
+ },
+ "varrow": {
+  "saltmarket": {"size": [13, 8], "floor": "#4a3f30", "floor_alt": "#504536", "counter": "#8a6a3e",
+   "clerk": {"name": "Salt Market trader", "color": "#e8c547"},
+   "props": [["stall", 2.6, 2.4], ["stall", 10.4, 2.4], ["barrel", 1.6, 6.4], ["crate", 11.4, 6.4], ["lamp", 6.5, 1.8]]},
+  "cantina": {"size": [9, 7], "floor": "#3d2f2c", "floor_alt": "#43342f", "counter": "#6b3a3a",
+   "clerk": {"name": "Cantina keeper", "color": "#ff9ad5"},
+   "props": [["aquarium", 1.8, 2.0], ["neon", 4.5, 1.2], ["sofa", 2.4, 5.4], ["barrel", 7.6, 5.4]]}
+ },
+ "glacis": {
+  "exchange": {"size": [12, 8], "floor": "#2c3a46", "floor_alt": "#31404d", "counter": "#5d7a8c",
+   "clerk": {"name": "Exchange broker", "color": "#9ad7ff"},
+   "props": [["plant", 1.5, 2.0], ["plant", 10.5, 2.0], ["lamp", 6.0, 1.8], ["rug", 6.0, 5.4], ["trophy", 10.4, 6.4]]}
+ }
+}

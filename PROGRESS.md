@@ -29,6 +29,25 @@
   polygon), a full cross-gate escort played in the real scene (the gate path is tested in the core only, the smoke
   covers one system), difficulty/pay numbers are eyeballed, nothing played by a human. The Galaxy Map drive reuses
   `Game.jump`, so it should behave the same but was not exercised with an escort.
+## D4 leftover: building interiors (2026-11-04, wave 11)
+- **Core** (`scripts/core/interiors.gd`, data in new `data/interiors.json`, merged as `data.interiors`): a surface building
+  with a panel action (market, shipyard, office, fence) has a room when `interiors[loc][building]` exists. `build_cfg`
+  returns a surface config like the estate layout: wall ring with an exit gap, a counter (4 tiles, opens the building's own
+  panel), one clerk beside it (same panel), props, no police, no walkers, no cover, no day/night tint. 9 rooms: Mireth
+  spaceport/market/office, Cinder depot, Bazaar hull market + back room, Varrow salt market + cantina, Glacis exchange.
+  Estates keep their own entry; outdoor people (Rusk, Okka, ...) still open their panel in the street.
+- **Surface/main**: `cfg.interior` marks a room. Door press (`_on_surface_action`) calls `enter_interior` instead of opening
+  the panel; `exit_interior` -> `leave_interior` re-lands the planet and stands you at the door. `entered_building` event
+  emitted. HUD quest waypoint inside a room points at the counter (building target) or the exit. New `counter` building style.
+- **Verified** (Godot 4.3 headless): unit tests 11173 checks, 0 failures (new `test_interiors`: a room iff panel door, layout
+  inside the room, counter clear of walls, spawn/exit/counter/clerk on free floor and connected, one clerk with the same
+  panel, props inside); UI smoke 50 steps (every key building: door -> room, counter blocks walking, counter and clerk open
+  the right panel, exit returns to the door; all five planets walked); tip audit `TIPS DONE 0`; menu smoke 6 steps;
+  `tools/shot.gd` under Xvfb renders `interior_market` and it looks right.
+- **Not verified / gaps**: not played by a human. The street is rebuilt on exit (NPCs and officers re-roll their positions,
+  like leaving an estate). Interiors are not saved: a save made inside loads on the landing pad. Rooms are placeholder art
+  (procedural counter, existing props); the clerks are anonymous and generic, named contacts still stand in the street.
+  The balance sim was not run (no economy change).
 
 ## K3: QoL (phase 3 wave 10, 2026-11-03)
 - **Autopilot** (`ship.gd`): action `ship_autopilot` (T) toggles; `goal_provider` = `hud.quest_point` (set in main);

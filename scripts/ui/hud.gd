@@ -548,6 +548,10 @@ func _surface_point(g, t: Dictionary):
 				var r: Array = b.rect
 				return (Vector2(r[0], r[1]) + Vector2(r[2], r[3]) / 2.0) * surface.tile
 		return null
+	if cfg.has("interior"):  # inside a building: the counter if that is the target, else the way out
+		if str(t.get("building", "")) == str(cfg.interior.building) and str(t.get("loc", g.location)) == g.location:
+			return _interactable_pos("counter")
+		return _interactable_pos("exit")
 	if str(t.get("loc", "")) != g.location:
 		return _interactable_pos("pad")
 	if t.has("contact"):
