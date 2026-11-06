@@ -1154,6 +1154,11 @@ func _run() -> void:
 	_assert(m.world.ship.velocity.length() < 50.0, "brake stops the ship")
 	step("flight")
 
+	# no customers on foot during the door sweep: a local who turns into a walk-up opens the deal card instead of a panel
+	var walkup_rules: Dictionary = g.data.get("walkups", {})
+	var walkup_max = walkup_rules.get("max_active", 2)
+	walkup_rules["max_active"] = 0
+	Walkups.active(g).clear()
 	for loc in ["cinder", "bazaar", "halvane_gate", "varrow", "glacis", "kovar_gate"]:
 		if g.data.locations[loc].has("jump_to"):
 			await _jump(m, g, loc)
@@ -1198,6 +1203,7 @@ func _run() -> void:
 		await physics_frame
 		_assert(ls.interact() and m.surface == null and m.world.active, "took off from %s" % loc)
 		await frames(1)
+	walkup_rules["max_active"] = walkup_max
 
 	# Galaxy map app + jump drive: plan a route, charge, jump with the hyperspace transition, cancel, come back
 	await _map_and_drive(m, g)

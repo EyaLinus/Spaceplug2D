@@ -35,5 +35,18 @@
   "exchange": {"size": [12, 8], "floor": "#2c3a46", "floor_alt": "#31404d", "counter": "#5d7a8c",
    "clerk": {"name": "Exchange broker", "color": "#9ad7ff"},
    "props": [["plant", 1.5, 2.0], ["plant", 10.5, 2.0], ["lamp", 6.0, 1.8], ["rug", 6.0, 5.4], ["trophy", 10.4, 6.4]]}
+ },
+ "quillon": {
+  "exchange": {"size": [12, 8], "floor": "#2c3a46", "floor_alt": "#31404d", "counter": "#5d7a8c",
+   "clerk": {"name": "Exchange broker", "color": "#9ad7ff"},
+   "props": [["plant", 1.5, 2.0], ["plant", 10.5, 2.0], ["lamp", 6.0, 1.8], ["rug", 6.0, 5.4], ["trophy", 10.4, 6.4]]}
+ },
+ "ashfall": {
+  "saltmarket": {"size": [13, 8], "floor": "#4a3f30", "floor_alt": "#504536", "counter": "#8a6a3e",
+   "clerk": {"name": "Salt Market trader", "color": "#e8c547"},
+   "props": [["stall", 2.6, 2.4], ["stall", 10.4, 2.4], ["barrel", 1.6, 6.4], ["crate", 11.4, 6.4], ["lamp", 6.5, 1.8]]},
+  "cantina": {"size": [9, 7], "floor": "#3d2f2c", "floor_alt": "#43342f", "counter": "#6b3a3a",
+   "clerk": {"name": "Cantina keeper", "color": "#ff9ad5"},
+   "props": [["aquarium", 1.8, 2.0], ["neon", 4.5, 1.2], ["sofa", 2.4, 5.4], ["barrel", 7.6, 5.4]]}
  }
 }

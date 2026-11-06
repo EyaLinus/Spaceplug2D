@@ -11,7 +11,6 @@ const Locals =preload("res://scripts/core/locals.gd")
 const CHATTER_PATH := "res://data/chatter.json"
 ## Content packs (extra star systems): merged into the loaded content, see merge_pack.
 const PACKS := ["res://data/system_thessaly.json"]
-const Locals = preload("res://scripts/core/locals.gd")
 
 
 static func load_all(path: String = CONTENT_PATH) -> Dictionary:

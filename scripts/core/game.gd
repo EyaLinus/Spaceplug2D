@@ -518,9 +518,8 @@ func jump(gate: String) -> Dictionary:
 	var from := system
 	system = str(gd.jump_to)
 	Corruption.on_jump(self, from, system)
-	tick(float(j.get("seconds", 0.0)))
-	Escort.on_jump(self, from, system, str(gd.get("arrive", "")))
 	tick(gate_seconds(gate))
+	Escort.on_jump(self, from, system, str(gd.get("arrive", "")))
 	_emit("jumped", {"from": from, "to": system, "gate": gate, "arrive": str(gd.get("arrive", ""))})
 	Interdiction.roll(self, system)
 	return _ok("Jumped to %s (%d cr toll)." % [system_data().get("name", system), fee])
