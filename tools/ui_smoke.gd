@@ -928,6 +928,31 @@ func _run() -> void:
 	await frames(2)
 	_assert(Bench.tray(g).is_empty() and int(g.stash.get("cannabis", 0)) >= 2, "scrapped tray, raws in the stash")
 	bench.close()
+	# mixing journal: the finished overclock mix is listed with a one-click re-cook and the preview shows trait values
+	gs.act(g.buy("cannabis", 3))
+	g.cargo.nanoflux = 3
+	_assert(Bench.begin(g, "trim_table", "weed", 3).ok and Bench.record(g, "trim_table", 0.8).ok and Bench.record(g, "extractor", 0.8).ok, "journal test tray ready for the mixing station")
+	cs.place_player_at("b3")
+	await physics_frame
+	await physics_frame
+	cs.interact()
+	await frames(2)
+	_assert(bench.mode == "mix" and bench.find_child("Journal", true, false) != null, "mixing station shows the journal")
+	var rc: Button = bench.find_child("Recook_weed_overclock_radiant", true, false)
+	_assert(rc != null and not rc.disabled and rc.tooltip_text != "", "journal lists the earlier mix with an enabled re-cook button")
+	bench.find_child("Add_nanoflux", true, false).pressed.emit()
+	await frames(2)
+	_assert("+35%" in bench.find_child("Preview", true, false).text, "preview shows trait values")
+	bench.find_child("Add_nanoflux", true, false).pressed.emit()
+	await frames(2)
+	bench.find_child("Recook_weed_overclock_radiant", true, false).pressed.emit()
+	await frames(2)
+	_assert(Bench.tray(g).additives == ["nanoflux"] and bench.mode == "play", "re-cook pours the journal mix and starts the next station")
+	step("journal re-cook")
+	bench.close()
+	bench.autoplay = false
+	gs.act(Bench.abandon(g))
+	bench.close()
 	# stash crate: cook queue + loading the stash into the hold
 	g.tick(60.0)
 	cs.place_player_at("stash")

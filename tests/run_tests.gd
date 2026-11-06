@@ -55,6 +55,7 @@ func _init() -> void:
 		"test_bench_line",
 		"test_bench_mixing",
 		"test_bench_save",
+		"test_mixing_journal",
 		"test_workers",
 		"test_ship_bay",
 		"test_orders",
@@ -2763,6 +2764,53 @@ func test_bench_save() -> void:
 	var old := Game.new()
 	old.from_dict(data, d)
 	check(old.estate_owned("cannery_rig") and old.bench.is_empty(), "old saves get the cannery rig and no tray")
+
+
+func test_mixing_journal() -> void:
+	var g := bench_game()
+	check(Products.journal(g).is_empty(), "fresh game: empty journal")
+	var pv: Dictionary = Bench.preview(g, "weed", ["nanoflux"])
+	check(is_equal_approx(pv.trait_values.overclock, 0.35) and pv.trait_values.size() == pv.traits.size(), "preview carries trait values")
+	g.cargo.nanoflux = 20
+	g.day = 2
+	g.start_batch("weed", ["nanoflux"], 3)
+	g.day = 4
+	g.cargo.cannabis = 10
+	g.start_batch("weed", ["ion_syrup"], 3)
+	g.start_batch("weed", [], 3)
+	var j: Array = Products.journal(g)
+	check(j.size() == 2, "plain batches are not journal entries (%d)" % j.size())
+	check(j[0].additives == ["ion_syrup"] and j[0].last == 4 and j[1].last == 2, "newest first")
+	check(Products.journal(g, "meth").is_empty() and Products.journal(g, "weed").size() == 2, "filtered by drug")
+	# re-cook
+	var h := bench_game()
+	h.recipes = g.recipes.duplicate(true)
+	h.cargo.nanoflux = 2
+	Bench.begin(h, "trim_table", "weed", 4)
+	Bench.record(h, "trim_table", 0.5)
+	Bench.record(h, "extractor", 0.5)
+	var rk: String = j[1].key
+	check(Bench.recook_block(h, rk) != "", "block reason when additives are short")
+	check(not Bench.recook(h, rk).ok and not Bench.tray(h).mixed, "re-cook refused without enough additives")
+	check(not Bench.recook(h, "meth:crisp+static").ok, "unknown recipe refused")
+	h.cargo.nanoflux = 4
+	check(Bench.recook_block(h, rk) == "", "no block with enough additives")
+	check(Bench.recook(h, rk).ok and Bench.tray(h).additives == ["nanoflux"] and h.cargo.nanoflux == 0, "re-cook pours the recipe")
+	var t2 := bench_game()
+	Bench.begin(t2, "precursor_scale", "meth", 2)
+	check(not Bench.recook(t2, rk).ok, "recipe for another drug refused")
+	# save round trip + old saves without the new fields
+	var json := JSON.stringify(g.to_dict())
+	var l := Game.new()
+	l.from_dict(data, JSON.parse_string(json))
+	check(Products.journal(l).size() == 2 and JSON.stringify(l.to_dict()) == json, "journal survives save/load")
+	var d: Dictionary = JSON.parse_string(json)
+	for r in d.products.recipes:
+		d.products.recipes[r].erase("last")
+		d.products.recipes[r].erase("runs")
+	var o := Game.new()
+	o.from_dict(data, d)
+	check(Products.journal(o).size() == 2 and Products.journal(o)[0].last >= 1, "old saves without journal fields load")
 
 
 # ---------------------------------------------------------------- quests

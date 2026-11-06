@@ -1,0 +1,1 @@
+- **Mixing journal:** the Mixing Station now lists the mixes you already cooked on this drug, newest first, with a one-click Re-cook button (greyed out with the reason when additives are short). The result preview also shows each trait's value (for example Overclock +35%). Old saves load fine.

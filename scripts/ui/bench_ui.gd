@@ -13,6 +13,7 @@ const Art = preload("res://scripts/core/art.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const Production = preload("res://scripts/core/production.gd")
+const Products = preload("res://scripts/core/products.gd")
 const Registry = preload("res://scripts/ui/minigames/registry.gd")
 const Runner = preload("res://scripts/ui/minigames/minigame_runner.gd")
 
@@ -213,10 +214,13 @@ func _build_mix(g) -> void:
 	res.scroll_active = false
 	var chips: Array = []
 	for tr in pv.traits:
-		chips.append("[color=%s]%s[/color]" % [g.data.traits[tr].color, g.data.traits[tr].name])
+		chips.append("[color=%s]%s %+d%%[/color]" % [g.data.traits[tr].color, g.data.traits[tr].name, int(round(float(pv.trait_values[tr]) * 100.0))])
 	res.text = "Result: [b]%s[/b]  %s   ·  about [color=#ffd166]%d cr[/color] per unit (Standard)" % [
 		g.data.bases[t.base].name, ", ".join(PackedStringArray(chips)), pv.value]
+	res.tooltip_text = "Each trait adds its percentage to the base value of %s (%d cr). The price is base value x (100%% + sum of traits)." % [
+		g.data.bases[t.base].name, int(g.data.bases[t.base].base_value)]
 	_body.add_child(UI.card(res, true))
+	_build_journal(g, t)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	_body.add_child(row)
@@ -229,6 +233,37 @@ func _build_mix(g) -> void:
 		close())
 	skip.name = "MixSkip"
 	row.add_child(skip)
+
+
+## Mixing journal: recipes already cooked on this drug, newest first, each with a one-click re-cook.
+func _build_journal(g, t: Dictionary) -> void:
+	var list: Array = Products.journal(g, t.base)
+	var box := VBoxContainer.new()
+	box.name = "Journal"
+	box.add_theme_constant_override("separation", 4)
+	_body.add_child(box)
+	box.add_child(UI.label("Mixing journal", 16, UI.GOLD))
+	if list.is_empty():
+		box.add_child(UI.label("Nothing yet. Every mix you cook is written down here.", 14, UI.MUTED))
+		return
+	for e in list.slice(0, 4):
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 8)
+		box.add_child(h)
+		var names: Array = e.additives.map(func(a): return g.item_name(a))
+		var l := UI.label("%s  ·  %d cr  ·  made %d" % [" + ".join(PackedStringArray(names)),
+			int(Mixing.value(g.data, e.key)), int(e.made)], 14)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l.tooltip_text = Mixing.display_name(g.data, e.key)
+		h.add_child(l)
+		var why: String = Bench.recook_block(g, e.key)
+		var b := UI.button("Re-cook", func():
+			if GameState.act(Bench.recook(g, e.key)).ok:
+				_play())
+		b.name = "Recook_" + str(e.key).replace(":", "_").replace("+", "_")
+		b.disabled = why != ""
+		b.tooltip_text = "Pour this exact mix again and go straight to the stations." if why == "" else why
+		h.add_child(b)
 
 
 # ---------------------------------------------------------------- wait / result
