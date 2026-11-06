@@ -13,6 +13,7 @@ const Corruption = preload("res://scripts/core/corruption.gd")
 const Packaging = preload("res://scripts/core/packaging.gd")
 const Workers = preload("res://scripts/core/workers.gd")
 const Bench = preload("res://scripts/core/bench.gd")
+const Drying = preload("res://scripts/core/drying.gd")
 const Deals = preload("res://scripts/core/deals.gd")
 const Walkups = preload("res://scripts/core/walkups.gd")
 const Orders = preload("res://scripts/core/orders.gd")
@@ -91,6 +92,7 @@ var next_drop_id: int = 0
 var drops_unseen: int = 0  ## finished drop jobs since the DeadDrop app was opened (runtime only)
 var workers: Array = []  ## hired staff [{id, loyalty, estate, hired_day}] (see workers.gd)
 var bench: Dictionary = {}  ## estate id -> batch tray carried between stations on foot (see bench.gd), saved
+var drying: Dictionary = {}  ## estate id -> cure batches on the drying table racks (see drying.gd), saved
 var recipes: Dictionary = {}  ## recipe book: recipe key -> {base, additives, made, best, day} (see products.gd), saved
 var prices: Dictionary = {}  ## your asking price per Standard unit, recipe key -> cr; no entry = market price, saved
 var drones: Array = []  ## courier drones [{id, estate, route, t, grounded}] (see drones.gd), saved
@@ -156,6 +158,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	workers = []
 	Workers.ensure(estates[SHIP_BAY])
 	bench = {}
+	drying = {}
 	recipes = {}
 	prices = {}
 	dealers = []
@@ -378,6 +381,7 @@ func tick(dt: float) -> void:
 	Corruption.tick(self, dt)
 	_tick_lab(dt)
 	Workers.tick(self, dt)
+	Drying.tick(self, dt)
 	_tick_demand(dt)
 	Deals.tick(self, dt)
 	Walkups.tick(self, dt)
@@ -946,6 +950,8 @@ func remove_building(estate_id: String, index: int) -> Dictionary:
 	var b: Dictionary = estates[estate_id].buildings[index]
 	if b.get("fixed", false):
 		return _fail("The %s came with the place and stays." % data.stations[b.id].name)
+	if b.id == Drying.TABLE and not Drying.can_remove(self, estate_id):
+		return _fail("Empty the drying rack first.")
 	var refund := int(round(int(data.buildables[b.id].cost) * float(data.estate_refund)))
 	estates[estate_id].buildings.remove_at(index)
 	credits += refund
@@ -967,6 +973,7 @@ func to_dict() -> Dictionary:
 		"orders": orders.duplicate(true), "order_seq": order_seq, "estate_stock": estate_stock.duplicate(true),
 		"kits": kits.duplicate(), "space": SpaceCombat.to_save(self), "combat": Combat.to_save(self), "drops": drops.duplicate(true), "next_drop_id": next_drop_id, "workers": Workers.to_save(workers), "bench": Bench.to_save(self),
 		"products": Products.to_save(self), "dealers": Dealers.to_save(self), "drones": Drones.to_save(self), "quests": Quests.to_save(self),
+		"drying": Drying.to_save(self),
 		"cartels": Cartels.to_save(self), "ship_class": ship_class, "hulls": hulls.duplicate(),
 		"style": Style.to_save(self), "escort": Escort.to_save(self),
 		"price_board": PriceBoard.to_save(self),
@@ -1055,6 +1062,7 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	if old_rig > 0 and not d.get("estates", {}).get("cannery_rig", {}).has("tier") and estates.has("cannery_rig"):
 		estates.cannery_rig.tier = clampi(old_rig, 0, data.estate_tiers.capacity.size() - 1)
 	Bench.from_save(self, d)
+	Drying.from_save(self, d.get("drying", {}))
 	Products.from_save(self, d.get("products", {}))
 	Dealers.from_save(self, d.get("dealers", []))
 	Drones.from_save(self, d.get("drones", []))

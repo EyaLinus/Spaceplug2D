@@ -960,3 +960,8 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
 - **Surface:** `_update_police` only reports "any officer sees me / any chasing" and calls `Pursuit.tick` (6 lines in surface.gd).
 - Verified: static review only. Godot is not installed in this sandbox, so unit tests (`test_flee_heat` added), UI smoke, tip audit and sim were NOT run locally; CI is the check.
 - Gaps: no toast or HUD hint yet when flee heat starts; no UI smoke assertion for the surface hook.
+## Drying Table (2026-11-05, wave 17)
+- **Core** `scripts/core/drying.gd`, numbers in `content.json` -> `drying` (120 s, 20 units per table, keeps 80 % of the units, bases `["weed"]`, up to grade 3). State `Game.drying` (estate id -> batches `{product, qty, left, total}`), saved under `drying`; old saves load with empty racks, junk entries are dropped. `Drying.tick` runs in `Game.tick`.
+- Loading takes finished product (not raws) out of the hold; a batch comes off one grade higher (`weed:glow` -> `weed:glow@2`) and lighter. Rack capacity is shared by an estate's tables; the last table can't come down while the rack is loaded.
+- Building `drying_table` (300 cr, 2x1, `passive` station: no minigame, not in `station_order`), build-menu card with tooltip, sprite `assets/src/stations/drying_table.txt`, rack panel in `bench_ui.gd` (mode `dry`). `_rebuild` now removes old children immediately so rebuilt nodes keep their names.
+- Verified: unit tests (`test_drying_table`), UI smoke (place, load, cure, collect), menu smoke, tip audit. Gaps: only weed, no workers/auto-load, raws are not dried (grow tray not on main), no sim run.

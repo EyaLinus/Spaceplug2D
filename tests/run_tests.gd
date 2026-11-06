@@ -36,6 +36,7 @@ const PatrolFeel = preload("res://scripts/core/patrolfeel.gd")
 const Walkups = preload("res://scripts/core/walkups.gd")
 const Loc = preload("res://scripts/core/loc.gd")
 const Laws = preload("res://scripts/core/laws.gd")
+const Drying = preload("res://scripts/core/drying.gd")
 
 var data: Dictionary
 var failures := 0
@@ -158,6 +159,7 @@ func _init() -> void:
 		"test_heat_zones",
 		"test_grow",
 		"test_map_marker",
+		"test_drying_table",
 		"test_drug_ladder",
 		"test_old_save_names_migrate",
 		"test_core_loop_is_profitable",
@@ -1180,6 +1182,8 @@ func test_production_stations() -> void:
 	var Runner = load("res://scripts/ui/minigames/registry.gd")
 	for id in data.stations:
 		var st: Dictionary = data.stations[id]
+		if st.get("passive", false):
+			continue  # no minigame (drying table)
 		check(Runner.MINIGAMES.has(st.minigame), "station %s minigame %s is registered" % [id, st.minigame])
 		check(st.affects in ["yield", "quality", "purity", "heat"], "station %s affects a known stat" % id)
 		check(id in data.station_order, "station %s is in station_order" % id)
@@ -1289,6 +1293,8 @@ func test_station_minigames() -> void:
 		return {"base": base, "tier": int(data.bases[base].tier), "additives": ["nanoflux", "ion_syrup"], "qty": 5, "data": data, "seed": seed_value}
 	for id in data.stations:
 		var st: Dictionary = data.stations[id]
+		if st.get("passive", false):
+			continue
 		var base: String = st.get("bases", ["meth"])[0]
 		for s in 4:
 			for skilled in [true, false]:
@@ -4342,3 +4348,54 @@ func test_vault() -> void:
 	old.erase("vault")
 	g3.from_dict(data, old)
 	check(Vault.used(g3) == 0 and int(g3.vault.tier) == 0, "old saves load with an empty crate")
+func test_drying_table() -> void:
+	var g := new_game()
+	var e := "cannery_annex"
+	g.credits = 5000
+	g.estates[e] = {"buildings": []}
+	var prod := Mixing.key("weed", ["glow"], 1)
+	g.cargo[prod] = 10
+	check(not Drying.load_rack(g, e, prod, 5).ok, "no rack without a drying table")
+	check(g.place_building(e, "drying_table", 0, 0).ok and Drying.tables(g, e) == 1, "drying table can be built")
+	check(Drying.capacity(g, e) == int(data.drying.capacity), "one table = base capacity")
+	check(not Drying.can_dry(g, Mixing.key("cocaine", ["crisp"], 1)), "only listed bases can be cured")
+	check(not Drying.can_dry(g, Mixing.key("weed", ["glow"], 3)), "top grade can't be cured further")
+	check(not Drying.can_dry(g, "cannabis"), "raws are not cured")
+	check(Drying.result_key(prod) == Mixing.key("weed", ["glow"], 2), "cure raises the grade by one")
+	check(Drying.result_key(Mixing.key("weed", ["glow"], 0)) == prod, "Shoddy cures to Standard (no suffix)")
+	check(Drying.load_rack(g, e, prod, 6).ok and g.cargo[prod] == 4, "loading takes units from the hold")
+	check(Drying.loaded(g, e) == 6, "rack counts the load")
+	check(not Drying.collect(g, e).ok, "nothing to collect while wet")
+	check(not g.remove_building(e, 0).ok, "last table can't go down while loaded")
+	g.tick(float(data.drying.seconds) - 1.0)
+	check(Drying.ready(g, e) == 0, "not dry one second early")
+	# save mid-cure keeps the timer; old save without the key loads empty
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(Drying.loaded(h, e) == 6 and ceili(float(h.drying[e][0].left)) == 1, "save keeps the rack and its timer")
+	var old := g.to_dict()
+	old.erase("drying")
+	var k := Game.new()
+	k.from_dict(data, old)
+	check(k.drying.is_empty(), "old save loads with empty racks")
+	var junk := g.to_dict()
+	junk.drying = {e: [{"product": "nope"}, 5], "ghost": []}
+	var m := Game.new()
+	m.from_dict(data, junk)
+	check(m.drying.is_empty(), "garbage rack entries are dropped")
+	g.tick(2.0)
+	check(Drying.ready(g, e) == 4, "6 units keep 80%% = 4 (floor)")
+	g.cargo = {}
+	g.cargo["cannabis"] = g.cargo_free() - 1
+	var r := Drying.collect(g, e)
+	check(r.ok and g.cargo.get(Drying.result_key(prod), 0) == 1 and Drying.loaded(g, e) > 0, "collect only moves what fits")
+	g.cargo = {}
+	check(Drying.collect(g, e).ok and g.cargo[Drying.result_key(prod)] >= 1, "collect after room frees up")
+	check(Drying.loaded(g, e) == 0 and not g.drying.has(e), "rack empties")
+	check(g.remove_building(e, 0).ok, "empty table can come down")
+	# capacity is shared across tables
+	g.place_building(e, "drying_table", 0, 0)
+	g.place_building(e, "drying_table", 3, 0)
+	g.cargo[prod] = 100
+	Drying.load_rack(g, e, prod, 100)
+	check(Drying.loaded(g, e) == 2 * int(data.drying.capacity), "rack stops at capacity")

@@ -269,20 +269,60 @@
   },
   "station_order": ["trim_table", "precursor_scale", "extractor", "mixing_station", "cook_stove", "refiner", "pack_table"],
   "stations": {
-    "trim_table": {"name": "Trim Table", "minigame": "trim", "affects": "yield", "bases": ["weed"],
-      "hint": "Click the fan leaves to snip them off. Don't nick the bud."},
-    "precursor_scale": {"name": "Precursor Scale", "minigame": "measure", "affects": "yield", "bases": ["cocaine", "meth", "fentanyl"],
-      "hint": "Space/click adds a scoop, right-click/Backspace takes a pinch off. Hit the target weight, then press Enter."},
-    "extractor": {"name": "Extractor", "minigame": "extract", "affects": "purity", "bases": ["weed", "cocaine"],
-      "hint": "Hold Space/mouse to heat the solvent column. The green band follows the extraction profile, so ride it. Boiling over (top of the gauge) spoils the extract."},
-    "mixing_station": {"name": "Mixing Station", "minigame": "pour", "affects": "quality", "needs_additives": true,
-      "hint": "Hold Space/mouse to pour each additive. Release inside the green band."},
-    "cook_stove": {"name": "Cook Stove", "minigame": "heat", "affects": "quality",
-      "hint": "Hold Space/mouse to fire the burner. Keep the temperature inside the green band."},
-    "refiner": {"name": "Refiner", "minigame": "equilibrium", "affects": "purity", "bases": ["cocaine", "meth", "fentanyl"],
-      "hint": "Space/left click doses acid (needle up), Backspace/right click doses base (needle down). Doses act with a delay: keep the reaction in the green band and don't overdose."},
-    "pack_table": {"name": "Packaging Table", "minigame": "pack", "affects": "heat",
-      "hint": "Press Space/click when the sealer is over the bag. Tight seals smell less (less heat); very tight ones shield the batch in patrol scans."}
+    "trim_table": {
+      "name": "Trim Table",
+      "minigame": "trim",
+      "affects": "yield",
+      "bases": ["weed"],
+      "hint": "Click the fan leaves to snip them off. Don't nick the bud."
+    },
+    "precursor_scale": {
+      "name": "Precursor Scale",
+      "minigame": "measure",
+      "affects": "yield",
+      "bases": ["cocaine", "meth", "fentanyl"],
+      "hint": "Space/click adds a scoop, right-click/Backspace takes a pinch off. Hit the target weight, then press Enter."
+    },
+    "extractor": {
+      "name": "Extractor",
+      "minigame": "extract",
+      "affects": "purity",
+      "bases": ["weed", "cocaine"],
+      "hint": "Hold Space/mouse to heat the solvent column. The green band follows the extraction profile, so ride it. Boiling over (top of the gauge) spoils the extract."
+    },
+    "mixing_station": {
+      "name": "Mixing Station",
+      "minigame": "pour",
+      "affects": "quality",
+      "needs_additives": true,
+      "hint": "Hold Space/mouse to pour each additive. Release inside the green band."
+    },
+    "cook_stove": {
+      "name": "Cook Stove",
+      "minigame": "heat",
+      "affects": "quality",
+      "hint": "Hold Space/mouse to fire the burner. Keep the temperature inside the green band."
+    },
+    "refiner": {
+      "name": "Refiner",
+      "minigame": "equilibrium",
+      "affects": "purity",
+      "bases": ["cocaine", "meth", "fentanyl"],
+      "hint": "Space/left click doses acid (needle up), Backspace/right click doses base (needle down). Doses act with a delay: keep the reaction in the green band and don't overdose."
+    },
+    "pack_table": {
+      "name": "Packaging Table",
+      "minigame": "pack",
+      "affects": "heat",
+      "hint": "Press Space/click when the sealer is over the bag. Tight seals smell less (less heat); very tight ones shield the batch in patrol scans."
+    },
+    "drying_table": {
+      "name": "Drying Table",
+      "passive": true,
+      "affects": "grade",
+      "bases": ["weed"],
+      "hint": "Hang finished weed on the rack to cure. It comes off one grade higher but lighter."
+    }
   },
   "packaging": {
     "tiers": [
@@ -421,7 +461,8 @@
     "mixing_station": {"cost": 350, "size": [2, 1]},
     "cook_stove": {"cost": 400, "size": [2, 2]},
     "refiner": {"cost": 550, "size": [2, 2]},
-    "pack_table": {"cost": 250, "size": [2, 1]}
+    "pack_table": {"cost": 250, "size": [2, 1]},
+    "drying_table": {"cost": 300, "size": [2, 1]}
   },
   "orders": {
     "markup": 0.35, "fee_pct": 0.06, "fee_min": 12, "express_fee_mult": 2.0,
@@ -585,5 +626,6 @@
   "walkups": {
     "interval": 12, "max_active": 2, "chance": 0.3, "stranger_mult": 0.5, "linger_seconds": 70, "cooldown": 240,
     "affinity_decline": -0.01, "affinity_haggle_fail": -0.02, "haggle": [0.1, 0.2]
-  }
+  },
+  "drying": {"seconds": 120, "capacity": 20, "weight_keep": 0.8, "max_grade": 3, "bases": ["weed"]}
 }
