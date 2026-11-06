@@ -28,6 +28,7 @@ const Cartels = preload("res://scripts/core/cartels.gd")
 const Style = preload("res://scripts/core/style.gd")
 const PriceBoard = preload("res://scripts/core/price_board.gd")
 const Grow = preload("res://scripts/core/grow.gd")
+const Laws = preload("res://scripts/core/laws.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Escort = preload("res://scripts/core/escort.gd")
 const Raids = preload("res://scripts/core/raids.gd")
@@ -235,7 +236,7 @@ func stealth() -> float:
 
 
 func scan_radius() -> float:
-	return float(data.heat.scan_radius) * (1.0 - stealth())
+	return float(data.heat.scan_radius) * (1.0 - stealth()) * Laws.scan_mult(self)
 
 
 func patrol_count() -> int:
@@ -255,6 +256,8 @@ func police_on_foot(security: float) -> int:
 	var n := int(floor((float(p.base) + (heat + Corruption.heat_bonus(self)) / float(p.per_heat)) * security))
 	n = clampi(n, 0, int(p.max))
 	return n + Curfew.extra_officers(self, security)
+	var n := int(floor((float(p.base) + (heat + Corruption.heat_bonus(self)) / float(p.per_heat)) * security * Laws.frisk_mult(self, location)))
+	return clampi(n, 0, int(p.max))
 
 
 func has_contraband() -> bool:
@@ -312,10 +315,15 @@ func _maybe_referral(from_id: String) -> void:
 		str(n.get("job", "")).to_lower(), data.bases[n.prefers[0]].name if not n.get("prefers", []).is_empty() else "anything"]})
 
 
+## Heat multiplier for selling a drug at `loc`: drug strength times the local law (legal cools, banned heats).
+func sale_heat_mult(base: String, loc: String = location) -> float:
+	return heat_mult(base) * Laws.heat_mult(self, loc, base)
+
+
 ## Price per unit for selling `product_key` here, to a contact (id) or the fence ("").
 func sell_price(product_key: String, contact_id: String = "", loc: String = location) -> int:
 	var p := Mixing.parse_key(product_key)
-	var v := Mixing.value(data, product_key) * float(demand.get(loc, {}).get(p.base, 0.0)) * Cartels.price_mult(self, loc)
+	var v := Mixing.value(data, product_key) * float(demand.get(loc, {}).get(p.base, 0.0)) * Cartels.price_mult(self, loc) * Laws.price_mult(self, loc, p.base)
 	if contact_id == "":
 		return int(round(v * float(data.market.fence_ratio)))
 	var c := contact(contact_id)
@@ -673,6 +681,7 @@ func sell(product_key: String, qty: int, contact_id: String = "") -> Dictionary:
 			var s: Dictionary = People.state(self, contact_id)
 			s.affinity = clampf(float(s.affinity) + float(data.get("products", {}).get("affinity_bargain", 0.0)), -1.0, 1.0)
 	add_heat(float(loc_data().heat_per_unit) * qty * heat_mult(p.base) * HeatZones.mult(self))
+	add_heat(float(loc_data().heat_per_unit) * qty * sale_heat_mult(p.base))
 	_emit("sold", {"product": product_key, "qty": qty, "credits": total, "contact": contact_id})
 	return _ok("Sold %d for %d cr." % [qty, total])
 

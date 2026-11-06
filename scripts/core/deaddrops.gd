@@ -93,7 +93,7 @@ static func deal_options(g, d: Dictionary) -> Array:
 
 ## Heat for leaving the goods of a deal here instead of handing them over in person.
 static func deal_heat(g, o: Dictionary) -> float:
-	return float(g.loc_data().heat_per_unit) * int(o.qty) * g.heat_mult(o.base) \
+	return float(g.loc_data().heat_per_unit) * int(o.qty) * g.sale_heat_mult(o.base) \
 		* float(Deals.rules(g).get("heat_mult", 1.0)) * float(rules(g).get("heat_mult", 1.0))
 
 

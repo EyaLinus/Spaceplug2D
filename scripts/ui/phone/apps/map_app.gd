@@ -6,6 +6,7 @@ extends "res://scripts/ui/phone/phone_app.gd"
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const PriceBoard = preload("res://scripts/core/price_board.gd")
+const Laws = preload("res://scripts/core/laws.gd")
 
 const CANVAS_H := 170.0
 const COLD := Color("#4fe3c1")
@@ -301,12 +302,29 @@ func _location_row(g, loc: String, best: Dictionary) -> Control:
 			goods.append("fence")
 		sub = ", ".join(PackedStringArray(goods)) if not goods.is_empty() else "sells nothing"
 	box.add_child(UI.label(line, 14))
+	if ld.get("dockable", true) and not ld.has("jump_to"):
+		box.mouse_filter = Control.MOUSE_FILTER_STOP
+		box.tooltip_text = Laws.tooltip(g, loc)
 	var s := UI.label(sub, 12, UI.MUTED)
 	s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(s)
+	if ld.get("dockable", true) and not ld.has("jump_to") and _mode != "influence":
+		box.add_child(_laws_label(g, loc))
 	if _mode == "influence" and g.cartels.influence.has(loc):
 		box.add_child(_share_bar(g, loc))
 	return box
+
+
+## One line per location: how each drug tier is treated by the local law, coloured by the strictest level.
+func _laws_label(g, loc: String) -> Control:
+	var worst := "legal"
+	for r in Laws.summary(g, loc):
+		if Laws.RANK[r.level] > Laws.RANK[worst]:
+			worst = r.level
+	var l := UI.label("Laws: " + Laws.line(g, loc), 12, Color(str(Laws.rule(g, worst).get("color", "#cccccc"))))
+	l.name = "MapLaws_" + loc
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	return l
 
 
 # ---------------------------------------------------------------- cartels
