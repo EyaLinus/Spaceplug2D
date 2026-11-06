@@ -615,18 +615,17 @@ func _interactable_pos(id: String):
 
 ## Gold diamond over the quest target, or an edge arrow when it is off screen.
 func _draw_quest_marker() -> void:
-	_draw_marker(quest_point(), UI.GOLD, "QUEST")
+	var is_mark: bool = _quest_target_point() == null
+	_draw_marker(quest_point(), UI.ACCENT if is_mark else UI.GOLD, "MARK" if is_mark else "QUEST")
 
 
 ## Gold diamond over `wp` (a world position or null), or an edge arrow labelled `label` when it is off screen.
 func _draw_marker(wp, col: Color, label: String) -> void:
 	if wp == null:
 		return
-	var is_mark: bool = _quest_target_point() == null
 	var view := _nav.size
 	var p: Vector2 = get_viewport().get_canvas_transform() * (wp as Vector2)
 	var bob := sin(Time.get_ticks_msec() / 220.0) * 4.0
-	var col := UI.ACCENT if is_mark else UI.GOLD
 	var margin := 48.0
 	if Rect2(Vector2(margin, margin), view - Vector2(margin, margin) * 2.0).has_point(p):
 		var c := p + Vector2(0, -34 + bob)
@@ -687,6 +686,3 @@ func _draw_escort() -> void:
 	var at := Vector2((_nav.size.x - w) / 2.0, 118.0)
 	_nav.draw_rect(Rect2(at - Vector2(10, 18), Vector2(w + 20, 26)), Color(0.04, 0.1, 0.1, 0.78))
 	_nav.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, ESCORT_COLOR)
-	var tag := "MARK" if is_mark else "QUEST"
-	var w := font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	_nav.draw_string(font, e - dir * 20.0 - Vector2(w / 2.0, -5.0), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, col)
