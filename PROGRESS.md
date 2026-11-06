@@ -5,6 +5,19 @@
   version 0.1.12. Phase 3 is closed. Still open from phase 3: C2 automation machines, escort missions (E4), building
   interiors (D4), a real balance pass (waits for Linus), Ninth Veil base quest (chapter 3), duplicate PRs #48 and #64.
 
+## Price board (carried-over item, 2026-11-06)
+- **Core** `scripts/core/pricehist.gd`: `Game.price_history` {location: {drug: [prices]}}, oldest first, capped at
+  `content.json` market.history_days (14). A point is the plain-batch price (demand x base value, no contact premium)
+  recorded at game start and at every `_new_day`. `series(g, loc, base, with_now)`, `board(g, base)` (rows best first with
+  now/trend/low/high), `trend`. Saved under "price_history"; `from_save` drops unknown ids and non-numbers and caps length;
+  old saves start the history on load.
+- **UI** Map app > Prices > third tab "Price board": a card per drug (`Board_<drug>`), a row per buying location
+  (`BoardRow_<drug>_<loc>`) with a sparkline (`Spark` in map_app.gd), current price and change.
+- Tests added: `test_price_board` (seed, new day, cap, board sort, save round trip, junk, old save); UI smoke extended
+  (board cards and rows). NOT RUN in the session that wrote this: no Godot binary was available (a download was blocked),
+  so unit tests, UI smoke and tip audit are unverified here; CI is the first real run.
+- Gaps: raw/additive buy prices are static so have no history; no per-contact premium in the history; no hover readout per point.
+
 ## K3: QoL (phase 3 wave 10, 2026-11-03)
 - **Autopilot** (`ship.gd`): action `ship_autopilot` (T) toggles; `goal_provider` = `hud.quest_point` (set in main);
   `autopilot_step()` turns to the goal, thrusts when within ~20°, brakes inside the stopping distance, switches off

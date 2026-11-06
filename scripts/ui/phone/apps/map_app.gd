@@ -5,6 +5,7 @@ extends "res://scripts/ui/phone/phone_app.gd"
 
 const Galaxy = preload("res://scripts/core/galaxy.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
+const Pricehist = preload("res://scripts/core/pricehist.gd")
 
 const CANVAS_H := 170.0
 const COLD := Color("#4fe3c1")
@@ -37,6 +38,29 @@ class MapCanvas extends Control:
 				draw_circle(p, gl[2] * (1.0 - i * 0.2), Color(gl[1], 0.3))
 		if marker.x >= 0.0:
 			draw_arc(marker * size, 30.0 + sin(pulse * 3.0) * 2.0, 0.0, TAU, 32, Color("#ffffff", 0.8), 1.5)
+
+
+## Tiny line chart of a price series (price board).
+class Spark extends Control:
+	var pts: Array = []
+	var line := Color("#4fe3c1")
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color("#14121c"))
+		if pts.size() < 2:
+			if pts.size() == 1:
+				draw_circle(size * 0.5, 2.0, line)
+			return
+		var lo: float = pts.min()
+		var hi: float = pts.max()
+		var span := maxf(hi - lo, 1.0)
+		var prev := Vector2.ZERO
+		for i in pts.size():
+			var p := Vector2(2.0 + (size.x - 4.0) * i / (pts.size() - 1), size.y - 3.0 - (size.y - 6.0) * (float(pts[i]) - lo) / span)
+			if i > 0:
+				draw_line(prev, p, line, 1.5)
+			prev = p
+		draw_circle(prev, 2.0, line)
 
 
 func _init() -> void:
@@ -424,7 +448,7 @@ func _prices(g) -> Control:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 5)
 	var tabs := HBoxContainer.new()
-	for t in [["buy", "Raws and additives"], ["sell", "Product demand"]]:
+	for t in [["buy", "Raws and additives"], ["sell", "Product demand"], ["board", "Price board"]]:
 		var b := UI.button(t[1], func():
 			_tab = t[0]
 			_refresh_soon(), 0)
@@ -434,6 +458,13 @@ func _prices(g) -> Control:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tabs.add_child(b)
 	v.add_child(tabs)
+	if _tab == "board":
+		var bt := UI.label("Plain-batch price per unit at each location, last %d days (start of day, today live). Best first." % Pricehist.cap(g.data), 12, UI.MUTED)
+		bt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(bt)
+		for b in g.data.bases:
+			v.add_child(_board_card(g, b))
+		return v
 	var tip := UI.label("Cheapest first. Walk-in prices; the phone shop adds a markup." if _tab == "buy" else "Base value of a plain batch per unit at today's demand, best first. Customers and the fence adjust it.", 12, UI.MUTED)
 	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(tip)
@@ -441,6 +472,33 @@ func _prices(g) -> Control:
 	for row in rows:
 		v.add_child(_price_row(g, row))
 	return v
+
+
+func _board_card(g, base: String) -> Control:
+	var panel := PanelContainer.new()
+	panel.name = "Board_" + base
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	panel.add_child(col)
+	col.add_child(UI.label(str(g.data.bases[base].name), 14))
+	var rows := Pricehist.board(g, base)
+	for i in rows.size():
+		var r: Dictionary = rows[i]
+		var line := HBoxContainer.new()
+		line.name = "BoardRow_%s_%s" % [base, r.loc]
+		line.add_theme_constant_override("separation", 6)
+		var where := UI.label(str(g.data.locations[r.loc].name), 12, UI.TEXT if i == 0 else UI.MUTED)
+		where.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(where)
+		var sp := Spark.new()
+		sp.pts = r.series
+		sp.custom_minimum_size = Vector2(80, 22)
+		sp.tooltip_text = "Low %d, high %d cr over %d day(s)." % [r.low, r.high, r.series.size()]
+		sp.line = UI.ACCENT if r.trend >= 0 else UI.WARN
+		line.add_child(sp)
+		line.add_child(UI.label("%d cr (%+d)" % [r.now, r.trend], 12, UI.GOLD if i == 0 else UI.MUTED))
+		col.add_child(line)
+	return panel
 
 
 func _price_row(g, row: Dictionary) -> Control:

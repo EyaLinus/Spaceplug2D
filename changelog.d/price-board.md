@@ -1,0 +1,1 @@
+- **Price board:** the Map app's Prices screen has a third tab with a sparkline per drug and location: the last 14 days of plain-batch prices (start of day, today live), best price first, with the day-over-day change. History is saved; old saves start their board on load.

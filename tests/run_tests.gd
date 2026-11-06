@@ -23,6 +23,7 @@ const Quests = preload("res://scripts/core/quests.gd")
 const Locals = preload("res://scripts/core/locals.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
+const Pricehist = preload("res://scripts/core/pricehist.gd")
 
 var data: Dictionary
 var failures := 0
@@ -120,6 +121,7 @@ func _init() -> void:
 		"test_debt_win_and_loss",
 		"test_save_roundtrip",
 		"test_style",
+		"test_price_board",
 		"test_drug_ladder",
 		"test_old_save_names_migrate",
 		"test_core_loop_is_profitable",
@@ -2181,6 +2183,60 @@ func test_style() -> void:
 	var o := Game.new()
 	o.from_dict(data, JSON.parse_string(JSON.stringify(old)))
 	check(o.style.jacket == "gold" and o.style.decor.is_empty(), "old saves get the stock look")
+
+
+func test_price_board() -> void:
+	var g := new_game()
+	var cap := Pricehist.cap(data)
+	check(cap == 14, "history keeps 14 days by default")
+	var seeded := 0
+	for loc in g.demand:
+		for b in g.demand[loc]:
+			var s := Pricehist.series(g, loc, b)
+			check(s.size() == 1 and int(s[0]) == Pricehist.price_now(g, loc, b), "day 1 seeds %s/%s with today's price" % [loc, b])
+			seeded += 1
+	check(seeded > 0, "some location buys something")
+	var loc0: String = g.demand.keys()[0]
+	var b0: String = g.demand[loc0].keys()[0]
+	g.demand[loc0][b0] = 1.3
+	g._new_day()
+	var s2 := Pricehist.series(g, loc0, b0)
+	check(s2.size() == 2, "a new day adds one point")
+	check(Pricehist.series(g, loc0, b0, true).size() == 3, "with_now adds the live price")
+	check(Pricehist.price_now(g, "nowhere", b0) == -1 and Pricehist.series(g, "nowhere", b0).is_empty(), "unknown location has no history")
+	for i in 40:
+		g._new_day()
+	for loc in g.price_history:
+		for b in g.price_history[loc]:
+			check(g.price_history[loc][b].size() <= cap, "history capped at %d" % cap)
+	check(Pricehist.series(g, loc0, b0).size() == cap, "old points drop off")
+	var rows := Pricehist.board(g, b0)
+	check(not rows.is_empty() and rows[0].now >= rows[-1].now, "board sorts best price first")
+	check(Pricehist.trend([5]) == 0 and Pricehist.trend([5, 9]) == 4, "trend is last minus previous")
+	# a sale pushes demand down; the live price shows it while stored points stay put
+	var before := Pricehist.series(g, loc0, b0)
+	g.demand[loc0][b0] = float(data.market.min_demand)
+	check(Pricehist.series(g, loc0, b0) == before, "stored points only move on a new day")
+	check(Pricehist.series(g, loc0, b0, true)[-1] == Pricehist.price_now(g, loc0, b0), "the live point follows demand")
+	# save round trip, junk and old saves
+	var d := JSON.parse_string(JSON.stringify(g.to_dict()))
+	var h := Game.new()
+	h.from_dict(data, d)
+	check(Pricehist.series(h, loc0, b0) == before, "history survives a save")
+	d.price_history[loc0][b0] = [3, "x", null, 7.0] + range(100)
+	d.price_history["nowhere"] = {"weed": [1]}
+	d.price_history[loc0]["nope"] = [1]
+	d.price_history[g.demand.keys()[1]] = "junk"
+	var j := Game.new()
+	j.from_dict(data, d)
+	var js := Pricehist.series(j, loc0, b0)
+	check(js.size() == cap and int(js[-1]) == 99, "junk entries dropped, length capped, newest kept")
+	check(not j.price_history.has("nowhere") and not j.price_history[loc0].has("nope"), "unknown ids dropped")
+	var old := g.to_dict()
+	old.erase("price_history")
+	var o := Game.new()
+	o.from_dict(data, JSON.parse_string(JSON.stringify(old)))
+	check(Pricehist.series(o, loc0, b0).size() == 1, "old saves start the board today")
 
 
 func test_drug_ladder() -> void:
