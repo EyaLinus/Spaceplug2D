@@ -38,4 +38,6 @@ All art is pixel art built from text sources with the game-assets-2d skill workf
 
 - **Art pass 4:** `st_*`/`wpn_*`/`hud_*`/`map_*` icons, `fx/*.png` strips, `chars/<look>_idle.png`, `tiles/<set>_edge.png`, `space/stars.png`, `space/nebula.png` (registry helpers `Art.idle_sheet/edge_strip/fx`; wired in the Art wiring PR: icons in bench/station/combat HUD/map app, fx in combat_layer, idle frames in walker/npc, fringes in surface, stars/nebula in world).
 
+- **Art pass 5:** explosion is a 6-frame procedural strip (`Art.EXPLOSION_FRAMES`), nebula clouds are 128 art px and placed per system near locations, edge fringes are deeper (also around `area_*` paint), cards use `st_*` icons (`Art.station_card_icon`), `app_fixers` and `cartel_<id>` icons.
+
 Not covered yet: building interiors (walls/floors), menu art.

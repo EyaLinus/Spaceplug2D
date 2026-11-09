@@ -498,8 +498,7 @@ func _build_build_menu(g) -> Control:
 		card.theme_type_variation = "CardButton"
 		card.custom_minimum_size = Vector2(270, 74)
 		card.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		card.icon = Art.tex("stations/%s.png" % k)
-		card.add_theme_constant_override("icon_max_width", 64)
+		Art.station_card_icon(card, k)
 		card.text = "%s\n%s · %d×%d · %s" % [st.name, ("kit ×%d" % kit_n) if kit_n > 0 else "%d cr" % int(bd.cost),
 			int(bd.size[0]), int(bd.size[1]), st.affects]
 		card.tooltip_text = "%s\nImproves %s. %s" % [st.get("hint", ""), st.affects,

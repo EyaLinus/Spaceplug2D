@@ -1,0 +1,38 @@
+# Cartel emblem: Black Comets (comet), neutral so the game tints it with the gang colour.
+legend:
+. = transparent
+k = ink
+S = slate_light
+s = slate
+d = slate_dark
+W = white
+Y = gold
+y = gold_dark
+L = gold_light
+R = red
+r = red_dark
+T = teal
+t = teal_dark
+b = blue_light
+B = blue
+G = leaf
+w = wood
+o = wood_dark
+n = rust_light
+---
+................
+..........kkkk..
+.........kWWWWk.
+..k.....kWWWWWWk
+..kk...kWWWWWWSk
+.kSkk..kWWWWWSSk
+..kSSk.kWWWWSSsk
+...kSSkkkWWSSssk
+....kSSSkkkSsskk
+.....kSSSSkkkkk.
+......kSSSSk....
+.......kSSk.....
+........kk......
+................
+................
+................

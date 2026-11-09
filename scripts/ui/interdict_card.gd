@@ -6,6 +6,7 @@ extends Control
 const UI = preload("res://scripts/ui/ui_theme.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Cartels = preload("res://scripts/core/cartels.gd")
+const Art = preload("res://scripts/core/art.gd")
 
 signal resolved(result: Dictionary)
 
@@ -77,6 +78,10 @@ func open(g) -> void:
 		row.add_theme_constant_override("separation", 10)
 		var b := UI.accent_button(o[1], _choose.bind(o[0])) if o[0] == "fight" else UI.button(o[1], _choose.bind(o[0]))
 		b.name = "Interdict_" + o[0]
+		var oi := Art.icon_for({"pay": "hud_credits", "dump": "up_cargo", "flee": "hud_boost", "fight": "up_laser"}[o[0]])
+		if oi != null:  # art pass 5: reuse the existing HUD/upgrade icons so each choice has a face
+			b.icon = oi
+			b.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		b.custom_minimum_size = Vector2(210, 0)
 		b.disabled = not o[3]
 		row.add_child(b)

@@ -13,7 +13,7 @@ var _seen := {}
 func _init() -> void:
 	id = "fixers"
 	title = "Fixers"
-	icon = ""
+	icon = "app_fixers"
 	tint = Color("#ff9ad5")
 
 

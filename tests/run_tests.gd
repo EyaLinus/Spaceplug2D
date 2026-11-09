@@ -301,7 +301,7 @@ func test_art_pass4() -> void:
 		check(Art.icon_for("wpn_" + w) != null, "weapon %s has an icon" % w)
 	for k in ["hud_hull", "hud_shield", "hud_missile", "hud_boost", "map_star", "map_gate", "map_ship", "map_hostile"]:
 		check(Art.icon_for(k) != null and Art.icon_for(k).get_size() == Vector2(32, 32), "icon %s is 32 px" % k)
-	for pair in [["bolt_laser", Vector2(32, 10)], ["bolt_pirate", Vector2(24, 10)], ["missile", Vector2(32, 16)], ["explosion", Vector2(128, 32)], ["hit", Vector2(48, 16)], ["shield", Vector2(192, 64)]]:
+	for pair in [["bolt_laser", Vector2(32, 10)], ["bolt_pirate", Vector2(24, 10)], ["missile", Vector2(32, 16)], ["explosion", Vector2(288, 48)], ["hit", Vector2(48, 16)], ["shield", Vector2(192, 64)]]:
 		var t: Texture2D = Art.fx(pair[0])
 		check(t != null and t.get_size() == pair[1], "fx %s has the expected size" % pair[0])
 	for look in ["player", "officer"] + Art.NPC_LOOKS.keys():
@@ -313,7 +313,18 @@ func test_art_pass4() -> void:
 	var stars: Texture2D = Art.tex("space/stars.png")
 	check(stars != null and stars.get_size() == Vector2(128, 16), "starfield sprite strip (8 sprites of 16 px)")
 	var neb: Texture2D = Art.tex("space/nebula.png")
-	check(neb != null and neb.get_size() == Vector2(288, 96), "nebula strip (3 clouds of 96 px)")
+	check(neb != null and neb.get_size() == Vector2(768, 256), "nebula strip (3 clouds of 256 px)")
+	# art pass 5
+	var ex: Texture2D = Art.fx("explosion")
+	check(ex != null and ex.get_size() == Vector2(48 * Art.EXPLOSION_FRAMES, 48), "explosion strip matches EXPLOSION_FRAMES")
+	for k in ["app_fixers", "cartel_comets", "cartel_tide", "cartel_veil", "up_cargo", "hud_credits"]:
+		check(Art.icon_for(k) != null and Art.icon_for(k).get_size() == Vector2(32, 32), "icon %s is 32 px" % k)
+	for c in data.gangs:
+		check(Art.icon_for("cartel_" + c) != null, "cartel %s has an emblem" % c)
+	var card := Button.new()
+	Art.station_card_icon(card, "trim_table")
+	check(card.icon == Art.icon_for("st_trim_table") and card.expand_icon, "build cards use the station icon")
+	card.free()
 
 
 ## Art pass 4 wiring helpers: idle frames, fringe planning, fx strips, sprite fx entries.

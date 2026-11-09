@@ -532,6 +532,26 @@
   them); loyalty has no gameplay beyond quitting (no theft/strikes, no raises); no skill growth or training; auto cooking
   ignores the shared lab queue and lab-level capacity of the hub; worker-cooked batches are not wired into the sim bot;
   estates cannot be sold, so assignment cleanup on removal is not needed yet; wage balance (15-110 cr/day) is eyeballed.
+## Art pass 5 (2026-11-09)
+- **Fixed from the art-wiring gaps:** explosion redone as 6 frames x 24 art px (`explosion_strip()` in `build_art.py`, procedural,
+  `Art.EXPLOSION_FRAMES`): white flash star, gold fireball, orange ball with sparks, hollow red ball + smoke, thin shock ring,
+  embers; combat_layer scales/times adjusted. Nebula: 3 clouds of 128 art px (domain-warped fbm, three dithered density bands),
+  drawn behind the stars at ~5 world px per texel and tint alpha 0.5; `world.gd` now places three clouds per system, the first
+  two hugging the system's first two locations (radius 480-660) so one is in view at lift-off. Fringes: depth 2-7 art px (was
+  1-5) with a dark lip pixel on the ragged front, bigger corners; ground-paint `area_*` rects (grass/sand/salt/ice/rubble) get
+  the same fringe (`surface._draw_area_fringe`). Build/machine cards use `st_<station>` icons at 64 px (`Art.station_card_icon`,
+  falls back to the world sprite). Weapon icons wpn_pistol/shotgun/smg redrawn bigger.
+- **New icons (newer features):** `app_fixers` (phone tile, was a letter F), `cartel_comets/tide/veil` neutral emblems tinted with
+  the gang colour in the Cartels list, and the interdiction card buttons got icons by reusing `hud_credits`/`up_cargo`/`hud_boost`/
+  `up_laser` (no new art). Manifest and `changelog.d/art-pass-5.md` updated.
+- Verified: unit tests (14094 checks, new art pass 5 asserts), UI smoke (nebula placement assert), menu smoke, tip audit, sim 2/2 won,
+  90 screenshots before/after reviewed (space_fx, space_nebula, space_mireth, build_menu, surface_plaza, phone_cartels, interdiction).
+- Gaps: buildings are still not fringed (only roads, plazas and ground-paint areas); nebula clouds are static (no parallax) and
+  use one alpha for all bands, so they stay dim in systems with dark nebula colours; the explosion is not seen animating, only
+  stills at one frame; shotgun icon is still stubby (16 px limit); cartel emblems are small and read mostly by colour; the quest UI
+  and style app already had icons, so nothing was added there; weapon pickups on the ground and flak/ion bolts remain procedural;
+  the cartel emblem is not shown on the world map influence glow or on enemy ships.
+
 ## Art wiring (2026-11-06)
 - **Wired from art pass 4:** station icons `st_<station>` in the bench overlay title and chain line and the stash "next stop"
   line; weapon icons `wpn_*` in the on-foot HUD weapon line and the weapon wheel; combat HUD icons (`hud_hull/shield/boost`,

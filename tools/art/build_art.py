@@ -766,25 +766,106 @@ def build_fx() -> list[Path]:
     for i, f in enumerate(frames):
         sheet.paste(grid_image(f, legend), (i * 8, 0))
     out.append(save(sheet, "space/stars.png"))
-    out.append(save(nebula_strip(3, 48), "space/nebula.png"))
+    out.append(save(explosion_strip(), "fx/explosion.png"))
+    out.append(save(nebula_strip(3, NEBULA_D), "space/nebula.png"))
     return out
 
 
+EXPLOSION_FRAMES = 6
+EXPLOSION_D = 24  # art px per explosion frame
+
+
+def explosion_strip() -> Image.Image:
+    """fx/explosion.png: 6 frames of 24 art px with a shape AND colour progression (art pass 5):
+    1 white flash star, 2 gold fireball, 3 big orange fireball with a white core and sparks, 4 red ball with a hollow
+    core and slate smoke, 5 thin dark shock ring with smoke puffs, 6 drifting smoke and the last embers.
+    Lobed (noisy) outline so it never reads as a perfect disc; ink-dark rim where the fire ends."""
+    import math
+    d = EXPLOSION_D
+    c = (d - 1) / 2.0
+    fire = ["red_dark", "red", "rust_light", "gold", "gold_light", "white"]
+    sheet = Image.new("RGBA", (d * EXPLOSION_FRAMES, d), CLEAR)
+    lobes = [random.Random(40 + i) for i in range(EXPLOSION_FRAMES)]
+    # (outer radius, core hole radius, heat 0..1 shift, smoke amount)
+    spec = [(4.5, 0, 1.0, 0), (7.5, 0, 0.9, 0), (10.5, 0, 0.72, 0.1), (10.0, 4.0, 0.4, 0.35), (10.2, 7.0, 0.15, 0.5), (10.5, 0, 0, 0.7)]
+    for i, (rad, hole, heat, smoke) in enumerate(spec):
+        r = lobes[i]
+        ph = [r.random() * 6.28 for _ in range(3)]
+        for y in range(d):
+            for x in range(d):
+                dx, dy = x - c, y - c
+                dist = math.hypot(dx, dy)
+                ang = math.atan2(dy, dx)
+                wob = 1 + 0.16 * math.sin(3 * ang + ph[0]) + 0.1 * math.sin(5 * ang + ph[1]) + 0.07 * math.sin(9 * ang + ph[2])
+                edge = rad * wob
+                px = None
+                if i == 0:  # flash: round hot core plus a 4-spike star
+                    spike = max(0.0, 1 - min(abs(dx), abs(dy)) / 1.6) * max(0.0, 1 - dist / 12.0)
+                    if dist < 3.6:
+                        px = "white"
+                    elif dist < 5.2:
+                        px = "gold_light" if (x + y) % 2 == 0 else "gold"
+                    elif spike > 0.12:
+                        px = "white" if spike > 0.5 else ("gold_light" if spike > 0.3 else "gold")
+                elif i == 4:  # thin shock ring + smoke puffs
+                    if abs(dist - edge) < 0.9:
+                        px = "red" if (x + y) % 2 == 0 else "red_dark"
+                    elif abs(dist - edge) < 1.7 and (x * 3 + y * 5) % 4 == 0:
+                        px = "slate"
+                    elif dist < edge - 1.5 and hole < dist and (x * 7 + y * 3) % 3 == 0 and dist < 9:
+                        px = "slate_dark" if (x + y) % 3 else "slate"
+                elif i == 5:  # drifting smoke blobs and embers
+                    n = math.sin(x * 1.7 + ph[0]) + math.sin(y * 1.3 + ph[1]) + math.sin((x + y) * 0.9 + ph[2])
+                    if dist < edge and n > 1.2 + dist / 7.0 and BAYER[y % 4][x % 4] < 9:
+                        px = "slate" if n > 1.9 else "slate_dark"
+                    elif dist < edge and (x * 11 + y * 7) % 23 == 0:
+                        px = "gold" if (x + y) % 2 else "rust_light"
+                elif dist <= edge and dist >= hole:
+                    v = 1 - dist / edge  # 1 centre .. 0 rim
+                    if hole:
+                        v = (dist - hole) / max(0.1, edge - hole)
+                        v = 1 - v
+                    v = v * heat * 1.25 + (0.0 if i < 3 else -0.1)
+                    px = shade(fire, max(0.0, v), x, y)
+                    if dist > edge - 1.1:
+                        px = "red_dark" if i >= 2 else "rust_light"
+                    if smoke and dist > edge * 0.55 and (x * 5 + y * 3 + i) % 7 < smoke * 7:
+                        px = "slate" if v < 0.2 else "slate_dark"
+                if px:
+                    sheet.putpixel((i * d + x, y), color(px))
+        # sparks flying out (frames 2..5): single hot pixels on radial lines past the fireball
+        if 1 <= i <= 4:
+            for k in range(7):
+                a = r.random() * 6.28
+                rr = rad + 1.2 + r.random() * 2.0
+                x, y = int(round(c + math.cos(a) * rr)), int(round(c + math.sin(a) * rr))
+                if 0 <= x < d and 0 <= y < d and sheet.getpixel((i * d + x, y))[3] == 0:
+                    sheet.putpixel((i * d + x, y), color(["white", "gold_light", "gold", "rust_light"][min(3, i - 1 + (k % 2))]))
+    return sheet
+
+
+NEBULA_D = 128  # art px per cloud; drawn at ~3 world px per art-px texel
+
+
 def nebula_strip(n: int, d: int) -> Image.Image:
-    """n neutral gas clouds (d art px each): dithered fbm density with a radial falloff, stone ramp so the game can
-    tint each cloud with the system's nebula colour. Transparent where the gas is thin."""
+    """n neutral gas clouds (d art px each, art pass 5): domain-warped fbm density, soft radial falloff, three density
+    bands (slate, slate_light, stone) with fine Bayer dither between bands, wispy transparent edges. The game tints
+    the strip with the system's nebula colour at runtime."""
     import math
     ramp = ["slate_dark", "slate", "slate_light", "stone"]
     sheet = Image.new("RGBA", (d * n, d), CLEAR)
     for i in range(n):
-        f = fbm(200 + i * 7)
+        f, w1, w2 = fbm(300 + i * 11), fbm(500 + i * 13), fbm(700 + i * 17)
         for y in range(d):
             for x in range(d):
+                u, v = x / d, y / d
+                uu = min(0.999, max(0.0, u + (w1(u, v) - 0.5) * 0.35))
+                vv = min(0.999, max(0.0, v + (w2(u, v) - 0.5) * 0.35))
                 r = math.hypot(x - (d - 1) / 2, y - (d - 1) / 2) / (d / 2)
-                v = f(x / d, y / d) * 1.5 - r * 1.1
-                if v <= 0.05 + 0.35 * (BAYER[y % 4][x % 4] / 15.0) * 0.5:
+                dens = f(uu, vv) * 1.6 - 0.35 - r * r * 1.15
+                if dens <= 0.04 + 0.12 * (BAYER[y % 4][x % 4] / 15.0):
                     continue
-                sheet.putpixel((i * d + x, y), color(shade(ramp, min(1.0, v * 1.4), x, y)))
+                sheet.putpixel((i * d + x, y), color(shade(ramp, min(1.0, dens * 1.5), x, y)))
     return sheet
 
 
@@ -820,24 +901,29 @@ def build_edges() -> list[Path]:
         ground = ground.crop((0, 0, T, T))  # first ground variant at art scale
         name = gp.name.replace("_ground", "_edge")
         r = random.Random(sum(map(ord, name)))
+        lum = lambda c: c[0] * 3 + c[1] * 5 + c[2]
+        lip = min((ground.getpixel((x, y)) for x in range(T) for y in range(T) if ground.getpixel((x, y))[3]), key=lum)
 
         def fringe(side: str) -> Image.Image:
             img = Image.new("RGBA", (T, T), CLEAR)
             for i in range(T):
-                d = 1 + sum(r.random() < p for p in (0.9, 0.6, 0.3, 0.1))  # 1..5 px deep, ragged
+                d = 2 + sum(r.random() < p for p in (0.9, 0.7, 0.5, 0.3, 0.12))  # 2..7 px deep, ragged (art pass 5)
                 for k in range(d):
                     x, y = {"N": (i, k), "S": (i, T - 1 - k), "W": (k, i), "E": (T - 1 - k, i)}[side]
                     img.putpixel((x, y), ground.getpixel((x, y)))
+                    if k == d - 1 and r.random() < 0.7:  # dark lip on the ragged front so the edge reads on any road
+                        img.putpixel((x, y), lip)
             return img
 
         tiles = [fringe(side) for side in "NESW"]
         for cx, cy in ((1, 0), (1, 1), (0, 1), (0, 0)):  # NE, SE, SW, NW
             img = Image.new("RGBA", (T, T), CLEAR)
-            for dy in range(5):
-                for dx in range(5):
-                    if dx + dy < 4 + (r.random() < 0.4) - (r.random() < 0.3):
+            for dy in range(8):
+                for dx in range(8):
+                    lim = 7 + (r.random() < 0.4) - (r.random() < 0.3)
+                    if dx + dy < lim:
                         x, y = (T - 1 - dx if cx else dx), (T - 1 - dy if cy else dy)
-                        img.putpixel((x, y), ground.getpixel((x, y)))
+                        img.putpixel((x, y), lip if dx + dy == lim - 1 and r.random() < 0.7 else ground.getpixel((x, y)))
             tiles.append(img)
         out.append(save(strip(tiles), f"tiles/{name}"))
     return out
