@@ -118,9 +118,9 @@ func _run(data: Dictionary, seed_value: int, days: int) -> void:
 	_check(json2 == json, "seed %d save round trip stable" % seed_value)
 	if json2 != json:
 		_diff(JSON.parse_string(json), JSON.parse_string(json2), "")
-	print("SOAK seed=%d day=%d estates=%d workers=%d drones=%d credits=%d batches=%d worker_batches=%d upkeep_paid=%d earned=%d events=%s" % [
+	print("SOAK seed=%d day=%d estates=%d workers=%d drones=%d credits=%d batches=%d worker_batches=%d upkeep_paid=%d drones_lost=%d earned=%d events=%s" % [
 		seed_value, g.day, g.estates.size(), g.workers.size(), g.drones.size(), g.credits, g.stats.batches,
-		int(g.stats.get("worker_batches", 0)), int(g.stats.get("upkeep_paid", 0)), g.stats.earned, _top(events)])
+		int(g.stats.get("worker_batches", 0)), int(g.stats.get("upkeep_paid", 0)), int(g.stats.get("drones_lost", 0)), g.stats.earned, _top(events)])
 
 
 func _top(events: Dictionary) -> String:
