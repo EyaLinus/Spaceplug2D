@@ -1166,3 +1166,11 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
   fentanyl (1863 vs 1685); weed and cheap crews still do better by hand (grade loss). Upkeep (24/day here) is 2–8 % of net.
 - Verified: unit tests (new checks in `test_machines_workers`), UI smoke, tip audit, sim 5/5.
 - Gaps: probe is one estate, one additive, fence only; no multi-market distribution (dealers, drones); numbers still need a playtest.
+## Mid-game soak test + save fixes (2026-11-09)
+- **Tool** `tools/soak.gd` (`-- --days 30 --seeds 3`, ~0.5 s per 30 days): after the debt, owns every estate with a line, crew,
+  recipe and drone, hires the dealers, then flies between random ports for N days with every core system ticking. Checks heat
+  range, non-negative stock, no worker/drone pointing at a missing estate, and an exact save round trip. Now a CI step (30 days x 2).
+- **Bugs it found (fixed):** drone stats (`drone_trips`, `drone_units`, `drone_upkeep`, `drones_lost`) were dropped on every load
+  (`Game.from_dict` only restored the stats keys it knew); dealers lost their sale `clock` on load (street sale timer reset);
+  upkeep wrote `unpaid: 0` that did not round-trip (now erased).
+- 90 days x 5 seeds: 0 failures, no script errors.

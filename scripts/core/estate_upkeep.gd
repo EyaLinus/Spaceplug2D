@@ -91,7 +91,7 @@ static func new_day(g) -> void:
 		var owed: int = d * (unpaid_days(g, id) + 1)
 		if g.credits >= owed:
 			g.credits -= owed
-			g.estates[id]["unpaid"] = 0
+			g.estates[id].erase("unpaid")
 			g.stats["upkeep_paid"] = int(g.stats.get("upkeep_paid", 0)) + owed
 			g._emit("upkeep_paid", {"estate": id, "amount": owed})
 			continue
@@ -122,7 +122,7 @@ static func pay_arrears(g, id: String) -> Dictionary:
 	if g.credits < a:
 		return g._fail("The arrears are %d cr." % a)
 	g.credits -= a
-	g.estates[id]["unpaid"] = 0
+	g.estates[id].erase("unpaid")
 	g.stats["upkeep_paid"] = int(g.stats.get("upkeep_paid", 0)) + a
 	g._emit("upkeep_paid", {"estate": id, "amount": a})
 	return g._ok("Paid %d cr in arrears for %s." % [a, g.data.estates[id].name])

@@ -1068,6 +1068,9 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	state = str(d.get("state", "playing"))
 	for k in stats:
 		stats[k] = int(d.get("stats", {}).get(k, 0))
+	for k in d.get("stats", {}):  # counters other modules add on the fly (drones, ...) survive a load too
+		if not stats.has(k):
+			stats[k] = int(d.stats[k])
 	for e in d.get("estates", {}):
 		if data.estates.has(e):
 			var list: Array = []

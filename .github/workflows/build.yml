@@ -52,6 +52,11 @@ jobs:
           timeout 120 godot --headless --path . -s res://tools/menu_smoke.gd 2>&1 | tee menu.txt
           grep -q "MENU DONE" menu.txt
           ! grep -q "SCRIPT ERROR" menu.txt
+      - name: Mid-game soak (all estates, crews, drones; 30 days x 2 seeds; invariants + save round trip)
+        run: |
+          timeout 120 godot --headless --path . -s res://tools/soak.gd -- --days 30 --seeds 2 2>&1 | tee soak.txt
+          grep -q "SOAK DONE 0 failures" soak.txt
+          ! grep -q "SCRIPT ERROR" soak.txt
       - name: Balance sim (5 seeds)
         run: godot --headless --path . -s res://tools/sim.gd -- --runs 5 --seed 100 | tee sim.txt
       - uses: actions/upload-artifact@v4
