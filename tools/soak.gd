@@ -14,6 +14,7 @@ const Drones = preload("res://scripts/core/drones.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
 const Mixing = preload("res://scripts/core/mixing.gd")
 const EstateUpkeep = preload("res://scripts/core/estate_upkeep.gd")
+const Grow = preload("res://scripts/core/grow.gd")
 
 var fails := 0
 
@@ -53,8 +54,12 @@ func _run(data: Dictionary, seed_value: int, days: int) -> void:
 	var bases: Array = data.bases.keys()
 	var lab_hands: Array = []
 	var stockers: Array = []
+	var botanists: Array = []
 	for c in data.workers.candidates:
-		(lab_hands if c.role == "lab_hand" else stockers).append(c.id)
+		match str(c.role):
+			"lab_hand": lab_hands.append(c.id)
+			"stocker": stockers.append(c.id)
+			"botanist": botanists.append(c.id)
 	var n := 0
 	for id in data.estates:
 		var e: Dictionary = data.estates[id]
@@ -74,6 +79,11 @@ func _run(data: Dictionary, seed_value: int, days: int) -> void:
 			Workers.hire(g, stockers[n])
 			Workers.assign(g, stockers[n], id)
 		Workers.set_recipe(g, id, base, [additive], 99)
+		if n < botanists.size():
+			Workers.hire(g, botanists[n])
+			Workers.assign(g, botanists[n], id)
+			Grow.build_tray(g, id)
+			Grow.build_tray(g, id)
 		Drones.buy(g, id, "to_port")
 		n += 1
 	g.location = str(data.start.location)
@@ -118,9 +128,9 @@ func _run(data: Dictionary, seed_value: int, days: int) -> void:
 	_check(json2 == json, "seed %d save round trip stable" % seed_value)
 	if json2 != json:
 		_diff(JSON.parse_string(json), JSON.parse_string(json2), "")
-	print("SOAK seed=%d day=%d estates=%d workers=%d drones=%d credits=%d batches=%d worker_batches=%d upkeep_paid=%d drones_lost=%d earned=%d events=%s" % [
+	print("SOAK seed=%d day=%d estates=%d workers=%d drones=%d credits=%d batches=%d worker_batches=%d upkeep_paid=%d drones_lost=%d harvests=%d earned=%d events=%s" % [
 		seed_value, g.day, g.estates.size(), g.workers.size(), g.drones.size(), g.credits, g.stats.batches,
-		int(g.stats.get("worker_batches", 0)), int(g.stats.get("upkeep_paid", 0)), int(g.stats.get("drones_lost", 0)), g.stats.earned, _top(events)])
+		int(g.stats.get("worker_batches", 0)), int(g.stats.get("upkeep_paid", 0)), int(g.stats.get("drones_lost", 0)), int(events.get("grow_harvested", 0)), g.stats.earned, _top(events)])
 
 
 func _top(events: Dictionary) -> String:
@@ -147,6 +157,8 @@ func _invariants(g) -> void:
 		_check(w.estate == "" or g.estates.has(w.estate), "worker %s estate exists" % w.id)
 	for d in g.drones:
 		_check(g.estates.has(d.estate), "drone %d estate exists" % d.id)
+	for id in g.grow:
+		_check(g.estates.has(id), "grow trays of %s belong to an owned estate" % id)
 
 
 func _diff(a, b, path: String) -> void:

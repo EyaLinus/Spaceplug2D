@@ -183,6 +183,7 @@ func _init() -> void:
 		"test_raids",
 		"test_estate_upkeep",
 		"test_grow_botanist",
+		"test_quest_green_thumb",
 		"test_heat_zones",
 		"test_grow",
 		"test_map_marker",
@@ -3682,7 +3683,7 @@ const QUEST_EVENTS := ["bought", "sold", "tray_started", "tray_mixed", "tray_ste
 	"app_opened", "price_set", "offer_accepted", "dealer_hired", "dealer_stocked", "dealer_collected", "entered_estate", "landed",
 	"docked", "jumped", "met", "estate_bought", "debt_paid", "upgraded", "pirate_down", "building_placed", "worker_hired",
 	"drop_pickup", "weapon_bought", "bribed", "scan_passed", "officer_killed", "product_discovered",
-	"turf_changed", "base_raided", "interdiction_resolved", "loot"]
+	"turf_changed", "base_raided", "interdiction_resolved", "loot", "grow_changed", "worker_assigned", "grow_harvested"]
 const QUEST_APPS := ["quests", "contacts", "fixers", "hr", "deals", "products", "orders", "map", "deaddrop"]
 
 
@@ -3885,7 +3886,7 @@ func test_quest_main_chapter1() -> void:
 	g.location = "mireth"
 	g.pay_debt(g.debt)
 	check(Quests.is_done(g, "main_clear") and g.state == "won", "debt paid: chapter 1 done")
-	check(g.quests.active == ["main_turf"], "chapter 1 done, chapter 2 starts with Turf War")
+	check(g.quests.active.filter(func(q): return not str(q).begins_with("side_")) == ["main_turf"], "chapter 1 done, chapter 2 starts with Turf War")
 
 
 # ---------------------------------------------------------------- cartels and influence (I1)
@@ -5227,3 +5228,22 @@ func test_grow_botanist() -> void:
 	h.credits = 0
 	h._new_day()
 	check((Grow.trays(h, "cannery_annex")[0].watered as Array).is_empty(), "no tending in a locked estate")
+
+
+func test_quest_green_thumb() -> void:
+	const Grow = preload("res://scripts/core/grow.gd")
+	var g := new_game()
+	Quests.start(g, "side_green")
+	check(Quests.is_active(g, "side_green"), "green thumb started")
+	g.credits = 5000
+	Grow.build_tray(g, "cannery_rig")
+	check(Quests.step_index(g, "side_green") == 1, "tray built -> step 2")
+	Workers.hire(g, "fern")
+	Workers.assign(g, "fern", "cannery_rig")
+	check(Quests.step_index(g, "side_green") == 2, "botanist assigned -> step 3")
+	g.cargo["cannabis"] = 4
+	Grow.plant(g, "cannery_rig", 0, "cannabis")
+	var c0 := g.credits
+	for d in int(data.grow.crops.cannabis.days) + 1:
+		g._new_day()
+	check(not Quests.is_active(g, "side_green") and g.quests.done.has("side_green"), "harvest by the botanist completes it")

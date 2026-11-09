@@ -282,8 +282,47 @@
 			"credits": 300
 		},
 		"next": [
-			"main_heavier"
+			"main_heavier",
+			"side_green"
 		]
+	},
+	"side_green": {
+		"title": "Green Thumb",
+		"giver": "Okka the Welder",
+		"intro": "Buying raws every morning eats your margin. Put a grow tray in an estate and let a botanist look after it: harvests land on the estate shelf, right where your lab hand needs them.",
+		"steps": [
+			{
+				"text": "Build a grow tray in one of your estates",
+				"on": "grow_changed",
+				"check": {
+					"type": "trays",
+					"min": 1
+				},
+				"hint": "Inside an estate, open the build menu: the Grow Trays section is under the stations."
+			},
+			{
+				"text": "Hire a botanist and assign them to that estate",
+				"on": "worker_assigned",
+				"check": {
+					"type": "role",
+					"role": "botanist",
+					"min": 1
+				},
+				"target": {
+					"app": "hr"
+				},
+				"hint": "Fern is cheap, Oko never forgets a tray. Plant the first crop yourself or leave seeds on the estate shelf."
+			},
+			{
+				"text": "Harvest a grow tray",
+				"on": "grow_harvested",
+				"hint": "Crops ripen in 3 to 5 days. Watered every day, they yield the most."
+			}
+		],
+		"reward": {
+			"credits": 150
+		},
+		"outro": "See? The plants don't ask for a cut. The botanist does, but less than the market."
 	},
 	"main_heavier": {
 		"title": "Heavier Product",
