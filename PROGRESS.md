@@ -1182,6 +1182,6 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
 - Closes the grow -> cook loop without the player: botanist feeds storage, stocker/lab hand cook from it.
 - Verified: `test_grow_botanist` (no botanist no water, one per estate, waters, harvests to storage, replants, locked estate skipped),
   unit tests, UI smoke, tip audit, soak, sim 5/5.
-- Gaps: harvested raws in estate storage are ungraded (grow_q only tracks the hub stash); an empty tray that never grew anything is not
-  planted by the botanist (plant the first crop yourself); the botanist has no walk activity yet (stands idle in the room); tray
+- Gaps: harvested raws in estate storage are ungraded (grow_q only tracks the hub stash); fresh trays get the auto recipe's raw or the most stocked
+  growable raw (seeds compete with the lab hand for the same shelf); the botanist has no walk activity yet (stands idle in the room); tray
   economics are thin for cannabis (6 per 3 days per tray), better for pseudo.

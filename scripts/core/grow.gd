@@ -159,7 +159,7 @@ static func harvest(g, estate: String, i: int) -> Dictionary:
 
 ## Botanist (worker role "botanist", P5): every dawn, in the estate he is assigned to (unless it is locked for rent),
 ## harvests ripe trays into the estate storage shelf (where the lab hand / stocker pick raws up), replants empty trays
-## with the same crop from that shelf, and waters every growing tray. Skill sets how often he forgets a tray
+## from that shelf (the same crop, or the auto recipe's raw / the most stocked growable raw for a fresh tray), and waters every growing tray. Skill sets how often he forgets a tray
 ## (miss chance = (1 - skill) x grow.botanist_miss; deterministic per estate/tray/day, the game RNG is untouched).
 ## Raws harvested into storage are ungraded (grow_q only tracks the hub stash pile). Returns trays watered.
 static func tend(g) -> int:
@@ -186,11 +186,12 @@ static func tend(g) -> int:
 				t.start_day = 0
 				t.watered = []
 				g._emit("grow_harvested", {"estate": estate, "raw": last, "qty": n, "grade": "", "worker": b.id})
-			if t.raw == "" and last != "":
+			if t.raw == "":
+				var crop := last if last != "" else _pick_crop(g, e)
 				var need := int(cfg(g).get("seed_qty", 1))
-				if int(e.storage.get(last, 0)) >= need:
-					g._add(e.storage, last, -need)
-					t.raw = last
+				if crop != "" and int(e.storage.get(crop, 0)) >= need:
+					g._add(e.storage, crop, -need)
+					t.raw = crop
 					t.start_day = g.day
 					t.watered = []
 			if t.raw != "" and not is_ripe(g, t) and not (t.watered as Array).has(g.day):
@@ -200,6 +201,21 @@ static func tend(g) -> int:
 					watered += 1
 		g._emit("grow_changed", {"estate": estate})
 	return watered
+
+
+## Crop a botanist plants in an empty tray: the raw of the estate's auto recipe if it grows, else the growable raw
+## the storage shelf holds most of ("" = nothing to plant).
+static func _pick_crop(g, e: Dictionary) -> String:
+	var r: Dictionary = e.get("recipe", {})
+	if not r.is_empty() and g.data.bases.has(r.base):
+		var raw: String = g.data.bases[r.base].raw
+		if crops(g).has(raw) and int(e.storage.get(raw, 0)) >= int(cfg(g).get("seed_qty", 1)):
+			return raw
+	var best := ""
+	for raw in crops(g):
+		if int(e.storage.get(raw, 0)) > int(e.storage.get(best, 0)):
+			best = raw
+	return best
 
 
 static func to_save(g) -> Dictionary:

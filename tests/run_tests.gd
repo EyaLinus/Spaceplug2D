@@ -5212,7 +5212,7 @@ func test_grow_botanist() -> void:
 	check(int(e.storage.get("cannabis", 0)) > before - int(data.grow.seed_qty), "ripe tray harvested into the estate storage")
 	var t: Dictionary = Grow.trays(g, est)[0]
 	check(t.raw == "cannabis" and int(t.start_day) == g.day, "replanted the same crop from storage")
-	check(Grow.trays(g, est)[1].raw == "", "empty trays without a previous crop stay empty")
+	check(Grow.trays(g, est)[1].raw == "cannabis", "a fresh tray gets the most stocked growable raw from storage")
 	# a locked estate is not tended
 	var h := new_game()
 	h.credits = 5000
