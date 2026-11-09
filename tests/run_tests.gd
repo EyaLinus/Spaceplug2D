@@ -5112,6 +5112,8 @@ func test_estate_upkeep() -> void:
 	check(g.buy_estate("cannery_annex").ok, "buy the annex")
 	var d := EstateUpkeep.daily(g, "cannery_annex")
 	check(d == maxi(int(c.min_daily), int(round(1500 * float(c.daily_rate)))), "daily upkeep from price")
+	var dc: Dictionary = g.daily_costs()
+	check(int(dc.rent) == d and int(dc.total) == int(dc.wages) + d + int(dc.drones) + int(dc.officials), "daily costs list the rent")
 	# paid automatically
 	var before := g.credits
 	g._new_day()

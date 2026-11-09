@@ -908,6 +908,17 @@ func buy_estate(id: String) -> Dictionary:
 	return _ok("You own %s now. Go inside and set up production." % e.name)
 
 
+## What dawn will cost: crew wages, estate upkeep, drone upkeep and officials' retainers (all charged in _new_day).
+func daily_costs() -> Dictionary:
+	var ret := 0
+	for o in data.get("officials", []):
+		if People.official_state(self, o.id).get("hired", false):
+			ret += int(o.retainer)
+	var r := {"wages": Workers.wage_total(self), "rent": EstateUpkeep.daily_total(self), "drones": Drones.upkeep_total(self), "officials": ret}
+	r.total = int(r.wages) + int(r.rent) + int(r.drones) + ret
+	return r
+
+
 ## Upkeep (P4): locked estates (arrears past the grace days) can't be entered or worked in. See estate_upkeep.gd.
 func estate_locked(id: String) -> bool:
 	return EstateUpkeep.locked(self, id)
