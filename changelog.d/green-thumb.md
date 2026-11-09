@@ -1,1 +1,0 @@
-- **Side quest "Green Thumb":** after Room to Grow, Okka shows you grow trays and the botanist (build a tray, assign a botanist, harvest). 150 cr.

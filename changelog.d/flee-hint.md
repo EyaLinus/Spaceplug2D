@@ -1,1 +1,0 @@
-- **Flee hint:** the first time sprinting in an officer's sight adds heat, a toast says so (at most every 20 s).

@@ -1,1 +1,0 @@
-- **Daily costs in HR:** the HR app now shows what dawn will cost (wages, estate rent, drone upkeep, officials' retainers) in red when you can't cover it, marks estates with overdue or locked rent, and its badge counts them.
