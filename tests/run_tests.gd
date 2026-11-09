@@ -324,7 +324,7 @@ func test_art_pass4() -> void:
 	check(ex != null and ex.get_size() == Vector2(48 * Art.EXPLOSION_FRAMES, 48), "explosion strip matches EXPLOSION_FRAMES")
 	for k in ["app_fixers", "cartel_comets", "cartel_tide", "cartel_veil", "up_cargo", "hud_credits"]:
 		check(Art.icon_for(k) != null and Art.icon_for(k).get_size() == Vector2(32, 32), "icon %s is 32 px" % k)
-	for c in data.gangs:
+	for c in data.cartels.gangs:
 		check(Art.icon_for("cartel_" + c) != null, "cartel %s has an emblem" % c)
 	var card := Button.new()
 	Art.station_card_icon(card, "trim_table")
