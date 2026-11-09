@@ -50,7 +50,8 @@ func home(g, phone) -> Control:
 		v.add_child(UI.label("You own no estate. Workers need one to work in.", 14, UI.MUTED))
 	for eid in g.estates:
 		var b := UI.button("%s · %s" % [g.data.estates[eid].name, _estate_state(g, eid)], func(): phone.push(g.data.estates[eid].name, func(gg): return estate(gg, phone, eid)))
-		b.tooltip_text = {"cooking": "Your crew is cooking here.", "idle": "Nothing cooking: %s." % Workers.blocker(g, eid), "ready": "Ready to cook. Open to set the recipe and stock it."}[_estate_state(g, eid)]
+		b.tooltip_text = {"cooking": "Your crew is cooking here.", "idle": "Nothing cooking: %s." % Workers.blocker(g, eid), "ready": "Ready to cook. Open to set the recipe and stock it."}.get(_estate_state(g, eid),
+			"%s Open to pay the arrears." % EstateUpkeep.status_text(g, eid))
 		b.name = "EstateRow_" + eid
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		v.add_child(b)
@@ -283,6 +284,16 @@ func estate(g, _phone, eid: String) -> Control:
 		var w := Workers.at(g, eid, role)
 		var txt: String = Workers.candidate(g, w.id).name if not w.is_empty() else "nobody"
 		v.add_child(_pair(str(Workers.cfg(g).roles[role].name), txt))
+	var rent: String = EstateUpkeep.status_text(g, eid)
+	if rent != "":
+		v.add_child(_wrap(rent, 14, UI.WARN if EstateUpkeep.status(g, eid) != "ok" else UI.MUTED))
+		var owed: int = EstateUpkeep.arrears(g, eid)
+		if owed > 0:
+			var pay := UI.accent_button("Pay arrears · %d cr" % owed, func(): GameState.act(g.pay_estate_arrears(eid)))
+			pay.name = "PayArrears_" + eid
+			pay.disabled = g.credits < owed
+			pay.tooltip_text = "Wire the overdue rent to the landlord from here. A locked estate opens again."
+			v.add_child(pay)
 	v.add_child(UI.label("AUTO RECIPE", 13, UI.MUTED))
 	var opt := OptionButton.new()
 	opt.name = "Recipe_" + eid

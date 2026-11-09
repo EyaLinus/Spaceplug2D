@@ -1219,3 +1219,6 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
 - `drones.loss_per_heat` 0.0008 -> 0.0005 (soak, 30 days x 3 seeds, 4 drones, heat 30-70: lost 3/3/3 before, 1/2/2 after).
 - Event audit: of ~70 core events without a UI listener, the background ones a player would miss now emit a `notice`: `wage_missed`,
   worker quit (`worker_left` reason quit), `drone_grounded`, `drone_lost`. Test `test_background_notices`.
+- HR estate view: rent line + remote "Pay arrears" (`PayArrears_<id>`, UI smoke step). Fixed a script error in the HR estate list (tooltip
+  dict lookup) for estates with rent overdue/locked, introduced earlier today and caught by the new smoke step.
+- Soak: halfway it sells one staffed estate and lets another be seized (release paths under load).
