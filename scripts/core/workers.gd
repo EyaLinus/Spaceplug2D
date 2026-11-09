@@ -296,6 +296,9 @@ static func new_day(g) -> void:
 			if w.loyalty <= 0.0:
 				g.workers.erase(w)
 				g._emit("worker_left", {"worker": w.id, "reason": "quit"})
+				g._emit("notice", {"text": "%s quit: too many unpaid wages." % candidate(g, w.id).name, "good": false})
+			else:
+				g._emit("notice", {"text": "Couldn't pay %s's wage (%d cr). Loyalty is dropping." % [candidate(g, w.id).name, wage], "good": false})
 	if paid > 0:
 		g.stats["wages"] = int(g.stats.get("wages", 0)) + paid
 		g._emit("wages_paid", {"amount": paid})

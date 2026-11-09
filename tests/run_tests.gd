@@ -185,6 +185,7 @@ func _init() -> void:
 		"test_grow_botanist",
 		"test_quest_green_thumb",
 		"test_botanist_walk",
+		"test_background_notices",
 		"test_heat_zones",
 		"test_grow",
 		"test_map_marker",
@@ -2254,7 +2255,9 @@ func test_drones_loss_upkeep_save() -> void:
 	check(Drones.loss_chance(g) <= 0.9, "loss chance is capped")
 	g.estates[eid].out = {"weed:glow": 4}
 	var lost := [false]
+	var told := [false]
 	g.event.connect(func(k, _p): if k == "drone_lost": lost[0] = true)
+	g.event.connect(func(k, p): if k == "notice" and str(p.text).contains("went down"): told[0] = true)
 	g.data.drones.loss_base = 1.0
 	g.data.drones.loss_per_heat = 0.0
 	g.heat = 0.0
@@ -2267,6 +2270,7 @@ func test_drones_loss_upkeep_save() -> void:
 		g.tick(Drones.trip_seconds(g, eid) + 0.1)
 	check(lost[0] and g.drones.is_empty() and int(g.stats.get("drones_lost", 0)) == 1, "a shot-down drone is gone")
 	check(not g.stash.has("weed:glow") and not g.estates[eid].out.has("weed:glow"), "its cargo is lost with it")
+	check(told[0], "the player is told the drone went down")
 	# upkeep, grounding
 	var h := _drone_game()
 	Drones.buy(h, eid, "to_port")
@@ -5301,3 +5305,17 @@ func test_botanist_walk() -> void:
 		check(c.x >= 0.0 and c.x <= float(size[0]) and c.y >= 0.0 and c.y <= float(size[1]), "tray cell inside the room (%s)" % c)
 		seen[c] = true
 	check(seen.size() == 3, "botanist walks from tray to tray")
+
+
+func test_background_notices() -> void:
+	var g := new_game()
+	Workers.hire(g, "dax")
+	var notes := []
+	g.event.connect(func(k, p): if k == "notice": notes.append(str(p.text)))
+	g.credits = 0
+	g._new_day()
+	check(notes.any(func(t): return t.contains("Dax") and t.contains("wage")), "missed wage is announced")
+	for i in 5:
+		g.credits = 0
+		g._new_day()
+	check(not Workers.hired(g, "dax") and notes.any(func(t): return t.contains("quit")), "a worker who quits is announced")

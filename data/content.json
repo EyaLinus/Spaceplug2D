@@ -206,7 +206,7 @@
   },
   "drones": {
     "price": 350, "upkeep": 15, "max_total": 4, "max_per_estate": 2, "capacity": 12, "trip_seconds": 45, "far_seconds": 45,
-    "loss_base": 0.01, "loss_per_heat": 0.0008, "scrap_refund": 0.4
+    "loss_base": 0.01, "loss_per_heat": 0.0005, "scrap_refund": 0.4
   },
   "deals": {
     "interval": 40, "chance": 0.3, "max_open": 3, "answer_seconds": 90, "meet_seconds": 150, "premium": 0.15,
