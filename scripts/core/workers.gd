@@ -188,6 +188,8 @@ static func tick(g, dt: float) -> void:
 	if g.workers.is_empty():
 		return
 	for id in g.estates:
+		if g.estate_locked(id):
+			continue  # upkeep arrears: the landlord changed the locks (estate_upkeep.gd)
 		var e: Dictionary = g.estates[id]
 		ensure(e)
 		var hand := at(g, id, "lab_hand")

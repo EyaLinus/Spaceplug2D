@@ -1142,3 +1142,13 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
   per-district looks come from variant mix only, not from district-specific materials; water, pit, slag, void and chasm areas are
   still drawn procedurally; no animated tiles (water, neon); building doors beyond door/hatch are not varied; NPC outfits per
   planet and interiors are untouched. Feature tiles on Cinder and Mireth are subtle at 14%; tune `FEATURE_CHANCE` after a playtest.
+## P4: Estate upkeep and selling (2026-11-09, rebuild of PR #96 on v0.1.13)
+- **Core** `scripts/core/estate_upkeep.gd`, numbers in `content.json` -> `upkeep` (2 % of price a day, min 20 cr, locked after 2 unpaid days,
+  seized after 5, sale pays 60 % of the price). Bought estates only: the ship bay and starter estates are exempt. Paid at `Game._new_day`
+  after wages; `unpaid` is saved in the estate entry (old saves = 0); `stats.upkeep_paid`.
+- Locked: `Game.estate_locked` blocks `lab_here`, `main.enter_estate`, `Workers.tick` and `Drones.tick`. `release()` (seizure and sale) clears
+  estate stock, bench tray, drying racks, sealing benches, grow trays and drones of the estate and sends its workers off duty.
+- UI: door panel shows the upkeep line, Pay arrears and Sell (tooltip with the quote); the buy panel names the upkeep; locked doors open the panel.
+- Verified: `test_estate_upkeep` (exemptions, auto pay, overdue/locked/seized, drones idle, pay unlocks, save, cleanup, sale quote and
+  location rule), `test_workers` adjusted for rent, UI smoke step (locked door -> panel -> pay -> unlocked), tip audit 0, menu smoke, sim 5/5.
+- Gaps: numbers are guesses; no HUD line for total daily rent; a raid warning for an estate that is then sold just lapses.

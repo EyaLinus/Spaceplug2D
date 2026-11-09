@@ -426,7 +426,7 @@ func _on_surface_action(action: String, p: Dictionary) -> void:
 			return
 		"estate":
 			var eid: String = GameState.data.surfaces[g.location].buildings.filter(func(b): return b.id == p.id)[0].estate
-			if g.estate_owned(eid):
+			if g.estate_owned(eid) and not g.estate_locked(eid):
 				enter_estate(eid)
 			else:
 				station.open({"tabs": ["Estate"], "title": GameState.data.estates[eid].name, "estate": eid})
@@ -469,6 +469,9 @@ func _on_surface_action(action: String, p: Dictionary) -> void:
 ## when the room is rebuilt after placing/removing a station.
 func enter_estate(eid: String, at = null) -> void:
 	var g = GameState.game
+	if g.estate_locked(eid):
+		EventBus.toast.emit("%s is locked by the landlord. Pay the arrears at the door." % GameState.data.estates[eid].name, false)
+		return
 	station.close()
 	_leave_surface()
 	surface = SurfaceScript.new()

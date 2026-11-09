@@ -32,6 +32,7 @@ const PriceWar = preload("res://scripts/core/pricewar.gd")
 const Chatter = preload("res://scripts/core/chatter.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Escort = preload("res://scripts/core/escort.gd")
+const EstateUpkeep = preload("res://scripts/core/estate_upkeep.gd")
 const Interiors = preload("res://scripts/core/interiors.gd")
 const Raids = preload("res://scripts/core/raids.gd")
 const HeatZones = preload("res://scripts/core/heat_zones.gd")
@@ -180,6 +181,7 @@ func _init() -> void:
 		"test_style",
 		"test_price_board",
 		"test_raids",
+		"test_estate_upkeep",
 		"test_heat_zones",
 		"test_grow",
 		"test_map_marker",
@@ -876,7 +878,8 @@ func test_workers() -> void:
 	check(wages == int(Workers.candidate(w, "hollis").wage) + int(Workers.candidate(w, "moss").wage), "wage total")
 	var c0: int = w.credits
 	w.tick(w.day_seconds())
-	check(w.credits == c0 - wages and w.stats.wages == wages, "daily wages charged (%d)" % (c0 - w.credits))
+	var rent := EstateUpkeep.daily_total(w)  # estates bought by worker_game() also pay upkeep (P4)
+	check(w.credits == c0 - wages - rent and w.stats.wages == wages, "daily wages charged (%d)" % (c0 - w.credits))
 	var loyal: float = w.workers[0].loyalty
 	w.credits = 0
 	w.tick(w.day_seconds())
@@ -5092,3 +5095,83 @@ func test_quest_chapter3() -> void:
 	check(Quests.is_done(g, "main_veil_ledger"), "audit settled, chapter 3 done")
 	check(g.quests.active.is_empty(), "nothing follows chapter 3 yet")
 
+
+
+func test_estate_upkeep() -> void:
+	var g := new_game()
+	var c: Dictionary = data.upkeep
+	check(EstateUpkeep.daily(g, g.SHIP_BAY) == 0 and EstateUpkeep.daily(g, "cannery_rig") == 0, "ship bay and starter estate pay no upkeep")
+	check(EstateUpkeep.daily_total(g) == 0, "a fresh game owes no upkeep")
+	g.credits = 5000
+	g.location = "mireth"
+	check(g.buy_estate("cannery_annex").ok, "buy the annex")
+	var d := EstateUpkeep.daily(g, "cannery_annex")
+	check(d == maxi(int(c.min_daily), int(round(1500 * float(c.daily_rate)))), "daily upkeep from price")
+	# paid automatically
+	var before := g.credits
+	g._new_day()
+	check(g.credits == before - d - Workers.wage_total(g) or g.credits <= before - d, "upkeep taken at dawn")
+	check(EstateUpkeep.status(g, "cannery_annex") == "ok" and int(g.stats.upkeep_paid) == d, "paid and counted")
+	# broke: overdue, then locked
+	g.credits = 0
+	g._new_day()
+	check(EstateUpkeep.status(g, "cannery_annex") == "overdue" and EstateUpkeep.arrears(g, "cannery_annex") == d, "one missed day is overdue")
+	check(not g.estate_locked("cannery_annex"), "still usable while overdue")
+	for i in int(c.grace_days) - 1:
+		g.credits = 0
+		g._new_day()
+	check(g.estate_locked("cannery_annex"), "locked after the grace days")
+	g.inside_estate = "cannery_annex"
+	var hub_lab: bool = g.loc_data().get("lab", false)
+	check(hub_lab or not g.lab_here(), "no cooking in a locked estate")
+	g.location = "cinder"
+	check(g.loc_data().get("lab", false) or not g.lab_here(), "no cooking in a locked estate (no hub lab)")
+	g.location = "mireth"
+	g.inside_estate = ""
+	# drones and workers stop while locked
+	g.drones.append({"id": 99, "estate": "cannery_annex", "route": "to_port", "t": 0.0, "grounded": false})
+	Drones.tick(g, 10.0)
+	check(is_equal_approx(float(g.drones[0].t), 0.0), "drones idle at a locked estate")
+	# paying the arrears unlocks
+	var a := EstateUpkeep.arrears(g, "cannery_annex")
+	g.credits = a - 1
+	check(not g.pay_estate_arrears("cannery_annex").ok, "can't pay without the money")
+	g.credits = a
+	check(g.pay_estate_arrears("cannery_annex").ok and g.credits == 0, "paid arrears")
+	check(EstateUpkeep.status(g, "cannery_annex") == "ok" and not g.estate_locked("cannery_annex"), "unlocked again")
+	check(not g.pay_estate_arrears("cannery_annex").ok, "nothing overdue now")
+	# save round trip keeps unpaid days
+	g._new_day()
+	check(EstateUpkeep.unpaid_days(g, "cannery_annex") == 1, "unpaid again")
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(EstateUpkeep.unpaid_days(h, "cannery_annex") == 1, "unpaid days survive a save")
+	# seizure clears everything stored under the estate
+	g.estate_stock["cannery_annex"] = {"cannabis": 3}
+	g.drying["cannery_annex"] = []
+	g.workers.append({"id": "hollis", "loyalty": 0.5, "estate": "cannery_annex", "hired_day": 1})
+	var seized := []
+	g.event.connect(func(k, p): if k == "estate_seized": seized.append(p))
+	for i in int(c.seize_days):
+		g.credits = 0
+		g._new_day()
+	check(not g.estates.has("cannery_annex") and seized.size() == 1, "seized after seize_days")
+	check(not g.estate_stock.has("cannery_annex") and not g.drying.has("cannery_annex"), "estate stock and racks gone")
+	check(g.drones.filter(func(x): return x.estate == "cannery_annex").is_empty(), "drones at the estate gone")
+	check(g.workers.filter(func(w): return w.estate == "cannery_annex").is_empty(), "workers off duty")
+	check(g.estates.has("cannery_rig"), "starter estate untouched")
+	# selling
+	var s := new_game()
+	s.credits = 5000
+	s.location = "mireth"
+	s.buy_estate("cannery_annex")
+	s.estates.cannery_annex.buildings.append({"id": "trim_table", "x": 0, "y": 0})
+	var q := EstateUpkeep.sale_quote(s, "cannery_annex")
+	check(q.share == int(round(1500 * float(c.sell_share))) and q.buildings == int(round(150 * float(data.estate_refund))), "sale quote parts")
+	check(not s.sell_estate("cannery_rig").ok and not s.sell_estate(s.SHIP_BAY).ok, "starter estate and ship bay can't be sold")
+	s.location = "cinder"
+	check(not s.sell_estate("cannery_annex").ok, "must be on the planet to sell")
+	s.location = "mireth"
+	var cr := s.credits
+	check(s.sell_estate("cannery_annex").ok and s.credits == cr + int(q.net) and not s.estates.has("cannery_annex"), "sold for the quote")
+	check(s.buy_estate("cannery_annex").ok, "can buy it back")
