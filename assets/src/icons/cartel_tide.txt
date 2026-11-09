@@ -1,0 +1,38 @@
+# Cartel emblem: Saltglass Tide (ice crystal over a wave), neutral for tinting.
+legend:
+. = transparent
+k = ink
+S = slate_light
+s = slate
+d = slate_dark
+W = white
+Y = gold
+y = gold_dark
+L = gold_light
+R = red
+r = red_dark
+T = teal
+t = teal_dark
+b = blue_light
+B = blue
+G = leaf
+w = wood
+o = wood_dark
+n = rust_light
+---
+................
+.......kk.......
+......kWWk......
+.....kWWSSk.....
+....kWWWSSsk....
+...kkWWSSSskk...
+..kWWWWSSSssSk..
+...kkWWSSSskk...
+....kWWWSSsk....
+.....kWWSSk.....
+.kk..kkWSskk..kk
+kWWkkkSkkSkkkSWk
+kSSSWWkk.kkWWSSk
+.kkkkkk...kkkkk.
+................
+................

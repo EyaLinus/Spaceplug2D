@@ -45,8 +45,7 @@ static func _card(g, id: String, place: Callable) -> Button:
 	card.theme_type_variation = "CardButton"
 	card.custom_minimum_size = Vector2(270, 74)
 	card.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	card.icon = Art.tex("stations/%s.png" % id)
-	card.add_theme_constant_override("icon_max_width", 64)
+	Art.station_card_icon(card, id)
 	card.text = card_text(g, id)
 	card.tooltip_text = "%s\n%s Takes the place of a %s." % [g.data.stations[id].get("hint", ""), summary(g, id),
 		g.data.stations[Machines.station_of(g.data, id)].name]

@@ -1,5 +1,6 @@
 extends SceneTree
 
+const Art = preload("res://scripts/core/art.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 ## Screenshot tool (needs a display, e.g. xvfb-run): boots the game and saves PNGs of the planet surface, panels and flight.
 ## xvfb-run -s "-screen 0 1280x720x24" godot --path . -s res://tools/shot.gd -- --out /tmp/shots
@@ -415,8 +416,8 @@ func _run() -> void:
 		await physics_frame
 	await _save(out, "space_combat")
 	# art pass 4: explosion + hit sprites mid-animation, then the ship inside a nebula cloud
-	w.combat._sprite_fx("explosion", w.ship.position + Vector2(-140, -120), 0.8, 4, 2.0)
-	w.combat._sprite_fx("explosion", w.ship.position + Vector2(160, -150), 0.8, 4, 1.0)
+	w.combat._sprite_fx("explosion", w.ship.position + Vector2(-140, -120), 0.8, Art.EXPLOSION_FRAMES, 1.6)
+	w.combat._sprite_fx("explosion", w.ship.position + Vector2(160, -150), 0.8, Art.EXPLOSION_FRAMES, 1.0)
 	w.combat._sprite_fx("hit", w.ship.position + Vector2(40, -90), 0.8, 3, 1.5)
 	for i in 14:
 		await physics_frame

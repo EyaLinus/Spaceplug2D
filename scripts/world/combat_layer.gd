@@ -185,7 +185,7 @@ func fire_ion(g) -> bool:
 
 ## Pirates within `r` of `p` take splash damage (missile blast).
 func _blast(g, p: Vector2, dmg: float, r: float) -> void:
-	_sprite_fx("explosion", p, 0.45, 4, r / 32.0)
+	_sprite_fx("explosion", p, 0.55, Art.EXPLOSION_FRAMES, r / 44.0)
 	_burst(p, 14, Color(1.0, 0.7, 0.3), 160.0, 0.55)
 	for t in pirates.duplicate():
 		if t.position.distance_to(p) <= r + t.radius:
@@ -216,7 +216,7 @@ func _damage_pirate(g, p: Node2D, dmg: float) -> void:
 	if p.hit(dmg):
 		pirates.erase(p)
 		var r := SpaceCombat.enemy_down(g, p.kind, p.cartel, rng)
-		_sprite_fx("explosion", p.position, 0.6, 4, 2.2 if p.kind == "gunship" else 1.6)
+		_sprite_fx("explosion", p.position, 0.75, Art.EXPLOSION_FRAMES, 1.7 if p.kind == "gunship" else 1.2)
 		_burst(p.position, 30 if p.kind == "gunship" else 22, Color(1.0, 0.55, 0.25), 260.0 if p.kind == "gunship" else 220.0, 0.8)
 		shake = maxf(shake, 5.0 if p.kind == "gunship" else 2.0)
 		AudioManager.play("boom")
@@ -530,7 +530,7 @@ func hurt_player(g, amount: float) -> void:
 
 
 func _wreck(g) -> void:
-	_sprite_fx("explosion", ship.position, 0.8, 4, 3.0)
+	_sprite_fx("explosion", ship.position, 1.0, Art.EXPLOSION_FRAMES, 2.2)
 	_burst(ship.position, 30, Color(1.0, 0.6, 0.2), 300.0, 1.0)
 	var r := SpaceCombat.defeat(g)
 	AudioManager.play("bust")

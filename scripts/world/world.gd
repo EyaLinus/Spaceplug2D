@@ -31,6 +31,7 @@ var active := false  ## false while docked / in menus
 var shake := 0.0  ## K1: extra camera shake from EventBus.shake (busts, interdictions), decays fast
 var input_blocked := false  ## the ship holds position (no steering) while the phone is open
 var _stars: Array = []
+const NEBULA_ALPHA := 0.5  ## tint alpha of a cloud sprite
 var _nebulae: Array = []  ## [pos, radius, colour]
 var _patrol_seed := 1
 var fields: Array = []  ## asteroid fields of this system (patrolfeel.gd): smaller scan range, break pursuit
@@ -80,8 +81,20 @@ func show_system(sys: String) -> void:
 		tint.a = r.randf_range(0.25, 0.9)
 		_stars.append([Vector2(r.randf_range(-SECTOR_HALF, SECTOR_HALF), r.randf_range(-SECTOR_HALF, SECTOR_HALF)), r.randf_range(0.6, 2.2), tint])
 	_nebulae.clear()
-	for c in info.get("nebula", ["#5a2680", "#1a5a66"]):
-		_nebulae.append([Vector2(r.randf_range(-2400, 2400), r.randf_range(-2000, 2000)), r.randf_range(800, 1200), Color(c, 0.05)])
+	# art pass 5: every system gets a visible backdrop: two clouds hug the first two locations (so one is in view when you
+	# lift off or fly between them), the third floats somewhere random
+	var neb_cols: Array = info.get("nebula", ["#5a2680", "#1a5a66"])
+	var anchors: Array = []
+	for lid in data.locations:
+		if str(data.locations[lid].get("system", sys)) == sys:
+			var lp: Array = data.locations[lid].get("pos", [0, 0])
+			anchors.append(Vector2(float(lp[0]), float(lp[1])))
+	for i in 3:
+		var rad := r.randf_range(480.0, 660.0)
+		var pos := Vector2(r.randf_range(-2400, 2400), r.randf_range(-2000, 2000))
+		if i < 2 and i < anchors.size():
+			pos = anchors[i] + Vector2.from_angle(r.randf() * TAU) * rad * r.randf_range(0.6, 0.95)
+		_nebulae.append([pos, rad, Color(neb_cols[i % neb_cols.size()], NEBULA_ALPHA)])
 	for id in data.locations:
 		var ld: Dictionary = data.locations[id]
 		if str(ld.get("system", sys)) != sys:
@@ -281,6 +294,15 @@ func _update_scan(g, delta: float) -> void:
 
 
 func _draw() -> void:
+	# nebulae for depth, tinted per system; behind the stars
+	var neb_t := Art.tex("space/nebula.png")  # three neutral clouds, tinted with the system colours
+	for i in _nebulae.size():
+		var nb: Array = _nebulae[i]
+		if neb_t != null:
+			var d: float = nb[1] * 2.2
+			draw_texture_rect_region(neb_t, Rect2(nb[0] - Vector2(d, d) / 2.0, Vector2(d, d)), Rect2((i % 3) * 256, 0, 256, 256), nb[2])
+		else:
+			draw_circle(nb[0], nb[1], Color(nb[2], 0.05))
 	var star_t := Art.tex("space/stars.png")  # art pass 4: the bigger stars are sprites (the dim ones stay dots)
 	for s in _stars:
 		if star_t != null and s[1] > 1.7:
@@ -293,13 +315,4 @@ func _draw() -> void:
 		draw_arc(f.pos, f.radius, 0, TAU, 64, Color(0.7, 0.6, 0.45, 0.2), 2.0)
 	for rk in _rocks:
 		draw_circle(rk[0], rk[1], rk[2])
-	# faint nebulae for depth, tinted per system
-	var neb_t := Art.tex("space/nebula.png")  # three neutral clouds, tinted with the system colours
-	for i in _nebulae.size():
-		var nb: Array = _nebulae[i]
-		if neb_t != null:
-			var d: float = nb[1] * 1.3
-			draw_texture_rect_region(neb_t, Rect2(nb[0] - Vector2(d, d) / 2.0, Vector2(d, d)), Rect2((i % 3) * 96, 0, 96, 96), Color(nb[2], 0.22))
-		else:
-			draw_circle(nb[0], nb[1], nb[2])
 	draw_rect(Rect2(-SECTOR_HALF, -SECTOR_HALF, SECTOR_HALF * 2, SECTOR_HALF * 2), Color(0.3, 0.6, 1.0, 0.25), false, 4.0)

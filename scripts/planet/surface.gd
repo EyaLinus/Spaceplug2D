@@ -900,6 +900,28 @@ func _draw_edge_fringes(set_name: String) -> void:
 		Art.draw_edges(self, set_name, q, tile, paved)
 
 
+## Art pass 5: the ground's ragged fringe also creeps over the border of a ground-paint area (lawn, dunes, salt, ice,
+## rubble) wherever it does not touch another such area.
+func _draw_area_fringe(r: Rect2) -> void:
+	var set_name: String = Art.TILESETS.get(loc_id, "")
+	if set_name == "":
+		return
+	var cells := Rect2i(Vector2i((r.position / tile).round()), Vector2i((r.size / tile).round()))
+	var paint: Array = []
+	for a in cfg.get("areas", []):
+		if str(a[4]) in ["grass", "sand", "salt", "ice", "rubble"]:
+			paint.append(Rect2i(int(a[0]), int(a[1]), int(a[2]), int(a[3])))
+	var map_cells := Rect2i(0, 0, int(map_size.x / tile), int(map_size.y / tile))
+	var covered := func(c: Vector2i) -> bool:
+		if not map_cells.has_point(c):
+			return true
+		for q in paint:
+			if q.has_point(c):
+				return true
+		return false
+	Art.draw_edges(self, set_name, cells, tile, covered)
+
+
 func _draw() -> void:
 	var tiles: String = Art.TILESETS.get(loc_id, "")
 	var art := tiles != "" and Art.tex("tiles/%s_ground.png" % tiles) != null
@@ -1003,6 +1025,7 @@ func _draw_area(a: Array, index: int) -> void:
 		"grass", "sand", "salt", "ice", "rubble":
 			# art: opaque ground-paint strip (lawn, dunes, salt crust, ice sheet, rubble) with variation tiles
 			if Art.fill_tiles(self, "tiles/area_%s.png" % kind, r, 4 + index):
+				_draw_area_fringe(r)
 				return
 			var tint: Color = {"grass": Color("#3f6a3a", 0.6), "sand": Color("#d8b070", 0.35), "salt": Color("#ece8dc", 0.6),
 				"ice": Color("#bfe6f5", 0.55), "rubble": Color(0, 0, 0, 0.14)}[kind]

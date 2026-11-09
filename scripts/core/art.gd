@@ -239,6 +239,18 @@ static func icon_for(key: String) -> Texture2D:
 	return tex("icons/%s.png" % key.split("@")[0].split(":")[0])
 
 
+## Art pass 5: build/machine card icon: the 16 px station icon `st_<id>` at 64 px (2x, nearest), else the world sprite.
+static func station_card_icon(card: Button, id: String) -> void:
+	var t := icon_for("st_" + id)
+	if t != null:
+		card.icon = t
+		card.expand_icon = true
+		card.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	else:
+		card.icon = tex("stations/%s.png" % id)
+	card.add_theme_constant_override("icon_max_width", 64)
+
+
 ## Puts the icon for `key` in front of `ctrl` (32 px = the icon's native 2x size). Returns `ctrl` alone without art.
 static func with_icon(key: String, ctrl: Control) -> Control:
 	var t := icon_for(key)
@@ -284,7 +296,8 @@ static func draw_fx(ci: CanvasItem, name: String, p: Vector2, rot := 0.0, frame 
 
 static func idle_sheet(look: String) -> Texture2D: return tex("chars/%s_idle.png" % look)
 static func edge_strip(set_name: String) -> Texture2D: return tex("tiles/%s_edge.png" % set_name)
-static func fx(name: String) -> Texture2D: return tex("fx/%s.png" % name)  ## bolt_laser, bolt_pirate, missile, explosion (4 frames of 32 px), hit (3 of 16), shield (3 of 64)
+static func fx(name: String) -> Texture2D: return tex("fx/%s.png" % name)  ## bolt_laser, bolt_pirate, missile, explosion (EXPLOSION_FRAMES of 48 px), hit (3 of 16), shield (3 of 64)
+const EXPLOSION_FRAMES := 6  ## frames of fx/explosion.png (48 px each)
 
 
 ## Fringe tiles for the border cells of a tile-aligned rect (a road or plaza) as [cell, EDGE_ORDER index] pairs, where

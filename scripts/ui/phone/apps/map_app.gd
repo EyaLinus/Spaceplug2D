@@ -429,6 +429,15 @@ func _cartels(g) -> Control:
 		col.add_theme_constant_override("separation", 2)
 		panel.add_child(col)
 		var top := HBoxContainer.new()
+		var emblem := Art.icon_for("cartel_" + c)  # art pass 5: neutral emblem tinted with the gang colour
+		if emblem != null:
+			var er := TextureRect.new()
+			er.texture = emblem
+			er.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			er.custom_minimum_size = Vector2(32, 32)
+			er.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+			er.modulate = _actor_color(g, c).lightened(0.25)
+			top.add_child(er)
 		var nm := UI.label(str(gd.name), 15, _actor_color(g, c))
 		nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		top.add_child(nm)

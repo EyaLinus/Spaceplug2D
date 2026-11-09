@@ -304,14 +304,13 @@ assets:
   fx_explosion:
     created: '2026-11-03'
     kind: sprite
-    method: pixel
-    note: space combat fx, frames in one strip; not yet drawn by combat_layer.gd (procedural
-      there)
+    method: procedural
+    note: '6 frames x 24 art px: flash star, gold fireball, orange ball, hollow red ball + smoke, shock ring, embers (art pass 5)'
     outputs:
     - assets/gfx/fx/explosion.png
-    source: assets/src/sprites/fx_explosion.txt
+    source: tools/art/build_art.py
     status: done
-    updated: '2026-11-03'
+    updated: '2026-11-09'
   fx_hit:
     created: '2026-11-03'
     kind: sprite
@@ -799,7 +798,7 @@ assets:
     created: '2026-11-03'
     kind: icon
     method: pixel
-    note: ground weapon icon (key wpn_<weapon>)
+    note: ground weapon icon (key wpn_<weapon>), redrawn bigger in art pass 5
     outputs:
     - assets/gfx/icons/wpn_pistol.png
     source: assets/src/icons/wpn_pistol.txt
@@ -809,7 +808,7 @@ assets:
     created: '2026-11-03'
     kind: icon
     method: pixel
-    note: ground weapon icon (key wpn_<weapon>)
+    note: ground weapon icon (key wpn_<weapon>), redrawn bigger in art pass 5
     outputs:
     - assets/gfx/icons/wpn_shotgun.png
     source: assets/src/icons/wpn_shotgun.txt
@@ -819,7 +818,7 @@ assets:
     created: '2026-11-03'
     kind: icon
     method: pixel
-    note: ground weapon icon (key wpn_<weapon>)
+    note: ground weapon icon (key wpn_<weapon>), redrawn bigger in art pass 5
     outputs:
     - assets/gfx/icons/wpn_smg.png
     source: assets/src/icons/wpn_smg.txt
@@ -829,7 +828,7 @@ assets:
     created: '2026-11-03'
     kind: sprite
     method: procedural
-    note: 3 neutral gas clouds, tint at runtime
+    note: 3 neutral gas clouds of 128 art px (domain-warped fbm), drawn at ~5 world px per texel, tint at runtime (art pass 5)
     outputs:
     - assets/gfx/space/nebula.png
     source: tools/art/build_art.py
@@ -1406,3 +1405,43 @@ assets:
     source: tools/art/build_art.py
     status: done
     updated: '2026-10-30'
+  icon_app_fixers:
+    created: '2026-11-09'
+    kind: icon
+    method: pixel
+    note: Com-Phone Fixers app icon (official badge)
+    outputs:
+    - assets/gfx/icons/app_fixers.png
+    source: assets/src/icons/app_fixers.txt
+    status: done
+    updated: '2026-11-09'
+  icon_cartel_comets:
+    created: '2026-11-09'
+    kind: icon
+    method: pixel
+    note: neutral cartel emblem, tinted with the gang colour in the Cartels list
+    outputs:
+    - assets/gfx/icons/cartel_comets.png
+    source: assets/src/icons/cartel_comets.txt
+    status: done
+    updated: '2026-11-09'
+  icon_cartel_tide:
+    created: '2026-11-09'
+    kind: icon
+    method: pixel
+    note: neutral cartel emblem, tinted with the gang colour
+    outputs:
+    - assets/gfx/icons/cartel_tide.png
+    source: assets/src/icons/cartel_tide.txt
+    status: done
+    updated: '2026-11-09'
+  icon_cartel_veil:
+    created: '2026-11-09'
+    kind: icon
+    method: pixel
+    note: neutral cartel emblem, tinted with the gang colour
+    outputs:
+    - assets/gfx/icons/cartel_veil.png
+    source: assets/src/icons/cartel_veil.txt
+    status: done
+    updated: '2026-11-09'
