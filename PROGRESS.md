@@ -1152,3 +1152,17 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
 - Verified: `test_estate_upkeep` (exemptions, auto pay, overdue/locked/seized, drones idle, pay unlocks, save, cleanup, sale quote and
   location rule), `test_workers` adjusted for rent, UI smoke step (locked door -> panel -> pay -> unlocked), tip audit 0, menu smoke, sim 5/5.
 - Gaps: numbers are guesses; no HUD line for total daily rent; a raid warning for an estate that is then sold just lapses.
+## Mid-game economy probe + machine rebalance (2026-11-09)
+- **Tool** `tools/econ_probe.gd` (`-- --days 5 [--estate shaft_shack] [--tier 0] [--machines]`): buys an estate, builds the full line
+  (or machines), hires a lab hand + stocker (cheap/mid/top pairs), keeps storage topped up at the cheapest raw prices and sells
+  everything at the Bazaar fence with real demand saturation, through `Game.tick`. Prints units, revenue, inputs, wages, upkeep,
+  machine fees, net per game day, heat added and payback days. Fence-only selling is the pessimistic case (contacts pay more).
+- **Findings (shaft_shack, tier 0, per day):** hand stations: weed net 313 / 542 / 1095 (cheap / mid / top crew), cocaine 377–1305,
+  meth 143–1658, fentanyl -1006 / -658 / 1685 (a cheap crew loses money on fentanyl at the fence: low grade, 110 cr precursor).
+  Cheap and mid crews are capped by the stocker (6–8 units per haul trip, a batch needs 10 inputs), not by the cook.
+  Machines (before): every row worse than hand stations (fees 4–6 cr/unit, fixed score, no upside) = a trap for staffed estates.
+- **Change:** machines get `speed` 0.2 (each machine-only step cuts a lab hand's cook time by 20 %, `Machines.worker_time_mult`),
+  run_cost 2/3/1 -> 1/2/1. After: top crew with machines beats hand stations on cocaine (1560 vs 1305), meth (1966 vs 1658),
+  fentanyl (1863 vs 1685); weed and cheap crews still do better by hand (grade loss). Upkeep (24/day here) is 2–8 % of net.
+- Verified: unit tests (new checks in `test_machines_workers`), UI smoke, tip audit, sim 5/5.
+- Gaps: probe is one estate, one additive, fence only; no multi-market distribution (dealers, drones); numbers still need a playtest.

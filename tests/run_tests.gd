@@ -3636,6 +3636,11 @@ func test_machines_workers() -> void:
 	check(cr - g.credits >= cost and g.stats.machine_runs == 2, "the machines were paid and counted")
 	check(is_equal_approx(Machines.worker_score(g.data, blds, "trim_table", 0.9), float(data.machines.auto_trimmer.score)), "machine-only step scores the machine's value")
 	check(Machines.worker_score(g.data, blds, "extractor", 0.9) < 0.0, "hand-operated steps use the worker's skill")
+	var line := ["trim_table", "extractor", "cook_stove", "pack_table"]
+	var f := Machines.worker_time_mult(g.data, blds, line)
+	var want := (1.0 - float(data.machines.auto_trimmer.speed)) * (1.0 - float(data.machines.packing_machine.speed))
+	check(is_equal_approx(f, want) and f < 1.0, "machine-only steps speed up a worker batch (%.2f)" % f)
+	check(is_equal_approx(Machines.worker_time_mult(g.data, [], line), 1.0), "no machines, no speed-up")
 	# too poor to run the machines: the lab hand waits with the ingredients
 	var p := machine_shack(0)
 	p.tick(1.0)

@@ -11,7 +11,7 @@ const Machines = preload("res://scripts/core/machines.gd")
 ## One-line summary of what a machine does, for cards and the take-down overlay.
 static func summary(g, id: String) -> String:
 	var m: Dictionary = Machines.defs(g.data)[id]
-	return "Runs the %s step for you: %d%% score, %d cr per unit." % [g.data.stations[m.station].name, int(round(float(m.score) * 100.0)), int(m.run_cost)]
+	return "Runs the %s step for you: %d%% score, %d cr per unit; lab hands cook %d%% faster with it." % [g.data.stations[m.station].name, int(round(float(m.score) * 100.0)), int(m.run_cost), int(round(float(m.get("speed", 0.0)) * 100.0))]
 
 
 ## Build-menu section; `place` is called with the machine id when a card is pressed.
@@ -27,7 +27,7 @@ static func section(g, place: Callable) -> Control:
 	for k in Machines.defs(g.data):
 		grid.add_child(_card(g, k, place))
 	v.add_child(grid)
-	v.add_child(UI.label("Machines run one production step on their own, no minigame and no worker: use them at the estate like a table. They score below a good hand (never Premium), cost credits per unit each run and stand in for the table in recipe checks. Lab hands use them too.", 14, UI.MUTED))
+	v.add_child(UI.label("Machines run one production step on their own, no minigame and no worker: use them at the estate like a table. They score below a good hand (never Premium), cost credits per unit each run and stand in for the table in recipe checks. Lab hands use them too and cook faster where a machine replaces the table.", 14, UI.MUTED))
 	return v
 
 

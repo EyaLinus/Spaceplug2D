@@ -671,8 +671,8 @@
     "offers": [{"tier": 1, "seconds": 45, "cost": 4}, {"tier": 2, "seconds": 90, "cost": 10}]
   },
   "machines": {
-    "auto_trimmer": {"station": "trim_table", "score": 0.55, "run_cost": 2},
-    "drip_mixer": {"station": "mixing_station", "score": 0.6, "run_cost": 3},
-    "packing_machine": {"station": "pack_table", "score": 0.5, "run_cost": 1}
+    "auto_trimmer": {"station": "trim_table", "score": 0.55, "run_cost": 1, "speed": 0.2},
+    "drip_mixer": {"station": "mixing_station", "score": 0.6, "run_cost": 2, "speed": 0.2},
+    "packing_machine": {"station": "pack_table", "score": 0.5, "run_cost": 1, "speed": 0.2}
   }
 }
