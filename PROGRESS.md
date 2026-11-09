@@ -1192,3 +1192,5 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
 - Verified: `test_quest_green_thumb`, quest data test, chapter 1 test (ignores side quests), UI + menu smoke, soak.
 - Botanist walk: `WorkerWalk.TEND` (estate has trays) moves the botanist from tray to tray every 6 s of day time (`tray_cell`
   mirrors the row `surface._draw_grow_trays` draws). Unit test `test_botanist_walk`; not checked on screen (no screenshot taken).
+- Evening warning (2026-11-09): `EstateUpkeep.evening_check` (from `Game.tick`) emits `costs_short` + a notice once per day after
+  `upkeep.warn_at` (0.8) of the day when credits < `Game.daily_costs().total`. Runtime flag `Game.costs_warned_day`, not saved.

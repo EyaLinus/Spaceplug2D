@@ -5170,6 +5170,27 @@ func test_estate_upkeep() -> void:
 	check(g.drones.filter(func(x): return x.estate == "cannery_annex").is_empty(), "drones at the estate gone")
 	check(g.workers.filter(func(w): return w.estate == "cannery_annex").is_empty(), "workers off duty")
 	check(g.estates.has("cannery_rig"), "starter estate untouched")
+	# evening warning when dawn costs can't be covered (once per day)
+	var w := new_game()
+	w.credits = 5000
+	w.location = "mireth"
+	w.buy_estate("cannery_annex")
+	w.credits = 0
+	var shorts := []
+	w.event.connect(func(k, p): if k == "costs_short": shorts.append(p))
+	w.tick(w.day_seconds() * 0.5)
+	check(shorts.is_empty(), "no warning before the evening")
+	w.tick(w.day_seconds() * 0.35)
+	w.tick(1.0)
+	check(shorts.size() == 1 and int(shorts[0].due) >= EstateUpkeep.daily(w, "cannery_annex"), "one warning in the evening when broke")
+	var w2 := new_game()
+	w2.credits = 5000
+	w2.location = "mireth"
+	w2.buy_estate("cannery_annex")
+	var s2 := []
+	w2.event.connect(func(k, p): if k == "costs_short": s2.append(p))
+	w2.tick(w2.day_seconds() * 0.9)
+	check(s2.is_empty(), "no warning with money in the bank")
 	# selling
 	var s := new_game()
 	s.credits = 5000
