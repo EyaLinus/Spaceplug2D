@@ -1,0 +1,1 @@
+- **Drone losses:** a drone that goes down now tells you (which estate, how many units, the current risk per trip), and heat raises the loss risk less steeply (0.05 % per heat point instead of 0.08 %). In a 30-day soak with 4 drones, 1–2 were lost instead of 3.

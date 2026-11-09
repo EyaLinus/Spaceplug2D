@@ -2243,7 +2243,9 @@ func test_drones_loss_upkeep_save() -> void:
 	check(Drones.loss_chance(g) <= 0.9, "loss chance is capped")
 	g.estates[eid].out = {"weed:glow": 4}
 	var lost := [false]
+	var told := [false]
 	g.event.connect(func(k, _p): if k == "drone_lost": lost[0] = true)
+	g.event.connect(func(k, p): if k == "notice" and str(p.text).contains("went down"): told[0] = true)
 	g.data.drones.loss_base = 1.0
 	g.data.drones.loss_per_heat = 0.0
 	g.heat = 0.0
@@ -2256,6 +2258,7 @@ func test_drones_loss_upkeep_save() -> void:
 		g.tick(Drones.trip_seconds(g, eid) + 0.1)
 	check(lost[0] and g.drones.is_empty() and int(g.stats.get("drones_lost", 0)) == 1, "a shot-down drone is gone")
 	check(not g.stash.has("weed:glow") and not g.estates[eid].out.has("weed:glow"), "its cargo is lost with it")
+	check(told[0], "the player is told the drone went down")
 	# upkeep, grounding
 	var h := _drone_game()
 	Drones.buy(h, eid, "to_port")
