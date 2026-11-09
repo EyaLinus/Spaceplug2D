@@ -502,6 +502,7 @@
     "max_qty": 40, "max_open": 6, "cancel_refund": 0.8, "kit_price": 0.85
   },
   "estate_refund": 0.5,
+  "upkeep": {"daily_rate": 0.02, "min_daily": 20, "grace_days": 2, "seize_days": 5, "sell_share": 0.6},
   "raids": {"heat": 80, "days": 3, "chance_base": 0.3, "chance_per_heat": 0.01, "chance_max": 0.8, "tipoff_cut": 0.5, "call_off_heat": 40,
     "seize": 0.5, "fine": 150, "heat_drop": 30, "heat_drop_empty": 10, "wanted": 10},
   "combat": {

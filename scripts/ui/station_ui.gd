@@ -13,6 +13,7 @@ const Deals = preload("res://scripts/core/deals.gd")
 const Products = preload("res://scripts/core/products.gd")
 const Bench = preload("res://scripts/core/bench.gd")
 const Vault = preload("res://scripts/core/vault.gd")
+const EstateUpkeep = preload("res://scripts/core/estate_upkeep.gd")
 const ShipPreview = preload("res://scripts/ui/ship_preview.gd")
 const OfficialsApp = preload("res://scripts/ui/phone/apps/officials_app.gd")
 const SpaceCombat = preload("res://scripts/core/spacecombat.gd")
@@ -471,9 +472,33 @@ func _build_estate(g) -> Control:
 	v.add_child(UI.label("Floor space %d × %d cells. Place production stations inside, hire workers later." % [int(e.size[0]), int(e.size[1])], 15, UI.MUTED))
 	if g.estate_owned(id):
 		v.add_child(UI.label("Yours. %d station(s) set up." % g.estates[id].buildings.size(), 17, UI.ACCENT))
-		v.add_child(UI.button("Go inside", func(): estate_enter_requested.emit(id), 160))
+		var up: String = EstateUpkeep.status_text(g, id)
+		if up != "":
+			var st: String = EstateUpkeep.status(g, id)
+			v.add_child(UI.label(up, 15, UI.WARN if st != "ok" else UI.MUTED))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		v.add_child(row)
+		if not g.estate_locked(id):
+			row.add_child(UI.button("Go inside", func(): estate_enter_requested.emit(id), 160))
+		var a: int = EstateUpkeep.arrears(g, id)
+		if a > 0:
+			var pay := UI.accent_button("Pay arrears · %d cr" % a, func(): GameState.act(g.pay_estate_arrears(id)))
+			pay.name = "PayArrears"
+			pay.disabled = g.credits < a
+			pay.tooltip_text = "Clears the overdue upkeep and unlocks the estate."
+			row.add_child(pay)
+		if EstateUpkeep.applies(g, id):
+			var q: Dictionary = EstateUpkeep.sale_quote(g, id)
+			var sell := UI.button("Sell · %d cr" % int(q.net), func(): GameState.act(g.sell_estate(id)))
+			sell.name = "SellEstate"
+			sell.tooltip_text = "Hand back the keys: %d cr for the property, %d for the stations, %d for drones, minus %d arrears. Stock, racks and trays inside are lost; workers go off duty." % [int(q.share), int(q.buildings), int(q.drones), int(q.arrears)]
+			row.add_child(sell)
 	else:
 		v.add_child(UI.label("For sale: %d cr" % int(e.price), 19, UI.GOLD))
+		if not g.data.get("upkeep", {}).is_empty():
+			var c: Dictionary = g.data.upkeep
+			v.add_child(UI.label("Upkeep %d cr a day once bought. Unpaid for %d days: locked; %d days: seized." % [maxi(int(c.min_daily), int(round(float(e.price) * float(c.daily_rate)))), int(c.grace_days), int(c.seize_days)], 15, UI.MUTED))
 		var b := UI.button("Buy for %d cr" % int(e.price), func():
 			if GameState.act(g.buy_estate(id)).ok:
 				estate_enter_requested.emit(id), 200)

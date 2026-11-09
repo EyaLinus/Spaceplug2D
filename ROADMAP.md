@@ -49,7 +49,7 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [x] Hiding spots: stand still in a dumpster/crate/alcove spot and officers lose you (no frisk, chasers give up); close officers find you
 
 ## P4 – Estates & production buildings
-- [x] Core: properties per planet (price, size in grid cells), buy, ownership in the save (upkeep/selling later)
+- [x] Core: properties per planet (price, size in grid cells), buy, ownership in the save; daily upkeep with lock/seizure and selling (2026-11-09)
 - [x] Estate instance: enter your property, grid placement mode (place/remove, no rotation yet) with a build menu [B]
 - [x] Cook in your estate with the stations you placed (station minigames from the lab run on your own stations)
 - [ ] Production buildings as core entities: grow tray (first slice done, `grow.gd`; raws with growth time/quality), mixing station (the current lab,

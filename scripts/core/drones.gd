@@ -141,7 +141,7 @@ static func tick(g, dt: float) -> void:
 	if g.drones.is_empty():
 		return
 	for d in g.drones.duplicate():
-		if d.grounded or not g.estates.has(d.estate):
+		if d.grounded or not g.estates.has(d.estate) or g.estate_locked(d.estate):
 			continue
 		var trip := trip_seconds(g, d.estate)
 		d.t = minf(float(d.t) + dt, trip)
