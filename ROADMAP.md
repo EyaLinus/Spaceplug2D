@@ -57,7 +57,7 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
       for estate buildings (`scripts/ui/minigames/`)
 
 ## P5 – Workers & automation
-- [x] Hire workers in the HR app with daily wages (lab hand, stocker; `workers.gd`) – botanist role still open
+- [x] Hire workers in the HR app with daily wages (lab hand, stocker, botanist; `workers.gd`, `grow.gd` tend)
 - [x] Assign workers to estates; the stocker moves items storage → bench → storage, the lab hand cooks the auto recipe
 - [x] Dealers: street dealers sell product in a district on their own (with bust risk, `dealers.gd`)
 - [x] Machines (C2) automate one station step; with a crew they trade grade for speed (2026-11-09)

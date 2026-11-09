@@ -279,7 +279,7 @@ func estate(g, _phone, eid: String) -> Control:
 	if not g.estates.has(eid):
 		return v
 	var e: Dictionary = g.estates[eid]
-	for role in ["lab_hand", "stocker"]:
+	for role in ["lab_hand", "stocker", "botanist"]:
 		var w := Workers.at(g, eid, role)
 		var txt: String = Workers.candidate(g, w.id).name if not w.is_empty() else "nobody"
 		v.add_child(_pair(str(Workers.cfg(g).roles[role].name), txt))

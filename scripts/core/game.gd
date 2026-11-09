@@ -448,6 +448,7 @@ func _new_day() -> void:
 	Raids.new_day(self)
 	Workers.new_day(self)
 	EstateUpkeep.new_day(self)
+	Grow.tend(self)
 	Drones.new_day(self)
 	Cartels.new_day(self)
 	_note_prices()

@@ -1174,3 +1174,14 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
   (`Game.from_dict` only restored the stats keys it knew); dealers lost their sale `clock` on load (street sale timer reset);
   upkeep wrote `unpaid: 0` that did not round-trip (now erased).
 - 90 days x 5 seeds: 0 failures, no script errors.
+## P5: Botanist role (2026-11-09)
+- `workers.roles.botanist` + candidates `fern` (0.45, 20 cr) and `oko` (0.85, 50 cr). `Grow.tend(g)` runs in `Game._new_day` after upkeep:
+  per estate with a botanist (not locked for rent) it harvests ripe trays into `estates[id].storage`, replants the harvested crop from
+  that shelf (`seed_qty`), and waters growing trays; miss chance `(1 - skill) * grow.botanist_miss` (0.4) from a hash of
+  estate/tray/day, so the game RNG stream is unchanged. HR estate view lists the botanist; worker walk gives him his own idle spot.
+- Closes the grow -> cook loop without the player: botanist feeds storage, stocker/lab hand cook from it.
+- Verified: `test_grow_botanist` (no botanist no water, one per estate, waters, harvests to storage, replants, locked estate skipped),
+  unit tests, UI smoke, tip audit, soak, sim 5/5.
+- Gaps: harvested raws in estate storage are ungraded (grow_q only tracks the hub stash); an empty tray that never grew anything is not
+  planted by the botanist (plant the first crop yourself); the botanist has no walk activity yet (stands idle in the room); tray
+  economics are thin for cannabis (6 per 3 days per tray), better for pseudo.

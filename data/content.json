@@ -365,7 +365,8 @@
     "haul_seconds": 8, "haul_units_base": 4, "haul_units_skill": 8,
     "roles": {
       "lab_hand": {"name": "Lab hand", "desc": "Cooks the estate's auto recipe at your stations. Skill sets grade, yield and speed."},
-      "stocker": {"name": "Stocker", "desc": "Hauls raws from storage to the bench and finished product back to storage."}
+      "stocker": {"name": "Stocker", "desc": "Hauls raws from storage to the bench and finished product back to storage."},
+      "botanist": {"name": "Botanist", "desc": "Tends the grow trays at dawn: harvests into storage, replants the same crop, waters."}
     },
     "candidates": [
       {"id": "dax", "name": "Dax Orrin", "role": "lab_hand", "skill": 0.35, "wage": 25, "loyalty": 0.6, "bio": "Dropped out of chem school. Eager, sloppy."},
@@ -373,7 +374,9 @@
       {"id": "hollis", "name": "Hollis Crane", "role": "lab_hand", "skill": 0.85, "wage": 110, "loyalty": 0.35, "bio": "Fired from a Consortium lab. Brilliant, expensive."},
       {"id": "moss", "name": "Moss", "role": "stocker", "skill": 0.3, "wage": 15, "loyalty": 0.7, "bio": "Dockhand. Carries what he's told."},
       {"id": "jun", "name": "Jun Tavish", "role": "stocker", "skill": 0.55, "wage": 30, "loyalty": 0.55, "bio": "Warehouse runner, knows every shortcut."},
-      {"id": "reva", "name": "Reva Skell", "role": "stocker", "skill": 0.8, "wage": 60, "loyalty": 0.45, "bio": "Fast, quiet, never drops a crate."}
+      {"id": "reva", "name": "Reva Skell", "role": "stocker", "skill": 0.8, "wage": 60, "loyalty": 0.45, "bio": "Fast, quiet, never drops a crate."},
+      {"id": "fern", "name": "Fern Adair", "role": "botanist", "skill": 0.45, "wage": 20, "loyalty": 0.6, "bio": "Grew tomatoes on a hab ring. Forgets a tray now and then."},
+      {"id": "oko", "name": "Oko Ren", "role": "botanist", "skill": 0.85, "wage": 50, "loyalty": 0.5, "bio": "Ex-agri-corp hydro tech. Talks to the plants, and they listen."}
     ]
   },
   "ship": {
@@ -476,6 +479,7 @@
     "max_trays": 4,
     "seed_qty": 2,
     "min_yield_factor": 0.5,
+    "botanist_miss": 0.4,
     "crops": {
       "cannabis": {"days": 3, "yield": 6},
       "coca_leaf": {"days": 4, "yield": 6},

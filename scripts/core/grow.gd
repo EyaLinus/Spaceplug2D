@@ -7,6 +7,8 @@ extends RefCounted
 ## "watered": [days]}]}. No autoload references (unit tests run without autoloads).
 
 
+const Workers = preload("res://scripts/core/workers.gd")
+
 ## Stash raws that were not grown (no entry in Game.grow_q) count as this quality.
 const UNGRADED_Q := 0.5
 
@@ -153,6 +155,51 @@ static func harvest(g, estate: String, i: int) -> Dictionary:
 	t.watered = []
 	g._emit("grow_harvested", {"estate": estate, "raw": raw, "qty": n, "grade": grade(q)})
 	return _res(true, "Harvested %d %s (%s)." % [n, g.data.raws[raw].name, grade(q)])
+
+
+## Botanist (worker role "botanist", P5): every dawn, in the estate he is assigned to (unless it is locked for rent),
+## harvests ripe trays into the estate storage shelf (where the lab hand / stocker pick raws up), replants empty trays
+## with the same crop from that shelf, and waters every growing tray. Skill sets how often he forgets a tray
+## (miss chance = (1 - skill) x grow.botanist_miss; deterministic per estate/tray/day, the game RNG is untouched).
+## Raws harvested into storage are ungraded (grow_q only tracks the hub stash pile). Returns trays watered.
+static func tend(g) -> int:
+	var watered := 0
+	for estate in g.grow:
+		if not g.estates.has(estate) or g.estate_locked(estate):
+			continue
+		var b := Workers.at(g, estate, "botanist")
+		if b.is_empty():
+			continue
+		var e: Dictionary = g.estates[estate]
+		Workers.ensure(e)
+		var skill := float(Workers.candidate(g, b.id).get("skill", 0.5))
+		var miss := (1.0 - skill) * float(cfg(g).get("botanist_miss", 0.4))
+		var list := trays(g, estate)
+		for i in list.size():
+			var t: Dictionary = list[i]
+			var last := ""
+			if is_ripe(g, t):
+				last = t.raw
+				var n := expected_yield(g, t)
+				g._add(e.storage, last, n)
+				t.raw = ""
+				t.start_day = 0
+				t.watered = []
+				g._emit("grow_harvested", {"estate": estate, "raw": last, "qty": n, "grade": "", "worker": b.id})
+			if t.raw == "" and last != "":
+				var need := int(cfg(g).get("seed_qty", 1))
+				if int(e.storage.get(last, 0)) >= need:
+					g._add(e.storage, last, -need)
+					t.raw = last
+					t.start_day = g.day
+					t.watered = []
+			if t.raw != "" and not is_ripe(g, t) and not (t.watered as Array).has(g.day):
+				var roll := float(hash("%s|%d|%d" % [estate, i, g.day]) % 1000) / 1000.0
+				if roll >= miss:
+					t.watered.append(g.day)
+					watered += 1
+		g._emit("grow_changed", {"estate": estate})
+	return watered
 
 
 static func to_save(g) -> Dictionary:
