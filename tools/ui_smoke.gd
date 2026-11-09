@@ -976,6 +976,21 @@ func _run() -> void:
 	_assert(sf.loc_id == "mireth" and sf.player.position.distance_to(sf.interactable("annex").stand) < 1.0, "back on Mireth at the annex door")
 	step("estate buy, build, leave")
 
+	# P4 upkeep: a locked estate keeps you out, the door panel offers to pay the arrears, then lets you back in
+	g.estates.cannery_annex.unpaid = int(g.data.upkeep.grace_days)
+	_assert(g.estate_locked("cannery_annex"), "annex locked by arrears")
+	_assert(sf.interact(), "use the locked annex door")
+	await frames(2)
+	_assert(m.surface == sf and g.inside_estate == "" and m.station.visible, "locked door opens the panel, not the room")
+	var pay: Button = m.station.find_child("PayArrears", true, false)
+	_assert(pay != null and not pay.disabled, "pay arrears button")
+	_assert(m.station.find_child("SellEstate", true, false) != null, "sell button")
+	pay.pressed.emit()
+	await frames(2)
+	_assert(not g.estate_locked("cannery_annex") and int(g.estates.cannery_annex.get("unpaid", 0)) == 0, "arrears paid, unlocked")
+	m.station.close()
+	step("estate upkeep lock and pay")
+
 	# ship cargo bay: ramp next to the pad, build a station, cook flag, leave back onto the pad
 	sf.place_player_at("ship_bay")
 	await physics_frame

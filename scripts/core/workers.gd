@@ -188,6 +188,8 @@ static func tick(g, dt: float) -> void:
 	if g.workers.is_empty():
 		return
 	for id in g.estates:
+		if g.estate_locked(id):
+			continue  # upkeep arrears: the landlord changed the locks (estate_upkeep.gd)
 		var e: Dictionary = g.estates[id]
 		ensure(e)
 		var hand := at(g, id, "lab_hand")
@@ -245,6 +247,7 @@ static func _tick_cook(g, id: String, e: Dictionary, hand: Dictionary, stocked: 
 	var t: float = g.batch_seconds(qty, id) * (float(cfg(g).time_base) - float(cfg(g).time_skill) * skill)
 	if not stocked:
 		t *= float(cfg(g).unstocked_time_mult)
+	t *= Machines.worker_time_mult(g.data, e.buildings, line)
 	e.job = {"product": product, "qty": Production.output_qty(qty, res.yield_mult), "remaining": t, "total": t}
 	g.add_heat(float(g.data.heat.per_lab_unit) * qty * g.heat_mult(r.base) * res.heat_mult)
 

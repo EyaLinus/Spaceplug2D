@@ -252,3 +252,5 @@ static func from_save(g, list: Array) -> void:
 		var loc := str(x.get("loc", ""))
 		g.dealers.append({"id": str(x.id), "loc": loc if g.data.locations.has(loc) else "", "stock": stock,
 			"cash": int(x.get("cash", 0)), "sold": int(x.get("sold", 0)), "jail": float(x.get("jail", 0.0))})
+		if x.has("clock"):  # time towards the next street sale; dropping it reset the timer on every load
+			g.dealers[-1].clock = float(x.clock)

@@ -57,6 +57,7 @@ var officers: Array = []
 var suspicion := 0.0  ## 0..1 while an officer watches you carry product; 1 = busted
 var _blockers: Array = []  ## building rects, block movement and sight
 var nav: AStarGrid2D  ## tile grid with buildings solid; chasing officers path around houses
+var _flee_hint_t := 0.0  ## cooldown of the "sprinting raises heat" toast
 var _repath := 0.0
 var _overlay: Node2D  ## redrawn every frame (focus ring); the ground below is drawn once
 var _rng := RandomNumberGenerator.new()
@@ -584,7 +585,10 @@ func _update_police(delta: float) -> void:
 			o.speed = float(pc.chase_speed)
 			if not hostile:
 				EventBus.toast.emit("An officer spotted you. Lose them!", false)
-	Pursuit.tick(g, delta, player.sprinting, flee_seen, flee_chased)  # running in their sight is suspicious
+	if Pursuit.tick(g, delta, player.sprinting, flee_seen, flee_chased) > 0.0 and _flee_hint_t <= 0.0:  # running in their sight is suspicious
+		_flee_hint_t = 20.0
+		EventBus.toast.emit("Sprinting in front of the law raises heat. Walk, or break line of sight.", false)
+	_flee_hint_t = maxf(0.0, _flee_hint_t - delta)
 	if _repath <= 0.0:
 		_repath = 0.35
 	var old := suspicion

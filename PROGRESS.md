@@ -1162,3 +1162,55 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
   per-district looks come from variant mix only, not from district-specific materials; water, pit, slag, void and chasm areas are
   still drawn procedurally; no animated tiles (water, neon); building doors beyond door/hatch are not varied; NPC outfits per
   planet and interiors are untouched. Feature tiles on Cinder and Mireth are subtle at 14%; tune `FEATURE_CHANCE` after a playtest.
+## P4: Estate upkeep and selling (2026-11-09, rebuild of PR #96 on v0.1.13)
+- **Core** `scripts/core/estate_upkeep.gd`, numbers in `content.json` -> `upkeep` (2 % of price a day, min 20 cr, locked after 2 unpaid days,
+  seized after 5, sale pays 60 % of the price). Bought estates only: the ship bay and starter estates are exempt. Paid at `Game._new_day`
+  after wages; `unpaid` is saved in the estate entry (old saves = 0); `stats.upkeep_paid`.
+- Locked: `Game.estate_locked` blocks `lab_here`, `main.enter_estate`, `Workers.tick` and `Drones.tick`. `release()` (seizure and sale) clears
+  estate stock, bench tray, drying racks, sealing benches, grow trays and drones of the estate and sends its workers off duty.
+- UI: door panel shows the upkeep line, Pay arrears and Sell (tooltip with the quote); the buy panel names the upkeep; locked doors open the panel.
+- Verified: `test_estate_upkeep` (exemptions, auto pay, overdue/locked/seized, drones idle, pay unlocks, save, cleanup, sale quote and
+  location rule), `test_workers` adjusted for rent, UI smoke step (locked door -> panel -> pay -> unlocked), tip audit 0, menu smoke, sim 5/5.
+- Gaps: numbers are guesses; no HUD line for total daily rent; a raid warning for an estate that is then sold just lapses.
+## Mid-game economy probe + machine rebalance (2026-11-09)
+- **Tool** `tools/econ_probe.gd` (`-- --days 5 [--estate shaft_shack] [--tier 0] [--machines]`): buys an estate, builds the full line
+  (or machines), hires a lab hand + stocker (cheap/mid/top pairs), keeps storage topped up at the cheapest raw prices and sells
+  everything at the Bazaar fence with real demand saturation, through `Game.tick`. Prints units, revenue, inputs, wages, upkeep,
+  machine fees, net per game day, heat added and payback days. Fence-only selling is the pessimistic case (contacts pay more).
+- **Findings (shaft_shack, tier 0, per day):** hand stations: weed net 313 / 542 / 1095 (cheap / mid / top crew), cocaine 377–1305,
+  meth 143–1658, fentanyl -1006 / -658 / 1685 (a cheap crew loses money on fentanyl at the fence: low grade, 110 cr precursor).
+  Cheap and mid crews are capped by the stocker (6–8 units per haul trip, a batch needs 10 inputs), not by the cook.
+  Machines (before): every row worse than hand stations (fees 4–6 cr/unit, fixed score, no upside) = a trap for staffed estates.
+- **Change:** machines get `speed` 0.2 (each machine-only step cuts a lab hand's cook time by 20 %, `Machines.worker_time_mult`),
+  run_cost 2/3/1 -> 1/2/1. After: top crew with machines beats hand stations on cocaine (1560 vs 1305), meth (1966 vs 1658),
+  fentanyl (1863 vs 1685); weed and cheap crews still do better by hand (grade loss). Upkeep (24/day here) is 2–8 % of net.
+- Verified: unit tests (new checks in `test_machines_workers`), UI smoke, tip audit, sim 5/5.
+- Gaps: probe is one estate, one additive, fence only; no multi-market distribution (dealers, drones); numbers still need a playtest.
+## Mid-game soak test + save fixes (2026-11-09)
+- **Tool** `tools/soak.gd` (`-- --days 30 --seeds 3`, ~0.5 s per 30 days): after the debt, owns every estate with a line, crew,
+  recipe and drone, hires the dealers, then flies between random ports for N days with every core system ticking. Checks heat
+  range, non-negative stock, no worker/drone pointing at a missing estate, and an exact save round trip. Now a CI step (30 days x 2).
+- **Bugs it found (fixed):** drone stats (`drone_trips`, `drone_units`, `drone_upkeep`, `drones_lost`) were dropped on every load
+  (`Game.from_dict` only restored the stats keys it knew); dealers lost their sale `clock` on load (street sale timer reset);
+  upkeep wrote `unpaid: 0` that did not round-trip (now erased).
+- 90 days x 5 seeds: 0 failures, no script errors.
+## P5: Botanist role (2026-11-09)
+- `workers.roles.botanist` + candidates `fern` (0.45, 20 cr) and `oko` (0.85, 50 cr). `Grow.tend(g)` runs in `Game._new_day` after upkeep:
+  per estate with a botanist (not locked for rent) it harvests ripe trays into `estates[id].storage`, replants the harvested crop from
+  that shelf (`seed_qty`), and waters growing trays; miss chance `(1 - skill) * grow.botanist_miss` (0.4) from a hash of
+  estate/tray/day, so the game RNG stream is unchanged. HR estate view lists the botanist; worker walk gives him his own idle spot.
+- Closes the grow -> cook loop without the player: botanist feeds storage, stocker/lab hand cook from it.
+- Verified: `test_grow_botanist` (no botanist no water, one per estate, waters, harvests to storage, replants, locked estate skipped),
+  unit tests, UI smoke, tip audit, soak, sim 5/5.
+- Gaps: harvested raws in estate storage are ungraded (grow_q only tracks the hub stash); fresh trays get the auto recipe's raw or the most stocked
+  growable raw (seeds compete with the lab hand for the same shelf); tray
+  economics are thin for cannabis (6 per 3 days per tray), better for pseudo.
+## Side quest Green Thumb + soak covers botanists (2026-11-09)
+- `data/quests.json` `side_green` (follows `main_annex`): build a grow tray (check `trays`), assign a botanist (check `role`), harvest.
+  New quest check types in `quests.gd`: `trays` (trays over all estates), `role` (assigned crew of a role). First SIDE quest.
+- `tools/soak.gd` now hires botanists with two trays each and checks that grow state only belongs to owned estates.
+- Verified: `test_quest_green_thumb`, quest data test, chapter 1 test (ignores side quests), UI + menu smoke, soak.
+- Botanist walk: `WorkerWalk.TEND` (estate has trays) moves the botanist from tray to tray every 6 s of day time (`tray_cell`
+  mirrors the row `surface._draw_grow_trays` draws). Unit test `test_botanist_walk`; not checked on screen (no screenshot taken).
+- Evening warning (2026-11-09): `EstateUpkeep.evening_check` (from `Game.tick`) emits `costs_short` + a notice once per day after
+  `upkeep.warn_at` (0.8) of the day when credits < `Game.daily_costs().total`. Runtime flag `Game.costs_warned_day`, not saved.

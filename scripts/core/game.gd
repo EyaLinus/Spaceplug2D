@@ -40,6 +40,7 @@ const Raids = preload("res://scripts/core/raids.gd")
 const HeatZones = preload("res://scripts/core/heat_zones.gd")
 const Curfew = preload("res://scripts/core/curfew.gd")
 const Machines = preload("res://scripts/core/machines.gd")
+const EstateUpkeep = preload("res://scripts/core/estate_upkeep.gd")
 const SAVE_VERSION := 2  ## 2: automation machines (C2): stats.machine_runs, building "runs"; version 1 saves load
 
 var data: Dictionary
@@ -73,7 +74,7 @@ var ship_class: String = "courier"  ## hull class you fly (content.json "ship_cl
 var hulls: Array = ["courier"]  ## hull classes you own; switch between them at a shipyard, saved
 var combat: Dictionary = {}  ## space combat state: hull, shield, missiles, kills (saved), boost, idle (runtime); see spacecombat.gd
 var state: String = "playing"  ## playing | won | lost
-var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0, "machine_runs": 0}
+var stats: Dictionary = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0, "machine_runs": 0, "upkeep_paid": 0}
 const SHIP_BAY := "ship_bay"  ## id of the ship's own estate (content.json "estates", flagged "ship"): always owned
 
 var estates: Dictionary = {}  ## owned estate id -> {"buildings": [{"id": station id, "x": int, "y": int}]}
@@ -102,6 +103,7 @@ var prices: Dictionary = {}  ## your asking price per Standard unit, recipe key 
 var drones: Array = []  ## courier drones [{id, estate, route, t, grounded}] (see drones.gd), saved
 var drone_seq: int = 0
 var dealers: Array = []  ## hired street dealers [{id, loc, stock, cash, sold, jail}] (see dealers.gd), saved
+var costs_warned_day: int = 0  ## runtime only: day the "can't cover dawn costs" notice went out (estate_upkeep.gd)
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 var quests: Dictionary = {"active": [], "done": [], "step": {}, "count": {}, "tracked": ""}  ## quest log (see quests.gd), saved
 var interdiction: Dictionary = {}  ## pending interdiction after a jump (runtime only, see interdiction.gd)
@@ -149,7 +151,7 @@ func new_game(content: Dictionary, seed_value: int = 1) -> void:
 	hulls = ["courier"]
 	SpaceCombat.reset(self)
 	state = "playing"
-	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0, "machine_runs": 0}
+	stats = {"earned": 0, "units_sold": 0, "busts": 0, "batches": 0, "kills": 0, "knockouts": 0, "worker_batches": 0, "wages": 0, "machine_runs": 0, "upkeep_paid": 0}
 	estates = {SHIP_BAY: {"buildings": []}}
 	orders = []
 	order_seq = 0
@@ -402,6 +404,7 @@ func tick(dt: float) -> void:
 	SpaceCombat.tick(self, dt)
 	Combat.tick(self, dt)
 	Deaddrops.tick(self)
+	EstateUpkeep.evening_check(self)
 	while day_time >= day_seconds():
 		day_time -= day_seconds()
 		_new_day()
@@ -446,6 +449,8 @@ func _new_day() -> void:
 	Corruption.new_day(self)
 	Raids.new_day(self)
 	Workers.new_day(self)
+	EstateUpkeep.new_day(self)
+	Grow.tend(self)
 	Drones.new_day(self)
 	Cartels.new_day(self)
 	_note_prices()
@@ -562,7 +567,7 @@ func buy_price(item: String, loc: String = location) -> int:
 
 ## True where you can cook: the hub lab, or inside an estate you own.
 func lab_here() -> bool:
-	return loc_data().get("lab", false) or estates.has(inside_estate)
+	return loc_data().get("lab", false) or (estates.has(inside_estate) and not estate_locked(inside_estate))
 
 
 ## Station ids a batch needs that the estate you stand in does not have yet ([] at the hub lab).
@@ -906,6 +911,30 @@ func buy_estate(id: String) -> Dictionary:
 	return _ok("You own %s now. Go inside and set up production." % e.name)
 
 
+## What dawn will cost: crew wages, estate upkeep, drone upkeep and officials' retainers (all charged in _new_day).
+func daily_costs() -> Dictionary:
+	var ret := 0
+	for o in data.get("officials", []):
+		if People.official_state(self, o.id).get("hired", false):
+			ret += int(o.retainer)
+	var r := {"wages": Workers.wage_total(self), "rent": EstateUpkeep.daily_total(self), "drones": Drones.upkeep_total(self), "officials": ret}
+	r.total = int(r.wages) + int(r.rent) + int(r.drones) + ret
+	return r
+
+
+## Upkeep (P4): locked estates (arrears past the grace days) can't be entered or worked in. See estate_upkeep.gd.
+func estate_locked(id: String) -> bool:
+	return EstateUpkeep.locked(self, id)
+
+
+func pay_estate_arrears(id: String) -> Dictionary:
+	return EstateUpkeep.pay_arrears(self, id)
+
+
+func sell_estate(id: String) -> Dictionary:
+	return EstateUpkeep.sell(self, id)
+
+
 ## The ship's estate can only be entered or changed while the ship is docked.
 func estate_reachable(id: String) -> bool:
 	if not estates.has(id):
@@ -1053,6 +1082,9 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 	state = str(d.get("state", "playing"))
 	for k in stats:
 		stats[k] = int(d.get("stats", {}).get(k, 0))
+	for k in d.get("stats", {}):  # counters other modules add on the fly (drones, ...) survive a load too
+		if not stats.has(k):
+			stats[k] = int(d.stats[k])
 	for e in d.get("estates", {}):
 		if data.estates.has(e):
 			var list: Array = []
@@ -1069,6 +1101,8 @@ func from_dict(content: Dictionary, d: Dictionary) -> void:
 			var tier := clampi(int(d.estates[e].get("tier", 0)), 0, data.estate_tiers.capacity.size() - 1)
 			if tier > 0:  # tier 0 stays implicit so older saves round-trip unchanged
 				estates[e].tier = tier
+			if int(d.estates[e].get("unpaid", 0)) > 0:  # upkeep arrears (P4); 0 stays implicit
+				estates[e].unpaid = int(d.estates[e].unpaid)
 			Workers.load_estate(d.estates[e], estates[e])
 	if not estates.has(SHIP_BAY):
 		estates[SHIP_BAY] = {"buildings": []}

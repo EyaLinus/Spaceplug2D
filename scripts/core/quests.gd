@@ -162,7 +162,7 @@ static func _min_ok(m: Dictionary, p: Dictionary) -> bool:
 	return true
 
 
-## State checks: {"type": cargo|credits|debt_max|estates|recipes|dealers|system|location|inside, ...}.
+## State checks: {"type": cargo|credits|debt_max|estates|recipes|dealers|system|location|inside|trays|role, ...}.
 static func check(g, c: Dictionary) -> bool:
 	match str(c.get("type", "")):
 		"cargo":
@@ -183,6 +183,17 @@ static func check(g, c: Dictionary) -> bool:
 			return g.location == str(c.id)
 		"inside":
 			return g.inside_estate == str(c.id)
+		"trays":  # grow trays over all estates
+			var n := 0
+			for e in g.grow:
+				n += (g.grow[e].get("trays", []) as Array).size()
+			return n >= int(c.get("min", 1))
+		"role":  # crew of a role assigned to an estate
+			var r := 0
+			for w in g.workers:
+				if str(w.get("estate", "")) != "" and str(g.data.workers.candidates.filter(func(x): return x.id == w.id).front().get("role", "")) == str(c.role):
+					r += 1
+			return r >= int(c.get("min", 1))
 	return false
 
 

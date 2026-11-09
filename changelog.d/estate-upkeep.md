@@ -1,0 +1,2 @@
+- **Estate upkeep:** bought estates cost 2 % of their price a day (min 20 cr), paid automatically at dawn. Two unpaid days lock the estate (no entry, no cooking, workers and drones stop); five unpaid days and the landlord seizes it with everything inside. The Old Cannery and your Cargo Bay stay free.
+- **Sell estates:** hand back the keys at the door for 60 % of the price plus half the station costs and the drones' scrap value, minus arrears.

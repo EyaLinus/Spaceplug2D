@@ -32,6 +32,7 @@ const PriceWar = preload("res://scripts/core/pricewar.gd")
 const Chatter = preload("res://scripts/core/chatter.gd")
 const Interdiction = preload("res://scripts/core/interdiction.gd")
 const Escort = preload("res://scripts/core/escort.gd")
+const EstateUpkeep = preload("res://scripts/core/estate_upkeep.gd")
 const Interiors = preload("res://scripts/core/interiors.gd")
 const Raids = preload("res://scripts/core/raids.gd")
 const HeatZones = preload("res://scripts/core/heat_zones.gd")
@@ -180,6 +181,10 @@ func _init() -> void:
 		"test_style",
 		"test_price_board",
 		"test_raids",
+		"test_estate_upkeep",
+		"test_grow_botanist",
+		"test_quest_green_thumb",
+		"test_botanist_walk",
 		"test_heat_zones",
 		"test_grow",
 		"test_map_marker",
@@ -887,7 +892,8 @@ func test_workers() -> void:
 	check(wages == int(Workers.candidate(w, "hollis").wage) + int(Workers.candidate(w, "moss").wage), "wage total")
 	var c0: int = w.credits
 	w.tick(w.day_seconds())
-	check(w.credits == c0 - wages and w.stats.wages == wages, "daily wages charged (%d)" % (c0 - w.credits))
+	var rent := EstateUpkeep.daily_total(w)  # estates bought by worker_game() also pay upkeep (P4)
+	check(w.credits == c0 - wages - rent and w.stats.wages == wages, "daily wages charged (%d)" % (c0 - w.credits))
 	var loyal: float = w.workers[0].loyalty
 	w.credits = 0
 	w.tick(w.day_seconds())
@@ -3644,6 +3650,11 @@ func test_machines_workers() -> void:
 	check(cr - g.credits >= cost and g.stats.machine_runs == 2, "the machines were paid and counted")
 	check(is_equal_approx(Machines.worker_score(g.data, blds, "trim_table", 0.9), float(data.machines.auto_trimmer.score)), "machine-only step scores the machine's value")
 	check(Machines.worker_score(g.data, blds, "extractor", 0.9) < 0.0, "hand-operated steps use the worker's skill")
+	var line := ["trim_table", "extractor", "cook_stove", "pack_table"]
+	var f := Machines.worker_time_mult(g.data, blds, line)
+	var want := (1.0 - float(data.machines.auto_trimmer.speed)) * (1.0 - float(data.machines.packing_machine.speed))
+	check(is_equal_approx(f, want) and f < 1.0, "machine-only steps speed up a worker batch (%.2f)" % f)
+	check(is_equal_approx(Machines.worker_time_mult(g.data, [], line), 1.0), "no machines, no speed-up")
 	# too poor to run the machines: the lab hand waits with the ingredients
 	var p := machine_shack(0)
 	p.tick(1.0)
@@ -3684,7 +3695,7 @@ const QUEST_EVENTS := ["bought", "sold", "tray_started", "tray_mixed", "tray_ste
 	"app_opened", "price_set", "offer_accepted", "dealer_hired", "dealer_stocked", "dealer_collected", "entered_estate", "landed",
 	"docked", "jumped", "met", "estate_bought", "debt_paid", "upgraded", "pirate_down", "building_placed", "worker_hired",
 	"drop_pickup", "weapon_bought", "bribed", "scan_passed", "officer_killed", "product_discovered",
-	"turf_changed", "base_raided", "interdiction_resolved", "loot"]
+	"turf_changed", "base_raided", "interdiction_resolved", "loot", "grow_changed", "worker_assigned", "grow_harvested"]
 const QUEST_APPS := ["quests", "contacts", "fixers", "hr", "deals", "products", "orders", "map", "deaddrop"]
 
 
@@ -3887,7 +3898,7 @@ func test_quest_main_chapter1() -> void:
 	g.location = "mireth"
 	g.pay_debt(g.debt)
 	check(Quests.is_done(g, "main_clear") and g.state == "won", "debt paid: chapter 1 done")
-	check(g.quests.active == ["main_turf"], "chapter 1 done, chapter 2 starts with Turf War")
+	check(g.quests.active.filter(func(q): return not str(q).begins_with("side_")) == ["main_turf"], "chapter 1 done, chapter 2 starts with Turf War")
 
 
 # ---------------------------------------------------------------- cartels and influence (I1)
@@ -5103,3 +5114,190 @@ func test_quest_chapter3() -> void:
 	check(Quests.is_done(g, "main_veil_ledger"), "audit settled, chapter 3 done")
 	check(g.quests.active.is_empty(), "nothing follows chapter 3 yet")
 
+
+
+func test_estate_upkeep() -> void:
+	var g := new_game()
+	var c: Dictionary = data.upkeep
+	check(EstateUpkeep.daily(g, g.SHIP_BAY) == 0 and EstateUpkeep.daily(g, "cannery_rig") == 0, "ship bay and starter estate pay no upkeep")
+	check(EstateUpkeep.daily_total(g) == 0, "a fresh game owes no upkeep")
+	g.credits = 5000
+	g.location = "mireth"
+	check(g.buy_estate("cannery_annex").ok, "buy the annex")
+	var d := EstateUpkeep.daily(g, "cannery_annex")
+	check(d == maxi(int(c.min_daily), int(round(1500 * float(c.daily_rate)))), "daily upkeep from price")
+	var dc: Dictionary = g.daily_costs()
+	check(int(dc.rent) == d and int(dc.total) == int(dc.wages) + d + int(dc.drones) + int(dc.officials), "daily costs list the rent")
+	# paid automatically
+	var before := g.credits
+	g._new_day()
+	check(g.credits == before - d - Workers.wage_total(g) or g.credits <= before - d, "upkeep taken at dawn")
+	check(EstateUpkeep.status(g, "cannery_annex") == "ok" and int(g.stats.upkeep_paid) == d, "paid and counted")
+	# broke: overdue, then locked
+	g.credits = 0
+	g._new_day()
+	check(EstateUpkeep.status(g, "cannery_annex") == "overdue" and EstateUpkeep.arrears(g, "cannery_annex") == d, "one missed day is overdue")
+	check(not g.estate_locked("cannery_annex"), "still usable while overdue")
+	for i in int(c.grace_days) - 1:
+		g.credits = 0
+		g._new_day()
+	check(g.estate_locked("cannery_annex"), "locked after the grace days")
+	g.inside_estate = "cannery_annex"
+	var hub_lab: bool = g.loc_data().get("lab", false)
+	check(hub_lab or not g.lab_here(), "no cooking in a locked estate")
+	g.location = "cinder"
+	check(g.loc_data().get("lab", false) or not g.lab_here(), "no cooking in a locked estate (no hub lab)")
+	g.location = "mireth"
+	g.inside_estate = ""
+	# drones and workers stop while locked
+	g.drones.append({"id": 99, "estate": "cannery_annex", "route": "to_port", "t": 0.0, "grounded": false})
+	Drones.tick(g, 10.0)
+	check(is_equal_approx(float(g.drones[0].t), 0.0), "drones idle at a locked estate")
+	# paying the arrears unlocks
+	var a := EstateUpkeep.arrears(g, "cannery_annex")
+	g.credits = a - 1
+	check(not g.pay_estate_arrears("cannery_annex").ok, "can't pay without the money")
+	g.credits = a
+	check(g.pay_estate_arrears("cannery_annex").ok and g.credits == 0, "paid arrears")
+	check(EstateUpkeep.status(g, "cannery_annex") == "ok" and not g.estate_locked("cannery_annex"), "unlocked again")
+	check(not g.pay_estate_arrears("cannery_annex").ok, "nothing overdue now")
+	# save round trip keeps unpaid days
+	g._new_day()
+	check(EstateUpkeep.unpaid_days(g, "cannery_annex") == 1, "unpaid again")
+	var h := Game.new()
+	h.from_dict(data, JSON.parse_string(JSON.stringify(g.to_dict())))
+	check(EstateUpkeep.unpaid_days(h, "cannery_annex") == 1, "unpaid days survive a save")
+	# seizure clears everything stored under the estate
+	g.estate_stock["cannery_annex"] = {"cannabis": 3}
+	g.drying["cannery_annex"] = []
+	g.workers.append({"id": "hollis", "loyalty": 0.5, "estate": "cannery_annex", "hired_day": 1})
+	var seized := []
+	g.event.connect(func(k, p): if k == "estate_seized": seized.append(p))
+	for i in int(c.seize_days):
+		g.credits = 0
+		g._new_day()
+	check(not g.estates.has("cannery_annex") and seized.size() == 1, "seized after seize_days")
+	check(not g.estate_stock.has("cannery_annex") and not g.drying.has("cannery_annex"), "estate stock and racks gone")
+	check(g.drones.filter(func(x): return x.estate == "cannery_annex").is_empty(), "drones at the estate gone")
+	check(g.workers.filter(func(w): return w.estate == "cannery_annex").is_empty(), "workers off duty")
+	check(g.estates.has("cannery_rig"), "starter estate untouched")
+	# evening warning when dawn costs can't be covered (once per day)
+	var w := new_game()
+	w.credits = 5000
+	w.location = "mireth"
+	w.buy_estate("cannery_annex")
+	w.credits = 0
+	var shorts := []
+	w.event.connect(func(k, p): if k == "costs_short": shorts.append(p))
+	w.tick(w.day_seconds() * 0.5)
+	check(shorts.is_empty(), "no warning before the evening")
+	w.tick(w.day_seconds() * 0.35)
+	w.tick(1.0)
+	check(shorts.size() == 1 and int(shorts[0].due) >= EstateUpkeep.daily(w, "cannery_annex"), "one warning in the evening when broke")
+	var w2 := new_game()
+	w2.credits = 5000
+	w2.location = "mireth"
+	w2.buy_estate("cannery_annex")
+	var s2 := []
+	w2.event.connect(func(k, p): if k == "costs_short": s2.append(p))
+	w2.tick(w2.day_seconds() * 0.9)
+	check(s2.is_empty(), "no warning with money in the bank")
+	# selling
+	var s := new_game()
+	s.credits = 5000
+	s.location = "mireth"
+	s.buy_estate("cannery_annex")
+	s.estates.cannery_annex.buildings.append({"id": "trim_table", "x": 0, "y": 0})
+	var q := EstateUpkeep.sale_quote(s, "cannery_annex")
+	check(q.share == int(round(1500 * float(c.sell_share))) and q.buildings == int(round(150 * float(data.estate_refund))), "sale quote parts")
+	check(not s.sell_estate("cannery_rig").ok and not s.sell_estate(s.SHIP_BAY).ok, "starter estate and ship bay can't be sold")
+	s.location = "cinder"
+	check(not s.sell_estate("cannery_annex").ok, "must be on the planet to sell")
+	s.location = "mireth"
+	var cr := s.credits
+	check(s.sell_estate("cannery_annex").ok and s.credits == cr + int(q.net) and not s.estates.has("cannery_annex"), "sold for the quote")
+	check(s.buy_estate("cannery_annex").ok, "can buy it back")
+
+
+func test_grow_botanist() -> void:
+	const Grow = preload("res://scripts/core/grow.gd")
+	var g := new_game()
+	g.credits = 5000
+	var est := "cannery_rig"
+	Grow.build_tray(g, est)
+	Grow.build_tray(g, est)
+	g.cargo["cannabis"] = 10
+	Grow.plant(g, est, 0, "cannabis")
+	check(Grow.tend(g) == 0, "no botanist, nobody waters")
+	check(Workers.hire(g, "oko").ok and Workers.assign(g, "oko", est).ok, "hire and assign the botanist")
+	check(Workers.candidate(g, "oko").role == "botanist", "oko is a botanist")
+	check(not Workers.hire(g, "fern").ok or not Workers.assign(g, "fern", est).ok, "one botanist per estate")
+	var days := int(data.grow.crops.cannabis.days)
+	var watered := 0
+	for d in days - 1:
+		g._new_day()
+		watered = (Grow.trays(g, est)[0].watered as Array).size()
+	# day of planting was not watered; every dawn after it is (oko rarely misses)
+	check(watered >= days - 2 and not Grow.is_ripe(g, Grow.trays(g, est)[0]), "botanist waters the growing tray (%d of %d days)" % [watered, days])
+	var e: Dictionary = g.estates[est]
+	var before := int(e.storage.get("cannabis", 0))
+	g.credits = 5000
+	g._new_day()
+	check(int(e.storage.get("cannabis", 0)) > before - int(data.grow.seed_qty), "ripe tray harvested into the estate storage")
+	var t: Dictionary = Grow.trays(g, est)[0]
+	check(t.raw == "cannabis" and int(t.start_day) == g.day, "replanted the same crop from storage")
+	check(Grow.trays(g, est)[1].raw == "cannabis", "a fresh tray gets the most stocked growable raw from storage")
+	# a locked estate is not tended
+	var h := new_game()
+	h.credits = 5000
+	h.location = "mireth"
+	h.buy_estate("cannery_annex")
+	Grow.build_tray(h, "cannery_annex")
+	h.cargo["cannabis"] = 5
+	Grow.plant(h, "cannery_annex", 0, "cannabis")
+	Workers.hire(h, "fern")
+	Workers.assign(h, "fern", "cannery_annex")
+	h.estates.cannery_annex.unpaid = int(data.upkeep.grace_days) + 1
+	h.credits = 0
+	h._new_day()
+	check((Grow.trays(h, "cannery_annex")[0].watered as Array).is_empty(), "no tending in a locked estate")
+
+
+func test_quest_green_thumb() -> void:
+	const Grow = preload("res://scripts/core/grow.gd")
+	var g := new_game()
+	Quests.start(g, "side_green")
+	check(Quests.is_active(g, "side_green"), "green thumb started")
+	g.credits = 5000
+	Grow.build_tray(g, "cannery_rig")
+	check(Quests.step_index(g, "side_green") == 1, "tray built -> step 2")
+	Workers.hire(g, "fern")
+	Workers.assign(g, "fern", "cannery_rig")
+	check(Quests.step_index(g, "side_green") == 2, "botanist assigned -> step 3")
+	g.cargo["cannabis"] = 4
+	Grow.plant(g, "cannery_rig", 0, "cannabis")
+	var c0 := g.credits
+	for d in int(data.grow.crops.cannabis.days) + 1:
+		g._new_day()
+	check(not Quests.is_active(g, "side_green") and g.quests.done.has("side_green"), "harvest by the botanist completes it")
+
+
+func test_botanist_walk() -> void:
+	const Grow = preload("res://scripts/core/grow.gd")
+	var g := new_game()
+	g.credits = 5000
+	Workers.hire(g, "oko")
+	Workers.assign(g, "oko", "cannery_rig")
+	check(WorkerWalk.activity(g, "oko") == WorkerWalk.IDLE, "botanist without trays idles")
+	Grow.build_tray(g, "cannery_rig")
+	Grow.build_tray(g, "cannery_rig")
+	Grow.build_tray(g, "cannery_rig")
+	check(WorkerWalk.activity(g, "oko") == WorkerWalk.TEND, "botanist with trays tends them")
+	var size: Array = data.estates.cannery_rig.size
+	var seen := {}
+	for t in 3:
+		g.day_time = t * 6.0 + 1.0
+		var c := WorkerWalk.target_cell(g, "oko")
+		check(c.x >= 0.0 and c.x <= float(size[0]) and c.y >= 0.0 and c.y <= float(size[1]), "tray cell inside the room (%s)" % c)
+		seen[c] = true
+	check(seen.size() == 3, "botanist walks from tray to tray")
