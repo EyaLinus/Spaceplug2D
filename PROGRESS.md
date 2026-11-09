@@ -1222,3 +1222,11 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
 - HR estate view: rent line + remote "Pay arrears" (`PayArrears_<id>`, UI smoke step). Fixed a script error in the HR estate list (tooltip
   dict lookup) for estates with rent overdue/locked, introduced earlier today and caught by the new smoke step.
 - Soak: halfway it sells one staffed estate and lets another be seized (release paths under load).
+
+## Release v0.1.14 (2026-11-09)
+Bundles the 2026-11-09 session: estate upkeep and selling (#106), mid-game pass (#107: economy probe, soak in CI,
+machine rebalance, daily costs in HR, botanist, evening warning), art pass 5 (#108), side quest Green Thumb,
+gentler and visible drone losses, rent from the HR app (#111). All mid-game numbers are still estimates from the
+headless probe and soak; nothing of this has been played by a human yet. Open for the next pass: the botanist walk
+was never checked on screen, Fentanyl loses money at the fence with a cheap or mid crew, and cheap/mid crews are
+capped by the stocker rather than the cook.
