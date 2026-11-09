@@ -94,11 +94,22 @@ func _run(data: Dictionary, seed_value: int, days: int) -> void:
 		if not data.locations[l].get("raid_base", false) and not str(l).ends_with("_gate"):
 			ports.append(l)
 	var start_day := g.day
+	var sold_one := false
 	var guard := 0
 	while g.day < start_day + days and guard < 20000:
 		guard += 1
 		if g.state != "playing":
 			g.state = "playing"  # keep going after a loss/win screen; we are testing systems, not the end
+		if g.day == start_day + days / 2 and not sold_one:
+			sold_one = true  # halfway: sell one staffed estate and let another fall into arrears (release paths)
+			var ids: Array = g.estates.keys().filter(func(x): return EstateUpkeep.applies(g, x))
+			if ids.size() >= 2:
+				var here := g.location
+				g.location = data.estates[ids[0]].location
+				_check(g.sell_estate(ids[0]).ok, "sell %s" % ids[0])
+				g.location = here
+				g.estates[ids[1]].unpaid = int(data.upkeep.seize_days) - 1
+				g.credits = 0  # broke for a day: the other estate gets seized, the rest go overdue and recover
 		# restock every estate a little (a stand-in for drones / orders to the estate)
 		for id in g.estates:
 			if g.estates[id].has("storage") and not g.estates[id].get("recipe", {}).is_empty():
@@ -116,7 +127,9 @@ func _run(data: Dictionary, seed_value: int, days: int) -> void:
 			for k in g.cargo.keys():
 				if Mixing.is_product(k):
 					g.sell(k, int(g.cargo[k]))
-		if g.credits < 2000:
+		if g.credits < 2000 and g.day > start_day + days / 2 + 1:
+			g.credits += 5000
+		elif g.credits < 2000 and g.day < start_day + days / 2:
 			g.credits += 5000  # stay solvent: upkeep / wages failure paths are covered by unit tests
 		if g.heat > 70.0:
 			g.heat = 30.0
@@ -128,6 +141,7 @@ func _run(data: Dictionary, seed_value: int, days: int) -> void:
 	_check(json2 == json, "seed %d save round trip stable" % seed_value)
 	if json2 != json:
 		_diff(JSON.parse_string(json), JSON.parse_string(json2), "")
+	_check(g.estates.size() <= 6, "seed %d: one estate sold and one seized (%d estates left)" % [seed_value, g.estates.size()])
 	print("SOAK seed=%d day=%d estates=%d workers=%d drones=%d credits=%d batches=%d worker_batches=%d upkeep_paid=%d drones_lost=%d harvests=%d earned=%d events=%s" % [
 		seed_value, g.day, g.estates.size(), g.workers.size(), g.drones.size(), g.credits, g.stats.batches,
 		int(g.stats.get("worker_batches", 0)), int(g.stats.get("upkeep_paid", 0)), int(g.stats.get("drones_lost", 0)), int(events.get("grow_harvested", 0)), g.stats.earned, _top(events)])

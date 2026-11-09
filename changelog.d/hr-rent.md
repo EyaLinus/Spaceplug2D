@@ -1,0 +1,1 @@
+- **Pay rent from the phone:** the HR app's estate view shows the rent status and a Pay arrears button, so you can unlock an estate from anywhere. Fixed a script error in the HR estate list for estates with overdue rent.

@@ -990,6 +990,19 @@ func _run() -> void:
 	_assert(not g.estate_locked("cannery_annex") and int(g.estates.cannery_annex.get("unpaid", 0)) == 0, "arrears paid, unlocked")
 	m.station.close()
 	step("estate upkeep lock and pay")
+	# the HR app can wire overdue rent remotely
+	g.estates.cannery_annex.unpaid = 1
+	m.phone.open()
+	m.phone.open_app("hr")
+	m.phone.push("Cannery Annex", func(gg): return m.phone.app_by_id("hr").estate(gg, m.phone, "cannery_annex"))
+	await frames(2)
+	var rpay: Button = m.phone.find_child("PayArrears_cannery_annex", true, false)
+	_assert(rpay != null and not rpay.disabled, "HR estate view offers to pay the arrears")
+	rpay.pressed.emit()
+	await frames(2)
+	_assert(int(g.estates.cannery_annex.get("unpaid", 0)) == 0, "arrears paid from the phone")
+	m.phone.close()
+	step("pay rent from the HR app")
 
 	# ship cargo bay: ramp next to the pad, build a station, cook flag, leave back onto the pad
 	sf.place_player_at("ship_bay")
