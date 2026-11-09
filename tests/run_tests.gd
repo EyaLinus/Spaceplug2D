@@ -183,6 +183,8 @@ func _init() -> void:
 		"test_raids",
 		"test_estate_upkeep",
 		"test_grow_botanist",
+		"test_quest_green_thumb",
+		"test_botanist_walk",
 		"test_heat_zones",
 		"test_grow",
 		"test_map_marker",
@@ -3682,7 +3684,7 @@ const QUEST_EVENTS := ["bought", "sold", "tray_started", "tray_mixed", "tray_ste
 	"app_opened", "price_set", "offer_accepted", "dealer_hired", "dealer_stocked", "dealer_collected", "entered_estate", "landed",
 	"docked", "jumped", "met", "estate_bought", "debt_paid", "upgraded", "pirate_down", "building_placed", "worker_hired",
 	"drop_pickup", "weapon_bought", "bribed", "scan_passed", "officer_killed", "product_discovered",
-	"turf_changed", "base_raided", "interdiction_resolved", "loot"]
+	"turf_changed", "base_raided", "interdiction_resolved", "loot", "grow_changed", "worker_assigned", "grow_harvested"]
 const QUEST_APPS := ["quests", "contacts", "fixers", "hr", "deals", "products", "orders", "map", "deaddrop"]
 
 
@@ -3885,7 +3887,7 @@ func test_quest_main_chapter1() -> void:
 	g.location = "mireth"
 	g.pay_debt(g.debt)
 	check(Quests.is_done(g, "main_clear") and g.state == "won", "debt paid: chapter 1 done")
-	check(g.quests.active == ["main_turf"], "chapter 1 done, chapter 2 starts with Turf War")
+	check(g.quests.active.filter(func(q): return not str(q).begins_with("side_")) == ["main_turf"], "chapter 1 done, chapter 2 starts with Turf War")
 
 
 # ---------------------------------------------------------------- cartels and influence (I1)
@@ -5168,6 +5170,27 @@ func test_estate_upkeep() -> void:
 	check(g.drones.filter(func(x): return x.estate == "cannery_annex").is_empty(), "drones at the estate gone")
 	check(g.workers.filter(func(w): return w.estate == "cannery_annex").is_empty(), "workers off duty")
 	check(g.estates.has("cannery_rig"), "starter estate untouched")
+	# evening warning when dawn costs can't be covered (once per day)
+	var w := new_game()
+	w.credits = 5000
+	w.location = "mireth"
+	w.buy_estate("cannery_annex")
+	w.credits = 0
+	var shorts := []
+	w.event.connect(func(k, p): if k == "costs_short": shorts.append(p))
+	w.tick(w.day_seconds() * 0.5)
+	check(shorts.is_empty(), "no warning before the evening")
+	w.tick(w.day_seconds() * 0.35)
+	w.tick(1.0)
+	check(shorts.size() == 1 and int(shorts[0].due) >= EstateUpkeep.daily(w, "cannery_annex"), "one warning in the evening when broke")
+	var w2 := new_game()
+	w2.credits = 5000
+	w2.location = "mireth"
+	w2.buy_estate("cannery_annex")
+	var s2 := []
+	w2.event.connect(func(k, p): if k == "costs_short": s2.append(p))
+	w2.tick(w2.day_seconds() * 0.9)
+	check(s2.is_empty(), "no warning with money in the bank")
 	# selling
 	var s := new_game()
 	s.credits = 5000
@@ -5227,3 +5250,43 @@ func test_grow_botanist() -> void:
 	h.credits = 0
 	h._new_day()
 	check((Grow.trays(h, "cannery_annex")[0].watered as Array).is_empty(), "no tending in a locked estate")
+
+
+func test_quest_green_thumb() -> void:
+	const Grow = preload("res://scripts/core/grow.gd")
+	var g := new_game()
+	Quests.start(g, "side_green")
+	check(Quests.is_active(g, "side_green"), "green thumb started")
+	g.credits = 5000
+	Grow.build_tray(g, "cannery_rig")
+	check(Quests.step_index(g, "side_green") == 1, "tray built -> step 2")
+	Workers.hire(g, "fern")
+	Workers.assign(g, "fern", "cannery_rig")
+	check(Quests.step_index(g, "side_green") == 2, "botanist assigned -> step 3")
+	g.cargo["cannabis"] = 4
+	Grow.plant(g, "cannery_rig", 0, "cannabis")
+	var c0 := g.credits
+	for d in int(data.grow.crops.cannabis.days) + 1:
+		g._new_day()
+	check(not Quests.is_active(g, "side_green") and g.quests.done.has("side_green"), "harvest by the botanist completes it")
+
+
+func test_botanist_walk() -> void:
+	const Grow = preload("res://scripts/core/grow.gd")
+	var g := new_game()
+	g.credits = 5000
+	Workers.hire(g, "oko")
+	Workers.assign(g, "oko", "cannery_rig")
+	check(WorkerWalk.activity(g, "oko") == WorkerWalk.IDLE, "botanist without trays idles")
+	Grow.build_tray(g, "cannery_rig")
+	Grow.build_tray(g, "cannery_rig")
+	Grow.build_tray(g, "cannery_rig")
+	check(WorkerWalk.activity(g, "oko") == WorkerWalk.TEND, "botanist with trays tends them")
+	var size: Array = data.estates.cannery_rig.size
+	var seen := {}
+	for t in 3:
+		g.day_time = t * 6.0 + 1.0
+		var c := WorkerWalk.target_cell(g, "oko")
+		check(c.x >= 0.0 and c.x <= float(size[0]) and c.y >= 0.0 and c.y <= float(size[1]), "tray cell inside the room (%s)" % c)
+		seen[c] = true
+	check(seen.size() == 3, "botanist walks from tray to tray")

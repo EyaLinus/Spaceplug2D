@@ -12,9 +12,11 @@ const IDLE := "idle"
 const COOK := "cook"    ## lab hand at the station while a batch runs (or waiting there for the stocker to fill the bench)
 const FETCH := "fetch"  ## lab hand with nothing on the bench and no stocker: walks to storage for inputs
 const HAUL := "haul"    ## stocker with something to carry: pendulum between storage and the station
+const TEND := "tend"    ## botanist walking along the grow trays (surface draws them in a row by the bottom wall)
+const TRAY_PITCH := 1.5 + 6.0 / 32.0  ## tray width + gap in cells, mirrors surface._draw_grow_trays
 
 
-## One of IDLE / COOK / FETCH / HAUL for the worker's current job state in his estate.
+## One of IDLE / COOK / FETCH / HAUL / TEND for the worker's current job state in his estate.
 static func activity(g, worker_id: String) -> String:
 	var wi := Workers.find(g, worker_id)
 	if wi < 0:
@@ -33,6 +35,8 @@ static func activity(g, worker_id: String) -> String:
 		return COOK if not Workers.at(g, est, "stocker").is_empty() else FETCH
 	if role == "stocker":
 		return HAUL if _has_haul_work(g, e) else IDLE
+	if role == "botanist":
+		return TEND if not g.grow.get(est, {}).get("trays", []).is_empty() else IDLE
 	return IDLE
 
 
@@ -104,7 +108,18 @@ static func target_cell(g, worker_id: String) -> Vector2:
 				return store
 			var trip := float(Workers.cfg(g).haul_seconds) / (0.5 + float(Workers.candidate(g, worker_id).skill))
 			return store if float(e.get("haul_t", 0.0)) < trip * 0.5 else st
+		TEND:
+			var n: int = (g.grow[est].trays as Array).size()
+			return tray_cell(g.data, est, n, int(g.day_time / 6.0) % n)
 	return idle
+
+
+## Cell just above grow tray `i` of `n` (the surface draws the row centred along the bottom wall).
+static func tray_cell(data: Dictionary, estate_id: String, n: int, i: int) -> Vector2:
+	var room: Array = data.estates[estate_id].size
+	var x0 := (float(room[0]) + 2.0 - TRAY_PITCH * n) * 0.5 - 1.0
+	var x := x0 + TRAY_PITCH * i + 0.75
+	return Vector2(clampf(x, 0.5, float(room[0]) - 0.5), float(room[1]) - 1.5)
 
 
 ## Palette swaps for the worker's walker sprite: a stable outfit per worker id picked from the K2 style catalogue.

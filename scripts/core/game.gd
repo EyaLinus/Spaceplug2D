@@ -103,6 +103,7 @@ var prices: Dictionary = {}  ## your asking price per Standard unit, recipe key 
 var drones: Array = []  ## courier drones [{id, estate, route, t, grounded}] (see drones.gd), saved
 var drone_seq: int = 0
 var dealers: Array = []  ## hired street dealers [{id, loc, stock, cash, sold, jail}] (see dealers.gd), saved
+var costs_warned_day: int = 0  ## runtime only: day the "can't cover dawn costs" notice went out (estate_upkeep.gd)
 var inside_estate: String = ""  ## owned estate the player is standing in (runtime only): cooking happens there
 var quests: Dictionary = {"active": [], "done": [], "step": {}, "count": {}, "tracked": ""}  ## quest log (see quests.gd), saved
 var interdiction: Dictionary = {}  ## pending interdiction after a jump (runtime only, see interdiction.gd)
@@ -403,6 +404,7 @@ func tick(dt: float) -> void:
 	SpaceCombat.tick(self, dt)
 	Combat.tick(self, dt)
 	Deaddrops.tick(self)
+	EstateUpkeep.evening_check(self)
 	while day_time >= day_seconds():
 		day_time -= day_seconds()
 		_new_day()

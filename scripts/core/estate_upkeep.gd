@@ -112,6 +112,20 @@ static func _notice(g, text: String) -> void:
 	g._emit("notice", {"text": text, "good": false})
 
 
+## Late in the day (warn_at share of the day, content.json upkeep.warn_at) warns once if the credits will not cover
+## what dawn charges (Game.daily_costs: wages, rent, drones, retainers).
+static func evening_check(g) -> void:
+	if cfg(g).is_empty() or g.costs_warned_day == g.day:
+		return
+	if g.day_time < g.day_seconds() * float(cfg(g).get("warn_at", 0.8)):
+		return
+	g.costs_warned_day = g.day
+	var due: int = int(g.daily_costs().total)
+	if due > 0 and g.credits < due:
+		g._emit("costs_short", {"due": due, "credits": g.credits})
+		_notice(g, "Dawn will cost %d cr (wages, rent, drones, officials) and you have %d. Sell something or rent goes unpaid." % [due, g.credits])
+
+
 ## Pay the arrears by hand (e.g. to unlock). Today's upkeep is still taken at the next new day.
 static func pay_arrears(g, id: String) -> Dictionary:
 	if not g.estates.has(id):
