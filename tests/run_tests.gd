@@ -59,6 +59,7 @@ func _init() -> void:
 		"test_interiors",
 		"test_art_registry",
 		"test_art_pass4",
+		"test_art_wiring",
 		"test_police_on_foot",
 		"test_hiding",
 		"test_flee_heat",
@@ -313,6 +314,30 @@ func test_art_pass4() -> void:
 	check(stars != null and stars.get_size() == Vector2(128, 16), "starfield sprite strip (8 sprites of 16 px)")
 	var neb: Texture2D = Art.tex("space/nebula.png")
 	check(neb != null and neb.get_size() == Vector2(288, 96), "nebula strip (3 clouds of 96 px)")
+
+
+## Art pass 4 wiring helpers: idle frames, fringe planning, fx strips, sprite fx entries.
+func test_art_wiring() -> void:
+	var Art = load("res://scripts/core/art.gd")
+	var seen := {}
+	for i in 36:
+		seen[Art.idle_frame(i * 0.1)] = true
+	check(seen.keys().size() == 4 and Art.idle_frame(0.0) == 0 and Art.idle_frame(Art.IDLE_CYCLE - 0.1) == 3, "idle loop stands, breathes, stands, blinks")
+	check(Art.idle_frame(Art.IDLE_CYCLE + 0.1) == 0, "idle loop repeats")
+	var solid := func(c: Vector2i) -> bool: return Rect2i(0, 0, 3, 2).has_point(c)
+	var plan: Array = Art.edge_plan(Rect2i(0, 0, 3, 2), solid)
+	var sides := {}
+	for e in plan:
+		sides["%d,%d:%s" % [e[0].x, e[0].y, Art.EDGE_ORDER[e[1]]]] = true
+	check(sides.has("0,0:N") and sides.has("0,0:W") and sides.has("2,1:S") and sides.has("2,1:E") and not sides.has("1,0:S"), "fringes only on open sides of a 3x2 road")
+	check(plan.size() == 2 * 3 + 2 * 2, "3x2 road: 10 side fringes")
+	var solid_set := [Vector2i(1, 1), Vector2i(2, 1), Vector2i(1, 0), Vector2i(0, 1)]
+	var junction: Array = Art.edge_plan(Rect2i(1, 1, 2, 1), func(c: Vector2i) -> bool: return c in solid_set)
+	var has_nw := false
+	for e in junction:
+		has_nw = has_nw or (e[0] == Vector2i(1, 1) and e[1] == 7)
+	check(has_nw, "inner corner: N and W paved, only the diagonal is ground gives an NW fringe")
+	check(Art.edge_strip("nothing") == null and Art.fx("nothing") == null, "missing fx/edge art is null")
 
 
 func test_surface_layouts() -> void:

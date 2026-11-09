@@ -9,6 +9,7 @@ const PriceBoard = preload("res://scripts/core/price_board.gd")
 const Laws = preload("res://scripts/core/laws.gd")
 const Marker = preload("res://scripts/core/marker.gd")
 const PriceWar = preload("res://scripts/core/pricewar.gd")
+const Art = preload("res://scripts/core/art.gd")
 
 const CANVAS_H := 170.0
 const COLD := Color("#4fe3c1")
@@ -24,6 +25,8 @@ class MapCanvas extends Control:
 	var lanes: Array = []  ## [[Vector2 ratio, Vector2 ratio, bool route]]
 	var glows: Array = []  ## [[Vector2 ratio, Color, float radius]]
 	var marker := Vector2(-1, -1)  ## ratio of the system you are in
+	var stars: Array = []  ## [[Vector2 ratio, Color star]] (art pass 4 map_star icon, tinted per system)
+	var hostile: Array = []  ## ratios of systems with high patrol pressure (map_hostile icon)
 	var pulse := 0.0
 
 	func _process(delta: float) -> void:
@@ -35,12 +38,27 @@ class MapCanvas extends Control:
 		draw_rect(Rect2(Vector2.ZERO, size), Color("#9a6a12", 0.7), false, 1.0)
 		for l in lanes:
 			draw_line(l[0] * size, l[1] * size, Color("#4fe3c1") if l[2] else Color("#5a5b6a"), 3.0 if l[2] else 2.0)
+		var t_gate := Art.icon_for("map_gate")
+		if t_gate != null:
+			for l in lanes:
+				draw_texture(t_gate, ((l[0] + l[1]) * 0.5 * size).round() - Vector2(16, 16))
 		for gl in glows:
 			var p: Vector2 = gl[0] * size
 			for i in 4:
 				draw_circle(p, gl[2] * (1.0 - i * 0.2), Color(gl[1], 0.3))
+		var t_star := Art.icon_for("map_star")
+		if t_star != null:
+			for st in stars:
+				draw_texture(t_star, (st[0] * size).round() - Vector2(16, 28), st[1])
+		var t_host := Art.icon_for("map_hostile")
+		if t_host != null:
+			for hp in hostile:
+				draw_texture(t_host, (hp * size).round() - Vector2(52, 28))
+		var t_ship := Art.icon_for("map_ship")
+		if t_ship != null and marker.x >= 0.0:
+			draw_texture(t_ship, (marker * size).round() + Vector2(18, -34 + roundf(sin(pulse * 3.0) * 2.0)))
 		if marker.x >= 0.0:
-			draw_arc(marker * size, 30.0 + sin(pulse * 3.0) * 2.0, 0.0, TAU, 32, Color("#ffffff", 0.8), 1.5)
+			draw_arc((marker * size) - Vector2(0, 12), 30.0 + sin(pulse * 3.0) * 2.0, 0.0, TAU, 32, Color("#ffffff", 0.8), 1.5)
 
 
 func _init() -> void:
@@ -143,7 +161,10 @@ func _canvas(g) -> Control:
 			var sh := float(share.get(s, 0.0))
 			col = UI.GOLD
 			rad = 18.0 + 40.0 * sh
-		c.glows.append([pos[s], col, rad])
+		c.glows.append([pos[s] - Vector2(0, 12.0 / CANVAS_H), col, rad])
+		c.stars.append([pos[s], Color(str(g.data.systems[s].get("star", "#ffffff")))])
+		if Galaxy.heat_level(g, s) >= 0.66:
+			c.hostile.append(pos[s])
 	c.marker = pos[g.system]
 	for s in g.data.systems:
 		var b := Button.new()
@@ -159,8 +180,8 @@ func _canvas(g) -> Control:
 		b.set_anchor(SIDE_BOTTOM, pos[s].y)
 		b.offset_left = -52.0
 		b.offset_right = 52.0
-		b.offset_top = -13.0
-		b.offset_bottom = 13.0
+		b.offset_top = 6.0 if Art.icon_for("map_star") != null else -13.0  # below the star icon
+		b.offset_bottom = b.offset_top + 26.0
 		b.pressed.connect(func():
 			_sel = s
 			AudioManager.play("click")

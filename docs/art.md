@@ -36,6 +36,6 @@ All art is pixel art built from text sources with the game-assets-2d skill workf
 
 - **Lab stations:** `assets/src/stations/<station id>.txt`, one grid per station sized to its buildable footprint (16 px per cell); `surface.gd` draws them inside estates, procedural fallback otherwise.
 
-- **Art pass 4:** `st_*`/`wpn_*`/`hud_*`/`map_*` icons, `fx/*.png` strips, `chars/<look>_idle.png`, `tiles/<set>_edge.png`, `space/stars.png`, `space/nebula.png` (registry helpers `Art.idle_sheet/edge_strip/fx`; wiring into scripts pending).
+- **Art pass 4:** `st_*`/`wpn_*`/`hud_*`/`map_*` icons, `fx/*.png` strips, `chars/<look>_idle.png`, `tiles/<set>_edge.png`, `space/stars.png`, `space/nebula.png` (registry helpers `Art.idle_sheet/edge_strip/fx`; wired in the Art wiring PR: icons in bench/station/combat HUD/map app, fx in combat_layer, idle frames in walker/npc, fringes in surface, stars/nebula in world).
 
 Not covered yet: building interiors (walls/floors), menu art.

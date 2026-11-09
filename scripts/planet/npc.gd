@@ -15,6 +15,7 @@ var look := ""  ## character sheet name in assets/gfx/chars; "" = closest npc_* 
 var hold := false  ## named people stop walking while the player stands next to them
 var marker := false  ## gold "$" above the head: you have an agreed deal with this person
 var bubble := ""  ## speech bubble text: a customer on foot asking for product (walkups.gd)
+var idle_sheet: Texture2D  ## recoloured idle sheet to match `sheet`; null = stock idle (only used without `sheet`)
 var sheet: Texture2D  ## recoloured sheet (hired workers); null = the plain look sheet
 var heading := Vector2.DOWN  ## last walking direction, picks the sprite row
 var chat := ""  ## idle chatter line shown above the head (chatter.gd)
@@ -45,7 +46,8 @@ func _draw() -> void:
 	var moving := not path.is_empty() and not hold
 	if look == "":  # people without a profile look match their data colour
 		look = Art.look_for_color(color)
-	if Art.draw_character(self, look, heading, int(_step * 4.0 / TAU) if moving else 0, Vector2(0, 12), sheet):
+	if Art.draw_character(self, look, heading, int(_step * 4.0 / TAU) if moving else 0, Vector2(0, 12), sheet,
+			-1.0 if moving else _t + float(hash(display_name) % 100) * 0.37, idle_sheet):
 		_draw_name()
 		return
 	var swing := sin(_step) * 3.5 if moving else 0.0

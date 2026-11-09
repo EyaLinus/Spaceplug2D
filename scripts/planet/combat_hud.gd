@@ -3,6 +3,7 @@ extends CanvasLayer
 ## hurt vignette and the weapon wheel (hold the wheel key). It only reads the surface and the core Game.
 
 const Combat = preload("res://scripts/core/combat.gd")
+const Art = preload("res://scripts/core/art.gd")
 
 var surface: Node2D
 var _canvas: Control
@@ -56,7 +57,10 @@ func _draw_hud() -> void:
 		var txt: String = "%s  %d/%d" % [w.name, int(g.ammo.get(g.weapon, 0)), int(w.mag)]
 		if g.reload_left > 0.0:
 			txt += "  reloading"
-		_canvas.draw_string(font, base + Vector2(0, 32), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("#ffd166"))
+		var wi0: Texture2D = Art.icon_for("wpn_" + str(g.weapon))
+		if wi0 != null:
+			_canvas.draw_texture(wi0, base + Vector2(0, 17))
+		_canvas.draw_string(font, base + Vector2(36 if wi0 != null else 0, 32), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("#ffd166"))
 	# crosshair
 	if surface.use_mouse and not surface.player.frozen and not surface.wheel_open:
 		var m := get_viewport().get_mouse_position()
@@ -86,6 +90,9 @@ func _draw_wheel(g, font: Font, vp: Vector2) -> void:
 		var box := Rect2(p - Vector2(58, 30), Vector2(116, 60))
 		_canvas.draw_rect(box, Color(0.31, 0.89, 0.76, 0.35) if sel else Color(1, 1, 1, 0.08))
 		_canvas.draw_rect(box, Color("#4fe3c1") if id == g.weapon else Color(1, 1, 1, 0.35), false, 2.0 if id == g.weapon else 1.0)
+		var wi: Texture2D = Art.icon_for("wpn_" + id)
+		if wi != null:
+			_canvas.draw_texture(wi, box.position + Vector2(box.size.x - 36, 14), Color.WHITE if owned else Color(1, 1, 1, 0.45))
 		_canvas.draw_string(font, box.position + Vector2(8, 20), "%d  %s" % [i + 1, w.name], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color.WHITE if owned else Color(1, 1, 1, 0.5))
 		var sub: String = "%d/%d" % [int(g.ammo.get(id, 0)), int(w.mag)] if owned else "buy %d cr" % int(w.price)
 		var afford: bool = owned or g.credits >= int(w.price)
