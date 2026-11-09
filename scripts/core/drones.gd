@@ -169,6 +169,7 @@ static func _fly(g, d: Dictionary, plan: Dictionary) -> void:
 		g.drones.erase(d)
 		g.stats["drones_lost"] = int(g.stats.get("drones_lost", 0)) + 1
 		g._emit("drone_lost", {"drone": d.id, "estate": d.estate, "qty": qty})
+		g._emit("notice", {"text": "Drone #%d from %s went down with %d units (patrols, %d%% loss risk per trip at this heat)." % [d.id, g.data.estates[d.estate].name, qty, int(round(loss_chance(g) * 100.0))], "good": false})
 		return
 	for k in plan:
 		g._add(g.stash if d.route == "to_port" else e.storage, k, int(plan[k]))
@@ -189,6 +190,7 @@ static func new_day(g) -> void:
 		else:
 			if not d.grounded:
 				g._emit("drone_grounded", {"drone": d.id})
+				g._emit("notice", {"text": "Drone #%d is grounded: its upkeep went unpaid." % d.id, "good": false})
 			d.grounded = true
 	if paid > 0:
 		g.stats["drone_upkeep"] = int(g.stats.get("drone_upkeep", 0)) + paid

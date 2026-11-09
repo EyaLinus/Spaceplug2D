@@ -1194,3 +1194,8 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
   mirrors the row `surface._draw_grow_trays` draws). Unit test `test_botanist_walk`; not checked on screen (no screenshot taken).
 - Evening warning (2026-11-09): `EstateUpkeep.evening_check` (from `Game.tick`) emits `costs_short` + a notice once per day after
   `upkeep.warn_at` (0.8) of the day when credits < `Game.daily_costs().total`. Runtime flag `Game.costs_warned_day`, not saved.
+## Drone losses visible + gentler (2026-11-09)
+- `drone_lost` had no UI at all: the drone and its cargo vanished silently. Now also a `notice` (estate, units, risk per trip).
+- `drones.loss_per_heat` 0.0008 -> 0.0005 (soak, 30 days x 3 seeds, 4 drones, heat 30-70: lost 3/3/3 before, 1/2/2 after).
+- Event audit: of ~70 core events without a UI listener, the background ones a player would miss now emit a `notice`: `wage_missed`,
+  worker quit (`worker_left` reason quit), `drone_grounded`, `drone_lost`. Test `test_background_notices`.
