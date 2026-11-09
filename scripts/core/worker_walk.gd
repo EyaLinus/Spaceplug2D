@@ -77,7 +77,7 @@ static func station_cell(data: Dictionary, estate_id: String, buildings: Array, 
 static func idle_cell(data: Dictionary, estate_id: String, role: String) -> Vector2:
 	var room: Array = data.estates[estate_id].size
 	var w := float(room[0])
-	var dx := -1.5 if role == "lab_hand" else 1.5
+	var dx: float = {"lab_hand": -1.5, "stocker": 1.5}.get(role, 2.5)
 	return Vector2(clampf(floorf(w / 2.0) + 0.5 + dx, 0.5, w - 0.5), float(room[1]) - 1.5)
 
 

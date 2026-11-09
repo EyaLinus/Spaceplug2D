@@ -7,6 +7,7 @@ const Mixing = preload("res://scripts/core/mixing.gd")
 const Dealers = preload("res://scripts/core/dealers.gd")
 const Drones = preload("res://scripts/core/drones.gd")
 const Products = preload("res://scripts/core/products.gd")
+const EstateUpkeep = preload("res://scripts/core/estate_upkeep.gd")
 
 
 func _init() -> void:
@@ -16,11 +17,14 @@ func _init() -> void:
 	tint = Color("#ffd166")
 
 
-## Badge = people about to quit.
+## Badge = people about to quit + estates with rent overdue.
 func badge(g) -> int:
 	var n := 0
 	for w in g.workers:
 		if float(w.loyalty) < 0.25:
+			n += 1
+	for eid in g.estates:
+		if EstateUpkeep.status(g, eid) != "ok":
 			n += 1
 	return n
 
@@ -30,6 +34,12 @@ func home(g, phone) -> Control:
 	v.add_theme_constant_override("separation", 6)
 	var c: Dictionary = Workers.cfg(g)
 	v.add_child(UI.label("Crew %d/%d · wages %d cr/day" % [g.workers.size(), int(c.max_staff), Workers.wage_total(g)], 15, UI.GOLD))
+	var dc: Dictionary = g.daily_costs()
+	var costs := UI.label("Due at dawn: %d cr (wages %d · rent %d · drones %d · officials %d)" % [int(dc.total), int(dc.wages), int(dc.rent), int(dc.drones), int(dc.officials)], 14, UI.WARN if g.credits < int(dc.total) else UI.MUTED)
+	costs.name = "DailyCosts"
+	costs.tooltip_text = "Everything charged automatically at the start of each day. Unpaid wages cost loyalty, unpaid rent locks and then seizes an estate."
+	costs.mouse_filter = Control.MOUSE_FILTER_PASS
+	v.add_child(costs)
 	v.add_child(UI.label("CREW", 13, UI.MUTED))
 	if g.workers.is_empty():
 		v.add_child(UI.label("Nobody on the payroll.", 14, UI.MUTED))
@@ -184,6 +194,11 @@ func dealer(g, did: String) -> Control:
 
 
 func _estate_state(g, eid: String) -> String:
+	match EstateUpkeep.status(g, eid):
+		"locked":
+			return "LOCKED (rent)"
+		"overdue":
+			return "rent overdue"
 	if not g.estates[eid].job.is_empty():
 		return "cooking"
 	return "idle" if Workers.blocker(g, eid) != "" else "ready"
@@ -264,7 +279,7 @@ func estate(g, _phone, eid: String) -> Control:
 	if not g.estates.has(eid):
 		return v
 	var e: Dictionary = g.estates[eid]
-	for role in ["lab_hand", "stocker"]:
+	for role in ["lab_hand", "stocker", "botanist"]:
 		var w := Workers.at(g, eid, role)
 		var txt: String = Workers.candidate(g, w.id).name if not w.is_empty() else "nobody"
 		v.add_child(_pair(str(Workers.cfg(g).roles[role].name), txt))

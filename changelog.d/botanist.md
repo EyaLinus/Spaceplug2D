@@ -1,0 +1,1 @@
+- **Botanist:** a third crew role (Fern Adair, Oko Ren in HR). Assigned to an estate, the botanist tends its grow trays at dawn: harvests ripe trays into the estate storage (where your lab hand picks the raws up), replants the same crop from storage and waters everything. Low skill forgets a tray now and then.

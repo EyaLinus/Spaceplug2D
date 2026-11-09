@@ -30,12 +30,10 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [x] Stations without a surface (Cinder Belt, Drift Bazaar) keep the docked menu
 
 ## P2 – Living planets
-- [ ] Art pass for the surface via the asset pipeline (tileset, character sprites with 4-direction walk cycles, building sprites)
 - [x] Building interiors as their own small instances (enter door → interior scene) instead of opening a panel at the door
 - [~] Art pass for the surface via the asset pipeline (tileset, character sprites with 4-direction walk cycles, building sprites) – partial: characters done earlier; wave 23 added ground feature tiles, area paint tiles and building facade variety (see PROGRESS.md); roads/plazas edges, water/pit/slag/chasm art and per-district materials still open
 - [ ] Customers on foot: NPCs who want product walk up to you; you deal with them directly (replaces part of the contacts menu) (walk-ups and the deal card are in; trimming the contacts menu is still open)
 - [x] NPC schedules (home ↔ work ↔ plaza by time of day), day/night tint, idle chatter bubbles
-- [ ] Customers on foot: NPCs who want product walk up to you; you deal with them directly (replaces part of the contacts menu)
 - [x] Second and third surface: Drift Bazaar as a walkable hull deck (with the fence's back room), Cinder Belt as a mining camp
 
 ## P3 – Police on the ground
@@ -43,7 +41,6 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [x] Carrying product in an officer's sight → frisk bar; at high heat they chase you; bust on foot = confiscation + fine (same core bust)
 - [x] Officers path around buildings (AStarGrid2D on the tile grid, `scripts/planet/nav.gd`)
 - [x] Running away raises heat (sprinting in an officer's sight, `pursuit.gd`)
-- [ ] Curfew at night, hiding spots, bribable officers
 - [x] Planet heat zones: dealing in the plaza is hotter than in the back alleys
 - [x] Curfew at night + bribable officers (hiding spots still open)
 - [x] Hiding spots: stand still in a dumpster/crate/alcove spot and officers lose you (no frisk, chasers give up); close officers find you
@@ -54,23 +51,21 @@ new rule (estates, workers, police on foot) lands in the core with tests first.
 - [x] Cook in your estate with the stations you placed (station minigames from the lab run on your own stations)
 - [ ] Production buildings as core entities: grow tray (first slice done, `grow.gd`; raws with growth time/quality), mixing station (the current lab,
       one per station), drying/packaging table, storage crate; each has its own input/output inventory
-- [ ] The global "hydro rig" becomes the first rented estate; lab upgrades turn into building tiers
 - [x] Raids on estates when heat stays high
-- [x] The global "hydro rig" becomes the first rented estate; lab upgrades turn into building tiers (rent itself still open)
+- [x] The global "hydro rig" becomes the first rented estate; lab upgrades turn into building tiers (bought estates pay rent since 2026-11-09; the starter rig stays free)
 - [x] Station minigames (trim, scale, mixing, cook, packaging) decide yield, quality grade and heat; reusable runner
       for estate buildings (`scripts/ui/minigames/`)
 
 ## P5 – Workers & automation
-- [ ] Hire workers at the job board (botanist, cook, handler) with daily wages
-- [ ] Assign workers to buildings; simple job system moves items storage → station → storage
-- [ ] Dealers: workers who sell product to customers on their own (with bust risk)
+- [x] Hire workers in the HR app with daily wages (lab hand, stocker, botanist; `workers.gd`, `grow.gd` tend)
+- [x] Assign workers to estates; the stocker moves items storage → bench → storage, the lab hand cooks the auto recipe
+- [x] Dealers: street dealers sell product in a district on their own (with bust risk, `dealers.gd`)
+- [x] Machines (C2) automate one station step; with a crew they trade grade for speed (2026-11-09)
 - [x] Courier drones between estates and the spaceport
 
 ## P6 – Expansion & 1.0
-- [ ] More planets with own laws, demand and security levels; jump lanes to a second system
 - [ ] Rival syndicate with territory and price wars (✅ first slice: cartel price wars, see PROGRESS.md; open: per-product wars, cartel-vs-cartel wars); ship classes (✅ E4)
 - [ ] More planets with own laws, demand and security levels; jump lanes to a second system (first slice: Thessaly Drift, 2 planets, per-lane tolls; laws and more systems still open)
-- [ ] Rival syndicate with territory and price wars; ship classes
 - [x] Menu system: main + pause menu, 3 save slots, settings (volumes, window mode/size, VSync, key rebinding)
 - [ ] Tutorial contract chain, mixing journal, balance pass with long sims, localisation DE/EN
 

@@ -182,6 +182,7 @@ func _init() -> void:
 		"test_price_board",
 		"test_raids",
 		"test_estate_upkeep",
+		"test_grow_botanist",
 		"test_heat_zones",
 		"test_grow",
 		"test_map_marker",
@@ -3636,6 +3637,11 @@ func test_machines_workers() -> void:
 	check(cr - g.credits >= cost and g.stats.machine_runs == 2, "the machines were paid and counted")
 	check(is_equal_approx(Machines.worker_score(g.data, blds, "trim_table", 0.9), float(data.machines.auto_trimmer.score)), "machine-only step scores the machine's value")
 	check(Machines.worker_score(g.data, blds, "extractor", 0.9) < 0.0, "hand-operated steps use the worker's skill")
+	var line := ["trim_table", "extractor", "cook_stove", "pack_table"]
+	var f := Machines.worker_time_mult(g.data, blds, line)
+	var want := (1.0 - float(data.machines.auto_trimmer.speed)) * (1.0 - float(data.machines.packing_machine.speed))
+	check(is_equal_approx(f, want) and f < 1.0, "machine-only steps speed up a worker batch (%.2f)" % f)
+	check(is_equal_approx(Machines.worker_time_mult(g.data, [], line), 1.0), "no machines, no speed-up")
 	# too poor to run the machines: the lab hand waits with the ingredients
 	var p := machine_shack(0)
 	p.tick(1.0)
@@ -5107,6 +5113,8 @@ func test_estate_upkeep() -> void:
 	check(g.buy_estate("cannery_annex").ok, "buy the annex")
 	var d := EstateUpkeep.daily(g, "cannery_annex")
 	check(d == maxi(int(c.min_daily), int(round(1500 * float(c.daily_rate)))), "daily upkeep from price")
+	var dc: Dictionary = g.daily_costs()
+	check(int(dc.rent) == d and int(dc.total) == int(dc.wages) + d + int(dc.drones) + int(dc.officials), "daily costs list the rent")
 	# paid automatically
 	var before := g.credits
 	g._new_day()
@@ -5175,3 +5183,47 @@ func test_estate_upkeep() -> void:
 	var cr := s.credits
 	check(s.sell_estate("cannery_annex").ok and s.credits == cr + int(q.net) and not s.estates.has("cannery_annex"), "sold for the quote")
 	check(s.buy_estate("cannery_annex").ok, "can buy it back")
+
+
+func test_grow_botanist() -> void:
+	const Grow = preload("res://scripts/core/grow.gd")
+	var g := new_game()
+	g.credits = 5000
+	var est := "cannery_rig"
+	Grow.build_tray(g, est)
+	Grow.build_tray(g, est)
+	g.cargo["cannabis"] = 10
+	Grow.plant(g, est, 0, "cannabis")
+	check(Grow.tend(g) == 0, "no botanist, nobody waters")
+	check(Workers.hire(g, "oko").ok and Workers.assign(g, "oko", est).ok, "hire and assign the botanist")
+	check(Workers.candidate(g, "oko").role == "botanist", "oko is a botanist")
+	check(not Workers.hire(g, "fern").ok or not Workers.assign(g, "fern", est).ok, "one botanist per estate")
+	var days := int(data.grow.crops.cannabis.days)
+	var watered := 0
+	for d in days - 1:
+		g._new_day()
+		watered = (Grow.trays(g, est)[0].watered as Array).size()
+	# day of planting was not watered; every dawn after it is (oko rarely misses)
+	check(watered >= days - 2 and not Grow.is_ripe(g, Grow.trays(g, est)[0]), "botanist waters the growing tray (%d of %d days)" % [watered, days])
+	var e: Dictionary = g.estates[est]
+	var before := int(e.storage.get("cannabis", 0))
+	g.credits = 5000
+	g._new_day()
+	check(int(e.storage.get("cannabis", 0)) > before - int(data.grow.seed_qty), "ripe tray harvested into the estate storage")
+	var t: Dictionary = Grow.trays(g, est)[0]
+	check(t.raw == "cannabis" and int(t.start_day) == g.day, "replanted the same crop from storage")
+	check(Grow.trays(g, est)[1].raw == "cannabis", "a fresh tray gets the most stocked growable raw from storage")
+	# a locked estate is not tended
+	var h := new_game()
+	h.credits = 5000
+	h.location = "mireth"
+	h.buy_estate("cannery_annex")
+	Grow.build_tray(h, "cannery_annex")
+	h.cargo["cannabis"] = 5
+	Grow.plant(h, "cannery_annex", 0, "cannabis")
+	Workers.hire(h, "fern")
+	Workers.assign(h, "fern", "cannery_annex")
+	h.estates.cannery_annex.unpaid = int(data.upkeep.grace_days) + 1
+	h.credits = 0
+	h._new_day()
+	check((Grow.trays(h, "cannery_annex")[0].watered as Array).is_empty(), "no tending in a locked estate")

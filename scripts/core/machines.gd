@@ -108,6 +108,17 @@ static func worker_cost(data: Dictionary, buildings: Array, line: Array, qty: in
 	return c
 
 
+## Time factor for a lab hand's batch: every machine-only step of `line` cuts the cook time by the machine's "speed"
+## (content.json "machines"), so a machine trades grade (fixed score) and a per-unit fee for throughput. 1.0 = no machine.
+static func worker_time_mult(data: Dictionary, buildings: Array, line: Array) -> float:
+	var f := 1.0
+	for st in line:
+		var m := _machine_only(data, buildings, st)
+		if m != "":
+			f *= 1.0 - clampf(float(defs(data)[m].get("speed", 0.0)), 0.0, 0.9)
+	return f
+
+
 ## Counts a lab hand's machine runs (stats and per-machine counters) after they were paid.
 static func worker_ran(g, buildings: Array, line: Array) -> void:
 	for st in line:

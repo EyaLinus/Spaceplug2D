@@ -1,0 +1,1 @@
+- **Machines speed up your crew:** where a machine replaces a table, lab hands now cook 20 % faster per machine step, and the per-unit fees dropped (Auto-Trimmer 1 cr, Drip Mixer 2 cr, Packing Machine 1 cr). Before, a machine line made a staffed estate strictly poorer.
