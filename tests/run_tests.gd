@@ -185,6 +185,7 @@ func _init() -> void:
 		"test_grow_botanist",
 		"test_quest_green_thumb",
 		"test_botanist_walk",
+		"test_background_notices",
 		"test_heat_zones",
 		"test_grow",
 		"test_map_marker",
@@ -5293,3 +5294,17 @@ func test_botanist_walk() -> void:
 		check(c.x >= 0.0 and c.x <= float(size[0]) and c.y >= 0.0 and c.y <= float(size[1]), "tray cell inside the room (%s)" % c)
 		seen[c] = true
 	check(seen.size() == 3, "botanist walks from tray to tray")
+
+
+func test_background_notices() -> void:
+	var g := new_game()
+	Workers.hire(g, "dax")
+	var notes := []
+	g.event.connect(func(k, p): if k == "notice": notes.append(str(p.text)))
+	g.credits = 0
+	g._new_day()
+	check(notes.any(func(t): return t.contains("Dax") and t.contains("wage")), "missed wage is announced")
+	for i in 5:
+		g.credits = 0
+		g._new_day()
+	check(not Workers.hired(g, "dax") and notes.any(func(t): return t.contains("quit")), "a worker who quits is announced")

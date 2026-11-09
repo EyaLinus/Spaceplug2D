@@ -190,6 +190,7 @@ static func new_day(g) -> void:
 		else:
 			if not d.grounded:
 				g._emit("drone_grounded", {"drone": d.id})
+				g._emit("notice", {"text": "Drone #%d is grounded: its upkeep went unpaid." % d.id, "good": false})
 			d.grounded = true
 	if paid > 0:
 		g.stats["drone_upkeep"] = int(g.stats.get("drone_upkeep", 0)) + paid
