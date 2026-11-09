@@ -184,6 +184,7 @@ func _init() -> void:
 		"test_estate_upkeep",
 		"test_grow_botanist",
 		"test_quest_green_thumb",
+		"test_botanist_walk",
 		"test_heat_zones",
 		"test_grow",
 		"test_map_marker",
@@ -5247,3 +5248,24 @@ func test_quest_green_thumb() -> void:
 	for d in int(data.grow.crops.cannabis.days) + 1:
 		g._new_day()
 	check(not Quests.is_active(g, "side_green") and g.quests.done.has("side_green"), "harvest by the botanist completes it")
+
+
+func test_botanist_walk() -> void:
+	const Grow = preload("res://scripts/core/grow.gd")
+	var g := new_game()
+	g.credits = 5000
+	Workers.hire(g, "oko")
+	Workers.assign(g, "oko", "cannery_rig")
+	check(WorkerWalk.activity(g, "oko") == WorkerWalk.IDLE, "botanist without trays idles")
+	Grow.build_tray(g, "cannery_rig")
+	Grow.build_tray(g, "cannery_rig")
+	Grow.build_tray(g, "cannery_rig")
+	check(WorkerWalk.activity(g, "oko") == WorkerWalk.TEND, "botanist with trays tends them")
+	var size: Array = data.estates.cannery_rig.size
+	var seen := {}
+	for t in 3:
+		g.day_time = t * 6.0 + 1.0
+		var c := WorkerWalk.target_cell(g, "oko")
+		check(c.x >= 0.0 and c.x <= float(size[0]) and c.y >= 0.0 and c.y <= float(size[1]), "tray cell inside the room (%s)" % c)
+		seen[c] = true
+	check(seen.size() == 3, "botanist walks from tray to tray")

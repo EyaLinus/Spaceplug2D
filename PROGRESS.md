@@ -1183,10 +1183,12 @@ dodge patrol scans → upgrade ship and rig → pay 6,000 cr debt before day 12 
 - Verified: `test_grow_botanist` (no botanist no water, one per estate, waters, harvests to storage, replants, locked estate skipped),
   unit tests, UI smoke, tip audit, soak, sim 5/5.
 - Gaps: harvested raws in estate storage are ungraded (grow_q only tracks the hub stash); fresh trays get the auto recipe's raw or the most stocked
-  growable raw (seeds compete with the lab hand for the same shelf); the botanist has no walk activity yet (stands idle in the room); tray
+  growable raw (seeds compete with the lab hand for the same shelf); tray
   economics are thin for cannabis (6 per 3 days per tray), better for pseudo.
 ## Side quest Green Thumb + soak covers botanists (2026-11-09)
 - `data/quests.json` `side_green` (follows `main_annex`): build a grow tray (check `trays`), assign a botanist (check `role`), harvest.
   New quest check types in `quests.gd`: `trays` (trays over all estates), `role` (assigned crew of a role). First SIDE quest.
 - `tools/soak.gd` now hires botanists with two trays each and checks that grow state only belongs to owned estates.
 - Verified: `test_quest_green_thumb`, quest data test, chapter 1 test (ignores side quests), UI + menu smoke, soak.
+- Botanist walk: `WorkerWalk.TEND` (estate has trays) moves the botanist from tray to tray every 6 s of day time (`tray_cell`
+  mirrors the row `surface._draw_grow_trays` draws). Unit test `test_botanist_walk`; not checked on screen (no screenshot taken).
